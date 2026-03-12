@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="ASCII"?>
+<eorm:EntityMappings xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eorm="https://eclipse.org/fennec/persistence/eorm/1.0.0" package="http://gecko.org/example/model/basic" schema="BASIC">
+  <entity name="Person">
+    <table name="PERSON" schema="BASIC"/>
+    <attributes>
+      <id access="PROPERTY" name="id">
+        <column insertable="true" name="ID" nullable="true" unique="true" updatable="true"/>
+        <sequenceGenerator name="SEQ_PERSON_ID_ID" schema="BASIC" sequenceName="SEQ_PERSON_ID_ID"/>
+      </id>
+      <basic access="PROPERTY" fetch="EAGER" name="firstName" optional="true">
+        <column insertable="true" name="FIRSTNAME" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/firstName"/>
+      </basic>
+      <basic access="PROPERTY" fetch="EAGER" name="lastName" optional="true">
+        <column insertable="true" name="LASTNAME" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/lastName"/>
+      </basic>
+      <basic access="PROPERTY" fetch="EAGER" name="gender" optional="true">
+        <column insertable="true" name="GENDER" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/gender"/>
+        <enumerated href="http://gecko.org/example/model/basic#//GenderType"/>
+      </basic>
+      <basic access="PROPERTY" fetch="EAGER" name="id" optional="false">
+        <column insertable="true" name="ID" nullable="false" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/id"/>
+      </basic>
+      <basic access="PROPERTY" fetch="EAGER" name="bigInt" optional="true">
+        <column insertable="true" name="BIGINT" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/bigInt"/>
+      </basic>
+      <basic access="PROPERTY" fetch="EAGER" name="image" optional="true">
+        <column insertable="true" name="IMAGE" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/image"/>
+      </basic>
+      <basic access="PROPERTY" fetch="EAGER" name="test" optional="true">
+        <column insertable="true" name="TEST" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/test"/>
+      </basic>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="firstName">
+        <column insertable="true" name="VAL_FIRSTNAME" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/firstName"/>
+      </elementCollection>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="lastName">
+        <column insertable="true" name="VAL_LASTNAME" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/lastName"/>
+      </elementCollection>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="gender">
+        <column insertable="true" name="VAL_GENDER" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/gender"/>
+        <enumerated href="http://gecko.org/example/model/basic#//GenderType"/>
+      </elementCollection>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="id">
+        <column insertable="true" name="VAL_ID" nullable="false" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/id"/>
+      </elementCollection>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="bigInt">
+        <column insertable="true" name="VAL_BIGINT" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/bigInt"/>
+      </elementCollection>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="image">
+        <column insertable="true" name="VAL_IMAGE" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/image"/>
+      </elementCollection>
+      <elementCollection access="PROPERTY" fetch="EAGER" name="test">
+        <column insertable="true" name="VAL_TEST" nullable="true" unique="true" updatable="true"/>
+        <feature xsi:type="ecore:EAttribute" href="http://gecko.org/example/model/basic#//Person/test"/>
+      </elementCollection>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://gecko.org/example/model/basic#//Person"/>
+  </entity>
+</eorm:EntityMappings>

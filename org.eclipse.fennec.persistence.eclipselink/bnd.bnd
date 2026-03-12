@@ -1,0 +1,22 @@
+Bundle-Name: Eclipse Fennec Eclipselink Persistence
+Bundle-Description: EMF Persistence with Eclipselink JPA
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	biz.aQute.bnd.annotation;version=latest,\
+	jakarta.persistence-api;version=latest,\
+	org.osgi.util.tracker;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.osgi.service.configurator;version=latest,\
+	org.eclipse.persistence.jpa;version=latest,\
+	org.eclipse.persistence.core;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.orm;version=snapshot
+	
+-includeresource: \
+	META-INF=xml

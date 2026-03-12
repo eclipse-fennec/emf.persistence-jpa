@@ -1,0 +1,23 @@
+					ClassA					ClassC
+persist:				448					458
+commit:
+EObjectBuilder#instantiateClone
+ECopyPolicy#buildClone								458 -> cloneMap 528
+EObjectBuild#mergeChangesIntoObject						
+EObjectBuild#mergeIntoObject							source: 458, target: 528 merge: cClassA
+getRealAttributeValue 								for cClassA from 409: 397
+MergeManager#mergeChanges ->
+ECopyPolicy#buildClone			448 -> cloneMap 545										
+EObjectBuild#mergeChangesIntoObject						
+EObjectBuild#mergeIntoObject		source: 448, target: 545 merge: cContainmentBidi
+set->setValue				A 545 -> C 528
+
+setRealAttributeValue for cClassA from target C 528: value A 545
+set->handleBidiContainmentChild->return # already set
+
+DeferredChangeDetectionPolicy#buildBackupClone
+EObjectBuilder#buildBackupClone							458 -> new 682
+getAttributeValue 								for cClassA from 409: 397
+clonedAttributeValue = this.indirectionPolicy.backupCloneAttribute(A. 397, C 409, C 731, unitOfWork); #IndirectionPoilcy NoIndirectionPolicy
+        setAttributeValueInObject(backup, clonedAttributeValue);							
+			

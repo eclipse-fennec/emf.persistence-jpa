@@ -1,0 +1,9 @@
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.daanse.jdbc.db.api;version=latest
+
+-testpath: \
+	assertj-core

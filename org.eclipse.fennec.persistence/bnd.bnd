@@ -1,0 +1,9 @@
+Bundle-Name: Eclipse Fennec Persistence
+Bundle-Description: EMF Persistence API
+
+-workingset: common
+
+-library: \
+	enableEMF
+	
+-buildpath: biz.aQute.bnd.annotation

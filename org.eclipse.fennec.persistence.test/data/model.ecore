@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="fennec.persistence.model" nsURI="https://projects.eclipse.org/projects/modeling.fennec/fpm"
+    nsPrefix="fpm">
+  <eClassifiers xsi:type="ecore:EClass" name="ClassOne">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attributeOne" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attributeTwo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attributeThree" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Person">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="stringDefault" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        defaultValueLiteral="defaultFOO"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="birthDate" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="bigIntValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//PersonType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="stringTagsRequired" lowerBound="1"
+        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="intListOptional" upperBound="-1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="floatWithDefault" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EFloat"
+        defaultValueLiteral="2.14f"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cmDatatypeWithClass" eType="#//Centimeter"
+        defaultValueLiteral="3"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="localDateNoTypeConverter"
+        eType="#//ELocalDate"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="primaryContactO2OnoKey"
+        eType="#//Contact" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="contactO2MwithKeys" eType="#//Contact"
+        containment="true" eKeys="#//Contact/value #//Contact/type"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="defaultContactBiDiO2O"
+        eType="#//Contact" containment="true" eOpposite="#//Contact/person"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EByteArray"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="classOneRef" eType="#//ClassOne"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="classOnes" upperBound="-1"
+        eType="#//ClassOne" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bidiOne" eType="#//BidiClass"
+        containment="true" eOpposite="#//BidiClass/bidiPerson"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bidiMany" upperBound="-1"
+        eType="#//BidiManyClass" containment="true" eOpposite="#//BidiManyClass/bidiManyPerson"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="types" upperBound="-1"
+        eType="#//PersonType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="PersonType">
+    <eLiterals name="PRIVATE" literal="private"/>
+    <eLiterals name="BUSINESS" value="1" literal="business"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="Centimeter" instanceClassName="int"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="ELocalDate" instanceClassName="java.time.LocalDate"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="ELocalTime" instanceClassName="java.time.LocalTime"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="ELocalDateTime" instanceClassName="java.time.LocalDateTime"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EInstant" instanceClassName="java.time.Instant"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EZonedDateTime" instanceClassName="java.time.ZonedDateTime"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EDuration" instanceClassName="java.time.Duration"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EUUID" instanceClassName="java.util.UUID"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EIntArray" instanceClassName="int[]"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EDoubleArray" instanceClassName="double[]"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EBooleanArray" instanceClassName="boolean[]"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Contact">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//ContactType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="person" eType="#//Person"
+        eOpposite="#//Person/defaultContactBiDiO2O"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ContactType">
+    <eLiterals name="PHONE" literal="phone"/>
+    <eLiterals name="MAIL" value="1" literal="mail"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BidiClass">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="bidiId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bidiPerson" eType="#//Person"
+        eOpposite="#//Person/bidiOne"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BidiManyClass">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="bidiId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bidiManyPerson" eType="#//Person"
+        eOpposite="#//Person/bidiMany"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Address">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="adressId" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="street" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="persons" upperBound="-1"
+        eType="#//Citizen" eOpposite="#//Citizen/address"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Citizen">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="citizenId" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="address" upperBound="-1"
+        eType="#//Address" eOpposite="#//Address/persons"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassAO2O">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bContainment" eType="#//ClassBO2O"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cContainmentBidi" eType="#//ClassCO2O"
+        containment="true" eOpposite="#//ClassCO2O/cClassA"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dNonContainment" eType="#//ClassDO2O"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="eNonContainmentBidi" eType="#//ClassEO2O"
+        eOpposite="#//ClassEO2O/eClassA"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassBO2O">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassCO2O">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cClassA" eType="#//ClassAO2O"
+        eOpposite="#//ClassAO2O/cContainmentBidi"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassDO2O">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dClassA" eType="#//ClassAO2O"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassEO2O">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="eClassA" eType="#//ClassAO2O"
+        eOpposite="#//ClassAO2O/eNonContainmentBidi"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassAO2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idA" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bContainment" upperBound="-1"
+        eType="#//ClassBO2M" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cContainmentBidi" upperBound="-1"
+        eType="#//ClassCO2M" containment="true" eOpposite="#//ClassCO2M/cClassA"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dNonContainment" upperBound="-1"
+        eType="#//ClassDO2M"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="eNonContainmentBidi" upperBound="-1"
+        eType="#//ClassEO2M" eOpposite="#//ClassEO2M/eClassA"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassBO2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idB" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassCO2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idC" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cClassA" eType="#//ClassAO2M"
+        eOpposite="#//ClassAO2M/cContainmentBidi"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassDO2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idD" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dClassA" eType="#//ClassAO2M"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassEO2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idE" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="eClassA" eType="#//ClassAO2M"
+        eOpposite="#//ClassAO2M/eNonContainmentBidi"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassAM2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idA" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bNonContainment" upperBound="-1"
+        eType="#//ClassBM2M"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cNonContainmentBidi" upperBound="-1"
+        eType="#//ClassCM2M" eOpposite="#//ClassCM2M/cClassA"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassBM2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idB" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="bClassA" upperBound="-1"
+        eType="#//ClassAM2M"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ClassCM2M">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="idC" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cClassA" upperBound="-1"
+        eType="#//ClassAM2M" eOpposite="#//ClassAM2M/cNonContainmentBidi"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MultiPKClass">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timestamp" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TypeConverterTestEntity">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="createdDateTime" eType="#//ELocalDateTime"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lastAccessInstant" eType="#//EInstant"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scheduledTime" eType="#//EZonedDateTime"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="processingDuration" eType="#//EDuration"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="entityUuid" eType="#//EUUID"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scores" eType="#//EIntArray"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="weights" eType="#//EDoubleArray"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="flags" eType="#//EBooleanArray"/>
+  </eClassifiers>
+</ecore:EPackage>

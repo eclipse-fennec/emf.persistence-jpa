@@ -1,0 +1,93 @@
+OneToMany custAddr
+
+OneToManyAccessor#process
+	processManyToManyMapping
+		CollectionMapping mapping = getDescriptor().getClassDescriptor().newManyToManyMapping();
+		process(mapping)
+			processRelationshipMapping(mapping);
+				setMapping(mapping);
+				mapping.setIsLazy(true);
+			        mapping.setAttributeName("custAddr");
+			        mapping.setReferenceClassName("org.eclipse.fennec.jpa.demo.entities.Address");
+			        mapping.setIsCascadeOnDeleteSetOnDatabase(false);
+			        mapping.setJoinFetch(ForeignReferenceMapping.NONE);
+			        mapping.setIsPrivateOwned(false);
+			        setIsCacheable(true);
+			processContainerPolicyAndIndirection(mapping);
+				setIndirectionPolicy(mapping, useIndirection:true)
+					class = List
+					if (usesIndirection && (mapping instanceof ForeignReferenceMapping))
+						CollectionMapping collectionMapping = (CollectionMapping)mapping;
+						collectionMapping.useTransparentList();
+					else
+						if (mapping instanceof CollectionMapping) 
+					                ((CollectionMapping)mapping).dontUseIndirection()
+		((ManyToManyMapping) mapping).setDefinedAsOneToManyMapping(true);
+		processJoinTable(mapping, ((ManyToManyMapping) mapping).getRelationTableMechanism(), getJoinTableMetadata());
+			getJoinTableMetadata()
+				return m_joinTable = new JoinTableMetadata(getClassAccessor()::org.eclipse.fennec.jpa.demo.entities.Customer); 
+				m_databasetable = new DatabaseTable
+				## empty join table
+			String defaultName = getOwningDescriptor().getPrimaryTableName() + "_" + getReferenceDescriptor().getPrimaryTableName(); #CUSTOMER_ADDRESS
+			processTable(joinTable, defaultName);
+				joinTable.setFullyQualifiedTableName(defaultTableName)
+					m_databasetable.setPossiblyQualifiedName(defaultName, "", "");
+				joinTable.processUniqueConstraints #no contraints provided
+				joinTable.processIndexes(); # no index data provided
+				joinTable.processForeignKey();
+				joinTable.processCreationSuffix();
+					m_databaseTable.setCreationSuffix(null);
+			mechanism.setRelationTable(joinTable.getDatabaseTable());
+			if (getReferenceDescriptor().hasBiDirectionalManyToManyAccessorFor(getJavaClassName(), getAttributeName())) 
+            			defaultSourceFieldName = getReferenceDescriptor().getBiDirectionalManyToManyAccessor(getJavaClassName(), getAttributeName()).getAttributeName();
+       			else
+ 				defaultSourceFieldName = getOwningDescriptor().getAlias(); Customer
+ 			addJoinTableRelationKeyFields(getJoinColumnsAndValidate(joinTable.getJoinColumns()[], getOwningDescriptor()), mechanism, defaultSourceFieldName, getOwningDescriptor(), true);
+ 				getJoinColumnsAndValidate(List<JoinColumnMetadata> joinColumns [], MetadataDescriptor referenceDescriptor) 
+ 					JoinColumnMetadata jcm = new JoinColumnMetadata();# empty
+ 					jcm.setProject(referenceDescriptor.getProject());
+ 					joinColumns.add(jcm);
+ 					return [jcm]
+				addJoinTableRelationKeyFields([jcm], mechanism, "Customer", isSource: true)
+					for (JoinColumnMetadata joinColumn : joinColumns)
+						DatabaseField pkField = getReferencedField(joinColumn.getReferencedColumnName(), descriptor, PK_CTX);
+							referenceField = referenceDescriptor.getPrimaryKeyField();org.eclipse.fennec.jpa.demo.entities.Customer
+						pkField: CUSTOMER.CUSTOMERID
+						DatabaseField fkField = joinColumn.getForeignKeyField(pkField);
+            					String defaultFKFieldName = defaultFieldName + "_" + descriptor.getPrimaryKeyFieldName(); : "Customer_CUSTOMERID"
+            					setFieldName(fkField, defaultFKFieldName, FK_CTX);
+						
+						fkField.setTable(mechanism.getRelationTable());
+						if (isSource)
+						->	mechanism.addSourceRelationKeyField(fkField, pkField);
+						else
+							mechanism.addTargetRelationKeyField(fkField, pkField);
+			String defaultTargetFieldName = getAttributeName(); : "custAddr"
+			addJoinTableRelationKeyFields(getJoinColumnsAndValidate(joinTable.getInverseJoinColumns(), getReferenceDescriptor()), mechanism, defaultTargetFieldName, getReferenceDescriptor(), false);
+				getJoinColumnsAndValidate(List<JoinColumnMetadata> joinColumns [], MetadataDescriptor referenceDescriptor) 
+ 					JoinColumnMetadata jcm = new JoinColumnMetadata();# empty
+ 					jcm.setProject(referenceDescriptor.getProject());
+ 					joinColumns.add(jcm);
+ 					return [jcm]
+				addJoinTableRelationKeyFields([jcm], mechanism, "Customer", isSource: false)
+					for (JoinColumnMetadata joinColumn : joinColumns)
+						DatabaseField pkField = getReferencedField(joinColumn.getReferencedColumnName(), descriptor, PK_CTX);
+							referenceField = referenceDescriptor.getPrimaryKeyField();org.eclipse.fennec.jpa.demo.entities.Address
+						pkField: ADDRESS.ADDRESSID
+						DatabaseField fkField = joinColumn.getForeignKeyField(pkField);
+            					String defaultFKFieldName = defaultFieldName + "_" + descriptor.getPrimaryKeyFieldName(); : "custAddr_ADDRESSID"
+            					setFieldName(fkField, defaultFKFieldName, FK_CTX);
+						
+						fkField.setTable(mechanism.getRelationTable()); : CUSTOMER_ADDRESS.custAddr_ADDRESSID
+						if (isSource)
+							mechanism.addSourceRelationKeyField(fkField, pkField);
+						else
+						->	mechanism.addTargetRelationKeyField(fkField, pkField);
+			mapping.setShouldExtendPessimisticLockScope(true);
+ 				
+
+					
+				
+				
+					
+				

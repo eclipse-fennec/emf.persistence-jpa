@@ -1,0 +1,76 @@
+Customer
+	Account account @OneToOne
+	
+Account
+	Customer customer @OneToOne, @MappedBy(account)
+	
+CUSTOMER ACCOUNT MAPPING: owning Side
+	- new OneToOne
+	- setIsOneToOneRelationship = true
+	- processRelationShip:
+		- setMapping
+		- setLazy false
+		- setCascadeOnDelete false
+		- setAttributeName account
+		- cascadeAll false
+		- isOoptional = true
+	- processOrphanRemoval:
+			- isOrphanRemoval: false: mappingestIsPrivateOwned false (If object is containment, this should be set to true)
+	-setUsesIndirection: false
+	
+processOwningMappingKeys
+  processForeignKeyRealtionship: ObjectAccessor.processForeignKeyRelationship(ObjectReferenceMapping mapping) {
+  	- String defaultFKFieldName = getDefaultAttributeName() + "_" + getReferenceDescriptor().getPrimaryKeyFieldName();
+  	- getJoinColumnsAndValidate(List[0], descriptor(account)
+  		- createEmptyJoinColumn
+  	- getForeignKey(getForeignKey(), descriptor(acount)
+  		- getForeignKey from parameter returns null
+  		- return null
+  	- processForeignKeyRelationship(mapping, joinColumn = empty, foreignkey = null, defaultFKName
+  		- forall JoinColumns:
+	  		- referencedField, if not provided (here it is null) returns the refType id-field (account.id)
+	  		- create fkField from referrencedField by replacing . by _ -> ACCOUNT_ID
+	  			- set Table to Customer
+	  		- store fields map fkField, pkField: Customer.account_id -> Account.id
+	  		- source: fkFieldName, target: pkFieldName
+	  		- targetTable = pkField.table -> Account
+	  	- forall fields map keys:
+	  		- get pkField (Account.id)
+	  		- mapping.addForeignKeyField(fkField, pkField);
+	  		- foreignKeyTable = fkField.table -> Customer
+	  	- mapping set isReadOnly false
+	  	- process foreignKey if there is one
+	  	
+CUSTOMER ACCOUNT MAPPING: mappedBySide
+	- new OneToOne
+	- setIsOneToOneRelationship = true
+	- processRelationShip:
+		- setMapping
+		- setLazy false
+		- setCascadeOnDelete false
+		- setAttributeName account
+		- cascadeAll false
+		- isOoptional = true	
+		- processOrphanRemoval:
+			- isOrphanRemoval: false: mappingestIsPrivateOwned false (If object is containment, this should be set to true)
+		- setUsesIndirection: false
+	- hasMappedBy: true
+		- getOwningMapping: Customer Entity
+			- getMapping for mappedBy: Customer.account
+			- do checks, if other side has no mappedBy as well
+			- this.mapping.setMappedBy account
+			- return Customer.account Mapping
+		- owningMapping = Customer.account Mapping
+		- is OneToONe: true:
+			- OwnerMapping = Customer.account Mapping
+			- targetToSourceKeyFields = ownerMapping.getTargetToSourceKeyFields();
+                        - sourceToTargetKeyFields = ownerMapping.getSourceToTargetKeyFields();
+                        - this.mapping:
+                        	- setSourceToTargetKeyFields(targetToSourceKeyFields);			
+                        	- setTargetToSourceKeyFields(sourceToTargetKeyFields);
+                        	
+			
+			
+  		
+  		
+  		

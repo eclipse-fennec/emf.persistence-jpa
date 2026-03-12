@@ -1,0 +1,98 @@
+Transaction.account: Account account;
+
+ManyToOne:
+ManyToOneAccessor::process
+- initManyToOneMapping
+	- new ManyToOneMapping();
+	- processRelationshipMapping(mapping);
+		- setMapping(mapping);
+		- mapping.setIsLazy(false)
+		- mapping.setAttributeName("account")
+		- mapping.setReferenceClassName("org.eclipse.fennec.jpa.demo.entities.Account")
+		- mapping.setIsCascadeOnDeleteSetOnDatabase(false)
+		- mapping.setJoinFetch(ForeignReferenceMapping.NONE);
+		- mapping.setIsPrivateOwned(false);
+		- mapping.setRequiresTransientWeavedFields(false)
+		- mapping.setCascade -> Nothing
+		- mapping.setIsCacheable(true)
+		- mapping.setIsOptional(true)
+		- mapping.setDerivesId(false);
+		- mapping.setUsesIndirection(false);
+		- mapping.dontUseIndirection
+	- ObjectAccessor::processOwningMappingKeys((ManyToOneMapping) mapping);
+		- processForeignKeyRelationship(mapping);
+			- boolean allReadOnly = true;
+			- defaultName = ACCOUNT_ID
+			- create JoinColumn mit Account Entity Reference
+			- noForeignKey
+			- default fk table: ACCT_TXN
+			- default fk field name: ACCOUNT_ID
+			- Descriptor Account
+			- pkField: Descriptor(account)#getPrimaryKeyField();
+			- getForeingKeyfield:
+				- DatabaseField databaseField = new DatabaseField();
+				- setFieldName(databaseField, m_name == null ? "" : m_name);
+				- databaseField.setColumnDefinition(m_columnDefinition == null ? "" : m_columnDefinition); m_columnDefinition = null
+				fkField.setTableName(m_table == null ? "" : m_table);
+				fkField.setUnique(m_unique == null ? false : m_unique);
+				fkField.setNullable(m_nullable == null ? true : m_nullable);
+				fkField.setUpdatable(m_updatable == null ? true : m_updatable);
+				fkField.setInsertable(m_insertable == null ? true : m_insertable);
+				fkField.setLength(primaryKeyField.getLength());
+				fkField.setPrecision(primaryKeyField.getPrecision());
+				fkField.setScale(primaryKeyField.getScale());
+			- field.setName(ACCOUNT_ID, Helper.getDefaultStartDatabaseDelimiter(), Helper.getDefaultEndDatabaseDelimiter());
+			- field.useUpperCaseForComparisons(true);
+			- fkField.setTable(defaultFKTable); DatabaseTable(ACCT_TXN)
+			- fields.put(fkField, pkField);
+			- sourceFields.add(fkField.getName());
+            		- targetFields.add(pkField.getName());
+			- targetTable = pkField.getTable(); DatabaseTable(ACCOUNT)
+			- allReadOnly = allReadOnly && fkField.isReadOnly(); -> false
+			- for (DatabaseField fkField : fields.keySet()) {
+				DatabaseField pkField = fields.get(fkField);
+				if (allReadOnly || ! fkField.isReadOnly()) {
+                			// Add a source foreign key to the mapping.
+                			mapping.addForeignKeyField(fkField, pkField);
+				foreignKeyTable = fkField.getTable(); DatabaseTable(ACCT_TXN)
+			- mapping.setIsReadOnly(allReadOnly); false
+			- siehe One to One
+			
+Account.txns: List<Transaction> txns
+
+OneToManyAccessor::process
+- hasMappedby:
+	- processOneToManyMapping();
+		- DatabaseMapping owningMapping = getOwningMapping(); ManyToOne(account)
+			- MetadataDescriptor ownerDescriptor = getReferenceDescriptor(); (Transaction)
+			- MappingAccessor mappingAccessor = ownerDescriptor.getMappingAccessor(getMappedBy()); ManyToOne (account)
+			- OneToOneMapping ownerMapping = (OneToOneMapping) owningMapping; ManyToOne (account)
+		- OneToManyMapping mapping = new OneToManyMapping();
+		- process(mapping)
+			- processRelationshipMapping(mapping);
+				- setMapping(mapping);
+				- mapping.setIsLazy(true)
+				- mapping.setAttributeName("txns")
+				- mapping.setReferenceClassName("org.eclipse.fennec.jpa.demo.entities.Transaction")
+				- mapping.setIsCascadeOnDeleteSetOnDatabase(false)
+				- mapping.setJoinFetch(ForeignReferenceMapping.NONE);
+				- mapping.setIsPrivateOwned(false);
+				- mapping.setRequiresTransientWeavedFields(false)
+				- mapping.setCascade -> Nothing
+				- mapping.setIsCacheable(true)
+			- processContainerPolicyAndIndirection(mapping);
+				- setIndirectionPolicy(mapping, null, true); -> weil mapping.isLazy === true
+					- mapping.useTransparentList();
+		- Map<DatabaseField, DatabaseField> keys = ownerMapping.getSourceToTargetKeyFields();
+		- for (DatabaseField fkField : keys.keySet()) {
+			DatabaseField pkField = keys.get(fkField); 
+			- pk: ID, qualified: ACCOUNT.ID, Table: DatabaseTable(ACCOUNT), updatable, create, isertable, nullable
+			- fk: ACCOUNT_ID, qualified: ACCT_TXN.ACCOUNT_ID, Table: DatabaseTable(ACCT_TXN), updatable, create, isertable, nullable
+			mapping.addTargetForeignKeyField(fkField, pkField);
+		- mapping.setMappedBy(getMappedBy());
+		
+			
+		
+		
+	
+

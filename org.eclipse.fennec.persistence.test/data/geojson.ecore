@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="geojson" nsURI="https://geojson.org/model/2016" nsPrefix="geo-json">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="publicConstructors" value="true"/>
+    <details key="contentTypeIdentifier" value="application/geo+json"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="modelName" value="GeoJson"/>
+    <details key="basePackage" value="org.eclipse.fennec.models"/>
+    <details key="dataTypeConverters" value="true"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="Coordinates">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="longitude" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="latitude" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="elevation" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
+        defaultValueLiteral="0.0d"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Point" eSuperTypes="#//Geometry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A GeoJSON point object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1&quot;>the GeoJSON&#xA;specification&lt;/a>"/>
+    </eAnnotations>
+    <eOperations name="setData">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="body" value="setCoordinates(org.eclipse.fennec.models.geojson.util.GeoJsonHelper.toCoordinates(data));"/>
+        <details key="suppressedVisibility" value="true"/>
+      </eAnnotations>
+      <eParameters name="data" eType="#//DoubleArray1D"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" eType="#//DoubleArray1D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="coordinates"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="true"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return org.eclipse.fennec.models.geojson.util.GeoJsonHelper.convertCoordinates(getCoordinates());"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="coordinates" eType="#//Coordinates"
+        transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GeoJsonObject">
+    <eOperations name="setBbox">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="body" value="setBoundingBox(org.eclipse.fennec.models.geojson.util.GeoJsonHelper.convertToBoundingBox(newBbox));"/>
+        <details key="suppressedVisibility" value="true"/>
+      </eAnnotations>
+      <eParameters name="newBbox" eType="#//DoubleArray1D"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="bbox" lowerBound="1" eType="#//DoubleArray1D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="bbox"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="false"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return org.eclipse.fennec.models.geojson.util.GeoJsonHelper.convertBoundingBox(getBoundingBox());"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="boundingBox" lowerBound="1"
+        eType="#//BoundingBox" transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="DoubleArray1D" instanceClassName="java.lang.double[]"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="DoubleArray2D" instanceClassName="java.lang.double[][]"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="DoubleArray3D" instanceClassName="java.lang.double[][][]"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="DoubleArray4D" instanceClassName="java.lang.double[][][][]"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Geometry" abstract="true" interface="true"
+      eSuperTypes="#//GeoJsonObject"/>
+  <eClassifiers xsi:type="ecore:EClass" name="LineString" eSuperTypes="#//Geometry #//SimpleLineString">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value=" A GeoJSON line string object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1&quot;>the GeoJSON specification&lt;/a>"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SimpleLineString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" upperBound="-1" eType="#//DoubleArray1D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="coordinates"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="false"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return new org.eclipse.fennec.models.geojson.util.GenericConvertingList&lt;double[], Coordinates>(getCoordinates(), org.eclipse.fennec.models.geojson.util.GeoJsonHelper::toCoordinates, org.eclipse.fennec.models.geojson.util.GeoJsonHelper::convertCoordinates);"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="coordinates" upperBound="-1"
+        eType="#//Coordinates" transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Feature" eSuperTypes="#//GeoJsonObject">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="geometry" eType="#//Geometry"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FeatureCollection" eSuperTypes="#//GeoJsonObject">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="features" upperBound="-1"
+        eType="#//Feature" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GeometryCollection" eSuperTypes="#//Geometry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A GeoJSON geometry collection object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1&quot;>the GeoJSON&#xA;specification&lt;/a>"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="geometries" upperBound="-1"
+        eType="#//Geometry" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MultiPoint" eSuperTypes="#//Geometry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value=" A GeoJSON multi point object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1&quot;>the GeoJSON specification&lt;/a>"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" upperBound="-1" eType="#//DoubleArray1D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="coordinates"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="false"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return new org.eclipse.fennec.models.geojson.util.GenericConvertingList&lt;double[], Coordinates>(getCoordinates(), org.eclipse.fennec.models.geojson.util.GeoJsonHelper::toCoordinates, org.eclipse.fennec.models.geojson.util.GeoJsonHelper::convertCoordinates);"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="coordinates" upperBound="-1"
+        eType="#//Coordinates" transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Polygon" eSuperTypes="#//Geometry #//SimplePolygon">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value=" A GeoJSON Polygone object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1.6&quot;>the GeoJSON specification&lt;/a>"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Ring">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Represents a List of Coordinates that follow the right-hand rule and run counterclockwise"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="coordinates" upperBound="-1"
+        eType="#//Coordinates" transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Hole" eSuperTypes="#//Ring">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Represents a List of Coordinates that follow the right-hand rule and run clockwise."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MultiPolygon" eSuperTypes="#//Geometry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value=" A GeoJSON Polygone object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1.6&quot;>the GeoJSON specification&lt;/a>"/>
+    </eAnnotations>
+    <eOperations name="setData">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="body" value="org.eclipse.fennec.models.geojson.util.GeoJsonHelper.setMultiPolygonData(this, data);"/>
+        <details key="suppressedVisibility" value="true"/>
+      </eAnnotations>
+      <eParameters name="data" eType="#//DoubleArray4D"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" eType="#//DoubleArray4D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="coordinates"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="false"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return org.eclipse.fennec.models.geojson.util.GeoJsonHelper.getMultiPolygonData(this);"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="polygons" upperBound="-1"
+        eType="#//SimplePolygon" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SimplePolygon">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value=" A GeoJSON Polygone object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1.6&quot;>the GeoJSON specification&lt;/a>"/>
+    </eAnnotations>
+    <eOperations name="setData">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="body" value="org.eclipse.fennec.models.geojson.util.GeoJsonHelper.setSimplePolygonData(this, data);"/>
+        <details key="suppressedVisibility" value="true"/>
+      </eAnnotations>
+      <eParameters name="data" eType="#//DoubleArray3D"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" eType="#//DoubleArray3D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="coordinates"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="false"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return org.eclipse.fennec.models.geojson.util.GeoJsonHelper.getSimplePolygonData(this);"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exteriorRing" eType="#//Ring"
+        transient="true" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="interiorHoles" upperBound="-1"
+        eType="#//Hole" transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MultiLineString" eSuperTypes="#//Geometry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value=" A GeoJSON Polygone object as defined in&#xA;&lt;a href=&quot;https://tools.ietf.org/html/rfc7946#section-3.1.6&quot;>the GeoJSON specification&lt;/a>"/>
+    </eAnnotations>
+    <eOperations name="setData">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="body" value="org.eclipse.fennec.models.geojson.util.GeoJsonHelper.setMultiLineStringData(this, data);"/>
+        <details key="suppressedVisibility" value="true"/>
+      </eAnnotations>
+      <eParameters name="data" eType="#//DoubleArray3D"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" eType="#//DoubleArray3D"
+        volatile="true">
+      <eAnnotations source="http:///org/eclipse/emf/ecore/util/ExtendedMetaData">
+        <details key="name" value="coordinates"/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="suppressedGetVisibility" value="true"/>
+        <details key="suppressedIsSetVisibility" value="false"/>
+        <details key="suppressedSetVisibility" value="true"/>
+        <details key="suppressedUnsetVisibility" value="true"/>
+        <details key="get" value="return org.eclipse.fennec.models.geojson.util.GeoJsonHelper.getMultiLineStringData(this);"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="linesStrings" upperBound="-1"
+        eType="#//SimpleLineString" transient="true" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BoundingBox">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="southwest" lowerBound="1"
+        eType="#//Coordinates" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="northeast" lowerBound="1"
+        eType="#//Coordinates" containment="true"/>
+  </eClassifiers>
+</ecore:EPackage>

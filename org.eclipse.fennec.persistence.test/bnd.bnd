@@ -1,0 +1,29 @@
+Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.annotation.Testable;CONCRETE}
+
+-workingset: persistence
+
+-library: \
+	enableOSGi-Test,\
+	enableEMF
+	
+-includeresource: \
+	data=data
+
+# sets the usually required buildpath using the bnd library, you can extend it with the normal -buildpath to your liking
+-buildpath: \
+	jakarta.persistence-api;version=latest,\
+	org.osgi.framework;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.osgi.test.junit5.cm;version=latest,\
+	biz.aQute.bnd.annotation;version=latest,\
+	org.eclipse.persistence.core;version=latest,\
+	org.eclipse.persistence.jpa;version=latest,\
+	org.eclipse.daanse.jdbc.datasource.h2;version=latest,\
+	org.eclipse.fennec.emf.osgi.example.model.basic;version=latest,\
+	org.eclipse.fennec.persistence.orm;version=snapshot,\
+	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
+	org.eclipse.fennec.persistence
+	
+
+# Sometimes without DynamicImport Mockito will not find certain classes
+#DynamicImport-Package: *

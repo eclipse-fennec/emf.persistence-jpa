@@ -1,0 +1,38 @@
+						ClassA			ClassC
+persist:
+						387			397
+ObjectBuilder#assignSeq				387
+ObjectBuilder#assignSeq							397
+
+commit:
+EObjectBuilder.instantiateClone
+buildClone					387 uow.map 578
+buildsNewInstance true
+EObjectBuilder.mergeChangesIntoObject		387 attributes -> 578
+
+EObjectBuilder.instantiateClone						397 uow.map 555
+buildClone								397 uow.map 555
+buildsNewInstance true
+EObjectBuilder.mergeChangesIntoObject					397 attributes -> 555
+
+set						578 x			555
+set (ignore)					578			555 x
+
+buildClone (backup)							397 -> 662
+EObjectBuilder.buildBackupClone						662
+buildClone (backup)				387 -> 681
+EObjectBuilder.buildBackupClone			681
+
+find:
+
+EObjectBuilder.buildBackupClone						
+EObjectBuilder.initiateWorkingCopyClone		578			555
+buildWorkingCopyClone				578 -> 705		555 -> 721
+EObjectBuilder.populateAttributesForClone	set all 705
+
+set						705			721 x
+backupClone								721
+						705 x			721
+populateAttributesForClone			o 578, t 
+
+		

@@ -1,0 +1,25 @@
+Bundle-Name: Eclipse Fennec ORM
+Bundle-Description: EMF Persistence ORM Mapping
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: \
+	enableEMF
+	
+-generate:\
+	model/epersistence.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/epersistence.genmodel;\
+		output=src-gen
+#		logfile=test.log;\
+
+-includeresource.model: model=model
+
+-buildpath: \
+	org.osgi.service.cm;version=latest,\
+	org.eclipse.persistence.core;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot
+	
+-testpath: assertj-core

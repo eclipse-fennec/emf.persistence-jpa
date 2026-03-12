@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="ASCII"?>
+<eorm:EntityMappings xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eorm="https://eclipse.org/fennec/persistence/eorm/1.0.0" package="http://model.data.jena.de/mdo/citizen/1.0" schema="CITIZEN">
+  <entity name="statbez">
+    <table name="STATBEZ"/>
+    <attributes>
+      <id access="PROPERTY" name="gid">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/gid"/>
+        <column insertable="true" name="gid" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="gid" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/gid"/>
+        <column insertable="true" name="gid" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="statbez_name" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/statbez_name"/>
+        <column insertable="true" name="statbez_name" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="the_geom" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/the_geom"/>
+        <column insertable="true" name="the_geom" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="uuid" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/uuid"/>
+        <column insertable="true" name="uuid" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="geojson" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/geojsonO"/>
+        <column insertable="true" name="geojson" nullable="true" unique="true" updatable="true"/>
+        <convert
+          converter="geojson"/>
+      </basic>
+      <basic access="PROPERTY" name="plraum" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez/plraum"/>
+        <column insertable="true" name="plraum" nullable="true" unique="true" updatable="true"/>
+      </basic>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//statbez"/>
+  </entity>
+  <entity name="Town">
+    <table name="TOWN"/>
+    <attributes>
+      <id access="PROPERTY" name="id">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Town/id"/>
+        <column insertable="true" name="id" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="id" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Town/id"/>
+        <column insertable="true" name="id" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="name" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Town/name"/>
+        <column insertable="true" name="name" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="geojson" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Town/geojson"/>
+        <column insertable="true" name="geojson" nullable="true" unique="true" updatable="true"/>
+      </basic>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//Town"/>
+  </entity>
+  <entity name="Year">
+    <table name="YYEAR"/>
+    <attributes>
+      <id access="PROPERTY" name="year">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Year/year"/>
+        <column insertable="true" name="YYEAR" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="year" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Year/year"/>
+        <column insertable="true" name="YYEAR" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="ordinal" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//Year/ordinal"/>
+        <column insertable="true" name="ordinal" nullable="true" unique="true" updatable="true"/>
+      </basic>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//Year"/>
+  </entity>
+  <entity name="AgeGroups">
+    <table name="AGEGROUPS"/>
+    <attributes>
+      <id access="PROPERTY" name="Age">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/Age"/>
+        <column insertable="true" name="Age" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="Age" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/Age"/>
+        <column insertable="true" name="Age" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H1" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H1"/>
+        <column insertable="true" name="H1" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H1_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H1_Order"/>
+        <column insertable="true" name="H1_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H2" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H2"/>
+        <column insertable="true" name="H2" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H2_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H2_Order"/>
+        <column insertable="true" name="H2_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H3" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H3"/>
+        <column insertable="true" name="H3" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H3_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H3_Order"/>
+        <column insertable="true" name="H3_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H4" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H4"/>
+        <column insertable="true" name="H4" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H4_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H4_Order"/>
+        <column insertable="true" name="H4_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H5" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H5"/>
+        <column insertable="true" name="H5" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H5_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H5_Order"/>
+        <column insertable="true" name="H5_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H6" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H6"/>
+        <column insertable="true" name="H6" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H6_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H6_Order"/>
+        <column insertable="true" name="H6_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H7" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H7"/>
+        <column insertable="true" name="H7" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H7_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H7_Order"/>
+        <column insertable="true" name="H7_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H8" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H8"/>
+        <column insertable="true" name="H8" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H8_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H8_Order"/>
+        <column insertable="true" name="H8_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H9" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H9"/>
+        <column insertable="true" name="H9" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="H9_Order" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups/H9_Order"/>
+        <column insertable="true" name="H9_Order" nullable="true" unique="true" updatable="true"/>
+      </basic>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//AgeGroups"/>
+  </entity>
+  <entity name="gender">
+    <table name="GENDER"/>
+    <attributes>
+      <id access="PROPERTY" name="key">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//gender/key"/>
+        <column insertable="true" name="gkey" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="key" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//gender/key"/>
+        <column insertable="true" name="gkey" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="name" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//gender/name"/>
+        <column insertable="true" name="name" nullable="true" unique="true" updatable="true"/>
+      </basic>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//gender"/>
+  </entity>
+  <entity name="plraum">
+    <table name="PLRAUM"/>
+    <attributes>
+      <id access="PROPERTY" name="gid">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/gid"/>
+        <column insertable="true" name="gid" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="gid" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/gid"/>
+        <column insertable="true" name="gid" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="plraum" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/plraum"/>
+        <column insertable="true" name="plraum" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="the_geom" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/the_geom"/>
+        <column insertable="true" name="the_geom" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="plraum_nr" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/plraum_nr"/>
+        <column insertable="true" name="plraum_nr" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="uuid" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/uuid"/>
+        <column insertable="true" name="uuid" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="geojson" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/geojson"/>
+        <column insertable="true" name="geojson" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <oneToOne access="PROPERTY" name="town" optional="true" orphanRemoval="true">
+        <feature xsi:type="ecore:EReference" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum/town"/>
+        <cascade>
+          <cascadeAll/>
+        </cascade>
+        <foreignKey constraintMode="CONSTRAINT" foreignKeyDefinition="TOWN_ID" name="TOWNID"/>
+        <joinColumn name="TOWNID" referencedColumnName="TOWN.id" table="Town"/>
+      </oneToOne>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//plraum"/>
+  </entity>
+  <entity name="einwohner">
+    <table name="EINWOHNER"/>
+    <attributes>
+      <id access="PROPERTY" name="id">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/id"/>
+        <column insertable="true" name="id" nullable="true" unique="true" updatable="true"/>
+      </id>
+      <basic access="PROPERTY" name="Anzahl" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/Anzahl"/>
+        <column insertable="true" name="Anzahl" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="GEOJSON" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/GEOJSON"/>
+        <column insertable="true" name="GEOJSON" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <basic access="PROPERTY" name="id" fetch="EAGER" optional="true">
+        <feature xsi:type="ecore:EAttribute" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/id"/>
+        <column insertable="true" name="id" nullable="true" unique="true" updatable="true"/>
+      </basic>
+      <oneToOne access="PROPERTY" name="JAHR" optional="true" orphanRemoval="true">
+        <feature xsi:type="ecore:EReference" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/JAHR"/>
+        <cascade>
+          <cascadeRemove/>
+          <cascadeRefresh/>
+          <cascadeDetach/>
+        </cascade>
+        <foreignKey constraintMode="CONSTRAINT" foreignKeyDefinition="JAHR" name="JAHR"/>
+        <joinColumn name="JAHR" referencedColumnName="TBLYEAR.year" table="Year"/>
+      </oneToOne>
+      <oneToOne access="PROPERTY" name="STATBEZ" optional="true" orphanRemoval="true">
+        <feature xsi:type="ecore:EReference" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/STATBEZ"/>
+        <cascade>
+          <cascadeRemove/>
+          <cascadeRefresh/>
+          <cascadeDetach/>
+        </cascade>
+        <foreignKey constraintMode="CONSTRAINT" foreignKeyDefinition="STATBEZ" name="STATBEZ"/>
+        <joinColumn name="STATBEZ" referencedColumnName="STATBEZ.gid" table="statbez"/>
+      </oneToOne>
+      <oneToOne access="PROPERTY" name="KER_GESCH" optional="true" orphanRemoval="true">
+        <feature xsi:type="ecore:EReference" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/KER_GESCH"/>
+        <cascade>
+          <cascadeRemove/>
+          <cascadeRefresh/>
+          <cascadeDetach/>
+        </cascade>
+        <foreignKey constraintMode="CONSTRAINT" foreignKeyDefinition="KER_GESCH" name="KER_GESCH"/>
+        <joinColumn name="KER_GESCH" referencedColumnName="GENDER.key" table="gender"/>
+      </oneToOne>
+      <oneToOne access="PROPERTY" name="AGE" optional="true" orphanRemoval="true">
+        <feature xsi:type="ecore:EReference" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner/AGE"/>
+        <cascade>
+          <cascadeRemove/>
+          <cascadeRefresh/>
+          <cascadeDetach/>
+        </cascade>
+        <foreignKey constraintMode="CONSTRAINT" foreignKeyDefinition="AGE" name="AGE"/>
+        <joinColumn name="AGE" referencedColumnName="AGEGROUPS.Age" table="AgeGroups"/>
+      </oneToOne>
+    </attributes>
+    <class xsi:type="ecore:EClass" href="http://model.data.jena.de/mdo/citizen/1.0#//einwohner"/>
+  </entity>
+</eorm:EntityMappings>

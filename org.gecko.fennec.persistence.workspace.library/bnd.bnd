@@ -1,0 +1,17 @@
+-resourceonly: true
+-workingset: persistence
+-include: ${.}/buildpath.bnd	
+mavendeps: ${sjoin;\n; ${template;-maven-dependencies;${@}}}
+
+-includeresource: resources,\
+	{template/fennecPersistence.maven=resources/template/fennecPersistence.maven};onduplicate:=OVERWRITE	
+	
+Provide-Capability: \
+	${fennec-base}
+
+fennec-base:\
+    bnd.library;\
+        bnd.library     = fennecPersistenceJPA; \
+        path            = template
+Bundle-Name: Fennec Persistence Workspace Library
+Bundle-Description: Fennec Persistence Workspace Library

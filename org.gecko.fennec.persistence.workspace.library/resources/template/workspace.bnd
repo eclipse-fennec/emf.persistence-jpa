@@ -1,0 +1,9 @@
+-plugin.fennecPersistence: \
+	aQute.bnd.repository.maven.provider.MavenBndRepository;\
+		releaseUrl			= "https://repo.maven.apache.org/maven2/,https://devel.data-in-motion.biz/nexus/repository/dim-release/"; \
+		snapshotUrl			= "https://devel.data-in-motion.biz/nexus/repository/dim-snapshot/,https://central.sonatype.com/repository/maven-snapshots/";\
+		index            = "${.}/fennecPersistence.maven" ;\
+		readOnly            = true;\
+		name="Fennec Persistence"
+		
+-require-bnd: "(version>=7.0.0)"

@@ -1,0 +1,116 @@
+2025-01-09 17:20:45.250691+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "AGEGROUPS" nicht gefunden
+Table "AGEGROUPS" not found; SQL statement:
+DROP TABLE AgeGroups [42102-232]
+2025-01-09 17:20:46.063649+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "EINWOHNER" nicht gefunden
+Table "EINWOHNER" not found; SQL statement:
+DROP TABLE einwohner [42102-232]
+2025-01-09 17:21:52.670752+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "GENDER" nicht gefunden
+Table "GENDER" not found; SQL statement:
+DROP TABLE gender [42102-232]
+2025-01-09 17:21:52.675817+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "PLRAUM" nicht gefunden
+Table "PLRAUM" not found; SQL statement:
+DROP TABLE plraum [42102-232]
+2025-01-09 17:21:52.835180+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "STATBEZ" nicht gefunden
+Table "STATBEZ" not found; SQL statement:
+DROP TABLE statbez [42102-232]
+2025-01-09 17:21:53.197664+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "TOWN" nicht gefunden
+Table "TOWN" not found; SQL statement:
+DROP TABLE town [42102-232]
+2025-01-09 17:21:53.208554+01:00 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Tabelle "YYEAR" nicht gefunden
+Table "YYEAR" not found; SQL statement:
+DROP TABLE yyear [42102-232]
+2025-01-14 20:12:39.470973+01:00 database: flush
+org.h2.message.DbException: Allgemeiner Fehler: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]"
+General error: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]" [50000-232]
+	at org.h2.message.DbException.get(DbException.java:212)
+	at org.h2.message.DbException.convert(DbException.java:407)
+	at org.h2.mvstore.db.Store.lambda$new$0(Store.java:122)
+	at org.h2.mvstore.MVStore.handleException(MVStore.java:1546)
+	at org.h2.mvstore.MVStore.panic(MVStore.java:371)
+	at org.h2.mvstore.MVStore.<init>(MVStore.java:291)
+	at org.h2.mvstore.MVStore$Builder.open(MVStore.java:2035)
+	at org.h2.mvstore.db.Store.<init>(Store.java:133)
+	at org.h2.engine.Database.<init>(Database.java:326)
+	at org.h2.engine.Engine.openSession(Engine.java:92)
+	at org.h2.engine.Engine.openSession(Engine.java:222)
+	at org.h2.engine.Engine.createSession(Engine.java:201)
+	at org.h2.engine.SessionRemote.connectEmbeddedOrServer(SessionRemote.java:344)
+	at org.h2.jdbc.JdbcConnection.<init>(JdbcConnection.java:124)
+	at org.h2.Driver.connect(Driver.java:59)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at com.onseven.dbvis.jdbc.b.e.b(Z:525)
+	at com.onseven.dbvis.jdbc.b.g$_b.call(Z:1687)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: org.h2.jdbc.JdbcSQLNonTransientException: Allgemeiner Fehler: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]"
+General error: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]" [50000-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:566)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	... 23 more
+Caused by: org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]
+	at org.h2.mvstore.DataUtils.newMVStoreException(DataUtils.java:996)
+	at org.h2.mvstore.SingleFileStore.lockFileChannel(SingleFileStore.java:137)
+	at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:117)
+	at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:81)
+	at org.h2.mvstore.MVStore.<init>(MVStore.java:286)
+	... 17 more
+Caused by: java.nio.channels.OverlappingFileLockException
+	at java.base/sun.nio.ch.FileLockTable.checkList(FileLockTable.java:229)
+	at java.base/sun.nio.ch.FileLockTable.add(FileLockTable.java:123)
+	at java.base/sun.nio.ch.FileChannelImpl.tryLock(FileChannelImpl.java:1522)
+	at org.h2.mvstore.SingleFileStore.lockFileChannel(SingleFileStore.java:135)
+	... 20 more
+2025-01-14 20:12:51.315164+01:00 database: flush
+org.h2.message.DbException: Allgemeiner Fehler: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]"
+General error: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]" [50000-232]
+	at org.h2.message.DbException.get(DbException.java:212)
+	at org.h2.message.DbException.convert(DbException.java:407)
+	at org.h2.mvstore.db.Store.lambda$new$0(Store.java:122)
+	at org.h2.mvstore.MVStore.handleException(MVStore.java:1546)
+	at org.h2.mvstore.MVStore.panic(MVStore.java:371)
+	at org.h2.mvstore.MVStore.<init>(MVStore.java:291)
+	at org.h2.mvstore.MVStore$Builder.open(MVStore.java:2035)
+	at org.h2.mvstore.db.Store.<init>(Store.java:133)
+	at org.h2.engine.Database.<init>(Database.java:326)
+	at org.h2.engine.Engine.openSession(Engine.java:92)
+	at org.h2.engine.Engine.openSession(Engine.java:222)
+	at org.h2.engine.Engine.createSession(Engine.java:201)
+	at org.h2.engine.SessionRemote.connectEmbeddedOrServer(SessionRemote.java:344)
+	at org.h2.jdbc.JdbcConnection.<init>(JdbcConnection.java:124)
+	at org.h2.Driver.connect(Driver.java:59)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at com.onseven.dbvis.jdbc.b.e.b(Z:525)
+	at com.onseven.dbvis.jdbc.b.g$_b.call(Z:1687)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: org.h2.jdbc.JdbcSQLNonTransientException: Allgemeiner Fehler: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]"
+General error: "org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]" [50000-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:566)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	... 23 more
+Caused by: org.h2.mvstore.MVStoreException: The file is locked: /devel/git/fennec-persistence/org.eclipse.fennec.persistence.test/data/h2.mv.db [2.3.232/7]
+	at org.h2.mvstore.DataUtils.newMVStoreException(DataUtils.java:996)
+	at org.h2.mvstore.SingleFileStore.lockFileChannel(SingleFileStore.java:137)
+	at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:117)
+	at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:81)
+	at org.h2.mvstore.MVStore.<init>(MVStore.java:286)
+	... 17 more
+Caused by: java.nio.channels.OverlappingFileLockException
+	at java.base/sun.nio.ch.FileLockTable.checkList(FileLockTable.java:229)
+	at java.base/sun.nio.ch.FileLockTable.add(FileLockTable.java:123)
+	at java.base/sun.nio.ch.FileChannelImpl.tryLock(FileChannelImpl.java:1522)
+	at org.h2.mvstore.SingleFileStore.lockFileChannel(SingleFileStore.java:135)
+	... 20 more

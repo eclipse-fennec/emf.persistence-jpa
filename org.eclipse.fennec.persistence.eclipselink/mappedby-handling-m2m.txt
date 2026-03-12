@@ -1,0 +1,98 @@
+List<Address> Customer::address ManyToMany
+
+- process
+- CollectionMapping mapping = getDescriptor().getClassDescriptor().newManyToManyMapping();
+	- return new ManyToManyMapping();
+- process(mapping);
+	- processRelationshipMapping(mapping);
+		- setMapping(mapping);
+		mapping.setIsLazy(true);
+		mapping.setAttributeName(address);
+		mapping.setReferenceClassName(org.eclipse.fennec.jpa.demo.entities.Address);
+		mapping.setIsCascadeOnDeleteSetOnDatabase(false);
+		mapping.setJoinFetch(ForeignReferenceMapping.NONE);
+		mapping.setIsPrivateOwned(false);
+		mapping.setRequiresTransientWeavedFields(false)
+		// no-cascade
+		mapping.setIsCacheable(true);
+	- processContainerPolicyAndIndirection(mapping);
+		- setIndirectionPolicy(mapping, null, true);
+			- mapping.useTransparentList();
+- processJoinTable(mapping, ((ManyToManyMapping) mapping).getRelationTableMechanism(), getJoinTableMetadata()); new JoinTable(Customer)
+	- String defaultName = getOwningDescriptor().getPrimaryTableName() + "_" + getReferenceDescriptor().getPrimaryTableName(); CUSTOMER_ADDRESS
+	- processTable(JoinTable.getDatabaseTable)
+		- String name = MetadataHelper.getName(table.getName(), defaultName, table.getNameContext(), m_logger, owner.getAccessibleObject());
+		CUSTOMER_ADDRESS
+		- joinTable.setFullyQualifiedTableName(CUSTOMER_ADDRESS)
+		- if ref.isBidi
+			defaultSourceFieldName = getReferenceDescriptor().getBiDirectionalManyToManyAccessor(getJavaClassName(), getAttributeName()).getAttributeName(); customers
+		  else
+			defaultSourceFieldName = getOwningDescriptor().getAlias();
+		- addJoinTableRelationKeyFields(getJoinColumnsAndValidate(joinTable.getJoinColumns(), getOwningDescriptor()), mechanism, defaultSourceFieldName, getOwningDescriptor(), true);
+			- for (JoinColumnMetadata joinColumn : joinColumns) { JoinColumn(Customer)
+				DatabaseField pkField = getReferencedField(joinColumn.getReferencedColumnName(), descriptor, PK_CTX);
+				-> CUSTOMER.CUSTOMERID
+				DatabaseField fkField = joinColumn.getForeignKeyField(pkField);
+					DatabaseField fkField = new DatabaseField()
+					siehe o-2-m
+				String defaultFKFieldName = defaultFieldName + "_" + descriptor.getPrimaryKeyFieldName(); customers_CUSTOMERID
+				fkField.setName(customers_CUSTOMERID)
+				fkField.setTable(CUSTOMER_ADDRESS)
+				if (isSource) {
+                			mechanism.addSourceRelationKeyField(fkField, pkField); ->> we are in source
+            			} else {
+                			mechanism.addTargetRelationKeyField(fkField, pkField);
+            			}
+            	- String defaultTargetFieldName = getAttributeName(); address
+            	- addJoinTableRelationKeyFields(getJoinColumnsAndValidate(joinTable.getInverseJoinColumns(), getReferenceDescriptor()), mechanism, defaultTargetFieldName, getReferenceDescriptor(), false);
+            		- for (JoinColumnMetadata joinColumn : joinColumns) { JoinColumn(Address)
+				DatabaseField pkField = getReferencedField(joinColumn.getReferencedColumnName(), descriptor, PK_CTX);
+				-> ADDRESS.ADDRESSID
+				DatabaseField fkField = joinColumn.getForeignKeyField(pkField);
+					DatabaseField fkField = new DatabaseField()
+					siehe o-2-m
+				String defaultFKFieldName = defaultFieldName + "_" + descriptor.getPrimaryKeyFieldName(); address_ADDRESSID
+				fkField.setName(address_ADDRESSID)
+				fkField.setTable(CUSTOMER_ADDRESS)
+				if (isSource) {
+                			mechanism.addSourceRelationKeyField(fkField, pkField); 
+            			} else {
+                			mechanism.addTargetRelationKeyField(fkField, pkField); ->> we are in target
+            			}
+            	- mapping.setShouldExtendPessimisticLockScope(true);
+            	
+
+List<Customer> Address::customers ManyToMany mappedBy address
+
+- process
+- CollectionMapping mapping = getDescriptor().getClassDescriptor().newManyToManyMapping();
+	- return new ManyToManyMapping();
+- process(mapping);
+	- processRelationshipMapping(mapping);
+		- setMapping(mapping);
+		mapping.setIsLazy(true);
+		mapping.setAttributeName(customers);
+		mapping.setReferenceClassName(org.eclipse.fennec.jpa.demo.entities.Customer);
+		mapping.setIsCascadeOnDeleteSetOnDatabase(false);
+		mapping.setJoinFetch(ForeignReferenceMapping.NONE);
+		mapping.setIsPrivateOwned(false);
+		mapping.setRequiresTransientWeavedFields(false)
+		// no-cascade
+		mapping.setIsCacheable(true);
+	- processContainerPolicyAndIndirection(mapping);
+		- setIndirectionPolicy(mapping, null, true);
+			- mapping.useTransparentList();
+- hasMappedBy:
+	- DatabaseMapping owningMapping = getOwningMapping(); (Customer::address)
+		- MetadataDescriptor ownerDescriptor = getReferenceDescriptor(); (Customer::address)
+		- MappingAccessor mappingAccessor = ownerDescriptor.getMappingAccessor(getMappedBy()); Customer::address
+		- mapping.setMappedBy(null)
+	- processMappedByRelationTable(ownerMapping.getRelationTableMechanism(Customer::address), ((ManyToManyMapping) mapping).getRelationTableMechanism(Address::customers));
+		- mechanism.setRelationTable(ownerMechanism.getRelationTable()); (DatabaseTable(CUSTOMER_ADDRESS))
+		- mechanism.setSourceKeyFields(ownerMechanism.getTargetKeyFields());
+		- mechanism.setSourceRelationKeyFields(ownerMechanism.getTargetRelationKeyFields());
+		- mechanism.setTargetKeyFields(ownerMechanism.getSourceKeyFields());
+		- mechanism.setTargetRelationKeyFields(ownerMechanism.getSourceRelationKeyFields());
+	- mapping.setIsReadOnly(true); !!!!!!!!!!!!!!!!!!!!!!!
+		
+	
