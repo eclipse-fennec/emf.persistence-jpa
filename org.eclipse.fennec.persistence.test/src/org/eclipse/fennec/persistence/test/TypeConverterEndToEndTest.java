@@ -62,7 +62,7 @@ import jakarta.persistence.EntityManagerFactory;
  */
 public class TypeConverterEndToEndTest extends EPersistenceModelBase {
 
-    private static final String DATASOURCE_PID = "org.eclipse.daanse.jdbc.datasource.metatype.h2.DataSource";
+    private static final String DATASOURCE_PID = "daanse.jdbc.datasource.h2.DataSource";
 
     @Override
     void beforeModelRegistered(EPackage modelPackage) {

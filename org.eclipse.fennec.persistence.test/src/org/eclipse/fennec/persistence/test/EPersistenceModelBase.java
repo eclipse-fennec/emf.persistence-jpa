@@ -35,10 +35,10 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.emf.osgi.annotation.require.RequireEMF;
 import org.eclipse.fennec.emf.osgi.configurator.EPackageConfigurator;
 import org.eclipse.fennec.emf.osgi.constants.EMFNamespaces;
+import org.eclipse.fennec.emf.osgi.example.model.basic.BasicPackage;
 import org.eclipse.fennec.persistence.eorm.EORMPackage;
 import org.eclipse.fennec.persistence.eorm.util.EORMResourceFactoryImpl;
 import org.eclipse.fennec.persistence.epersistence.EPersistencePackage;
-import org.eclipse.fennec.emf.osgi.example.model.basic.BasicPackage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -157,9 +157,10 @@ public abstract class EPersistenceModelBase {
 				registry.put(modelPackage.getNsURI(), modelPackage);
 			}
 		};
-		Dictionary<String, Object> props = Dictionaries.dictionaryOf(EMFNamespaces.EMF_NAME, modelPackage.getName(), 
-				EMFNamespaces.EMF_MODEL_NSURI, modelPackage.getNsURI(), 
-				EMFNamespaces.EMF_MODEL_REGISTRATION, EMFNamespaces.MODEL_REGISTRATION_PROVIDED);
+		Dictionary<String, Object> props = Dictionaries.dictionaryOf(EMFNamespaces.EMF_NAME, modelPackage.getName(),
+				EMFNamespaces.EMF_MODEL_NSURI, modelPackage.getNsURI(),
+				EMFNamespaces.EMF_MODEL_REGISTRATION, EMFNamespaces.MODEL_REGISTRATION_PROVIDED,
+				EMFNamespaces.EMF_MODEL_SCOPE, EMFNamespaces.EMF_MODEL_SCOPE_RESOURCE_SET);
 		testConfiguratorRegistration = ctx.registerService(EPackageConfigurator.class, c, props);
 		testModelRegistration = ctx.registerService(EPackage.class, modelPackage, props);
 	}

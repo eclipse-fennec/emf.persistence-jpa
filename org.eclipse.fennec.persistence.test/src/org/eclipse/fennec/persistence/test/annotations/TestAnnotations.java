@@ -39,19 +39,19 @@ public class TestAnnotations {
 	 * {@link DataSource} and {@link XADataSource} and
 	 * {@link ConnectionPoolDataSource} - Service.
 	 */
-	public static final String PID_DATASOURCE = "org.eclipse.daanse.jdbc.datasource.metatype.h2.DataSource";
+	public static final String PID_DATASOURCE = "daanse.jdbc.datasource.h2.DataSource";
 	/**
 	 * Constant for Properties of the Service that could be configured using the
 	 * {@link PID_DATASOURCE}.
 	 *
-	 * {@link org.eclipse.daanse.jdbc.datasource.metatype.h2.impl.H2BaseConfig#identifier()}
+	 * {@link org.eclipse.daanse.jdbc.datasource.h2.impl.H2BaseConfig#identifier()}
 	 */
 	public static final String DATASOURCE_PROPERTY_IDENTIFIER = "identifier";
 	/**
 	 * Constant for Properties of the Service that could be configured using the
 	 * {@link Constants#PID_DATASOURCE}.
 	 *
-	 * {@link org.eclipse.daanse.jdbc.datasource.metatype.h2.impl.H2BaseConfig#plugableFilesystem()}
+	 * {@link org.eclipse.daanse.jdbc.datasource.h2.impl.H2BaseConfig#plugableFilesystem()}
 	 */
 	public static final String DATASOURCE_PROPERTY_PLUGABLE_FILESYSTEM = "plugableFilesystem";
 	/**
