@@ -2,7 +2,7 @@
 	aQute.bnd.repository.maven.provider.MavenBndRepository;\
 		snapshotUrl=https://central.sonatype.com/repository/maven-snapshots/; \
         releaseUrl=https://repo.maven.apache.org/maven2/; \
-		index            = "${.}/fennecPersistence.maven" ;\
+		index            = "\${.}/fennecPersistence.maven" ;\
 		readOnly            = true;\
 		name="Eclipse Fennec Persistence JPA - ${Bundle-Version}"
 		
