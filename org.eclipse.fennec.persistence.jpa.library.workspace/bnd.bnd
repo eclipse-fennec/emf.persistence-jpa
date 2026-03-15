@@ -3,15 +3,14 @@
 -include: ${.}/buildpath.bnd	
 mavendeps: ${sjoin;\n; ${template;-maven-dependencies;${@}}}
 
--includeresource: resources,\
-	{template/fennecPersistence.maven=resources/template/fennecPersistence.maven};onduplicate:=OVERWRITE	
+-includeresource: {resources}	
 	
 Provide-Capability: \
 	${fennec-base}
 
 fennec-base:\
     bnd.library;\
-        bnd.library     = fennecPersistenceJPA; \
+        bnd.library     = fennecJPA; \
         path            = template
-Bundle-Name: Fennec Persistence Workspace Library
-Bundle-Description: Fennec Persistence Workspace Library
+Bundle-Name: Eclipse Fennec Persistence Workspace Library
+Bundle-Description: Eclipse Fennec Persistence Workspace Library
