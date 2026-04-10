@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -41,6 +43,8 @@ import jakarta.persistence.spi.PersistenceUnitInfo;
  * @since 10.12.2024
  */
 public class EDynamicPersistenceUnitInfo implements PersistenceUnitInfo {
+
+	private static final Logger LOG = Logger.getLogger(EDynamicPersistenceUnitInfo.class.getName());
 
 	protected DataSource jtaDataSource;
 	protected DataSource nonJtaDataSource;
@@ -122,7 +126,7 @@ public class EDynamicPersistenceUnitInfo implements PersistenceUnitInfo {
 			try {
 				return new URI(s).toURL();
 			} catch (Exception e) {
-				e.printStackTrace();
+				LOG.log(Level.WARNING, "Failed to parse JAR file URL", e);
 				return null;
 			}
 		}).filter(Objects::nonNull).collect(Collectors.toList());

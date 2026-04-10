@@ -21,6 +21,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -46,6 +48,8 @@ import org.eclipse.fennec.persistence.processor.ProcessorImpl;
  * @since 30.12.2024
  */
 public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappings, List<EClass>> {
+
+	private static final Logger LOG = Logger.getLogger(MappingProcessor.class.getName());
 
 	public static MappingProcessor create(EPackage ePackage) {
 		requireNonNull(ePackage);
@@ -281,7 +285,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		EReference opposite = reference.getEOpposite();
 		if (opposite.isContainment()) {
 			if (reference.isMany()) {
-				System.err.println("Not possible");
+				LOG.log(Level.SEVERE, "Cannot create opposite mapping: many-valued reference with containment opposite is not possible for {0}", reference.getName());
 				return null;
 			}
 			// we are non containment and unary children

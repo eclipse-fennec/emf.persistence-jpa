@@ -15,6 +15,9 @@ package org.eclipse.fennec.persistence.orm.processor;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -37,6 +40,8 @@ import org.eclipse.persistence.internal.cache.Processor;
  * @since 29.12.2024
  */
 public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStructuralFeature> extends ProcessorImpl<MappingContext, T, F> implements EFeatureProcessor<T, F> {
+
+	private static final Logger LOG = Logger.getLogger(NamedBaseProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.
@@ -117,7 +122,7 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 			}
 		} catch (Exception e) {
 			processed = false;
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, e, () -> "Error processing feature ''" + source.getName() + "''");
 		}
 		return this;
 	}
@@ -257,7 +262,7 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 				doReProcess();
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, e, () -> "Error re-processing feature ''" + source.getName() + "''");
 		}
 	}
 
