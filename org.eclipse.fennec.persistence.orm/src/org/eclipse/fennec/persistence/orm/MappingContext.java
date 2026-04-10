@@ -247,42 +247,15 @@ public class MappingContext implements ProcessingContext {
 				};
 			}
 		} else {
+			/*
+			 * Non-containment bidirectional: determine type directly from cardinality
+			 * of both sides. getMappingType() returns MANY_TO_MANY for all non-containment
+			 * references regardless of cardinality, so we check isMany() directly.
+			 */
 			if (reference.isMany()) {
-				/*
-				 * In a multi-valued bi-directional mapping there is no one-to-one mapping possible. 
-				 * Either it is:
-				 *  many-to-many or
-				 * 	many-to-one and one-to-many 
-				 */
-				return switch (oppositeMappingType) {
-					case MANY_TO_MANY -> {
-						yield MappingType.MANY_TO_MANY;
-					}
-					case MANY_TO_ONE -> {
-						yield MappingType.ONE_TO_MANY;
-					}
-					default -> throw new IllegalStateException(String.format("Unexpected opposite mapping type '%s' for this non-containment many reference", oppositeMappingType));
-				};
+				return oppositeRef.isMany() ? MappingType.MANY_TO_MANY : MappingType.ONE_TO_MANY;
 			} else {
-				/*
-				 * In a single value bi-directional mapping there is no one-to-may mapping possible. 
-				 * Either it is:
-				 *  many-to-many or
-				 * 	one-to-many and many-to-one or 
-				 * 	one-to-one and one-to-one or 
-				 */
-				return switch (oppositeMappingType) {
-					case MANY_TO_MANY -> {
-						yield MappingType.MANY_TO_MANY;
-					}
-					case ONE_TO_MANY -> {
-						yield MappingType.MANY_TO_ONE;
-					}
-					case ONE_TO_ONE -> {
-						yield MappingType.ONE_TO_ONE;
-					}
-					default -> throw new IllegalStateException(String.format("Unexpected opposite mapping type '%s' for this non-containment many reference", oppositeMappingType));
-				};
+				return oppositeRef.isMany() ? MappingType.MANY_TO_ONE : MappingType.ONE_TO_ONE;
 			}
 		}
 	}
