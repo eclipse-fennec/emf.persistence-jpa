@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
@@ -63,6 +65,8 @@ import jakarta.persistence.EntityManagerFactory;
 @Designate(factory = true, ocd = PersistenceUnitConfigurator.PUConfig.class)
 @Component(name = PersistenceUnitConfigurator.PID, configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class PersistenceUnitConfigurator {
+
+	private static final Logger LOG = Logger.getLogger(PersistenceUnitConfigurator.class.getName());
 
 	public static final String PID = "fennec.jpa.PersistenceUnit";
 	public static final String EPERSISTENCE_MODEL_TARGET = "(&(" + EMFNamespaces.EMF_NAME + "=" + EPersistencePackage.eNAME + ")(" + EMFNamespaces.EMF_NAME + "=" + EORMPackage.eNAME + "))";
@@ -126,10 +130,10 @@ public class PersistenceUnitConfigurator {
 				entityMapperProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
 				emfRegistration = bctx.registerService(EntityManagerFactory.class, emf, entityMapperProps);
 				return emfRegistration;
-			}).onFailure(Throwable::printStackTrace);
-			
+			}).onFailure(t -> LOG.log(Level.SEVERE, "Failed to create EntityManagerFactory", t));
+
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, "Error configuring persistence unit", e);
 		}
 
 	}

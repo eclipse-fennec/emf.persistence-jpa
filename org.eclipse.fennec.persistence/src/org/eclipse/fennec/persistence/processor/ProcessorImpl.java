@@ -14,6 +14,9 @@ package org.eclipse.fennec.persistence.processor;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * Very basic processor implementation
  * @param <C> the context type
@@ -30,6 +33,8 @@ import static java.util.Objects.requireNonNull;
  * @since 09.01.2025
  */
 public abstract class ProcessorImpl<C extends ProcessingContext, T, S> implements Processor<T, S> {
+
+	private static final Logger LOG = Logger.getLogger(ProcessorImpl.class.getName());
 
 	protected final S source;
 	protected final T target;
@@ -133,7 +138,7 @@ public abstract class ProcessorImpl<C extends ProcessingContext, T, S> implement
 			}
 		} catch (Exception e) {
 			processed = false;
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, "Error during processing", e);
 		}
 		return this;
 	}

@@ -13,6 +13,8 @@
 package org.eclipse.fennec.persistence.orm.processor;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -43,7 +45,9 @@ import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
  * @since 28.01.2025
  */
 public class CompositeIdProcessor {
-    
+
+    private static final Logger LOG = Logger.getLogger(CompositeIdProcessor.class.getName());
+
     private final CompositeIdAnalyzer analyzer;
     private final boolean strict;
     
@@ -62,7 +66,7 @@ public class CompositeIdProcessor {
     public List<Id> createIds(EClass eClass, MappingContext context) {
         IdConfiguration config = analyzer.analyzeIdStructure(eClass);
         
-        System.out.printf("ID Analysis for %s: %s\n", eClass.getName(), config);
+        LOG.log(Level.FINE, "ID Analysis for {0}: {1}", new Object[]{eClass.getName(), config});
         
         return switch (config.getStrategy()) {
             case SINGLE_ID -> List.of(createSingleId(config.getIdAttributes().get(0)));
@@ -94,7 +98,7 @@ public class CompositeIdProcessor {
      * For now, we'll create individual @Id mappings as a temporary solution.
      */
     private List<Id> createEmbeddedIds(List<EAttribute> idAttributes) {
-        System.out.printf("CREATING EMBEDDED IDS: Processing %d attributes\n", idAttributes.size());
+        LOG.log(Level.FINE, "Creating embedded IDs: processing {0} attributes", idAttributes.size());
         
         return idAttributes.stream()
             .map(attr -> {
@@ -108,9 +112,9 @@ public class CompositeIdProcessor {
                     addGenerationStrategy(id, attr);
                 }
                 
-                System.out.printf("  Created ID mapping: %s (%s)\n", 
-                    id.getName(), attr.getEAttributeType().getName());
-                    
+                LOG.log(Level.FINER, "Created ID mapping: {0} ({1})",
+                    new Object[]{id.getName(), attr.getEAttributeType().getName()});
+
                 return id;
             })
             .toList();
@@ -123,8 +127,7 @@ public class CompositeIdProcessor {
      * For now, we'll flatten the referenced composite key.
      */
     private List<Id> createIdClassIds(EReference idClassReference) {
-        System.out.printf("CREATING ID CLASS IDS: Processing reference %s\n", 
-            idClassReference.getName());
+        LOG.log(Level.FINE, "Creating IdClass IDs: processing reference {0}", idClassReference.getName());
             
         // Analyze the components of the referenced class
         List<EAttribute> components = analyzer.analyzeIdClassComponents(idClassReference);
@@ -153,9 +156,9 @@ public class CompositeIdProcessor {
                     addGenerationStrategyForType(id, attr.getEAttributeType().getInstanceClass());
                 }
                 
-                System.out.printf("  Created flattened ID mapping: %s -> %s\n", 
-                    flattenedName, attr.getName());
-                    
+                LOG.log(Level.FINER, "Created flattened ID mapping: {0} -> {1}",
+                    new Object[]{flattenedName, attr.getName()});
+
                 return id;
             })
             .toList();

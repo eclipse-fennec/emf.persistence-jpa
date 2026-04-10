@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EAttribute;
@@ -89,6 +91,8 @@ import org.eclipse.persistence.sequencing.UUIDSequence;
  * @since 16.12.2024
  */
 public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
+
+	private static final Logger LOG = Logger.getLogger(EDynamicTypeBuilder.class.getName());
 
 	private final EDynamicTypeContext context;
 	
@@ -208,7 +212,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		
 		if (ids.isEmpty()) {
 			// No IDs specified - this shouldn't happen with our enhanced processor
-			System.err.printf("WARNING: No IDs specified for entity %s\n", eClass.getName());
+			LOG.log(Level.WARNING, "No IDs specified for entity {0}", eClass.getName());
 			return;
 		}
 		
@@ -248,7 +252,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			}
 		}
 		
-		System.out.printf("Configured single ID: %s for entity %s\n", idName, eClass.getName());
+		LOG.log(Level.FINE, "Configured single ID: {0} for entity {1}", new Object[]{idName, eClass.getName()});
 	}
 	
 	/**
@@ -260,8 +264,8 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 	 */
 	private void configureCompositeIds(EDynamicType eDynamicType, List<Id> ids) {
 		EClass eClass = eDynamicType.getEClass();
-		System.out.printf("Configuring composite ID with %d fields for entity %s\n", 
-			ids.size(), eClass.getName());
+		LOG.log(Level.FINE, "Configuring composite ID with {0} fields for entity {1}",
+			new Object[]{ids.size(), eClass.getName()});
 			
 		// Collect all ID field names
 		String[] idFieldNames = new String[ids.size()];
@@ -270,7 +274,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			String fieldName = nonNull(id.getColumn()) ? id.getColumn().getName() : id.getName();
 			idFieldNames[i] = fieldName;
 			
-			System.out.printf("  ID field %d: %s\n", i + 1, fieldName);
+			LOG.log(Level.FINER, "ID field {0}: {1}", new Object[]{i + 1, fieldName});
 			
 			// Configure sequencing for each ID field that has generation strategy
 			configureIdSequencing(id, fieldName, eClass);
@@ -280,8 +284,8 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		// This tells EclipseLink that these fields together form the primary key
 		setPrimaryKeyFields(idFieldNames);
 		
-		System.out.printf("Successfully configured composite primary key: [%s] for %s\n", 
-			String.join(", ", idFieldNames), eClass.getName());
+		LOG.log(Level.FINE, "Successfully configured composite primary key: [{0}] for {1}",
+			new Object[]{String.join(", ", idFieldNames), eClass.getName()});
 	}
 	
 	/**
@@ -292,7 +296,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		if (nonNull(id.getSequenceGenerator())) {
 			String seqGenName = id.getSequenceGenerator().getSequenceName();
 			configureSequencing(seqGenName, fieldName);
-			System.out.printf("    Configured sequence: %s for field %s\n", seqGenName, fieldName);
+			LOG.log(Level.FINER, "Configured sequence: {0} for field {1}", new Object[]{seqGenName, fieldName});
 		}
 		
 		// Handle UUID generation
@@ -302,7 +306,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			String seqName = "SEQ_" + eClass.getName().toUpperCase() + "_" + fieldName.toUpperCase();
 			Sequence sequence = new UUIDSequence();
 			configureSequencing(sequence, seqName, fieldName);
-			System.out.printf("    Configured UUID generation for field %s\n", fieldName);
+			LOG.log(Level.FINER, "Configured UUID generation for field {0}", fieldName);
 		}
 	}
 
@@ -408,20 +412,20 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			EAttribute ea = (EAttribute) efo.getFeature();
 			Class<?> originalTypeClass = ea.getEAttributeType().getInstanceClass();
 			typeClass = originalTypeClass;
-			System.out.println("DEBUG: [processBasic] Processing " + ea.getName() + " with original typeClass: " + originalTypeClass);
-			
+			LOG.log(Level.FINER, "[processBasic] Processing {0} with original typeClass: {1}", new Object[]{ea.getName(), originalTypeClass});
+
 			// Map enums into Strings
 			if (ea.getEAttributeType() == EcorePackage.Literals.EENUM) {
 				typeClass = String.class;
-				System.out.println("DEBUG: [processBasic] " + ea.getName() + " is enum, setting to String.class");
+				LOG.log(Level.FINER, "[processBasic] {0} is enum, setting to String.class", ea.getName());
 			}
 			// Fallback to String for custom types (UUID, arrays, etc.) that don't have instance classes
 			if (typeClass == null) {
 				typeClass = String.class;
-				System.out.println("DEBUG: [processBasic] " + ea.getName() + " has null typeClass, setting to String.class");
+				LOG.log(Level.FINER, "[processBasic] {0} has null typeClass, setting to String.class", ea.getName());
 			}
-			
-			System.out.println("DEBUG: [processBasic] Final typeClass for " + ea.getName() + ": " + typeClass);
+
+			LOG.log(Level.FINER, "[processBasic] Final typeClass for {0}: {1}", new Object[]{ea.getName(), typeClass});
 		}
 		Column c = basic.getColumn();
 		String colName = nonNull(c) ? c.getName() : basic.getName();
@@ -449,16 +453,17 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			// Check if this is a type that needs conversion (not null and not standard database types)
 			if (originalTypeClass != null && !isStandardDatabaseType(originalTypeClass)) {
 				try {
-					System.out.println("DEBUG: Trying to find converter for " + ea.getEAttributeType().getName() + " (instanceClass: " + originalTypeClass + ")");
+					LOG.log(Level.FINER, "Trying to find converter for {0} (instanceClass: {1})",
+						new Object[]{ea.getEAttributeType().getName(), originalTypeClass});
 					converter = context.getConverter(ea.getEAttributeType());
 					if (converter != null) {
-						System.out.println("DEBUG: Found converter: " + converter.getName() + " for " + ea.getEAttributeType().getName());
+						LOG.log(Level.FINER, "Found converter: {0} for {1}",
+							new Object[]{converter.getName(), ea.getEAttributeType().getName()});
 					} else {
-						System.out.println("DEBUG: No converter found for " + ea.getEAttributeType().getName());
+						LOG.log(Level.FINER, "No converter found for {0}", ea.getEAttributeType().getName());
 					}
 				} catch (Exception e) {
-					System.out.println("DEBUG: Exception finding converter for " + ea.getEAttributeType().getName() + ": " + e.getMessage());
-					e.printStackTrace();
+					LOG.log(Level.WARNING, e, () -> "Exception finding converter for " + ea.getEAttributeType().getName());
 				}
 			}
 		}
@@ -508,17 +513,18 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		if (typeClass == String.class && attrType.getInstanceClass() != String.class) {
 			// This is a type that fell back to String due to unsupported instance class - try to find a converter
 			try {
-				System.out.println("DEBUG: [ElementCollection] Trying to find converter for " + attrType.getName() + " (instanceClass: " + attrType.getInstanceClass() + ")");
+				LOG.log(Level.FINER, "[ElementCollection] Trying to find converter for {0} (instanceClass: {1})",
+					new Object[]{attrType.getName(), attrType.getInstanceClass()});
 				TypeConverter converter = context.getConverter(attrType);
 				if (nonNull(converter)) {
-					System.out.println("DEBUG: [ElementCollection] Found converter: " + converter.getName() + " for " + attrType.getName());
+					LOG.log(Level.FINER, "[ElementCollection] Found converter: {0} for {1}",
+						new Object[]{converter.getName(), attrType.getName()});
 					efa.setConverter(converter);
 				} else {
-					System.out.println("DEBUG: [ElementCollection] No converter found for " + attrType.getName());
+					LOG.log(Level.FINER, "[ElementCollection] No converter found for {0}", attrType.getName());
 				}
 			} catch (Exception e) {
-				System.out.println("DEBUG: [ElementCollection] Exception finding converter for " + attrType.getName() + ": " + e.getMessage());
-				e.printStackTrace();
+				LOG.log(Level.WARNING, e, () -> "[ElementCollection] Exception finding converter for " + attrType.getName());
 			}
 		}
 		mapping.setAttributeAccessor(efa);
@@ -537,7 +543,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			System.err.println(String.format("No type builder available for EClass '%s'", refType.getName()));
+			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
 			return;
 			//			throw new IllegalStateException(String.format("No type builder available for EClass '%s'", refType.getName()));
 		}
@@ -587,7 +593,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			System.err.println(String.format("No type builder available for EClass '%s'", refType.getName()));
+			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
 			return;
 			//			throw new IllegalStateException(String.format("No type builder available for EClass '%s'", refType.getName()));
 		}
@@ -697,7 +703,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			System.err.println(String.format("No type builder available for EClass '%s'", refType.getName()));
+			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
 			return;
 			//			throw new IllegalStateException(String.format("No type builder available for EClass '%s'", refType.getName()));
 		}
@@ -736,7 +742,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			System.err.println(String.format("No type builder available for EClass '%s'", refType.getName()));
+			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
 			return;
 			//			throw new IllegalStateException(String.format("No type builder available for EClass '%s'", refType.getName()));
 		}

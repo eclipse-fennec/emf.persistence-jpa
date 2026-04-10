@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
@@ -59,6 +61,8 @@ import jakarta.persistence.EntityManagerFactory;
 @ServiceCapability(EntityManagerFactory.class)
 @ServiceCapability(EntityMappings.class)
 public class EntityMappingPersistenceUnitConfigurator {
+
+	private static final Logger LOG = Logger.getLogger(EntityMappingPersistenceUnitConfigurator.class.getName());
 
 	public static final String PID = "fennec.jpa.EMPersistenceUnit";
 	public static final String PROPERTY_PREFIX = "fennec.jpa.";
@@ -111,10 +115,10 @@ public class EntityMappingPersistenceUnitConfigurator {
 				entityMapperProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
 				emfRegistration = bctx.registerService(EntityManagerFactory.class, emf, entityMapperProps);
 				return emfRegistration;
-			}).onFailure(Throwable::printStackTrace);
+			}).onFailure(t -> LOG.log(Level.SEVERE, "Failed to create EntityManagerFactory", t));
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, "Error configuring persistence unit", e);
 		}
 
 	}

@@ -336,7 +336,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | 2 | Composite-ID Tests & Stabilisierung | M | Kritisch | Unit + Integration | **Erledigt** — 39 Tests (Unit), printf noch offen |
 | 3 | Many-to-Many aktivieren | M | Hoch | Integration | Offen |
 | 4 | EDynamicTypeBuilder Tests | L | Hoch | Unit | Offen |
-| 5 | Logging statt println/printStackTrace | S | Hoch | Refactoring | Offen |
+| 5 | Logging statt println/printStackTrace | S | Hoch | Refactoring | **Erledigt** |
 | 6 | EMFHelper & ConverterService Tests | M | Mittel | Unit | Offen |
 | 7 | Reserved-Words-Liste erweitern | S | Mittel | Unit | Offen |
 | 8 | DatabaseEcoreParser Integrationstest | M | Mittel | Unit (H2 embedded) | Offen |
@@ -426,25 +426,28 @@ Der Großteil der Arbeitspakete kann mit **Standard-JUnit + Mockito** getestet w
 
 **Ergebnis:** Änderungen am Type Builder brechen nicht unbemerkt.
 
-### AP5 — Logging statt println/printStackTrace
-**Aufwand: S | Priorität: Hoch | Teststrategie: Refactoring**
+### AP5 — Logging statt println/printStackTrace ✅
+**Aufwand: S | Priorität: Hoch | Teststrategie: Refactoring | Status: Erledigt**
 
-Aktuell silent failures und Debug-Ausgaben auf stdout — in einem OSGi-Framework nicht akzeptabel.
+**Umgesetzt:** Alle `System.out.printf`, `System.err.println` und `printStackTrace()` durch `java.util.logging` (JUL) ersetzt.
 
-**Logging-Framework:** `java.util.logging` (JUL) — keine zusätzliche Dependency nötig, in OSGi über Log-Bridge konfigurierbar.
-
-**Scope:**
-- `CompositeIdProcessor`: `System.out.printf` → `Logger.fine()`/`Logger.finer()`
-- `EDynamicTypeBuilder`: Debug-Prints → `Logger.fine()`
-- `NamedBaseProcessor`: `printStackTrace()` → `Logger.log(Level.SEVERE, msg, exception)` + Exception sinnvoll propagieren oder dokumentiert schlucken
-- `ProcessorImpl`: `printStackTrace()` → `Logger.log(Level.SEVERE, msg, exception)`
+| Modul | Klasse | Änderung |
+|-------|--------|----------|
+| `persistence` | `ProcessorImpl` | 1× `printStackTrace()` → `Logger.log(Level.SEVERE, ...)` |
+| `persistence.orm` | `CompositeIdProcessor` | 5× `System.out.printf` → `Logger.fine()` / `Logger.finer()` |
+| `persistence.orm` | `MappingProcessor` | 1× `System.err.println` → `Logger.log(Level.SEVERE, ...)` |
+| `persistence.orm` | `NamedBaseProcessor` | 2× `printStackTrace()` → `Logger.log(Level.SEVERE, msg, e)` |
+| `persistence.eclipselink` | `EDynamicTypeBuilder` | 23× `System.out/err` + 2× `printStackTrace()` → `Logger.fine()`/`Logger.finer()`/`Logger.log(Level.WARNING/SEVERE, ...)` |
+| `persistence.eclipselink` | `EntityMappingPersistenceUnitConfigurator` | 1× `Throwable::printStackTrace` + 1× `printStackTrace()` → `Logger.log(Level.SEVERE, ...)` |
+| `persistence.eclipselink` | `PersistenceUnitConfigurator` | 1× `Throwable::printStackTrace` + 1× `printStackTrace()` → `Logger.log(Level.SEVERE, ...)` |
+| `persistence.eclipselink` | `EDynamicPersistenceUnitInfo` | 1× `printStackTrace()` → `Logger.log(Level.WARNING, ...)` |
 
 **Pattern:**
 ```java
 private static final Logger LOG = Logger.getLogger(MyClass.class.getName());
 ```
 
-**Ergebnis:** Fehler werden sichtbar, Debug-Noise verschwindet.
+**Ergebnis:** Kein `System.out/err` oder `printStackTrace()` mehr im Produkt-Code (exkl. `src-gen/`). Test-Code enthält weiterhin `System.out.println` — dort üblich und akzeptabel.
 
 ### AP6 — EMFHelper & ConverterService Tests
 **Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
@@ -527,8 +530,8 @@ Spezial-Code für die EclipseLink-EMF-Brücke, aktuell ungetestet.
 
 | Issue | Ort | Empfehlung |
 |-------|-----|------------|
-| `System.out.printf` Debug-Ausgaben | `CompositeIdProcessor`, `EDynamicTypeBuilder` | Durch `java.util.logging` ersetzen (`Logger.fine()`) |
-| `printStackTrace()` bei Exception-Handling | `NamedBaseProcessor`, `ProcessorImpl` | `Logger.log(Level.SEVERE, msg, ex)` + Exception propagieren statt silent failure |
+| ~~`System.out.printf` Debug-Ausgaben~~ | ~~alle Module~~ | ~~erledigt (AP5)~~ |
+| ~~`printStackTrace()` bei Exception-Handling~~ | ~~alle Module~~ | ~~erledigt (AP5)~~ |
 | `EDynamicTypeContext extends ConcurrentHashMap` | `persistence.eclipselink` | Composition statt Inheritance |
 | Reserved-Words-Liste unvollständig | `MappingHelper` (nur 4 Einträge) | SQL-Keyword-Liste erweitern |
 | EMFHelper-Cache ohne Invalidierung | `persistence` Core | Cache-Eviction-Strategie einführen |
