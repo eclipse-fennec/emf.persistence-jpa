@@ -340,7 +340,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | 6 | EMFHelper & ConverterService Tests | M | Mittel | Unit | **Erledigt** — 36 Tests |
 | 7 | Reserved-Words-Liste erweitern | S | Mittel | Unit | **Erledigt** |
 | 8 | DatabaseEcoreParser Integrationstest | M | Mittel | Unit (H2 embedded) | Offen |
-| 9 | Error-Handling-Strategie | M | Mittel | Unit | Offen |
+| 9 | Error-Handling-Strategie | M | Mittel | Unit | **Erledigt** |
 | 10 | Accessor & Indirection Tests | M | Niedrig | Unit | Offen |
 
 **Aufwand:** S = Small (1–2 Tage), M = Medium (3–5 Tage), L = Large (1–2 Wochen)
@@ -494,21 +494,31 @@ private static final Logger LOG = Logger.getLogger(MyClass.class.getName());
 
 **Ergebnis:** Reverse-Engineering funktioniert nachweislich.
 
-### AP9 — Error-Handling-Strategie
-**Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
+### AP9 — Error-Handling-Strategie ✅
+**Aufwand: M | Priorität: Mittel | Status: Erledigt**
 
-Aktuell inkonsistent: teilweise silent failure, teilweise Exception, teilweise IllegalStateException.
+**Definierte Strategie:**
 
-**Scope:**
-- Definieren: Wann wird eine Exception propagiert, wann geloggt?
-- `NamedBaseProcessor`: Catch-all durch gezielte Exception-Behandlung ersetzen
-- `ProcessorImpl`: Failure-Semantik klären (processed=false reicht nicht)
-- `MappingProcessor.createProcessor()`: Reflection-Fehler besser kommunizieren
-- EMFHelper Cache: Verhalten bei fehlgeschlagener EClass-Auflösung definieren
+| Situation | Verhalten | Begründung |
+|-----------|-----------|------------|
+| Fehler in `process()` | Exception propagieren (nicht fangen) | Aufrufer muss Fehler sehen, silent failure maskiert Bugs |
+| Fehler in `reprocess()` | Log WARNING, weitermachen | Re-Processing ist optional, vorheriger Zustand bleibt gültig |
+| Fehler bei OSGi-Aktivierung | `IllegalStateException` werfen | OSGi DS erkennt Component-Fehler und reagiert |
+| Asynchrone Fehler (Promise) | Log SEVERE | Kann nicht synchron propagiert werden |
+| Optionale Lookups (TypeBuilder) | Log SEVERE, return null/early | Fehlende Referenz-Typen sind konfigurationsabhängig |
+| I/O / Reflection | Wrap in `IllegalStateException` | Konsistent mit Rest des Projekts |
 
-**Teststrategie:** Unit-Tests mit ungültigen Inputs (null EClass, fehlende ID-Attribute, nicht auflösbare Referenzen) → erwartetes Exception-Verhalten verifizieren.
+**Umgesetzte Änderungen:**
 
-**Ergebnis:** Vorhersagbares Fehlerverhalten, keine versteckten Fehler.
+| Klasse | Vorher | Nachher |
+|--------|--------|---------|
+| `ProcessorImpl.process()` | catch → log + `processed=false` | Keine Exception-Fangung, Fehler propagieren |
+| `NamedBaseProcessor.process()` | catch → log SEVERE + `processed=false` | Keine Exception-Fangung, Fehler propagieren |
+| `NamedBaseProcessor.reprocess()` | catch → log SEVERE | catch → log WARNING (Re-Processing ist optional) |
+| `EntityMappingPersistenceUnitConfigurator` | catch → log SEVERE (schlucken) | catch → throw `IllegalStateException` |
+| `PersistenceUnitConfigurator` | catch → log SEVERE (schlucken) | catch → throw `IllegalStateException` |
+
+**Bereits korrekt** (nicht geändert): `EORMMappingServiceComponent`, `EORMModelHelper`, `MappingProcessor.createProcessor()`, `ProcessorFactoryImpl` — propagieren Exceptions korrekt. `EDynamicPersistenceUnitInfo` — log WARNING bei optionalem JAR-URL-Parsing ist angemessen. `EDynamicTypeBuilder` TypeBuilder-Lookups — log SEVERE + return bei fehlendem Referenz-Typ ist konfigurationsabhängig.
 
 ### AP10 — Accessor & Indirection Tests
 **Aufwand: M | Priorität: Niedrig | Teststrategie: Unit**
