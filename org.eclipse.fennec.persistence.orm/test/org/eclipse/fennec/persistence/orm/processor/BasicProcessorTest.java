@@ -14,6 +14,13 @@ package org.eclipse.fennec.persistence.orm.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Calendar;
+import java.util.Date;
+
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EDataType;
@@ -107,7 +114,7 @@ public class BasicProcessorTest {
 
 		@Test
 		void testDateAttributeIsTimestamp() {
-			EDataType dateType = createDataType("MyDate", java.util.Date.class);
+			EDataType dateType = createDataType("MyDate", Date.class);
 			EAttribute attr = createAttribute("createdAt", dateType, false);
 			BasicProcessor processor = new BasicProcessor(attr, context);
 			processor.process();
@@ -118,7 +125,7 @@ public class BasicProcessorTest {
 
 		@Test
 		void testLocalDateTimeIsTimestamp() {
-			EDataType ldtType = createDataType("LDT", java.time.LocalDateTime.class);
+			EDataType ldtType = createDataType("LDT", LocalDateTime.class);
 			EAttribute attr = createAttribute("updatedAt", ldtType, false);
 			BasicProcessor processor = new BasicProcessor(attr, context);
 			processor.process();
@@ -129,7 +136,7 @@ public class BasicProcessorTest {
 
 		@Test
 		void testInstantIsTimestamp() {
-			EDataType instantType = createDataType("Instant", java.time.Instant.class);
+			EDataType instantType = createDataType("Instant", Instant.class);
 			EAttribute attr = createAttribute("timestamp", instantType, false);
 			BasicProcessor processor = new BasicProcessor(attr, context);
 			processor.process();
@@ -140,7 +147,7 @@ public class BasicProcessorTest {
 
 		@Test
 		void testLocalDateIsDate() {
-			EDataType ldType = createDataType("LD", java.time.LocalDate.class);
+			EDataType ldType = createDataType("LD", LocalDate.class);
 			EAttribute attr = createAttribute("birthday", ldType, false);
 			BasicProcessor processor = new BasicProcessor(attr, context);
 			processor.process();
@@ -151,7 +158,7 @@ public class BasicProcessorTest {
 
 		@Test
 		void testLocalTimeIsTime() {
-			EDataType ltType = createDataType("LT", java.time.LocalTime.class);
+			EDataType ltType = createDataType("LT", LocalTime.class);
 			EAttribute attr = createAttribute("startTime", ltType, false);
 			BasicProcessor processor = new BasicProcessor(attr, context);
 			processor.process();
@@ -162,7 +169,7 @@ public class BasicProcessorTest {
 
 		@Test
 		void testCalendarIsDate() {
-			EDataType calType = createDataType("Cal", java.util.Calendar.class);
+			EDataType calType = createDataType("Cal", Calendar.class);
 			EAttribute attr = createAttribute("cal", calType, false);
 			BasicProcessor processor = new BasicProcessor(attr, context);
 			processor.process();
