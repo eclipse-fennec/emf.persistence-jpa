@@ -20,8 +20,9 @@ import static org.eclipse.emf.ecore.util.EcoreUtil.getAnnotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
@@ -45,6 +46,8 @@ import org.eclipse.fennec.persistence.orm.EntityMapper;
  */
 public class MappingHelper {
 
+	private static final Logger LOG = Logger.getLogger(MappingHelper.class.getName());
+
 	enum MappingType {
 		ONE_TO_ONE,
 		ONE_TO_MANY,
@@ -58,38 +61,65 @@ public class MappingHelper {
 		String mappedByName = null;
 	}
 
-	private static final List<String> RESERVED_WORDS = new LinkedList<>();
-
-	static {
-		RESERVED_WORDS.add("value");
-		RESERVED_WORDS.add("bigint");
-		RESERVED_WORDS.add("key");
-		RESERVED_WORDS.add("year");
-	}
+	private static final List<String> RESERVED_WORDS = List.of(
+		// SQL-92/99 reserved keywords that are strictly reserved across
+		// H2, PostgreSQL, MySQL, and Oracle as unquoted identifiers
+		"select", "from", "where", "update", "insert", "delete",
+		"create", "drop", "alter", "grant", "revoke",
+		"table", "column", "index", "key", "value",
+		"order", "group", "having", "distinct",
+		"join", "left", "right", "inner", "outer", "cross", "natural", "on",
+		"and", "or", "not", "in", "is", "between", "like", "exists",
+		"null", "true", "false", "all", "any",
+		"primary", "foreign", "unique", "check", "default", "constraint",
+		"references", "cascade", "restrict",
+		"user",
+		// SQL data type keywords reserved as identifiers
+		"bigint", "integer", "float", "double", "decimal", "numeric",
+		"char", "varchar", "boolean", "interval",
+		// Temporal keywords reserved in SQL
+		"year", "month", "day", "hour", "minute", "second",
+		// Other strictly reserved keywords
+		"end", "limit", "offset", "row", "rows",
+		"trigger", "view", "sequence", "function", "procedure",
+		"cross"
+	);
 
 	/**
-	 * Verifies of the given name is a reserved {@link String} in JPA
-	 * @param name the name to verify
-	 * @return the escaped version of this name 
+	 * Checks if the given name is a SQL reserved word and logs a warning if so.
+	 * The name is returned unchanged — the user is responsible for choosing
+	 * a non-conflicting name or providing an explicit column name via ExtendedMetaData annotation.
+	 * @param name the name to check
+	 * @return the name, unchanged
 	 */
 	public static String checkReservedName(String name) {
-		return checkReservedName(name, "_");
-	}
-	
-	/**
-	 * Verifies of the given name is a reserved {@link String} in JPA
-	 * @param name the name to verify
-	 * @return the escaped version of this name 
-	 */
-	public static String checkReservedName(String name, String prefix) {
 		if (isNull(name)) {
 			return null;
 		}
 		if (RESERVED_WORDS.contains(name.toLowerCase())) {
-			return prefix + name;
-		} else {
-			return name;
+			LOG.log(Level.WARNING, "Name ''{0}'' is a SQL reserved word and may cause issues with some databases. "
+				+ "Consider renaming or using an ExtendedMetaData annotation to set an explicit column/table name.", name);
 		}
+		return name;
+	}
+
+	/**
+	 * Checks if the given name is a SQL reserved word and logs a warning if so.
+	 * The name is returned unchanged.
+	 * @param name the name to check
+	 * @param context additional context for the warning message (e.g. "attribute", "entity")
+	 * @return the name, unchanged
+	 */
+	public static String checkReservedName(String name, String context) {
+		if (isNull(name)) {
+			return null;
+		}
+		if (RESERVED_WORDS.contains(name.toLowerCase())) {
+			LOG.log(Level.WARNING, "{0} name ''{1}'' is a SQL reserved word and may cause issues with some databases. "
+				+ "Consider renaming or using an ExtendedMetaData annotation to set an explicit column/table name.",
+				new Object[]{context, name});
+		}
+		return name;
 	}
 	
 	/**
@@ -112,7 +142,7 @@ public class MappingHelper {
 	 * @return the {@link ENamedBase} instance
 	 */
 	public static <T extends ENamedBase> T createNamedBase(T base, EStructuralFeature feature) {
-		String name =  checkReservedName(getFeatureName(feature), "f_");
+		String name = checkReservedName(getFeatureName(feature), "Feature");
 		base.setName(name);
 		EFeatureObject efa = EORMFactory.eINSTANCE.createEFeatureObject();
 		efa.setFeature(feature);
