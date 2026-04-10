@@ -244,7 +244,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 
 | Modul | Unit-Tests | Integrationstests |
 |-------|-----------|-------------------|
-| `persistence` (Core) | Converter-Tests (2 Klassen, ~720 Zeilen) | — |
+| `persistence` (Core) | Converter-Tests (2 Klassen, ~720 Zeilen), **EMFHelper (1 Klasse, 19 Tests)**, **ConverterService (1 Klasse, 17 Tests)** | — |
 | `persistence.orm` | Helper-Tests (3 Klassen), **Processor-Pipeline (5 Klassen, 85 Tests)**, **Composite-ID (2 Klassen, 39 Tests)** | — |
 | `persistence.eclipselink` | ECopier-Tests (5 Klassen) | — |
 | `persistence.ecore` | Parser Unit-Tests (1 Klasse, Mockito) | — |
@@ -337,7 +337,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | 3 | Many-to-Many aktivieren | M | Hoch | Integration | Offen |
 | 4 | EDynamicTypeBuilder Tests | L | Hoch | Unit | Offen |
 | 5 | Logging statt println/printStackTrace | S | Hoch | Refactoring | **Erledigt** |
-| 6 | EMFHelper & ConverterService Tests | M | Mittel | Unit | Offen |
+| 6 | EMFHelper & ConverterService Tests | M | Mittel | Unit | **Erledigt** — 36 Tests |
 | 7 | Reserved-Words-Liste erweitern | S | Mittel | Unit | **Erledigt** |
 | 8 | DatabaseEcoreParser Integrationstest | M | Mittel | Unit (H2 embedded) | Offen |
 | 9 | Error-Handling-Strategie | M | Mittel | Unit | Offen |
@@ -449,21 +449,17 @@ private static final Logger LOG = Logger.getLogger(MyClass.class.getName());
 
 **Ergebnis:** Kein `System.out/err` oder `printStackTrace()` mehr im Produkt-Code (exkl. `src-gen/`). Test-Code enthält weiterhin `System.out.println` — dort üblich und akzeptabel.
 
-### AP6 — EMFHelper & ConverterService Tests
-**Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
+### AP6 — EMFHelper & ConverterService Tests ✅
+**Aufwand: M | Priorität: Mittel | Teststrategie: Unit | Status: Erledigt**
 
-Utility-Code der überall genutzt wird, aber ungetestet ist.
+**Umgesetzt:** 36 neue Unit-Tests in 2 Testklassen.
 
-**Scope:**
-- `EMFHelper.mergeMaps()`: Prioritäts-Semantik (Options überschreiben Defaults)
-- `EMFHelper.getEClass()`: Cache Hit/Miss, Thread-Safety
-- `DefaultConverterService`: Converter-Reihenfolge, `getConverter(String name)`
-- `ConverterWhiteboard`: Dynamische Add/Remove-Registrierung
-- Thread-Safety unter Concurrent Access
+**Testklassen:**
 
-**Teststrategie:** Pure Unit-Tests. `mergeMaps()` mit verschiedenen Map-Konstellationen. `getEClass()` mit programmatisch erzeugtem ResourceSet + EPackage. ConverterService mit definierten Converter-Listen, Reihenfolge über `isConverterForType()` verifizieren.
-
-**Ergebnis:** Vertrauen in die Grundlagen.
+| Klasse | Tests | Abdeckung |
+|--------|-------|-----------|
+| `EMFHelperTest` | 19 | `getResponse()` (null/empty/missing/present), `mergeMaps()` (null/empty/disjoint/conflict/immutability), `getEffectiveOptions()` (merge+response+unmodifiable), `getEClassFromResourceSet()`, `getEClass()` mit Cache (miss/hit/null-cache/multi-class) |
+| `DefaultConverterServiceTest` | 17 | Lookup by Type (UUID, LocalDate, BigDecimal, Instant, Duration → ComprehensiveConverter), Lookup by Name (`comprehensive`, `default`, `array`), Prioritätsreihenfolge (7 Converter in korrekter Reihenfolge), dynamische Registrierung (add/remove/find-by-name), null/unknown-Fehlerbehandlung |
 
 ### AP7 — Reserved-Words-Liste erweitern ✅
 **Aufwand: S | Priorität: Mittel | Teststrategie: Unit | Status: Erledigt**
