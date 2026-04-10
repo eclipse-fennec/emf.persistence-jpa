@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.orm.helper;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -25,7 +26,10 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * 
@@ -165,6 +169,78 @@ public class MappingHelperTest {
 		assertFalse(MappingHelper.isNonContainmentOppositeRelation(ref02));
 	}
 	
+	@Nested
+	class ReservedWordsTests {
+
+		@ParameterizedTest
+		@ValueSource(strings = {
+			// SQL keywords
+			"key", "value", "order", "group", "index", "table", "column",
+			"user",
+			"select", "from", "where", "update", "insert", "delete",
+			"join", "left", "right", "inner", "outer",
+			"primary", "foreign", "unique", "check", "default", "constraint",
+			// Data types
+			"bigint", "integer", "float", "double", "decimal", "varchar",
+			"boolean",
+			// Temporal
+			"year", "month", "day", "hour", "minute", "second",
+			// Other
+			"end", "limit", "offset",
+			"sequence", "view", "trigger", "function", "procedure"
+		})
+		void testReservedWordIsDetected(String word) {
+			assertTrue(MappingHelper.isReservedName(word), "Should be reserved: " + word);
+		}
+
+		@ParameterizedTest
+		@ValueSource(strings = {
+			"key", "value", "order", "group", "table", "user", "select"
+		})
+		void testReservedWordCaseInsensitive(String word) {
+			assertTrue(MappingHelper.isReservedName(word.toUpperCase()), "Should be case-insensitive: " + word.toUpperCase());
+			assertTrue(MappingHelper.isReservedName(word.toLowerCase()), "Should be case-insensitive: " + word.toLowerCase());
+		}
+
+		@ParameterizedTest
+		@ValueSource(strings = {"person", "address", "firstName", "lastName", "email", "myOrder", "customValue"})
+		void testNonReservedWordIsNotDetected(String word) {
+			assertFalse(MappingHelper.isReservedName(word), "Should not be reserved: " + word);
+		}
+
+		@Test
+		void testNullIsNotReserved() {
+			assertFalse(MappingHelper.isReservedName(null));
+		}
+
+		@Test
+		void testCheckReservedNameReturnsUnchanged() {
+			// Reserved words are no longer escaped — just returned unchanged with a warning
+			assertEquals("value", MappingHelper.checkReservedName("value"));
+			assertEquals("key", MappingHelper.checkReservedName("key"));
+			assertEquals("order", MappingHelper.checkReservedName("order"));
+			assertEquals("table", MappingHelper.checkReservedName("table"));
+		}
+
+		@Test
+		void testCheckReservedNameNonReservedPassesThrough() {
+			assertEquals("person", MappingHelper.checkReservedName("person"));
+			assertEquals("address", MappingHelper.checkReservedName("address"));
+		}
+
+		@Test
+		void testCheckReservedNameWithContextReturnsUnchanged() {
+			assertEquals("value", MappingHelper.checkReservedName("value", "Feature"));
+			assertEquals("key", MappingHelper.checkReservedName("key", "Entity"));
+		}
+
+		@Test
+		void testCheckReservedNameNullReturnsNull() {
+			assertNull(MappingHelper.checkReservedName(null));
+			assertNull(MappingHelper.checkReservedName(null, "Feature"));
+		}
+	}
+
 	@Test
 	public void testIsOppositeRelation() {
 		assertFalse(MappingHelper.isOppositeRelation(null));

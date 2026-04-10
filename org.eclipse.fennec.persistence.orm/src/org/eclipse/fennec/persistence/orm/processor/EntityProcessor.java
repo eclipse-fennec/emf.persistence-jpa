@@ -92,10 +92,7 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		target.setAccessibleObject(eco);
 		target.setClass(source);
 		target.setAccess(AccessType.FIELD);
-		String name = source.getName();
-		if (MappingHelper.isReservedName(source.getName())) {
-			name = "TBL" + name;
-		}
+		String name = MappingHelper.checkReservedName(source.getName(), "Entity");
 		target.setName(name);
 		String documentation = EcoreUtil.getAnnotation(source, "http://www.eclipse.org/emf/2002/GenModel", "documentation");
 		if (nonNull(documentation)) {

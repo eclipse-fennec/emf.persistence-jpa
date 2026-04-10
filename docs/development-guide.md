@@ -338,7 +338,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | 4 | EDynamicTypeBuilder Tests | L | Hoch | Unit | Offen |
 | 5 | Logging statt println/printStackTrace | S | Hoch | Refactoring | **Erledigt** |
 | 6 | EMFHelper & ConverterService Tests | M | Mittel | Unit | Offen |
-| 7 | Reserved-Words-Liste erweitern | S | Mittel | Unit | Offen |
+| 7 | Reserved-Words-Liste erweitern | S | Mittel | Unit | **Erledigt** |
 | 8 | DatabaseEcoreParser Integrationstest | M | Mittel | Unit (H2 embedded) | Offen |
 | 9 | Error-Handling-Strategie | M | Mittel | Unit | Offen |
 | 10 | Accessor & Indirection Tests | M | Niedrig | Unit | Offen |
@@ -465,19 +465,22 @@ Utility-Code der überall genutzt wird, aber ungetestet ist.
 
 **Ergebnis:** Vertrauen in die Grundlagen.
 
-### AP7 — Reserved-Words-Liste erweitern
-**Aufwand: S | Priorität: Mittel | Teststrategie: Unit**
+### AP7 — Reserved-Words-Liste erweitern ✅
+**Aufwand: S | Priorität: Mittel | Teststrategie: Unit | Status: Erledigt**
 
-Nur 4 Einträge (`value`, `bigint`, `key`, `year`) — viele SQL-Keywords fehlen.
+**Umgesetzt:** Reserved-Words-Liste von 4 auf ~70 Einträge erweitert. Parametrisierte Tests für Escaping-Logik.
 
-**Scope:**
-- Standard SQL-Keywords ergänzen (`select`, `from`, `where`, `order`, `group`, `index`, `table`, `column`, `user`, `role`, `session`, `type` etc.)
-- Datenbank-spezifische Keywords (H2, PostgreSQL, MySQL) berücksichtigen
-- Tests für Escaping-Logik (`checkReservedName()`)
+**Erweiterte Kategorien:**
+- SQL DML/DDL Keywords (`select`, `from`, `where`, `update`, `insert`, `delete`, `create`, `drop`, `alter` etc.)
+- Join Keywords (`join`, `left`, `right`, `inner`, `outer`, `cross`, `natural`, `on`)
+- Constraint Keywords (`primary`, `foreign`, `unique`, `check`, `default`, `constraint`, `references`, `cascade`)
+- SQL Data Types (`bigint`, `integer`, `float`, `double`, `decimal`, `varchar`, `boolean`)
+- Temporal Keywords (`year`, `month`, `day`, `hour`, `minute`, `second`)
+- Weitere (`end`, `limit`, `offset`, `row`, `trigger`, `view`, `sequence`, `function`, `procedure`)
 
-**Teststrategie:** Parametrisierte Unit-Tests mit allen Keywords → verifizieren, dass Escaping korrekt greift.
+**Verhalten:** Die Liste wird nur zur **Erkennung und Warnung** genutzt — Namen werden **nicht** automatisch escaped/prefixed. Stattdessen wird ein `LOG.warning()` ausgegeben. Der User entscheidet selbst, ob er umbenennt oder per ExtendedMetaData-Annotation einen expliziten Spaltennamen setzt. Dieser Ansatz folgt dem EclipseLink-Vorbild (dort: `useDelimiters` auf `DatabaseField`-Ebene).
 
-**Ergebnis:** Keine Laufzeitfehler bei Tabellen/Spalten die SQL-Keywords heißen.
+**Tests:** Parametrisierte Tests (`@ParameterizedTest`) für Erkennung, Case-Insensitivity, Verifizierung dass Namen unverändert zurückgegeben werden, Context-Parameter, Null-Handling, und dass gängige Spaltennamen (`person`, `address`, `email`) nicht als reserved erkannt werden.
 
 ### AP8 — DatabaseEcoreParser Integrationstest
 **Aufwand: M | Priorität: Mittel | Teststrategie: Unit (H2 embedded)**
@@ -533,6 +536,6 @@ Spezial-Code für die EclipseLink-EMF-Brücke, aktuell ungetestet.
 | ~~`System.out.printf` Debug-Ausgaben~~ | ~~alle Module~~ | ~~erledigt (AP5)~~ |
 | ~~`printStackTrace()` bei Exception-Handling~~ | ~~alle Module~~ | ~~erledigt (AP5)~~ |
 | `EDynamicTypeContext extends ConcurrentHashMap` | `persistence.eclipselink` | Composition statt Inheritance |
-| Reserved-Words-Liste unvollständig | `MappingHelper` (nur 4 Einträge) | SQL-Keyword-Liste erweitern |
+| ~~Reserved-Words-Liste unvollständig~~ | ~~`MappingHelper`~~ | ~~erledigt (AP7)~~ — ~70 Einträge, Warn-only statt Prefix-Escaping |
 | EMFHelper-Cache ohne Invalidierung | `persistence` Core | Cache-Eviction-Strategie einführen |
 | `Options`-Klasse mit 60+ Konstanten | `persistence` Core | In thematische Interfaces aufteilen |
