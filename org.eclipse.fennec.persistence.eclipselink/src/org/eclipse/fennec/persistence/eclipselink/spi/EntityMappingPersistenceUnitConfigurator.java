@@ -118,7 +118,7 @@ public class EntityMappingPersistenceUnitConfigurator {
 			}).onFailure(t -> LOG.log(Level.SEVERE, "Failed to create EntityManagerFactory", t));
 
 		} catch (Exception e) {
-			LOG.log(Level.SEVERE, "Error configuring persistence unit", e);
+			throw new IllegalStateException("Error configuring persistence unit", e);
 		}
 
 	}

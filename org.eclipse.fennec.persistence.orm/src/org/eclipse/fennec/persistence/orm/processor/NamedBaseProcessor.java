@@ -113,16 +113,11 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 		if (isProcessed()) {
 			return this;
 		}
-		try {
-			if (canProcess() && internalProcess()) {
-				doProcess();
-				doPostProcess();
-				registerMapping();
-				processed = true;
-			}
-		} catch (Exception e) {
-			processed = false;
-			LOG.log(Level.SEVERE, e, () -> "Error processing feature ''" + source.getName() + "''");
+		if (canProcess() && internalProcess()) {
+			doProcess();
+			doPostProcess();
+			registerMapping();
+			processed = true;
 		}
 		return this;
 	}
@@ -262,7 +257,7 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 				doReProcess();
 			}
 		} catch (Exception e) {
-			LOG.log(Level.SEVERE, e, () -> "Error re-processing feature ''" + source.getName() + "''");
+			LOG.log(Level.WARNING, e, () -> "Error re-processing feature ''" + source.getName() + "'', continuing with previous state");
 		}
 	}
 
