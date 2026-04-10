@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Eclipse Fennec Persistence JPA — an OSGi-based persistence framework bridging EMF (Eclipse Modeling Framework) with Jakarta Persistence (JPA) via EclipseLink. It maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities through a processor-based transformation pipeline.
 
-**Java version**: 21 (source and target)
+**Java version**: 17 (source and target)
 **Build tool**: Gradle with bnd workspace plugin (OSGi)
 **License**: EPL-2.0
 
@@ -30,7 +30,8 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 | `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: `EPersistenceContext`, `EMFEntityManagerProvider`, EclipseLink descriptors (`EClassDescriptor`), object builders, OSGi classloader |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — reverse-engineers Ecore models from database schemas via JDBC metadata |
 | `org.eclipse.fennec.persistence.test` | OSGi integration tests using JUnit 5 + `@InjectService`, H2 database, test ecore/eorm fixtures in `data/` |
-| `org.gecko.fennec.persistence.workspace.library` | bnd library template for external workspace consumption |
+| `org.eclipse.fennec.persistence.jpa.library.workspace` | bnd library template for external workspace consumption |
+| `org.eclipse.fennec.persistence.jpa.bom` | Bill of Materials — re-exports the workspace library buildpath for downstream consumers |
 
 ## Key Architectural Patterns
 
@@ -47,7 +48,7 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 
 ## Testing
 
-- **Framework**: JUnit 5 + Mockito 5.21 + AssertJ 3.27
+- **Framework**: JUnit 5.14 + Mockito 5.21 + AssertJ 3.27.7
 - **OSGi tests**: Run in OSGi container via `org.osgi.test.junit5` with service injection
 - **Test data**: H2 in-memory database, ecore models, eorm mappings, SQL fixtures in `org.eclipse.fennec.persistence.test/data/`
 - **Performance tests**: Tagged `@Tag("perf")`, excluded from normal build, run via `./gradlew perfTest`
