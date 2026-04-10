@@ -15,6 +15,12 @@ package org.eclipse.fennec.persistence.converter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.UUID;
+
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EcoreFactory;
@@ -55,7 +61,7 @@ public class DefaultConverterServiceTest {
 		void testUuidTypeReturnsComprehensiveConverter() {
 			EDataType uuidType = EcoreFactory.eINSTANCE.createEDataType();
 			uuidType.setName("UUID");
-			uuidType.setInstanceClass(java.util.UUID.class);
+			uuidType.setInstanceClass(UUID.class);
 
 			TypeConverter converter = service.getConverter(uuidType);
 			assertThat(converter).isNotNull();
@@ -66,7 +72,7 @@ public class DefaultConverterServiceTest {
 		void testLocalDateTypeReturnsComprehensiveConverter() {
 			EDataType ldType = EcoreFactory.eINSTANCE.createEDataType();
 			ldType.setName("LocalDate");
-			ldType.setInstanceClass(java.time.LocalDate.class);
+			ldType.setInstanceClass(LocalDate.class);
 
 			TypeConverter converter = service.getConverter(ldType);
 			assertThat(converter).isNotNull();
@@ -77,7 +83,7 @@ public class DefaultConverterServiceTest {
 		void testBigDecimalTypeReturnsComprehensiveConverter() {
 			EDataType bdType = EcoreFactory.eINSTANCE.createEDataType();
 			bdType.setName("BigDecimal");
-			bdType.setInstanceClass(java.math.BigDecimal.class);
+			bdType.setInstanceClass(BigDecimal.class);
 
 			TypeConverter converter = service.getConverter(bdType);
 			assertThat(converter).isNotNull();
@@ -88,7 +94,7 @@ public class DefaultConverterServiceTest {
 		void testInstantTypeReturnsComprehensiveConverter() {
 			EDataType instantType = EcoreFactory.eINSTANCE.createEDataType();
 			instantType.setName("Instant");
-			instantType.setInstanceClass(java.time.Instant.class);
+			instantType.setInstanceClass(Instant.class);
 
 			TypeConverter converter = service.getConverter(instantType);
 			assertThat(converter).isNotNull();
@@ -99,7 +105,7 @@ public class DefaultConverterServiceTest {
 		void testDurationTypeReturnsComprehensiveConverter() {
 			EDataType durType = EcoreFactory.eINSTANCE.createEDataType();
 			durType.setName("Duration");
-			durType.setInstanceClass(java.time.Duration.class);
+			durType.setInstanceClass(Duration.class);
 
 			TypeConverter converter = service.getConverter(durType);
 			assertThat(converter).isNotNull();
