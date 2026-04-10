@@ -245,7 +245,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | Modul | Unit-Tests | Integrationstests |
 |-------|-----------|-------------------|
 | `persistence` (Core) | Converter-Tests (2 Klassen, ~720 Zeilen) | — |
-| `persistence.orm` | Helper-Tests (3 Klassen), **Processor-Pipeline (5 Klassen, 85 Tests)** | — |
+| `persistence.orm` | Helper-Tests (3 Klassen), **Processor-Pipeline (5 Klassen, 85 Tests)**, **Composite-ID (2 Klassen, 39 Tests)** | — |
 | `persistence.eclipselink` | ECopier-Tests (5 Klassen) | — |
 | `persistence.ecore` | Parser Unit-Tests (1 Klasse, Mockito) | — |
 | `persistence.test` | — | OSGi-Tests (~30 Klassen, H2) |
@@ -256,6 +256,8 @@ Alle Komponenten nutzen OSGi Declarative Services:
 - **MappingContext** (Entity-Map, createMapping, registerRefMapping, Opposite-Tracking, MappedBy-Berechnung, calculateMappingType mit Opposites)
 - **MappingProcessor 5-Stage-Pipeline** (Attribute, IDs, synthetische IDs, Containment/Non-Containment Refs, Bidirektional, Transient-Filterung, Strict Mode)
 - **CascadeType-Berechnung** (containment=ALL, non-containment=DETACH+REFRESH)
+- **CompositeIdAnalyzer** (alle 4 ID-Strategien: Single, Embedded, IdClass, Synthetic + IdClass-Erkennung via Annotation + Komponentenanalyse)
+- **CompositeIdProcessor** (ID-Erzeugung mit Generierungsstrategien: UUID für String, Sequence für Numeric, Strict Mode)
 - One-to-Many Beziehungen (5 Varianten: uni/bidi × containment/non-containment)
 - One-to-One Beziehungen (mit und ohne Cache)
 - End-to-End Type Converter Pipeline
@@ -270,7 +272,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 |---------|-------------|
 | ~~Processor-Pipeline~~ | ~~keine Unit-Tests~~ — **erledigt (AP1)** |
 | ~~MappingContext~~ | ~~keine Tests~~ — **erledigt (AP1)** |
-| CompositeIdAnalyzer | 4 ID-Strategien (Single, Embedded, IdClass, Synthetic) — keine getestet |
+| ~~CompositeIdAnalyzer~~ | ~~4 ID-Strategien keine getestet~~ — **erledigt (AP2)** |
 
 **P1 — Hoch** (wichtig für Stabilität):
 
@@ -331,7 +333,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | AP | Thema | Aufwand | Priorität | Teststrategie | Status |
 |----|-------|---------|-----------|---------------|--------|
 | 1 | Processor-Pipeline Unit-Tests | L | Kritisch | Unit | **Erledigt** — 85 Tests, 1 Bugfix |
-| 2 | Composite-ID Tests & Stabilisierung | M | Kritisch | Unit + Integration | Offen |
+| 2 | Composite-ID Tests & Stabilisierung | M | Kritisch | Unit + Integration | **Erledigt** — 39 Tests (Unit), printf noch offen |
 | 3 | Many-to-Many aktivieren | M | Hoch | Integration | Offen |
 | 4 | EDynamicTypeBuilder Tests | L | Hoch | Unit | Offen |
 | 5 | Logging statt println/printStackTrace | S | Hoch | Refactoring | Offen |
@@ -379,21 +381,19 @@ Der Großteil der Arbeitspakete kann mit **Standard-JUnit + Mockito** getestet w
 
 **Bugfix:** `MappingContext.calculateMappingType()` — non-containment bidirektionale Referenzen lieferten immer `MANY_TO_MANY` statt korrekter Kardinalitäts-Bestimmung. Fix: direkte `isMany()`-Prüfung statt Umweg über `getMappingType()`. Siehe Abschnitt 9.4.
 
-### AP2 — Composite-ID Tests & Stabilisierung
-**Aufwand: M | Priorität: Kritisch | Teststrategie: Unit + Integration**
+### AP2 — Composite-ID Tests & Stabilisierung ✅
+**Aufwand: M | Priorität: Kritisch | Teststrategie: Unit + Integration | Status: Erledigt (Unit-Tests)**
 
-Feature ist implementiert, aber weder Unit- noch Integrationstests für die 4 Strategien.
+**Umgesetzt:** 39 neue Unit-Tests in 2 Testklassen. Alle 4 ID-Strategien getestet.
 
-**Scope:**
-- `CompositeIdAnalyzer`: Tests für SINGLE_ID, EMBEDDED_ID, ID_CLASS, SYNTHETIC_ID Erkennung
-- `CompositeIdProcessor`: Sequence-Generator-Erzeugung pro Strategie
-- `EDynamicTypeBuilder.configureCompositeIds()`: EclipseLink-Mapping für Composite Keys
-- `@Disabled` Composite-ID-Integrationstests in `persistence.test` aktivieren/fixen
-- Debug-`printf` durch Logging ersetzen
+**Testklassen:**
 
-**Teststrategie:** EClasses mit verschiedenen ID-Konstellationen (1 ID-Attribut, 2+ ID-Attribute, IdClass-Referenz, kein ID) erzeugen und Analyzer/Processor dagegen laufen lassen.
+| Klasse | Tests | Abdeckung |
+|--------|-------|-----------|
+| `CompositeIdAnalyzerTest` | 21 | `analyzeIdStructure()` für alle 4 Strategien, `findDirectIdAttributes()`, `findIdClassReference()` (Reference- und Class-Level Annotation), `analyzeIdClassComponents()` (mit eKeys und ohne), IdConfiguration-Utilities |
+| `CompositeIdProcessorTest` | 18 | Single ID (String/UUID, Long/Sequence, Strict), Embedded ID (2 und 3 Attribute, Mixed-Generierung, Strict), IdClass (Flattening, Column-Naming, Strict), Synthetic ID (Naming, Column-Setup, Sequence, Strict), EntityProcessor-Integration |
 
-**Ergebnis:** Composite IDs produktionsreif.
+**Offen:** Debug-`printf` durch Logging ersetzen (wird in AP5 adressiert). `@Disabled` Integrationstests in `persistence.test` stehen noch aus.
 
 ### AP3 — Many-to-Many aktivieren
 **Aufwand: M | Priorität: Hoch | Teststrategie: Integration**
