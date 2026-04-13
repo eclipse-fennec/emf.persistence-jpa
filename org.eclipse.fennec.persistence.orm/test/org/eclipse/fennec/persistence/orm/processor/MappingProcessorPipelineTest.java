@@ -58,7 +58,7 @@ public class MappingProcessorPipelineTest {
 			EntityMappings em = processor.getTarget();
 			assertThat(em.getEntity()).hasSize(1);
 
-			Entity entity = em.getEntity().get(0);
+			Entity entity = findEntity(em, "Person");
 			assertThat(entity.getName()).isEqualTo("Person");
 			assertThat(entity.getTable().getName()).isEqualTo("PERSON");
 			assertThat(entity.getAttributes().getBasic())
@@ -100,7 +100,7 @@ public class MappingProcessorPipelineTest {
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
 
-			Entity e = processor.getTarget().getEntity().get(0);
+			Entity e = findEntity(processor.getTarget(), "Item");
 			assertThat(e.getAttributes().getId()).isNotEmpty();
 			assertThat(e.getAttributes().getId().get(0).getName()).isEqualTo("itemId");
 		}
@@ -113,7 +113,7 @@ public class MappingProcessorPipelineTest {
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
 
-			Entity e = processor.getTarget().getEntity().get(0);
+			Entity e = findEntity(processor.getTarget(), "NoId");
 			assertThat(e.getAttributes().getId()).isNotEmpty();
 			// synthetic ID starts with "pk_"
 			assertThat(e.getAttributes().getId().get(0).getName()).startsWith("pk_");
@@ -128,7 +128,7 @@ public class MappingProcessorPipelineTest {
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
 
-			Entity e = processor.getTarget().getEntity().get(0);
+			Entity e = findEntity(processor.getTarget(), "Tagged");
 			assertThat(e.getAttributes().getElementCollection())
 				.extracting("name")
 				.contains("tags");
@@ -270,7 +270,7 @@ public class MappingProcessorPipelineTest {
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
 
-			Entity e = processor.getTarget().getEntity().get(0);
+			Entity e = findEntity(processor.getTarget(), "WithTransient");
 			assertThat(e.getAttributes().getBasic())
 				.extracting("name")
 				.contains("name")
@@ -323,7 +323,7 @@ public class MappingProcessorPipelineTest {
 			MappingProcessor processor = MappingProcessor.createStrict(List.of(entity));
 			processor.process();
 
-			Entity e = processor.getTarget().getEntity().get(0);
+			Entity e = findEntity(processor.getTarget(), "StrictEntity");
 			assertThat(e.getAttributes().getId()).isNotEmpty();
 			// strict mode: no sequence generator
 			assertThat(e.getAttributes().getId().get(0).getSequenceGenerator()).isNull();

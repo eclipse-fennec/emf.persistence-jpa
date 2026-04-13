@@ -180,7 +180,8 @@ public class EORMHelper {
 	}
 	
 	/**
-	 * Filters all concrete {@link EClass} from the list of {@link EClassifier}
+	 * Filters all {@link EClass} instances (concrete and abstract) from the list of {@link EClassifier}.
+	 * Abstract EClasses are included for JPA inheritance support.
 	 * @param eClassifiers the {@link EClassifier} list
 	 * @return the {@link List} with {@link EClass} or an empty list
 	 */
@@ -192,7 +193,6 @@ public class EORMHelper {
 				stream().
 				filter(EClass.class::isInstance).
 				map(EClass.class::cast).
-				filter(not(EClass::isAbstract)).
 				collect(Collectors.toList());
 	}
 	

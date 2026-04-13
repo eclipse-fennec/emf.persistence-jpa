@@ -123,15 +123,14 @@ public class EntityMapperTests {
 		assertNotNull(mapping);
 		assertEquals(1, mapping.getEntity().size());
 
-		Entity e = mapping.getEntity().get(0);
+		Entity e = findEntity(mapping, "Foo");
 		assertNotNull(e);
 		assertNotNull(e.getTable());
 		Table t = e.getTable();
 		assertEquals(c1, e.getClass_());
-		assertEquals("Foo", e.getName());
 		assertEquals("FOO", t.getName());
-		//		assertEquals("BAR", t.getSchema());
 
+		// abstract EClasses are now included for inheritance support
 		EClass c2 = EcoreFactory.eINSTANCE.createEClass();
 		c2.setAbstract(true);
 		c2.setName("Foo2");
@@ -139,7 +138,7 @@ public class EntityMapperTests {
 		eClassifiers.add(c2);
 		mapping = mapper.createMappings(eClassifiers);
 		assertNotNull(mapping);
-		assertEquals(1, mapping.getEntity().size());
+		assertEquals(2, mapping.getEntity().size());
 
 		EClass c3 = EcoreFactory.eINSTANCE.createEClass();
 		c3.setName("Foo3");
@@ -147,16 +146,14 @@ public class EntityMapperTests {
 		eClassifiers.add(c3);
 		mapping = mapper.createMappings(eClassifiers);
 		assertNotNull(mapping);
-		assertEquals(2, mapping.getEntity().size());
+		assertEquals(3, mapping.getEntity().size());
 
-		e = mapping.getEntity().get(1);
+		e = findEntity(mapping, "Foo3");
 		assertNotNull(e);
 		assertNotNull(e.getTable());
 		t = e.getTable();
 		assertEquals(c3, e.getClass_());
-		assertEquals("Foo3", e.getName());
 		assertEquals("FOO3", t.getName());
-		//		assertEquals("BAR", t.getSchema());
 	}
 
 	@Test
@@ -176,15 +173,14 @@ public class EntityMapperTests {
 		assertNotNull(mapping);
 		assertEquals(1, mapping.getEntity().size());
 
-		Entity e = mapping.getEntity().get(0);
+		Entity e = findEntity(mapping, "Foo");
 		assertNotNull(e);
 		assertNotNull(e.getTable());
 		Table t = e.getTable();
 		assertEquals(c1, e.getClass_());
-		assertEquals("Foo", e.getName());
 		assertEquals("FOO", t.getName());
-		//		assertEquals("BAR", t.getSchema());
 
+		// abstract EClasses are now included for inheritance support
 		EClass c2 = EcoreFactory.eINSTANCE.createEClass();
 		c2.setAbstract(true);
 		c2.setName("Foo2");
@@ -192,7 +188,7 @@ public class EntityMapperTests {
 		eClassifiers.add(c2);
 		mapping = mapper.createMappingsFromEPackage(p);
 		assertNotNull(mapping);
-		assertEquals(1, mapping.getEntity().size());
+		assertEquals(2, mapping.getEntity().size());
 
 		EClass c3 = EcoreFactory.eINSTANCE.createEClass();
 		c3.setName("Foo3");
@@ -200,16 +196,14 @@ public class EntityMapperTests {
 		eClassifiers.add(c3);
 		mapping = mapper.createMappingsFromEPackage(p);
 		assertNotNull(mapping);
-		assertEquals(2, mapping.getEntity().size());
+		assertEquals(3, mapping.getEntity().size());
 
-		e = mapping.getEntity().get(1);
+		e = findEntity(mapping, "Foo3");
 		assertNotNull(e);
 		assertNotNull(e.getTable());
 		t = e.getTable();
 		assertEquals(c3, e.getClass_());
-		assertEquals("Foo3", e.getName());
 		assertEquals("FOO3", t.getName());
-		//		assertEquals("BAR", t.getSchema());
 	}
 
 	@Test
@@ -291,6 +285,13 @@ public class EntityMapperTests {
 				map(EFeatureObject::getFeature).
 				filter(not(EAttribute.class::isInstance)).
 				findAny().isEmpty());
+	}
+
+	private Entity findEntity(EntityMappings em, String name) {
+		return em.getEntity().stream()
+			.filter(e -> name.equals(e.getName()))
+			.findFirst()
+			.orElse(null);
 	}
 
 	//	@Test

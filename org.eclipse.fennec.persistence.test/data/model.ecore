@@ -219,4 +219,16 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="weights" eType="#//EDoubleArray"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="flags" eType="#//EBooleanArray"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Vehicle" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="vehicleId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="modelYear" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Car" eSuperTypes="#//Vehicle">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="doors" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Motorcycle" eSuperTypes="#//Vehicle">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cc" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
 </ecore:EPackage>

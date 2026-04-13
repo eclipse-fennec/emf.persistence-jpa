@@ -100,17 +100,22 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 			target.setDescription(documentation);
 		}
 		Table table = EORMFactory.eINSTANCE.createTable();
+		String tableName = name;
 		String altName = EcoreUtil.getAnnotation(source, "http:///org/eclipse/emf/ecore/util/ExtendedMetaData", "name");
 		if (nonNull(altName)) {
-			name = altName;
+			tableName = altName;
 		}
-		//		table.setSchema(eClass.getEPackage().getName().toUpperCase());
-		table.setName(name.toUpperCase());
+		// For SINGLE_TABLE children, use the root entity's table name
+		if (hasMappedSuperType()) {
+			EClass root = getMappedRoot();
+			tableName = root.getName();
+		}
+		table.setName(tableName.toUpperCase());
 		target.setTable(table);
 		Attributes attrs = EORMFactory.eINSTANCE.createAttributes();
 		target.setAttributes(attrs);
-		// set id field(s), including composite ID support — only for root entities (no super type)
-		if (source.getESuperTypes().isEmpty()) {
+		// set id field(s), including composite ID support — only for root entities (no mapped super type)
+		if (!hasMappedSuperType()) {
 			createIds().forEach(attrs.getId()::add);
 		}
 		// store entity in a map
@@ -128,7 +133,7 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	 * </ul>
 	 */
 	private void configureInheritance() {
-		if (!source.getESuperTypes().isEmpty()) {
+		if (hasMappedSuperType()) {
 			// Child entity — set discriminator value
 			target.setDiscriminatorValue(source.getName());
 		} else if (hasSubClasses()) {
@@ -151,6 +156,30 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	private boolean hasSubClasses() {
 		return context.getAllEClasses().stream()
 				.anyMatch(ec -> ec.getESuperTypes().contains(source));
+	}
+
+	/**
+	 * Checks whether this EClass has a super type that is also part of the mapping.
+	 * Only super types in the allEClasses list count — external super types are ignored.
+	 */
+	private boolean hasMappedSuperType() {
+		List<EClass> allEClasses = context.getAllEClasses();
+		return source.getESuperTypes().stream().anyMatch(allEClasses::contains);
+	}
+
+	/**
+	 * Finds the root of the inheritance hierarchy within the mapped EClasses.
+	 */
+	private EClass getMappedRoot() {
+		List<EClass> allEClasses = context.getAllEClasses();
+		EClass current = source;
+		while (current.getESuperTypes().stream().anyMatch(allEClasses::contains)) {
+			current = current.getESuperTypes().stream()
+					.filter(allEClasses::contains)
+					.findFirst()
+					.orElse(current);
+		}
+		return current;
 	}
 
 	/**
