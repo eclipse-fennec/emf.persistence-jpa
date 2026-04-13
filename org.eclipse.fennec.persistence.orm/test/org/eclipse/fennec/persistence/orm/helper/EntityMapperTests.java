@@ -62,10 +62,10 @@ public class EntityMapperTests {
 	public void testCreateEntity() {
 
 		assertThrows(NullPointerException.class, ()->EntityProcessor.create(null));
-		// test abstract EClass
+		// abstract EClasses are now processed as entities (for inheritance support)
 		EntityProcessor processor = EntityProcessor.create(EcorePackage.Literals.ESTRUCTURAL_FEATURE);
 		processor.process();
-		assertFalse(processor.isProcessed());
+		assertTrue(processor.isProcessed());
 
 		processor = EntityProcessor.create(EcorePackage.Literals.EREFERENCE);
 		processor.process();
@@ -216,10 +216,10 @@ public class EntityMapperTests {
 	public void testCreateBasicsSimple() {
 
 		assertThrows(NullPointerException.class, ()->EntityProcessor.create(null));
-		// test abstract EClass
+		// abstract EClasses are now processed as entities (for inheritance support)
 		EntityProcessor processor = EntityProcessor.create(EcorePackage.Literals.ESTRUCTURAL_FEATURE);
 		processor.process();
-		assertFalse(processor.isProcessed());
+		assertTrue(processor.isProcessed());
 
 		processor = EntityProcessor.create(EcorePackage.Literals.EREFERENCE);
 		processor.process();
@@ -256,10 +256,10 @@ public class EntityMapperTests {
 	public void testCreateElementCollectionsSimple() {
 
 		assertThrows(NullPointerException.class, ()->EntityProcessor.create(null));
-		// test abstract EClass
+		// abstract EClasses are now processed as entities (for inheritance support)
 		EntityProcessor processor = EntityProcessor.create(EcorePackage.Literals.ESTRUCTURAL_FEATURE);
 		processor.process();
-		assertFalse(processor.isProcessed());
+		assertTrue(processor.isProcessed());
 
 		processor = EntityProcessor.create(EPersistencePackage.Literals.PERSISTENCE_UNIT);
 		processor.process();

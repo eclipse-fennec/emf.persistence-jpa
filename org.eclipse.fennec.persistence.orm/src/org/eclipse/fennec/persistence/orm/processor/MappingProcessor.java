@@ -120,7 +120,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		if (source.isEmpty()) {
 			return;
 		}
-		Collection<EClass> eClasses = source.stream().filter(not(EClass::isAbstract)).toList();
+		List<EClass> eClasses = new ArrayList<>(source);
+		context.setAllEClasses(eClasses);
 		Collection<EPackage> ePackages = EORMHelper.getEPackages(eClasses);
 		if (ePackages.size() == 1) {
 			EPackage ePackage = ePackages.iterator().next();
@@ -173,8 +174,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	private void mapAttributes(Entity entity) {
 		requireNonNull(entity);
 		EClass eClass = (EClass) entity.getClass_();
-		List<EAttribute> attributes = eClass.
-				getEAllAttributes().
+		List<EAttribute> attributes = getEffectiveAttributes(eClass).
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
 				toList();
@@ -204,8 +204,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		requireNonNull(entity);
 		EClass eClass = (EClass) entity.getClass_();
 		// only containment references
-		List<EReference> references = eClass.
-				getEAllReferences().
+		List<EReference> references = getEffectiveReferences(eClass).
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
 				filter(EReference::isContainment).
@@ -235,8 +234,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		requireNonNull(entity);
 		EClass eClass = (EClass) entity.getClass_();
 		// only non-containment references
-		List<EReference> references = eClass.
-				getEAllReferences().
+		List<EReference> references = getEffectiveReferences(eClass).
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
 				filter(not(EReference::isContainment)).
@@ -361,6 +359,30 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		} catch (Exception e) {
 			throw new IllegalStateException("Error creating processor", e);
 		}
+	}
+
+	/**
+	 * Returns the effective attributes for an EClass considering inheritance.
+	 * For child entities (with super type), returns only locally declared attributes.
+	 * For root/standalone entities, returns all attributes (including inherited).
+	 */
+	private List<EAttribute> getEffectiveAttributes(EClass eClass) {
+		if (eClass.getESuperTypes().isEmpty()) {
+			return eClass.getEAllAttributes();
+		}
+		return eClass.getEAttributes();
+	}
+
+	/**
+	 * Returns the effective references for an EClass considering inheritance.
+	 * For child entities (with super type), returns only locally declared references.
+	 * For root/standalone entities, returns all references (including inherited).
+	 */
+	private List<EReference> getEffectiveReferences(EClass eClass) {
+		if (eClass.getESuperTypes().isEmpty()) {
+			return eClass.getEAllReferences();
+		}
+		return eClass.getEReferences();
 	}
 
 }

@@ -25,12 +25,16 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.eorm.AccessType;
 import org.eclipse.fennec.persistence.eorm.Attributes;
 import org.eclipse.fennec.persistence.eorm.Column;
+import org.eclipse.fennec.persistence.eorm.DiscriminatorColumn;
+import org.eclipse.fennec.persistence.eorm.DiscriminatorType;
 import org.eclipse.fennec.persistence.eorm.EClassObject;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.GeneratedValue;
 import org.eclipse.fennec.persistence.eorm.GenerationType;
 import org.eclipse.fennec.persistence.eorm.Id;
+import org.eclipse.fennec.persistence.eorm.Inheritance;
+import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.SequenceGenerator;
 import org.eclipse.fennec.persistence.eorm.Table;
 import org.eclipse.fennec.persistence.orm.MappingContext;
@@ -71,9 +75,6 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	 */
 	@Override
 	public boolean canProcess() {
-		if (source.isAbstract()) {
-			return false;
-		}
 		return !context.containsEntity(source);
 	}
 
@@ -108,10 +109,48 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		target.setTable(table);
 		Attributes attrs = EORMFactory.eINSTANCE.createAttributes();
 		target.setAttributes(attrs);
-		// set id field(s), including composite ID support
-		createIds().forEach(attrs.getId()::add);
+		// set id field(s), including composite ID support — only for root entities (no super type)
+		if (source.getESuperTypes().isEmpty()) {
+			createIds().forEach(attrs.getId()::add);
+		}
 		// store entity in a map
 		context.putEntity(source, target);
+		// configure inheritance
+		configureInheritance();
+	}
+
+	/**
+	 * Configures JPA inheritance on the entity based on EClass hierarchy.
+	 * <ul>
+	 * <li>Root of hierarchy (has sub-classes, no super-type): sets Inheritance + DiscriminatorColumn</li>
+	 * <li>Child (has super-type): sets DiscriminatorValue only</li>
+	 * <li>Standalone (no super-type, no sub-classes): no inheritance config</li>
+	 * </ul>
+	 */
+	private void configureInheritance() {
+		if (!source.getESuperTypes().isEmpty()) {
+			// Child entity — set discriminator value
+			target.setDiscriminatorValue(source.getName());
+		} else if (hasSubClasses()) {
+			// Root of hierarchy — set inheritance strategy + discriminator column
+			target.setDiscriminatorValue(source.getName());
+			Inheritance inheritance = EORMFactory.eINSTANCE.createInheritance();
+			inheritance.setStrategy(InheritanceType.SINGLETABLE);
+			target.setInheritance(inheritance);
+			DiscriminatorColumn dc = EORMFactory.eINSTANCE.createDiscriminatorColumn();
+			dc.setName("DTYPE");
+			dc.setDiscriminatorType(DiscriminatorType.STRING);
+			target.setDiscriminatorColumn(dc);
+		}
+		// Standalone entity (no hierarchy) — nothing to configure
+	}
+
+	/**
+	 * Checks whether any EClass in the context's source list has this EClass as a super type.
+	 */
+	private boolean hasSubClasses() {
+		return context.getAllEClasses().stream()
+				.anyMatch(ec -> ec.getESuperTypes().contains(source));
 	}
 
 	/**

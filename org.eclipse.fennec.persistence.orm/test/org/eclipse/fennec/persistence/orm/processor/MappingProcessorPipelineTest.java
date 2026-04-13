@@ -67,16 +67,28 @@ public class MappingProcessorPipelineTest {
 		}
 
 		@Test
-		void testAbstractClassFiltered() {
+		void testAbstractClassIncludedWithInheritance() {
 			EClass abstractClass = createEClass("Base");
 			abstractClass.setAbstract(true);
-			EClass concrete = createEClass("Concrete");
+			EClass concrete = createClassWithId("Concrete");
+			concrete.getESuperTypes().add(abstractClass);
 
 			MappingProcessor processor = MappingProcessor.create(List.of(abstractClass, concrete));
 			processor.process();
 
-			assertThat(processor.getTarget().getEntity()).hasSize(1);
-			assertThat(processor.getTarget().getEntity().get(0).getName()).isEqualTo("Concrete");
+			// Both abstract and concrete classes are now included
+			assertThat(processor.getTarget().getEntity()).hasSize(2);
+			Entity baseEntity = findEntity(processor.getTarget(), "Base");
+			Entity concreteEntity = findEntity(processor.getTarget(), "Concrete");
+			assertThat(baseEntity).isNotNull();
+			assertThat(concreteEntity).isNotNull();
+			// Root should have Inheritance + DiscriminatorColumn
+			assertThat(baseEntity.getInheritance()).isNotNull();
+			assertThat(baseEntity.getDiscriminatorColumn()).isNotNull();
+			assertThat(baseEntity.getDiscriminatorColumn().getName()).isEqualTo("DTYPE");
+			// Child should have DiscriminatorValue, no Inheritance
+			assertThat(concreteEntity.getDiscriminatorValue()).isEqualTo("Concrete");
+			assertThat(concreteEntity.getInheritance()).isNull();
 		}
 
 		@Test
