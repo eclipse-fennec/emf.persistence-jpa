@@ -85,6 +85,12 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 			if (mapping instanceof MappedByRef mbRef) {
 				MappedBy mappedBy = context.getMappedBy(source);
 				mbRef.setMappedBy(mappedBy.mappedByName);
+				// Clean up redundant owning-side info — inverse only needs mappedBy
+				if (mapping instanceof OneToMany o2m) {
+					o2m.getJoinColumn().clear();
+				}
+				mapping.setForeignKey(null);
+				mapping.setJoinTable(null);
 				setDelegate(true);
 			}
 		} else if (source.isContainment()) {

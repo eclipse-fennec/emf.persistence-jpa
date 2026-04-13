@@ -82,6 +82,10 @@ public class ManyToOneProcessor extends BaseReferenceProcessor<ManyToOne> {
 				MappedBy mappedBy = context.getMappedBy(source);
 				if (nonNull(mappedBy)) {
 					mbRef.setMappedBy(mappedBy.mappedByName);
+					// Clean up redundant owning-side info — inverse only needs mappedBy
+					mbRef.getJoinColumn().clear();
+					mapping.setForeignKey(null);
+					mapping.setJoinTable(null);
 					setDelegate(true);
 				}
 			}
