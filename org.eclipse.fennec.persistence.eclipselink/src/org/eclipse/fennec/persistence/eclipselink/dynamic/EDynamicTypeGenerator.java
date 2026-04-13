@@ -17,6 +17,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
@@ -105,12 +107,20 @@ public class EDynamicTypeGenerator {
 			return Collections.emptyList();
 		}
 		/*
-		 * Create all entities and id's, attribute mappinga
+		 * Create all entities and id's, attribute mappings
 		 */
 		mapping.getEntity().
 			stream().
 			map(this::createFromEntity).
 			toList();
+		/*
+		 * Configure inheritance (parents before children)
+		 */
+		mapping.getEntity().stream()
+			.sorted(inheritanceOrder())
+			.map(context::get)
+			.filter(Objects::nonNull)
+			.forEach(EDynamicTypeBuilder::configureInheritance);
 		/*
 		 * Create all simple reference mappings
 		 */
@@ -167,6 +177,25 @@ public class EDynamicTypeGenerator {
 	protected Class<?> getDataTypeClass(EDataType dataType) {
 		requireNonNull(dataType);
 		return dataType.getInstanceClass();
+	}
+
+	/**
+	 * Returns a comparator that orders entities so that parent entities (roots)
+	 * come before child entities. Entities without inheritance are ordered first.
+	 */
+	private Comparator<Entity> inheritanceOrder() {
+		return Comparator.comparingInt(entity -> {
+			if (isNull(entity.getClass_())) return 0;
+			EClass eClass = (EClass) entity.getClass_();
+			// Count depth in inheritance hierarchy — roots=0, children=1, grandchildren=2, etc.
+			int depth = 0;
+			EClass current = eClass;
+			while (!current.getESuperTypes().isEmpty()) {
+				depth++;
+				current = current.getESuperTypes().get(0);
+			}
+			return depth;
+		});
 	}
 
 }

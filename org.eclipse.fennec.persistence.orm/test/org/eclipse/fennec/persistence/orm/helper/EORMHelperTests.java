@@ -162,11 +162,12 @@ public class EORMHelperTests {
 		assertThat(EORMHelper.filterEClasses(eClassifier).size()).isEqualTo(2);
 		assertThat(EORMHelper.filterEClasses(eClassifier).contains(EcorePackage.Literals.EREFERENCE)).isTrue();
 		assertThat(EORMHelper.filterEClasses(eClassifier).contains(EcorePackage.Literals.ECLASS)).isTrue();
-		// add an abstract EClass
+		// add an abstract EClass — abstract EClasses are now included for inheritance support
 		eClassifier.add(EcorePackage.Literals.ESTRUCTURAL_FEATURE);
 		assertThat(EORMHelper.filterEClasses(eClassifier).isEmpty()).isFalse();
-		assertThat(EORMHelper.filterEClasses(eClassifier).size()).isEqualTo(2);
+		assertThat(EORMHelper.filterEClasses(eClassifier).size()).isEqualTo(3);
 		assertThat(EORMHelper.filterEClasses(eClassifier).contains(EcorePackage.Literals.EREFERENCE)).isTrue();
 		assertThat(EORMHelper.filterEClasses(eClassifier).contains(EcorePackage.Literals.ECLASS)).isTrue();
+		assertThat(EORMHelper.filterEClasses(eClassifier).contains(EcorePackage.Literals.ESTRUCTURAL_FEATURE)).isTrue();
 	}
 }

@@ -59,7 +59,10 @@ import org.eclipse.fennec.persistence.eorm.OneToMany;
 import org.eclipse.fennec.persistence.eorm.OneToOne;
 import org.eclipse.fennec.persistence.eorm.SecondaryTable;
 import org.eclipse.fennec.persistence.eorm.Table;
+import org.eclipse.fennec.persistence.eorm.DiscriminatorColumn;
+import org.eclipse.fennec.persistence.eorm.Inheritance;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.descriptors.InheritancePolicy;
 import org.eclipse.persistence.dynamic.DynamicType;
 import org.eclipse.persistence.dynamic.DynamicTypeBuilder;
 import org.eclipse.persistence.internal.helper.DatabaseField;
@@ -160,7 +163,54 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 	}
 
 	/**
-	 * Sets-up the entities databases 
+	 * Configures JPA inheritance on the EclipseLink descriptor.
+	 * Must be called after all entities are created (so parent/child descriptors exist).
+	 */
+	public void configureInheritance() {
+		Entity entity = getType().getEntity();
+		Inheritance inheritance = entity.getInheritance();
+		String discriminatorValue = entity.getDiscriminatorValue();
+
+		if (nonNull(inheritance)) {
+			// Root entity — configure InheritancePolicy with strategy + discriminator column
+			InheritancePolicy ip = getType().getDescriptor().getInheritancePolicy();
+			switch (inheritance.getStrategy()) {
+				case SINGLETABLE -> ip.setSingleTableStrategy();
+				case JOINED -> ip.setJoinedStrategy();
+				case TABLEPERCLASS -> { /* TABLE_PER_CLASS — no special config needed */ }
+			}
+			DiscriminatorColumn dc = entity.getDiscriminatorColumn();
+			if (nonNull(dc)) {
+				ip.setClassIndicatorFieldName(dc.getName());
+			}
+			// Register root class indicator (both directions: class↔value)
+			if (nonNull(discriminatorValue)) {
+				ip.addClassIndicator(getType().getJavaClass(), discriminatorValue);
+			}
+			ip.setShouldReadSubclasses(true);
+			LOG.log(Level.FINE, "Configured inheritance root: {0} strategy={1}",
+					new Object[]{entity.getName(), inheritance.getStrategy()});
+		} else if (nonNull(discriminatorValue)) {
+			// Child entity — set parent class + register indicator on parent
+			EClass eClass = (EClass) entity.getClass_();
+			if (!eClass.getESuperTypes().isEmpty()) {
+				EClass parentEClass = eClass.getESuperTypes().get(0);
+				EDynamicTypeBuilder parentBuilder = context.getETypeBuilder(parentEClass);
+				if (nonNull(parentBuilder)) {
+					getType().getDescriptor().getInheritancePolicy()
+						.setParentClass(parentBuilder.getType().getJavaClass());
+					// Register this child's class indicator on the parent (both directions)
+					parentBuilder.getType().getDescriptor().getInheritancePolicy()
+						.addClassIndicator(getType().getJavaClass(), discriminatorValue);
+					LOG.log(Level.FINE, "Configured inheritance child: {0} parent={1} discriminator={2}",
+							new Object[]{entity.getName(), parentEClass.getName(), discriminatorValue});
+				}
+			}
+		}
+	}
+
+	/**
+	 * Sets-up the entities databases
 	 */
 	public void configureDatabase(EDynamicType eDynamicType) {
 		requireNonNull(eDynamicType);

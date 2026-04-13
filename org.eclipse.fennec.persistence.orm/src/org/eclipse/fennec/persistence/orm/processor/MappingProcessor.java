@@ -120,7 +120,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		if (source.isEmpty()) {
 			return;
 		}
-		List<EClass> eClasses = new ArrayList<>(source);
+		@SuppressWarnings("unchecked")
+		List<EClass> eClasses = (List<EClass>)(List<?>) new ArrayList<>(source);
 		context.setAllEClasses(eClasses);
 		Collection<EPackage> ePackages = EORMHelper.getEPackages(eClasses);
 		if (ePackages.size() == 1) {
@@ -367,22 +368,29 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	 * For root/standalone entities, returns all attributes (including inherited).
 	 */
 	private List<EAttribute> getEffectiveAttributes(EClass eClass) {
-		if (eClass.getESuperTypes().isEmpty()) {
-			return eClass.getEAllAttributes();
+		if (hasMappedSuperType(eClass)) {
+			return eClass.getEAttributes();
 		}
-		return eClass.getEAttributes();
+		return eClass.getEAllAttributes();
 	}
 
 	/**
 	 * Returns the effective references for an EClass considering inheritance.
-	 * For child entities (with super type), returns only locally declared references.
+	 * For child entities (with mapped super type), returns only locally declared references.
 	 * For root/standalone entities, returns all references (including inherited).
 	 */
 	private List<EReference> getEffectiveReferences(EClass eClass) {
-		if (eClass.getESuperTypes().isEmpty()) {
-			return eClass.getEAllReferences();
+		if (hasMappedSuperType(eClass)) {
+			return eClass.getEReferences();
 		}
-		return eClass.getEReferences();
+		return eClass.getEAllReferences();
+	}
+
+	/**
+	 * Checks whether the EClass has a super type that is also being mapped.
+	 */
+	private boolean hasMappedSuperType(EClass eClass) {
+		return eClass.getESuperTypes().stream().anyMatch(context.getAllEClasses()::contains);
 	}
 
 }

@@ -158,7 +158,7 @@ class InheritanceProcessorTest {
 			EClass vehicle = createClassWithId("Vehicle");
 			vehicle.setAbstract(true);
 			addAttribute(vehicle, "name", EcorePackage.Literals.ESTRING);
-			addAttribute(vehicle, "year", EcorePackage.Literals.EINT);
+			addAttribute(vehicle, "modelYear", EcorePackage.Literals.EINT);
 
 			EClass car = createEClass("Car");
 			car.getESuperTypes().add(vehicle);
@@ -171,14 +171,14 @@ class InheritanceProcessorTest {
 			Entity vehicleEntity = findEntity(processor.getTarget(), "Vehicle");
 			assertThat(vehicleEntity.getAttributes().getBasic())
 				.extracting("name")
-				.contains("name", "year");
+				.contains("name", "modelYear");
 
 			// Child has only LOCAL attributes, not inherited ones
 			Entity carEntity = findEntity(processor.getTarget(), "Car");
 			assertThat(carEntity.getAttributes().getBasic())
 				.extracting("name")
 				.contains("doors")
-				.doesNotContain("name", "year");
+				.doesNotContain("name", "modelYear");
 		}
 
 		@Test
