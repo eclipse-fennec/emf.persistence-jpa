@@ -421,7 +421,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | 11 | JPAResource — EMF Resource-Schicht | L | Hoch | Unit + OSGi-Integration | Offen |
 | 12 | DatabaseEcoreParser verbessern | M | Mittel | Unit | Offen |
 | 13 | Inheritance-Mapping (EClass-Vererbung) | M | Hoch | Unit + Integration | Offen |
-| 14 | EEnum STRING/ORDINAL-Konfiguration | S | Mittel | Unit | Offen |
+| 14 | EEnum STRING/ORDINAL-Konfiguration | S | Mittel | Unit | **Erledigt** — Bugfix + STRING als Default |
 | 15 | Delegate-Pattern O2O/O2M konsistent machen | M | Mittel | Unit | Offen |
 
 **Aufwand:** S = Small (1–2 Tage), M = Medium (3–5 Tage), L = Large (1–2 Wochen)
@@ -725,19 +725,14 @@ Das EORM-Modell unterstützt JPA-Inheritance (`SINGLE_TABLE`, `JOINED`, `TABLE_P
 
 **Ergebnis:** ECore-Modelle mit Vererbung erzeugen korrekte JPA-Inheritance-Mappings.
 
-### AP14 — EEnum STRING/ORDINAL-Konfiguration
-**Aufwand: S | Priorität: Mittel | Teststrategie: Unit**
+### AP14 — EEnum STRING/ORDINAL-Konfiguration ✅
+**Aufwand: S | Priorität: Mittel | Teststrategie: Unit | Status: Erledigt**
 
-EEnums werden im `BasicProcessor` erkannt und als `enumerated` referenziert, aber es fehlt die explizite Steuerung ob `EnumType.STRING` oder `EnumType.ORDINAL` verwendet wird.
+**Bugfix:** `EDynamicTypeBuilder.processBasic()` verwendete `ea.getEAttributeType() == EcorePackage.Literals.EENUM` — das vergleicht mit der EEnum-Metaklasse, nicht mit konkreten EEnum-Instanzen (wie `PersonType`). Custom EEnums wurden nur zufällig als String gemappt, weil `getInstanceClass()` null zurückgibt und der String-Fallback greift.
 
-**Scope:**
-- Default auf `EnumType.STRING` setzen (sicherer als ORDINAL bei Modelländerungen)
-- EORM-Modell erlaubt bereits explizite Konfiguration — sicherstellen dass dies in `EDynamicTypeBuilder.processBasic()` korrekt ausgewertet wird
-- Prüfen ob EclipseLink den Enum-Typ korrekt aus dem EORM-Mapping übernimmt
+**Fix:** `instanceof EEnum` statt `== EcorePackage.Literals.EENUM`. Damit werden alle EEnum-Attribute explizit als `String` (EnumType.STRING) in der Datenbank gespeichert — korrekt und konsistent mit dem `BasicProcessor` in der ORM-Schicht.
 
-**Teststrategie:** Unit-Test mit EEnum-Attribut, Verify dass STRING als Default gesetzt wird. Integration mit H2 für Roundtrip.
-
-**Ergebnis:** EEnums werden mit explizitem EnumType persistiert, Default ist STRING.
+**Ergebnis:** EEnums werden zuverlässig als String persistiert, unabhängig davon ob `getInstanceClass()` null ist oder nicht.
 
 ### AP15 — Delegate-Pattern O2O/O2M konsistent machen
 **Aufwand: M | Priorität: Mittel | Teststrategie: Unit**

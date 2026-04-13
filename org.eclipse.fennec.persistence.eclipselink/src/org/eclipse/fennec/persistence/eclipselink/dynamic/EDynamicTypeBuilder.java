@@ -464,10 +464,10 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			typeClass = originalTypeClass;
 			LOG.log(Level.FINER, "[processBasic] Processing {0} with original typeClass: {1}", new Object[]{ea.getName(), originalTypeClass});
 
-			// Map enums into Strings
-			if (ea.getEAttributeType() == EcorePackage.Literals.EENUM) {
+			// Map enums into Strings (EnumType.STRING is the default strategy)
+			if (ea.getEAttributeType() instanceof EEnum) {
 				typeClass = String.class;
-				LOG.log(Level.FINER, "[processBasic] {0} is enum, setting to String.class", ea.getName());
+				LOG.log(Level.FINER, "[processBasic] {0} is enum, mapping as String (EnumType.STRING)", ea.getName());
 			}
 			// Fallback to String for custom types (UUID, arrays, etc.) that don't have instance classes
 			if (typeClass == null) {
