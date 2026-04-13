@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import java.io.IOException;
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -36,7 +35,6 @@ import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
-import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.test.annotations.TestAnnotations;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
@@ -70,7 +68,7 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 			@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
 			@InjectService(filter = "(emf.name=fennec.persistence.model)") ServiceAware<EPackage> modelPackageAware,
 			@InjectService(timeout = 7000) ServiceAware<EntityManagerFactory> emfAware)
-			throws InterruptedException, IOException {
+			throws Exception {
 
 		assertFalse(emfAware.isEmpty());
 		EntityManagerFactory emf = emfAware.getService();
@@ -117,7 +115,7 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 			@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
 			@InjectService(filter = "(emf.name=fennec.persistence.model)") ServiceAware<EPackage> modelPackageAware,
 			@InjectService(timeout = 7000) ServiceAware<EntityManagerFactory> emfAware)
-			throws InterruptedException, IOException {
+			throws Exception {
 
 		assertFalse(emfAware.isEmpty());
 		EntityManagerFactory emf = emfAware.getService();
@@ -125,26 +123,25 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 		ClassDescriptor personDescriptor = server.getDescriptorForAlias(personEClass.getName());
 		assertNotNull(personDescriptor);
 
-		// Create JPAResource
-		JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf);
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf)) {
+			// Initially empty
+			assertEquals(0, resource.count());
+			assertFalse(resource.exist());
 
-		// Initially empty
-		assertEquals(0, resource.count());
-		assertFalse(resource.exist());
+			// Persist one entity
+			EObject person = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
+			person.eSet(personEClass.getEStructuralFeature("stringDefault"), "Charlie");
 
-		// Persist one entity
-		EObject person = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
-		person.eSet(personEClass.getEStructuralFeature("stringDefault"), "Charlie");
+			try (EntityManager em = emf.createEntityManager()) {
+				em.getTransaction().begin();
+				em.persist(person);
+				em.getTransaction().commit();
+			}
 
-		try (EntityManager em = emf.createEntityManager()) {
-			em.getTransaction().begin();
-			em.persist(person);
-			em.getTransaction().commit();
+			// Now count and exist should reflect the data
+			assertEquals(1, resource.count());
+			assertTrue(resource.exist());
 		}
-
-		// Now count and exist should reflect the data
-		assertEquals(1, resource.count());
-		assertTrue(resource.exist());
 	}
 
 	@Test
@@ -153,7 +150,7 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 			@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
 			@InjectService(filter = "(emf.name=fennec.persistence.model)") ServiceAware<EPackage> modelPackageAware,
 			@InjectService(timeout = 7000) ServiceAware<EntityManagerFactory> emfAware)
-			throws InterruptedException, IOException {
+			throws Exception {
 
 		assertFalse(emfAware.isEmpty());
 		EntityManagerFactory emf = emfAware.getService();
@@ -175,12 +172,13 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 		assertNotNull(id, "Person should have an ID after persist");
 
 		// Resolve via fragment
-		JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf);
-		String fragment = "//address/id/" + id;
-		EObject resolved = resource.getEObject(fragment);
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf)) {
+			String fragment = "//address/id/" + id;
+			EObject resolved = resource.getEObject(fragment);
 
-		assertNotNull(resolved, "Should resolve entity from fragment");
-		assertEquals("Diana", resolved.eGet(personEClass.getEStructuralFeature("stringDefault")));
+			assertNotNull(resolved, "Should resolve entity from fragment");
+			assertEquals("Diana", resolved.eGet(personEClass.getEStructuralFeature("stringDefault")));
+		}
 	}
 
 	@Test
@@ -189,7 +187,7 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 			@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
 			@InjectService(filter = "(emf.name=fennec.persistence.model)") ServiceAware<EPackage> modelPackageAware,
 			@InjectService(timeout = 7000) ServiceAware<EntityManagerFactory> emfAware)
-			throws InterruptedException, IOException {
+			throws Exception {
 
 		assertFalse(emfAware.isEmpty());
 		EntityManagerFactory emf = emfAware.getService();
@@ -211,16 +209,20 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 			em.getTransaction().commit();
 		}
 
-		// Save new entity via Resource (without prior persist)
-		EObject person3 = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
-		person3.eSet(personEClass.getEStructuralFeature("stringDefault"), "SavedViaResource");
+		// Modify detached entity and save via Resource (tests merge)
+		person1.eSet(personEClass.getEStructuralFeature("stringDefault"), "SaveTest1_Updated");
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf)) {
+			resource.getContents().add(person1);
+			resource.save(null);
+		}
 
-		JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf);
-		resource.getContents().add(person3);
-		resource.save(null);
-
-		// Verify it was persisted via EntityManager
-		assertEquals(3, resource.count());
+		// Verify the update was persisted
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(person1);
+			EObject found = (EObject) em.find(personDescriptor.getJavaClass(), id);
+			assertNotNull(found);
+			assertEquals("SaveTest1_Updated", found.eGet(personEClass.getEStructuralFeature("stringDefault")));
+		}
 	}
 
 	@Test
@@ -229,7 +231,7 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 			@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
 			@InjectService(filter = "(emf.name=fennec.persistence.model)") ServiceAware<EPackage> modelPackageAware,
 			@InjectService(timeout = 7000) ServiceAware<EntityManagerFactory> emfAware)
-			throws InterruptedException, IOException {
+			throws Exception {
 
 		assertFalse(emfAware.isEmpty());
 		EntityManagerFactory emf = emfAware.getService();
@@ -250,19 +252,20 @@ public class JPAResourceIntegrationTest extends EPersistenceBase {
 		String id = EcoreUtil.getID(person);
 		assertNotNull(id);
 
-		// Verify it exists
-		JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf);
-		assertTrue(resource.exist());
+		// Verify it exists and delete via Resource
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://test/Person"), emf)) {
+			assertTrue(resource.exist());
 
-		// Delete via Resource
-		resource.getContents().add(person);
-		resource.delete(null);
+			resource.getContents().add(person);
+			resource.delete(null);
+
+			assertTrue(resource.getContents().isEmpty(), "Resource contents should be empty after delete");
+		}
 
 		// Verify it's gone
 		try (EntityManager em = emf.createEntityManager()) {
 			EObject found = (EObject) em.find(personDescriptor.getJavaClass(), id);
 			assertTrue(found == null, "Entity should be deleted from database");
 		}
-		assertTrue(resource.getContents().isEmpty(), "Resource contents should be empty after delete");
 	}
 }

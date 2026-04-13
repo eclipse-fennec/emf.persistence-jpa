@@ -72,23 +72,28 @@ public class EObjectBuilder extends ObjectBuilder {
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.descriptors.ObjectBuilder#mergeIntoObject(java.lang.Object, org.eclipse.persistence.internal.sessions.ObjectChangeSet, boolean, java.lang.Object, org.eclipse.persistence.internal.sessions.MergeManager, org.eclipse.persistence.internal.sessions.AbstractSession, boolean, boolean, boolean)
 	 */
+	@Override
 	public void mergeIntoObject(Object target, ObjectChangeSet changeSet, boolean isUnInitialized, Object source, MergeManager mergeManager, AbstractSession targetSession, boolean cascadeOnly, boolean isTargetCloneOfOriginal, boolean shouldMergeFetchGroup) {
-		if (isTargetCloneOfOriginal) {
-			// nothing to do
-			return;
+		// Copy EObject attributes from source to target via ECopier.
+		// We use ECopier (not EclipseLink's DirectMapping.mergeIntoObject) because
+		// EclipseLink would set raw DB types (e.g. java.sql.Date) that are incompatible
+		// with EMF's expected types (e.g. java.time.LocalDate).
+		if (target instanceof EObject teo && source instanceof EObject seo) {
+			if (!isTargetCloneOfOriginal) {
+				new ECopier(teo, null).copy(seo);
+			}
 		}
-		if (isUnInitialized && target instanceof EObject teo && source instanceof EObject seo) {
-			new ECopier(teo, null).copy(seo);
-			List<DatabaseMapping> mappings = this.descriptor.getMappings();
-			int size = mappings.size();
-			for (int index = 0; index < size; index++) {
-				DatabaseMapping mapping = mappings.get(index);
-				if (mapping.isForeignReferenceMapping() && 
-						((!cascadeOnly && !isTargetCloneOfOriginal)
-								|| (cascadeOnly && mapping.isForeignReferenceMapping())
-								|| (isTargetCloneOfOriginal && mapping.isCloningRequired()))) {
-					mapping.mergeIntoObject(target, isUnInitialized, source, mergeManager, targetSession);
-				}
+		// Merge foreign reference mappings via EclipseLink's standard logic
+		// (handles cascading, relationship maintenance, etc.)
+		List<DatabaseMapping> mappings = this.descriptor.getMappings();
+		int size = mappings.size();
+		for (int index = 0; index < size; index++) {
+			DatabaseMapping mapping = mappings.get(index);
+			if (mapping.isForeignReferenceMapping()
+					&& ((!cascadeOnly && !isTargetCloneOfOriginal)
+							|| (cascadeOnly && mapping.isForeignReferenceMapping())
+							|| (isTargetCloneOfOriginal && mapping.isCloningRequired()))) {
+				mapping.mergeIntoObject(target, isUnInitialized, source, mergeManager, targetSession);
 			}
 		}
 		// PERF: Avoid events if no listeners.
