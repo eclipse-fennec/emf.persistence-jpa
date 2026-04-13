@@ -80,6 +80,10 @@ public class OneToOneProcessor extends BaseReferenceProcessor<OneToOne> {
 			if (mapping instanceof OneToOne mbRef) {
 				MappedBy mappedBy = context.getMappedBy(opposite);
 				mbRef.setMappedBy(mappedBy.mappedByName);
+				// Clean up redundant owning-side info — inverse only needs mappedBy
+				mbRef.getJoinColumn().clear();
+				mbRef.setForeignKey(null);
+				mbRef.setJoinTable(null);
 				setDelegate(true);
 			}
 		} else {
