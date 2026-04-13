@@ -631,25 +631,17 @@ public class EPersistenceManyToManyTest extends EPersistenceBase {
 		assertNotNull(aListObject);
 		assertInstanceOf(List.class, aListObject);
 		List<?> aResultList = (List<?>) aListObject;
-		// no recursive fetch implemented
-		assertTrue(aResultList.isEmpty());
-//		assertEquals(2, aResultList.size());
-//		Set<String> aValues = new HashSet<>(Set.of("Emilia Testerova", "Emil Tester"));
-//		for (Object o : aResultList) {
-//			assertInstanceOf(EObject.class, o);
-//			EObject aeo = (EObject) o;
-//			assertEquals(classAEClass, aeo.eClass());
-//			aNameObject = aeo.eGet(aNameFeature);
-//			assertNotNull(aNameObject);
-//			assertTrue(aValues.remove(aNameObject));
-//			Object aCClassListObject = aeo.eGet(aCNonContainmentFeature);
-//			assertNotNull(aCClassListObject);
-//			assertInstanceOf(List.class, aCClassListObject);
-//			List<?> aCClassResultList = (List<?>) aCClassListObject;
-//			assertTrue(aCClassResultList.contains(findCEO));
-//			
-//		};
-//		assertTrue(aValues.isEmpty());
+		assertEquals(2, aResultList.size());
+		Set<String> aValues = new HashSet<>(Set.of("Emilia Testerova", "Emil Tester"));
+		for (Object o : aResultList) {
+			assertInstanceOf(EObject.class, o);
+			EObject aeo = (EObject) o;
+			assertEquals(classAEClass, aeo.eClass());
+			aNameObject = aeo.eGet(aNameFeature);
+			assertNotNull(aNameObject);
+			assertTrue(aValues.remove(aNameObject));
+		};
+		assertTrue(aValues.isEmpty());
 		
 	}
 	

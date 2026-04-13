@@ -15,13 +15,11 @@ package org.eclipse.fennec.persistence.orm.processor;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
 
 import org.eclipse.emf.ecore.EReference;
-import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.JoinTable;
 import org.eclipse.fennec.persistence.eorm.ManyToMany;
 import org.eclipse.fennec.persistence.orm.MappingContext;
-import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
 
 /**
  * One-To-Many mapping processor
@@ -52,7 +50,12 @@ public class ManyToManyProcessor extends BaseReferenceProcessor<ManyToMany> {
 		if (isOppositeRelation(source) && (!source.isMany() || !source.getEOpposite().isMany())) {
 			return false;
 		}
-		if (isContainmentOnlyMapping() || context.containsMapping(source) || context.containsOpposite(source)) {
+		if (isContainmentOnlyMapping() || context.containsMapping(source)) {
+			return false;
+		}
+		// In Stage 5 (opposite mapping), we must allow processing even if the
+		// reference was registered as opposite — that is exactly what we want to process.
+		if (!isOppositeMapping() && context.containsOpposite(source)) {
 			return false;
 		}
 		return super.canProcess();
@@ -65,13 +68,13 @@ public class ManyToManyProcessor extends BaseReferenceProcessor<ManyToMany> {
 	@Override
 	protected void doProcess() {
 		if (isOppositeMapping()) {
+			// This is the inverse/non-owning side of a bidirectional M2M.
+			// mappedBy points to the owning side's attribute name (the opposite reference).
 			EReference opposite = source.getEOpposite();
-			BaseRef mapping = context.getMapping(opposite);
-			if (mapping instanceof ManyToMany mbRef) {
-				MappedBy mappedBy = context.getMappedBy(source);
-				mbRef.setMappedBy(mappedBy.mappedByName);
-				setDelegate(true);
-			}
+			target.setMappedBy(opposite.getName());
+			// No JoinTable needed — the owning side already has it.
+			// Do NOT setDelegate — this mapping must be added to the entity
+			// so that EclipseLink can create a ManyToManyMapping for the reverse direction.
 		} else {
 			JoinTable jt = createJoinTable(source);
 			target.setJoinTable(jt);
