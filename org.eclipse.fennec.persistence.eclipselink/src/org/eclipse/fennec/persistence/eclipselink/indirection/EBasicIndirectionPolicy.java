@@ -99,7 +99,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 		Object attrObject = attributeValue instanceof ValueHolderInterface<?> avh ? avh.getValue() : attributeValue;
 		if (attrObject instanceof EObject attrEO && 
 				clone instanceof EObject cloneEO && 
-				backup instanceof EObject backupEO && 
+				backup instanceof EObject && 
 				MappingHelper.areInContainmentRelation(cloneEO, attrEO, reference)) {
 			EObject backupAttr = (EObject) getForeignReferenceMapping().getReferenceDescriptor().getCopyPolicy().buildClone(attrObject, unitOfWork);
 			new ECopier(backupAttr, null).copy(attrEO);

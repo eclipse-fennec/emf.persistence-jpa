@@ -27,7 +27,6 @@ import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.processor.ProcessingContext;
-import org.eclipse.persistence.dynamic.DynamicClassLoader;
 import org.eclipse.persistence.sessions.Session;
 
 /**
@@ -43,7 +42,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	private ConverterService converter;
 	private URI baseURI;
 	private Session session;
-	private DynamicClassLoader classloader;
+	private ClassLoader classloader;
 	
 	/**
 	 * Sets the session.
@@ -225,7 +224,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	 * Returns the classloader.
 	 * @return the classloader
 	 */
-	public DynamicClassLoader getClassloader() {
+	public ClassLoader getClassloader() {
 		return classloader;
 	}
 
@@ -233,7 +232,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	 * Sets the classloader.
 	 * @param classloader the classloader to set
 	 */
-	void setClassloader(DynamicClassLoader classloader) {
+	void setClassloader(ClassLoader classloader) {
 		this.classloader = classloader;
 	}
 

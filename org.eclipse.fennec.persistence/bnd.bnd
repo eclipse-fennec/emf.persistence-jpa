@@ -7,3 +7,4 @@ Bundle-Description: EMF Persistence API
 	enableEMF
 	
 -buildpath: biz.aQute.bnd.annotation
+-testpath: assertj-core

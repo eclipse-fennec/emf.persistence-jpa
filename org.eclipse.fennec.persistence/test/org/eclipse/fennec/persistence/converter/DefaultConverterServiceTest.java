@@ -24,7 +24,6 @@ import java.util.UUID;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EcoreFactory;
-import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

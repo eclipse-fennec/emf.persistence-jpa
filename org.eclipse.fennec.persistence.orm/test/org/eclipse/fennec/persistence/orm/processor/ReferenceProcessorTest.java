@@ -21,7 +21,6 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.eorm.CascadeType;
-import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.ManyToMany;
 import org.eclipse.fennec.persistence.eorm.ManyToOne;
 import org.eclipse.fennec.persistence.eorm.OneToMany;
