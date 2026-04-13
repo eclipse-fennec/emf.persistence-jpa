@@ -59,6 +59,10 @@ public class MappingContext implements ProcessingContext {
 	}
 
 	/*
+	 * All EClasses being processed in this mapping context
+	 */
+	private List<EClass> allEClasses = Collections.emptyList();
+	/*
 	 * Map that holds EClassifiers and their Entities
 	 */
 	private Map<EClassifier, Entity> entityMap = new HashMap<>();
@@ -287,6 +291,14 @@ public class MappingContext implements ProcessingContext {
 
 	public void putEntity(EClassifier eClassifier, Entity entity) {
 		entityMap.put(eClassifier, entity);
+	}
+
+	public void setAllEClasses(List<EClass> eClasses) {
+		this.allEClasses = eClasses;
+	}
+
+	public List<EClass> getAllEClasses() {
+		return allEClasses;
 	}
 
 }
