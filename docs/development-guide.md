@@ -2,9 +2,19 @@
 
 ## 1. Überblick
 
-Eclipse Fennec Persistence JPA ist ein OSGi-basiertes Persistence-Framework, das EMF (Eclipse Modeling Framework) mit Jakarta Persistence (JPA) über EclipseLink verbindet. Es löst das Problem der **Impedance Mismatch zwischen EMF-Modellen und relationalen Datenbanken**: Domänenmodelle werden in ECore definiert, und das Framework erzeugt daraus automatisch JPA-Mappings — ohne manuellen Boilerplate-Code.
+Eclipse Fennec Persistence JPA ist ein OSGi-basiertes Persistence-Framework, das EMF (Eclipse Modeling Framework) mit Jakarta Persistence (JPA) über EclipseLink verbindet. Es löst das Problem der **Impedance Mismatch zwischen EMF-Modellen und relationalen Datenbanken**.
 
-Zusätzlich unterstützt es den umgekehrten Weg: Aus einem bestehenden Datenbankschema kann ein ECore-Modell per JDBC-Metadata reverse-engineered werden.
+### Zwei Use Cases
+
+1. **EMF → DB (Forward Mapping):** Domänenmodelle werden in ECore definiert, und das Framework erzeugt daraus automatisch JPA-Mappings — ohne manuellen Boilerplate-Code. Ziel: Es soll einfach sein, EMF-Objekte in relationalen Datenbanksystemen zu speichern.
+
+2. **DB → EMF (Reverse Engineering):** Aus einem bestehenden Datenbankschema wird ein ECore-Modell per JDBC-Metadata reverse-engineered. Ziel: Bestehende Datenbankstrukturen mit EMF-Modellen nutzbar machen.
+
+### Design-Prinzipien
+
+- **JPA-Defaults als Grundlage:** Die Standard-Mappings folgen den JPA-Konventionen (z.B. Containment → JoinColumn, Non-Containment OneToMany → JoinTable). Ohne zusätzliche Konfiguration soll ein valides, funktionierendes Mapping entstehen.
+- **Customizing über EORM:** Das EORM-Metadatenmodell (`eorm.ecore`) bietet die volle Bandbreite an JPA-Mapping-Optionen. So kann z.B. ein OneToMany wahlweise mit JoinColumn oder JoinTable gemappt werden — je nach Anwendungsfall. Die Defaults erzeugen ein korrektes Mapping, aber die Alternativen bleiben über EORM konfigurierbar.
+- **EclipseLink-Kompatibilität:** Die erzeugten Mappings müssen 1:1 den EclipseLink-Mapping-Mechanismen entsprechen. Das EORM-Modell bildet die relevante JPA/EclipseLink-Semantik ab.
 
 ## 2. Modularchitektur
 
@@ -140,7 +150,73 @@ Das Framework nutzt ein **Processor-Pattern** mit generischen Interfaces:
 | orphanRemoval | ja (bei OneToOne) | nein |
 | Kardinalitäten | nur O2O, O2M | O2O, O2M, M2O, M2M |
 
-## 5. EclipseLink-Integration
+## 5. ECore → JPA Mapping-Matrix
+
+### 5.1 Vollständige Mapping-Übersicht
+
+Die folgende Matrix zeigt alle ECore-Referenztypen und ihr JPA-Mapping. „Default" ist die automatisch erzeugte Variante; „Alternative" zeigt über EORM konfigurierbare Optionen.
+
+| EReference | Containment | Kardinalität | Bidi | JPA Default | Alternative | EclipseLink-Mapping |
+|---|---|---|---|---|---|---|
+| Single, kein Opposite | containment | 0..1 | uni | OneToOne + JoinColumn | JoinTable | `OneToOneMapping` |
+| Single, kein Opposite | non-containment | 0..1 | uni | OneToOne + JoinColumn | JoinTable | `OneToOneMapping` |
+| Multi, kein Opposite | containment | 0..* | uni | OneToMany + JoinColumn (FK in child) | JoinTable | `UnidirectionalOneToManyMapping` |
+| Multi, kein Opposite | non-containment | 0..* | uni | OneToMany + JoinTable | JoinColumn | `ManyToManyMapping` (definedAsO2M) |
+| Single + eOpposite(multi) | containment | bidi | bidi | M2O (child, FK) + O2M (parent, mappedBy) | — | `ManyToOneMapping` + `OneToManyMapping` |
+| Single + eOpposite(single) | containment | bidi | bidi | O2O (owning, JoinColumn) + O2O (inverse, mappedBy) | — | `OneToOneMapping` × 2 |
+| Single + eOpposite(single) | non-containment | 1:1 | bidi | O2O (owning, JoinColumn) + O2O (inverse, mappedBy) | — | `OneToOneMapping` × 2 |
+| Single + eOpposite(multi) | non-containment | M:1 / 1:N | bidi | M2O (FK) + O2M (mappedBy) | — | `ManyToOneMapping` + `OneToManyMapping` |
+| Multi + eOpposite(multi) | non-containment | M:N | bidi | M2M (owning, JoinTable) + M2M (inverse, mappedBy) | — | `ManyToManyMapping` × 2 |
+
+### 5.2 JPA-Semantik: Owning vs. Inverse
+
+JPA definiert pro bidirektionaler Beziehung eine **Owning Side** und eine **Inverse Side**:
+
+| Aspekt | Owning Side | Inverse Side (mappedBy) |
+|--------|-------------|------------------------|
+| Konfiguration | JoinColumn oder JoinTable | `mappedBy` Attribut |
+| DML-Operationen | INSERT/UPDATE/DELETE | Nur Lesen (isReadOnly bei M2M) |
+| FK-Besitz | Besitzt den Foreign Key | Referenziert den FK der Owning Side |
+| EclipseLink | Konfiguriert eigene Key-Fields | Kopiert/spiegelt Key-Fields der Owning Side |
+
+**Fennec-Zuordnung:** Die Owning Side ist die zuerst in der Pipeline verarbeitete Seite (determiniert durch EClass-Reihenfolge in `createMappings()`). Die Inverse Side wird in Stage 5 via `createOppositeMapping()` aufgelöst.
+
+### 5.3 Containment-Semantik in JPA
+
+EMF Containment hat keine direkte JPA-Entsprechung. Fennec bildet es folgendermaßen ab:
+
+| EMF-Konzept | JPA-Umsetzung | Begründung |
+|-------------|---------------|------------|
+| Containment (Eltern-Kind) | JoinColumn (FK in Kind-Tabelle) | Kind gehört zum Eltern; FK-Beziehung ist natürlich |
+| Non-Containment (lose Assoziation) | JoinTable (separate Tabelle) | Kein Ownership; Assoziationstabelle entkoppelt |
+| Containment Cascade | CascadeType.ALL | Eltern-Löschung kaskadiert zu Kindern |
+| Non-Containment Cascade | DETACH + REFRESH | Keine Lösch-Kaskade bei losen Assoziationen |
+
+**Customizing:** Die Defaults (JoinColumn für Containment, JoinTable für Non-Containment) können über EORM überschrieben werden. Für bestehende DB-Schemata, die z.B. OneToMany mit JoinTable statt JoinColumn nutzen, kann dies explizit konfiguriert werden.
+
+### 5.4 Abgleich mit EclipseLink-Referenzimplementierung
+
+Systematischer Vergleich der Fennec-Implementierung mit EclipseLink 4 (`/opt/git/eclipselink-4/`):
+
+| Feature | EclipseLink-Referenz | Fennec-Implementierung | Status |
+|---------|---------------------|----------------------|--------|
+| M2M bidi: Owning Side | JoinTable, kein mappedBy | JoinTable, kein mappedBy | korrekt |
+| M2M bidi: Inverse Side | mappedBy, isReadOnly=true, Key-Fields gespiegelt | mappedBy, isReadOnly=true, Key-Fields gespiegelt | korrekt (AP3 Fix) |
+| M2M uni | JoinTable | JoinTable | korrekt |
+| O2M bidi (mappedBy) | O2M mit targetFK aus M2O-Owner | O2M mit mappedBy (delegate) | korrekt |
+| O2M uni (JoinColumn) | UnidirectionalOneToManyMapping | UnidirectionalOneToManyMapping mit JoinColumns | korrekt |
+| O2M uni (JoinTable) | ManyToManyMapping (definedAsO2M) | ManyToManyMapping (definedAsO2M) | korrekt |
+| M2O | OneToOneMapping + FK | ManyToOneMapping + FK | korrekt |
+| O2O bidi | Owning: FK, Inverse: Key-Swap | Owning: JoinColumn, Inverse: mappedBy + Key-Swap | korrekt |
+| O2O containment | JoinColumn + CascadeAll | JoinColumn + CascadeAll | korrekt |
+
+**Bekannte Abweichungen:**
+
+1. **O2O/O2M Delegate-Pattern:** Bei O2O und O2M bidi setzt Stage 5 `mappedBy` auf die owning side's EORM-Mapping (statt auf die inverse side). `EDynamicTypeBuilder` kompensiert dies, weil `isMappedBy()` korrekt filtert. Funktional korrekt, aber inkonsistent mit JPA-Semantik (Inverse hat mappedBy, nicht Owning).
+
+2. **O2O bidi: Doppelte JoinColumns:** Beide Seiten erhalten in Stage 4 einen JoinColumn. Stage 5 setzt dann `mappedBy` auf eine Seite. Ergebnis: eine Seite hat sowohl JoinColumn als auch mappedBy. EDynamicTypeBuilder prüft mappedBy zuerst und ignoriert den JoinColumn. Funktional korrekt, aber das EORM-Modell enthält unnötige Informationen.
+
+## 6. EclipseLink-Integration
 
 ### 5.1 EDynamicTypeBuilder
 
@@ -334,14 +410,19 @@ Alle Komponenten nutzen OSGi Declarative Services:
 |----|-------|---------|-----------|---------------|--------|
 | 1 | Processor-Pipeline Unit-Tests | L | Kritisch | Unit | **Erledigt** — 85 Tests, 1 Bugfix |
 | 2 | Composite-ID Tests & Stabilisierung | M | Kritisch | Unit + Integration | **Erledigt** — 39 Tests (Unit), printf noch offen |
-| 3 | Many-to-Many aktivieren | M | Hoch | Integration | Offen |
+| 3 | Many-to-Many aktivieren | M | Hoch | Integration | **Erledigt** — Bidi M2M Fix + Tests aktiviert |
 | 4 | EDynamicTypeBuilder Tests | L | Hoch | Unit | Offen |
 | 5 | Logging statt println/printStackTrace | S | Hoch | Refactoring | **Erledigt** |
 | 6 | EMFHelper & ConverterService Tests | M | Mittel | Unit | **Erledigt** — 36 Tests |
 | 7 | Reserved-Words-Liste erweitern | S | Mittel | Unit | **Erledigt** |
-| 8 | DatabaseEcoreParser Integrationstest | M | Mittel | Unit (H2 embedded) | Offen |
+| 8 | DatabaseEcoreParser Integrationstest | M | Mittel | OSGi-Integration + Unit | Offen — `convertType`-Tests vorhanden, `parse()` braucht OSGi-Test |
 | 9 | Error-Handling-Strategie | M | Mittel | Unit | **Erledigt** |
 | 10 | Accessor & Indirection Tests | M | Niedrig | Unit | Offen |
+| 11 | JPAResource — EMF Resource-Schicht | L | Hoch | Unit + OSGi-Integration | Offen |
+| 12 | DatabaseEcoreParser verbessern | M | Mittel | Unit | Offen |
+| 13 | Inheritance-Mapping (EClass-Vererbung) | M | Hoch | Unit + Integration | Offen |
+| 14 | EEnum STRING/ORDINAL-Konfiguration | S | Mittel | Unit | Offen |
+| 15 | Delegate-Pattern O2O/O2M konsistent machen | M | Mittel | Unit | Offen |
 
 **Aufwand:** S = Small (1–2 Tage), M = Medium (3–5 Tage), L = Large (1–2 Wochen)
 
@@ -395,20 +476,25 @@ Der Großteil der Arbeitspakete kann mit **Standard-JUnit + Mockito** getestet w
 
 **Offen:** Debug-`printf` durch Logging ersetzen (wird in AP5 adressiert). `@Disabled` Integrationstests in `persistence.test` stehen noch aus.
 
-### AP3 — Many-to-Many aktivieren
-**Aufwand: M | Priorität: Hoch | Teststrategie: Integration**
+### AP3 — Many-to-Many aktivieren ✅
+**Aufwand: M | Priorität: Hoch | Teststrategie: Integration | Status: Erledigt**
 
-`EPersistenceManyToManyTest` ist `@Disabled`. Das Feature existiert im Code, wird aber nicht validiert.
+**Root Cause:** Bidirektionale M2M-Rückrichtung lieferte leere Ergebnisse. Zwei Bugs in `ManyToManyProcessor`:
 
-**Scope:**
-- Root Cause für `@Disabled` analysieren und beheben
-- Testfälle erweitern: uni/bidi, mit/ohne Opposite
-- JoinTable-Konfiguration End-to-End verifizieren
-- NoCacheVariante testen
+1. **`canProcess()` blockierte Stage 5:** `context.containsOpposite(source)` verhinderte, dass die inverse Seite in Stage 5 (`createOppositeMapping`) verarbeitet werden konnte. Die Referenz war bereits als Opposite registriert (Stage 4, owning side), und der Guard blockte sie in beiden Stages. **Fix:** `containsOpposite`-Check wird übersprungen wenn `isOppositeMapping()` true ist.
 
-**Teststrategie:** OSGi-Integrationstest mit H2 — hier geht es um den JPA-Roundtrip, nicht nur um Mapping-Erzeugung. Die Mapping-Erzeugung im `ManyToManyProcessor` kann vorab als Unit-Test in AP1 abgesichert werden.
+2. **`doProcess()` setzte mappedBy auf die falsche Seite:** Die inverse Seite setzte `mappedBy` auf die owning side's EORM-Mapping und markierte sich als Delegate — damit wurde das inverse Mapping nie zum Entity hinzugefügt. **Fix:** `mappedBy` wird auf die eigene (inverse) Mapping-Instanz gesetzt. Kein Delegate, kein JoinTable. Damit wird das Mapping korrekt registriert und `EDynamicTypeBuilder` erzeugt eine `ManyToManyMapping` mit gespiegelten Key-Fields und `isReadOnly=true`.
 
-**Ergebnis:** M2M-Beziehungen abgesichert.
+**Geänderte Dateien:**
+- `ManyToManyProcessor.java` — `canProcess()` und `doProcess()` korrigiert
+- `EPersistenceManyToManyTest.java` — Auskommentierte Assertions für C→A Rückrichtung aktiviert
+
+**Tests:** 3 OSGi-Integrationstests (+ NoCacheVariante):
+- `testManyToManyUni` — Unidirektional A→B ohne eOpposite
+- `testManyToManyNoEOpposite` — Unidirektional mit manueller Rückseite
+- `testManyToManyEOpposite` — Bidirektional A↔C mit eOpposite, inklusive Rückrichtung C→A
+
+**Ergebnis:** Bidirektionale M2M-Beziehungen funktionieren End-to-End (Persist + Find in beide Richtungen).
 
 ### AP4 — EDynamicTypeBuilder Tests
 **Aufwand: L | Priorität: Hoch | Teststrategie: Unit**
@@ -534,6 +620,142 @@ Spezial-Code für die EclipseLink-EMF-Brücke, aktuell ungetestet.
 **Teststrategie:** EObject-Instanzen programmatisch erzeugen. Accessor mit gemocktem TypeConverter testen. Indirection Policy mit minimalem EclipseLink-Descriptor-Setup (ohne Server/OSGi).
 
 **Ergebnis:** EclipseLink-EMF-Brücke abgesichert.
+
+### AP11 — JPAResource: EMF Resource-Schicht für JPA
+**Aufwand: L | Priorität: Hoch | Teststrategie: Unit + OSGi-Integration**
+
+Kernstück für die vollständige EMF-Integration. Ohne diese Schicht funktioniert das Framework nur als "JPA mit EMF-Objekten" (direkter EntityManager-Zugriff). Ziel: "EMF mit JPA-Backend" — transparente Proxy-Auflösung über `resourceSet.getResource(uri)`.
+
+**Ausgangslage:**
+- `PersistenceResource` Interface existiert (Core-Modul), definiert `load`, `save`, `delete`, `count`, `exist`
+- `PersistenceEngine` Interface existiert (Core-Modul), abstrakte Basisklasse `BasicPersistenceEngine`
+- `EBasicIndirectionPolicy` erzeugt korrekte proxyURIs (`jpa://puName/EntityName#//refName/idAttr/id`)
+- Es fehlt: Konkrete `JPAResource`-Implementierung, `ResourceFactory`, Proxy-Resolution
+
+**Architektur:**
+
+```
+ResourceSet
+  │
+  ├── Resource.Factory.Registry: "jpa" → JPAResourceFactory (@Component)
+  │
+  ▼
+JPAResourceFactory.createResource(URI)
+  │  URI: jpa://myPU/Person
+  │  → OSGi-Lookup: EntityManagerFactory mit Filter (fennec.jpa.persistenceUnitName=myPU)
+  │
+  ▼
+JPAResource extends ResourceImpl implements PersistenceResource
+  │
+  ├── load(options)
+  │     → EntityManager.createQuery() / find()
+  │     → Ergebnisse in resource.getContents()
+  │
+  ├── save(options)
+  │     → EntityManager.persist() / merge() für contents
+  │
+  ├── getEObject(fragment)
+  │     fragment: "//address/id/42"
+  │     → Parse: EClass-Name + ID-Attribut + ID-Wert
+  │     → EntityManager.find(descriptorClass, idValue)
+  │     → Proxy-Resolution für non-containment Referenzen
+  │
+  └── delete(options)
+        → EntityManager.remove()
+```
+
+**URI-Schema:**
+- `jpa://puName/` — Basis-URI für eine PersistenceUnit
+- `jpa://puName/EntityName` — Resource für einen Entity-Typ
+- `jpa://puName/EntityName#//refName/idAttr/42` — Proxy-Fragment für ein konkretes Objekt
+
+**Scope:**
+
+| Komponente | Modul | Beschreibung |
+|------------|-------|-------------|
+| `JPAResourceImpl` | `persistence.eclipselink` | Konkrete Resource-Implementierung, delegiert an EntityManager |
+| `JPAResourceFactory` | `persistence.eclipselink` | OSGi @Component, erzeugt JPAResource mit passender EMF |
+| `JPAPersistenceEngine` | `persistence.eclipselink` | Konkrete Engine für JPA-Operationen (find, persist, merge, remove, query) |
+| ProxyURI-Resolution | `JPAResourceImpl.getEObject()` | Fragment parsen → EM.find() → Proxy auflösen |
+| ResourceFactory-Registrierung | OSGi DS | `jpa`-Schema im ResourceSet registrieren |
+
+**Abhängigkeiten:**
+- `EBasicIndirectionPolicy` — ProxyURI-Format muss konsistent mit `getEObject()` Fragment-Parsing sein
+- `EDynamicTypeContext` — baseURI muss mit Resource-URI übereinstimmen
+- `NonContainmentConverter` — URI-Erzeugung muss das `jpa://`-Schema verwenden
+
+**Teststrategie:**
+- Unit: JPAResource mit gemocktem EntityManager, Fragment-Parsing, Options-Handling
+- OSGi-Integration: Vollständiger Roundtrip ResourceSet → load → save → Proxy-Resolution
+
+**Ergebnis:** EMF-Objekte können transparent über `resourceSet.getResource(uri)` geladen, gespeichert und aufgelöst werden. Non-Containment-Proxies werden automatisch über die JPA-Schicht resolved.
+
+### AP12 — DatabaseEcoreParser verbessern
+**Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
+
+Der `DatabaseEcoreParser` generiert aus einem DB-Schema ein ECore-Modell. Die aktuelle Implementierung hat mehrere Schwachstellen.
+
+**Scope:**
+
+| Verbesserung | Beschreibung |
+|-------------|-------------|
+| `convertType()` auf JDBCType-Enum | Aktuell PostgreSQL-spezifische Strings (`int4`, `float8`). Umstellen auf `JDBCType`-Enum (vendor-agnostisch). ~15 Standard-JDBC-Typen abdecken. |
+| PK-Erkennung über `primaryKeys()` | `StructureInfo.primaryKeys()` nutzen statt Umweg über ImportedKeys. `Map<String, Set<String>>` für PK-Spaltennamen. |
+| FK-Map Duplikate | `Collectors.toMap()` → `groupingBy()`, damit mehrere FKs pro Tabelle nicht crashen. |
+| Nullable-Info | `ColumnMetaData.nullability()` auswerten → `lowerBound` setzen. |
+| AutoIncrement | `autoIncrement() == YES` → `setID(true)` markieren. |
+
+**Teststrategie:** Bestehende `DatabaseEcoreParserConvertTypeTest` auf `JDBCType`-Enum umstellen. `isPK()`-Tests an neue Signatur anpassen.
+
+**Ergebnis:** Parser funktioniert vendor-agnostisch (H2, PostgreSQL, MySQL) und nutzt verfügbare DB-Metadaten vollständig.
+
+### AP13 — Inheritance-Mapping (EClass-Vererbung)
+**Aufwand: M | Priorität: Hoch | Teststrategie: Unit + Integration**
+
+Das EORM-Modell unterstützt JPA-Inheritance (`SINGLE_TABLE`, `JOINED`, `TABLE_PER_CLASS` + DiscriminatorColumn), aber die Auto-Generierung ignoriert EClass-Vererbung komplett. Jede EClass wird als eigenständige Entity gemappt, ohne Berücksichtigung von `eClass.getESuperTypes()`.
+
+**Scope:**
+- Neuer Processor (oder Erweiterung von `EntityProcessor`) der EClass-Vererbungshierarchien erkennt
+- Default-Strategie bestimmen (z.B. `SINGLE_TABLE` als JPA-Default)
+- `Inheritance`, `DiscriminatorColumn`, `DiscriminatorValue` im EORM-Entity setzen
+- Geerbte Attribute/Referenzen korrekt der Superclass-Entity zuordnen (nicht duplizieren)
+- Abstrakte EClasses als `@MappedSuperclass` oder abstrakte Entity behandeln
+
+**Teststrategie:** Unit-Tests mit EClass-Hierarchien (einfach, mehrstufig, abstrakt). OSGi-Integration mit H2 für Persist/Find über Vererbung.
+
+**Ergebnis:** ECore-Modelle mit Vererbung erzeugen korrekte JPA-Inheritance-Mappings.
+
+### AP14 — EEnum STRING/ORDINAL-Konfiguration
+**Aufwand: S | Priorität: Mittel | Teststrategie: Unit**
+
+EEnums werden im `BasicProcessor` erkannt und als `enumerated` referenziert, aber es fehlt die explizite Steuerung ob `EnumType.STRING` oder `EnumType.ORDINAL` verwendet wird.
+
+**Scope:**
+- Default auf `EnumType.STRING` setzen (sicherer als ORDINAL bei Modelländerungen)
+- EORM-Modell erlaubt bereits explizite Konfiguration — sicherstellen dass dies in `EDynamicTypeBuilder.processBasic()` korrekt ausgewertet wird
+- Prüfen ob EclipseLink den Enum-Typ korrekt aus dem EORM-Mapping übernimmt
+
+**Teststrategie:** Unit-Test mit EEnum-Attribut, Verify dass STRING als Default gesetzt wird. Integration mit H2 für Roundtrip.
+
+**Ergebnis:** EEnums werden mit explizitem EnumType persistiert, Default ist STRING.
+
+### AP15 — Delegate-Pattern O2O/O2M konsistent machen
+**Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
+
+Bei bidirektionalem M2M wurde das Delegate-Pattern in AP3 korrigiert: Die inverse Seite bekommt `mappedBy` auf sich selbst und wird nicht als Delegate markiert. Bei O2O und O2M ist das alte Pattern noch aktiv: Stage 5 setzt `mappedBy` auf die **owning side** und markiert die inverse Seite als Delegate. Das funktioniert weil `EDynamicTypeBuilder` die owning side dann als mappedBy-Seite behandelt, ist aber inkonsistent mit JPA-Semantik.
+
+**Betroffene Processoren:**
+- `OneToOneProcessor.doProcess()` — setzt `mappedBy` auf `context.getMapping(source)` (owning), Delegate
+- `OneToManyProcessor.doProcess()` — setzt `mappedBy` auf `context.getMapping(opposite)` (owning), Delegate
+- `ManyToOneProcessor.doProcess()` — setzt `mappedBy` auf OneToMany-Mapping (owning), Delegate
+
+**Ziel:** Analog zu AP3 (M2M): `mappedBy` auf die eigene (inverse) Mapping-Instanz setzen, kein Delegate, damit das Mapping korrekt zum Entity hinzugefügt wird. `EDynamicTypeBuilder` kann dann einheitlich filtern.
+
+**Risiko:** Höher als bei M2M, weil O2O und O2M/M2O unterschiedliche Ownership-Semantik haben (FK-Besitz vs. JoinTable). Sorgfältiger Abgleich mit EclipseLink-Referenz nötig.
+
+**Teststrategie:** Bestehende Unit-Tests (85 in AP1) müssen weiterhin grün sein. OSGi-Integrationstests für O2O und O2M bidi verifizieren.
+
+**Ergebnis:** Einheitliches mappedBy-Pattern über alle Referenz-Typen (O2O, O2M, M2O, M2M).
 
 ## 12. Bekannte Code-Quality-Issues
 
