@@ -321,10 +321,10 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | Modul | Unit-Tests | Integrationstests |
 |-------|-----------|-------------------|
 | `persistence` (Core) | Converter-Tests (2 Klassen, ~720 Zeilen), **EMFHelper (1 Klasse, 19 Tests)**, **ConverterService (1 Klasse, 17 Tests)** | — |
-| `persistence.orm` | Helper-Tests (3 Klassen), **Processor-Pipeline (5 Klassen, 85 Tests)**, **Composite-ID (2 Klassen, 39 Tests)** | — |
-| `persistence.eclipselink` | ECopier-Tests (5 Klassen) | — |
+| `persistence.orm` | Helper-Tests (3 Klassen), **Processor-Pipeline (6 Klassen, 96 Tests inkl. Inheritance)**, **Composite-ID (2 Klassen, 39 Tests)** | — |
+| `persistence.eclipselink` | ECopier-Tests (5 Klassen), **EDynamicTypeBuilder (1 Klasse, 16 Tests)**, **Accessor/Indirection (1 Klasse, 22 Tests)** | — |
 | `persistence.ecore` | Parser Unit-Tests (1 Klasse, Mockito) | — |
-| `persistence.test` | — | OSGi-Tests (~30 Klassen, H2) |
+| `persistence.test` | — | OSGi-Tests (~35 Klassen, H2) inkl. **M2M bidi**, **Inheritance**, **JPAResource CRUD** |
 
 **Gut abgedeckt:**
 - Type Converter (alle Typen, Null-Handling, Edge Cases)
@@ -376,6 +376,20 @@ Alle Komponenten nutzen OSGi Declarative Services:
 - **Ursache:** Der `else`-Branch in `calculateMappingType()` nutzte `getMappingType()` für den Opposite. Diese Methode liefert aber für alle non-containment Referenzen pauschal `MANY_TO_MANY` (Zeile 189), unabhängig von der Kardinalität. Dadurch konnte die Verfeinerung in den Switch-Cases nie auf `ONE_TO_ONE` oder `MANY_TO_ONE` kommen.
 - **Fix:** Direkte Kardinalitätsprüfung über `oppositeRef.isMany()` im non-containment `else`-Block, statt Umweg über `getMappingType()`. `getMappingType()` und `createMapping()` bleiben unverändert.
 - **Auswirkung:** Die MappedBy-Berechnung für non-containment bidirektionale Referenzen ist jetzt korrekt. Die Processor-Pipeline war nicht betroffen, da diese eigene `canProcess()`-Guards nutzt.
+
+**Bug: `EObjectBuilder.mergeIntoObject()` — Merge von detached EObjects persistiert keine Änderungen**
+
+- **Symptom:** Nach `eSet()` auf einem detached EObject und anschließendem `EntityManager.merge()` werden die Änderungen nicht in die Datenbank geschrieben. Der alte Wert bleibt bestehen.
+- **Ursache:** `mergeIntoObject()` prüfte `if (isUnInitialized && ...)` — bei normalem Merge ist `isUnInitialized=false`, wodurch die Attribut-Kopie komplett übersprungen wurde. Die `eSet()`-Änderungen wurden nie in den UnitOfWork-Clone übertragen. Change Detection verglich zwei identische Objekte → kein UPDATE.
+- **Fix:** ECopier kopiert EObject-Attribute unabhängig von `isUnInitialized` (respektiert EMF-Typen). Foreign Reference Mappings werden separat über EclipseLink's Standard-Logik gemergt. Direct Mappings gehen nicht über `super.mergeIntoObject()`, da EclipseLink rohe DB-Typen setzen würde (`java.sql.Date` statt `java.time.LocalDate`).
+- **Auswirkung:** `save()` via JPAResource und `EntityManager.merge()` funktionieren jetzt korrekt für detached EObjects.
+
+**Bug: `EDynamicTypeBuilder.processBasic()` — EEnum-Erkennung fehlerhaft**
+
+- **Symptom:** Custom EEnums (wie `PersonType`) wurden nicht explizit als String gemappt.
+- **Ursache:** Vergleich `ea.getEAttributeType() == EcorePackage.Literals.EENUM` prüfte gegen die EEnum-Metaklasse, nicht gegen EEnum-Instanzen. Funktionierte nur durch Null-Fallback.
+- **Fix:** `instanceof EEnum` statt `==`-Vergleich.
+- **Auswirkung:** EEnums werden jetzt zuverlässig als String persistiert, unabhängig von `getInstanceClass()`.
 
 ### 9.3 Test-Infrastruktur
 
@@ -695,18 +709,21 @@ JPAResource extends ResourceImpl implements PersistenceResource
 
 | Datei | Beschreibung |
 |-------|-------------|
-| `JPAResourceImpl.java` | EMF Resource mit JPA-Backend: `load()` via JPQL-Query, `save()` via merge, `getEObject(fragment)` für Proxy-Resolution, `count()`/`exist()` |
+| `JPAResourceImpl.java` | EMF Resource mit JPA-Backend: `load()`, `save()` (merge), `delete()` (remove), `getEObject(fragment)` (Proxy-Resolution), `count()`/`exist()` |
 | `JPAResourceFactory.java` | Factory für `jpa://` URIs, registriert sich im ResourceSet via `getProtocolToFactoryMap()` |
 | `package-info.java` | OSGi Export-Annotation für `resource` Package |
-| `JPAResourceIntegrationTest.java` | 4 OSGi-Tests: load, count/exist, getEObject (Proxy-Resolution), EMF-Setup |
+| `JPAResourceIntegrationTest.java` | 6 OSGi-Tests: load, save (merge detached), delete, count/exist, getEObject (Proxy-Resolution), EMF-Setup |
+| `EObjectBuilder.java` | **Bugfix:** `mergeIntoObject()` kopierte bei normalem Merge keine Attribute → detached EObject-Änderungen gingen verloren |
+
+**Bugfix EObjectBuilder.mergeIntoObject():**
+Die Methode übersprang das Kopieren von Attributen wenn `isUnInitialized=false` (normaler Merge-Fall). Dadurch wurden `eSet()`-Änderungen an detached Objekten nie in den UnitOfWork-Clone übertragen. Fix: ECopier kopiert EObject-Attribute (respektiert EMF-Typen wie `LocalDate`), Foreign Reference Mappings werden über EclipseLink's Standard-Logik gemergt. Direct Mappings gehen nicht über `super.mergeIntoObject()`, da EclipseLink rohe DB-Typen setzen würde (z.B. `java.sql.Date` statt `java.time.LocalDate`).
 
 **Noch offen für spätere Erweiterung:**
 - OSGi @Component Registrierung der JPAResourceFactory (aktuell manuell im Test)
 - JPAPersistenceEngine als separate Engine-Implementierung
-- `save()` mit insert/update Unterscheidung
 - Options-Auswertung (Filter, Batch, Lazy Loading)
 
-**Ergebnis:** EMF-Objekte können transparent über `resourceSet.getResource(uri)` geladen und aufgelöst werden. Proxy-Fragments (`//refName/idAttr/value`) werden via `EntityManager.find()` resolved.
+**Ergebnis:** Vollständiger CRUD-Roundtrip über EMF Resource API: `load()`, `save()` (inkl. Merge detached Objekte), `delete()`, `count()`/`exist()`, Proxy-Resolution via `getEObject(fragment)`.
 
 ### AP12 — DatabaseEcoreParser verbessern
 **Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
