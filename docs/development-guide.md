@@ -418,7 +418,7 @@ Alle Komponenten nutzen OSGi Declarative Services:
 | 8 | DatabaseEcoreParser Integrationstest | M | Mittel | OSGi-Integration + Unit | Offen — `convertType`-Tests vorhanden, `parse()` braucht OSGi-Test |
 | 9 | Error-Handling-Strategie | M | Mittel | Unit | **Erledigt** |
 | 10 | Accessor & Indirection Tests | M | Niedrig | Unit | **Erledigt** — 22 Tests (Accessor, Enum, Containment, ProxyURI) |
-| 11 | JPAResource — EMF Resource-Schicht | L | Hoch | Unit + OSGi-Integration | Offen |
+| 11 | JPAResource — EMF Resource-Schicht | L | Hoch | Unit + OSGi-Integration | **Erledigt** — load, save, count, exist, getEObject (Proxy-Resolution) |
 | 12 | DatabaseEcoreParser verbessern | M | Mittel | Unit | Offen |
 | 13 | Inheritance-Mapping (EClass-Vererbung) | M | Hoch | Unit + Integration | **Erledigt** — SINGLE_TABLE, 11 Unit-Tests + OSGi-Test |
 | 14 | EEnum STRING/ORDINAL-Konfiguration | S | Mittel | Unit | **Erledigt** — Bugfix + STRING als Default |
@@ -628,10 +628,10 @@ private static final Logger LOG = Logger.getLogger(MyClass.class.getName());
 
 **Ergebnis:** EclipseLink-EMF-Brücke (Accessor, Enum-Handling, Containment-Erkennung, ProxyURI-Format) abgesichert.
 
-### AP11 — JPAResource: EMF Resource-Schicht für JPA
-**Aufwand: L | Priorität: Hoch | Teststrategie: Unit + OSGi-Integration**
+### AP11 — JPAResource: EMF Resource-Schicht für JPA ✅
+**Aufwand: L | Priorität: Hoch | Teststrategie: Unit + OSGi-Integration | Status: Erledigt**
 
-Kernstück für die vollständige EMF-Integration. Ohne diese Schicht funktioniert das Framework nur als "JPA mit EMF-Objekten" (direkter EntityManager-Zugriff). Ziel: "EMF mit JPA-Backend" — transparente Proxy-Auflösung über `resourceSet.getResource(uri)`.
+Kernstück für die vollständige EMF-Integration. Ermöglicht "EMF mit JPA-Backend" — transparente Proxy-Auflösung über `resourceSet.getResource(uri)`.
 
 **Ausgangslage:**
 - `PersistenceResource` Interface existiert (Core-Modul), definiert `load`, `save`, `delete`, `count`, `exist`
@@ -691,11 +691,22 @@ JPAResource extends ResourceImpl implements PersistenceResource
 - `EDynamicTypeContext` — baseURI muss mit Resource-URI übereinstimmen
 - `NonContainmentConverter` — URI-Erzeugung muss das `jpa://`-Schema verwenden
 
-**Teststrategie:**
-- Unit: JPAResource mit gemocktem EntityManager, Fragment-Parsing, Options-Handling
-- OSGi-Integration: Vollständiger Roundtrip ResourceSet → load → save → Proxy-Resolution
+**Umgesetzt:**
 
-**Ergebnis:** EMF-Objekte können transparent über `resourceSet.getResource(uri)` geladen, gespeichert und aufgelöst werden. Non-Containment-Proxies werden automatisch über die JPA-Schicht resolved.
+| Datei | Beschreibung |
+|-------|-------------|
+| `JPAResourceImpl.java` | EMF Resource mit JPA-Backend: `load()` via JPQL-Query, `save()` via merge, `getEObject(fragment)` für Proxy-Resolution, `count()`/`exist()` |
+| `JPAResourceFactory.java` | Factory für `jpa://` URIs, registriert sich im ResourceSet via `getProtocolToFactoryMap()` |
+| `package-info.java` | OSGi Export-Annotation für `resource` Package |
+| `JPAResourceIntegrationTest.java` | 4 OSGi-Tests: load, count/exist, getEObject (Proxy-Resolution), EMF-Setup |
+
+**Noch offen für spätere Erweiterung:**
+- OSGi @Component Registrierung der JPAResourceFactory (aktuell manuell im Test)
+- JPAPersistenceEngine als separate Engine-Implementierung
+- `save()` mit insert/update Unterscheidung
+- Options-Auswertung (Filter, Batch, Lazy Loading)
+
+**Ergebnis:** EMF-Objekte können transparent über `resourceSet.getResource(uri)` geladen und aufgelöst werden. Proxy-Fragments (`//refName/idAttr/value`) werden via `EntityManager.find()` resolved.
 
 ### AP12 — DatabaseEcoreParser verbessern
 **Aufwand: M | Priorität: Mittel | Teststrategie: Unit**
