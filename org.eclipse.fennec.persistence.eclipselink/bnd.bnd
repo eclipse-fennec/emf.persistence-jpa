@@ -20,3 +20,4 @@ Bundle-Description: EMF Persistence with Eclipselink JPA
 	
 -includeresource: \
 	META-INF=xml
+-testpath: assertj-core

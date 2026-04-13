@@ -13,7 +13,6 @@
 package org.eclipse.fennec.persistence.orm.helper;
 
 import static java.util.Objects.isNull;
-import static java.util.function.Predicate.not;
 
 import java.math.BigDecimal;
 import java.util.Collection;
