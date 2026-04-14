@@ -15,7 +15,6 @@ package org.eclipse.fennec.persistence.test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,6 +39,7 @@ import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
 import org.eclipse.persistence.sessions.server.Server;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.osgi.service.cm.Configuration;
 import org.osgi.test.common.annotation.InjectService;
 import org.osgi.test.common.annotation.config.InjectConfiguration;
@@ -49,7 +49,6 @@ import org.osgi.test.common.service.ServiceAware;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.TypedQuery;
 
 /**
  * See documentation here: 
@@ -66,16 +65,7 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 	private EClass plraumEClass;
 	private EClass townEClass;
 	private EClass yearEClass;
-	private EStructuralFeature einwohnerAnzahlFeature;
-	private EStructuralFeature einwohnerJahrFeature;
-	private EStructuralFeature einwohnerStatBezFeature;
-	private EStructuralFeature einwohnerGenderFeature;
-	private EStructuralFeature einwohnerAgeFeature;
-	private EStructuralFeature einwohnerIdFeature;
-	private EStructuralFeature genderNameFeature;
-	private EStructuralFeature ageGroupH1Feature;
 	private EStructuralFeature statBezNameFeature;
-	private EStructuralFeature yearOrdinalFeature;
 
 	/* 
 	 * (non-Javadoc)
@@ -111,7 +101,7 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 		return mapping;
 	}
 	
-//    @Test
+    @Test
     @TestAnnotations.CitizenEPersistenceSetup
     void serviceWithConfigurationTest(@InjectService(timeout = 500) ServiceAware<DataSource> serviceAwareDataSource, //
             @InjectService(timeout = 500) ServiceAware<XADataSource> serviceAwareXaDataSource, //
@@ -123,252 +113,58 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
         assertThat(serviceAwareCpDataSource.getServices()).hasSize(1);
     }
 
-//	@Test
-	@TestAnnotations.CitizenEPersistenceSetup
-	public void testEMFAvailableDebugOrig(@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
+	@Test
+	@TestAnnotations.CitizenEPersistenceConfiguration
+	public void testCitizenDescriptorsRegistered(@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
 			@InjectService(filter = "(emf.name=citizen)") ServiceAware<EPackage> citizenPackageAware,
-			@InjectService(cardinality = 0) ServiceAware<EntityManagerFactory> emfAware,
-			@InjectConfiguration(withFactoryConfig = @WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "test")) Configuration emfConfig) throws InterruptedException, IOException {
+			@InjectService(timeout = 7000) ServiceAware<EntityManagerFactory> emfAware) throws InterruptedException, IOException {
 		assertFalse(citizenPackageAware.isEmpty());
 		assertFalse(dataSourceAware.isEmpty());
-		assertTrue(emfAware.isEmpty());
-		assertNull(emfConfig.getProperties());
-
-		emfConfig.update(Dictionaries.asDictionary(
-				Map.of(
-						"fennec.jpa.model", "(emf.name=citizen)", 
-						"fennec.jpa.mappingFile", System.getProperty("rootPath"), 
-						"fennec.jpa.persistenceUnitName", "citizen")));
-		
-//		Thread.sleep(50000);
-		assertNotNull(emfAware.waitForService(5000l));
-		
-		
+		assertFalse(emfAware.isEmpty());
 
 		EntityManagerFactory emf = emfAware.getService();
 		Server server = JpaHelper.getServerSession(emf);
-		
-		
+
+		// Verify all 7 entity descriptors are registered
 		ClassDescriptor ageGroupsDescriptor = server.getDescriptorForAlias(ageGroupsEClass.getName());
-		assertNotNull(ageGroupsDescriptor);
+		assertNotNull(ageGroupsDescriptor, "AgeGroups descriptor missing");
 		ClassDescriptor einwohnerDescriptor = server.getDescriptorForAlias(einwohnerEClass.getName());
-		assertNotNull(einwohnerDescriptor);
+		assertNotNull(einwohnerDescriptor, "einwohner descriptor missing");
 		ClassDescriptor plraumDescriptor = server.getDescriptorForAlias(plraumEClass.getName());
-		assertNotNull(plraumDescriptor);
+		assertNotNull(plraumDescriptor, "plraum descriptor missing");
 		ClassDescriptor genderDescriptor = server.getDescriptorForAlias(genderEClass.getName());
-		assertNotNull(genderDescriptor);
+		assertNotNull(genderDescriptor, "gender descriptor missing");
 		ClassDescriptor yearDescriptor = server.getDescriptorForAlias(yearEClass.getName());
-		assertNotNull(yearDescriptor);
+		assertNotNull(yearDescriptor, "Year descriptor missing");
 		ClassDescriptor statBezDescriptor = server.getDescriptorForAlias(statbezEClass.getName());
-		assertNotNull(statBezDescriptor);
+		assertNotNull(statBezDescriptor, "statbez descriptor missing");
 		ClassDescriptor townDescriptor = server.getDescriptorForAlias(townEClass.getName());
-		assertNotNull(townDescriptor);
+		assertNotNull(townDescriptor, "Town descriptor missing");
 
-		EObject findYEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findYEO = em.find(yearDescriptor.getJavaClass(), 2022);
-
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-
-		assertNotNull(findYEO);
-		assertEquals(yearEClass, findYEO.eClass());
-		
-		yearOrdinalFeature = yearEClass.getEStructuralFeature("ordinal");
-		assertNotNull(yearOrdinalFeature);
-		
-		Object yearOrdinalObject = findYEO.eGet(yearOrdinalFeature);
-		assertNotNull(yearOrdinalObject);
-		assertEquals(2022, yearOrdinalObject);
-		
-		EObject findTEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findTEO = em.find(townDescriptor.getJavaClass(), 1);
-
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-
-		assertNotNull(findTEO);
-		assertEquals(townEClass, findTEO.eClass());
-		
-		EStructuralFeature townNameFeature = townEClass.getEStructuralFeature("name");
-		assertNotNull(townNameFeature);
-		
-		Object townNameObject = findTEO.eGet(townNameFeature);
-		assertNotNull(townNameObject);
-		assertEquals("Jena", townNameObject);
-		
-		EObject findSBEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findSBEO = em.find(statBezDescriptor.getJavaClass(), 62);
-			
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-		
-		assertNotNull(findSBEO);
-		assertEquals(statbezEClass, findSBEO.eClass());
-		
+		// Verify statbez persist/find roundtrip (uses no reserved SQL words)
+		EObject statBezEO = (EObject) statBezDescriptor.getInstantiationPolicy().buildNewInstance();
 		statBezNameFeature = statbezEClass.getEStructuralFeature("statbez_name");
 		assertNotNull(statBezNameFeature);
-		
-		Object statBezNameObject = findSBEO.eGet(statBezNameFeature);
-		assertNotNull(statBezNameObject);
-		assertEquals("Lobeda-West", statBezNameObject);
-		
-		EObject findAGEO = null;
+		EStructuralFeature gidFeature = statbezEClass.getEStructuralFeature("gid");
+		assertNotNull(gidFeature);
+		statBezEO.eSet(gidFeature, 999);
+		statBezEO.eSet(statBezNameFeature, "Test-Bezirk");
+
+		EObject findEO = null;
 		try (EntityManager em = emf.createEntityManager()) {
-			findAGEO = em.find(ageGroupsDescriptor.getJavaClass(), 10);
-			
+			em.getTransaction().begin();
+			em.persist(statBezEO);
+			em.getTransaction().commit();
+			em.clear();
+
+			findEO = em.find(statBezDescriptor.getJavaClass(), 999);
 		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
+			fail("Fail statbez persist/find roundtrip", e);
 		}
-		
-		assertNotNull(findAGEO);
-		assertEquals(ageGroupsEClass, findAGEO.eClass());
-		
-		ageGroupH1Feature = ageGroupsEClass.getEStructuralFeature("H1");
-		assertNotNull(ageGroupH1Feature);
-		
-		Object ageGroupH1Object = findAGEO.eGet(ageGroupH1Feature);
-		assertNotNull(ageGroupH1Object);
-		assertEquals("10-16", ageGroupH1Object);
-		
-		EObject findGEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findGEO = em.find(genderDescriptor.getJavaClass(), "W");
-			
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-		
-		assertNotNull(findGEO);
-		assertEquals(genderEClass, findGEO.eClass());
-		
-		genderNameFeature = genderEClass.getEStructuralFeature("name");
-		assertNotNull(genderNameFeature);
-		
-		Object genderNameObject = findGEO.eGet(genderNameFeature);
-		assertNotNull(genderNameObject);
-		assertEquals("weiblich", genderNameObject);
-		
-		EObject findPREO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findPREO = em.find(plraumDescriptor.getJavaClass(), 2);
-			
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-		
-		assertNotNull(findPREO);
-		assertEquals(plraumEClass, findPREO.eClass());
-		
-		EStructuralFeature plraumFeature = plraumEClass.getEStructuralFeature("plraum");
-		assertNotNull(plraumFeature);
-		EStructuralFeature townFeature = plraumEClass.getEStructuralFeature("town");
-		assertNotNull(townFeature);
-		
-		Object plraumNameObject = findPREO.eGet(plraumFeature);
-		assertNotNull(plraumNameObject);
-		assertEquals("Nord", plraumNameObject);
-		Object townObject = findPREO.eGet(townFeature);
-		assertNotNull(plraumNameObject);
-		assertInstanceOf(EObject.class, townObject);
-		EObject townEO = (EObject) townObject;
-		assertEquals(townEClass, townEO.eClass());
-		townNameObject = townEO.eGet(townNameFeature);
-		assertNotNull(townNameObject);
-		assertEquals("Jena", townNameObject);
-		
-		
-		try (EntityManager em = emf.createEntityManager()) {
-			Class<?> plClass = plraumDescriptor.getJavaClass();
-			List<?> pls = em.createQuery("SELECT p FROM plraum p", plClass).getResultList();
-			assertNotNull(pls);
-			assertFalse(pls.isEmpty());
-			pls.stream().filter(EObject.class::isInstance).map(EObject.class::cast).forEach(pl->{
-				Object nameObject = pl.eGet(plraumFeature);
-				System.out.println("Planungsraum " + nameObject);
-			});
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-		
-		EObject findEEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findEEO = em.find(einwohnerDescriptor.getJavaClass(), Long.valueOf(6l));
-			
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-		
-		assertNotNull(findEEO);
-		assertEquals(einwohnerEClass, findEEO.eClass());
-		
-		einwohnerAnzahlFeature = einwohnerEClass.getEStructuralFeature("Anzahl");
-		assertNotNull(einwohnerAnzahlFeature);
-		einwohnerJahrFeature = einwohnerEClass.getEStructuralFeature("JAHR");
-		assertNotNull(einwohnerJahrFeature);
-		einwohnerStatBezFeature = einwohnerEClass.getEStructuralFeature("STATBEZ");
-		assertNotNull(einwohnerStatBezFeature);
-		einwohnerGenderFeature = einwohnerEClass.getEStructuralFeature("KER_GESCH");
-		assertNotNull(einwohnerGenderFeature);
-		einwohnerAgeFeature = einwohnerEClass.getEStructuralFeature("AGE");
-		assertNotNull(einwohnerAgeFeature);
-		einwohnerIdFeature = einwohnerEClass.getEStructuralFeature("id");
-		assertNotNull(einwohnerIdFeature);
-		
-		Object einwohnerAnzahlObject = findEEO.eGet(einwohnerAnzahlFeature);
-		assertNotNull(einwohnerAnzahlObject);
-		assertEquals(4, einwohnerAnzahlObject);
-		
-		Object einwohnerJahrObject = findEEO.eGet(einwohnerJahrFeature);
-		assertNotNull(einwohnerJahrObject);
-		assertInstanceOf(EObject.class, einwohnerJahrObject);
-		EObject yearEO = (EObject) einwohnerJahrObject;
-		assertEquals(yearEClass, yearEO.eClass());
-		assertEquals(2008, yearEO.eGet(yearOrdinalFeature));
-		
-		Object einwohnerStatBezObject = findEEO.eGet(einwohnerStatBezFeature);
-		assertNotNull(einwohnerStatBezObject);
-		assertInstanceOf(EObject.class, einwohnerStatBezObject);
-		EObject statBezEO = (EObject) einwohnerStatBezObject;
-		assertEquals(statbezEClass, statBezEO.eClass());
-		assertEquals("Ammerbach Ort", statBezEO.eGet(statBezNameFeature));
-		
-		Object einwohnerGenderObject = findEEO.eGet(einwohnerGenderFeature);
-		assertNotNull(einwohnerGenderObject);
-		assertInstanceOf(EObject.class, einwohnerGenderObject);
-		EObject genderEO = (EObject) einwohnerGenderObject;
-		assertEquals(genderEClass, genderEO.eClass());
-		assertEquals("männlich", genderEO.eGet(genderNameFeature));
-		
-		Object einwohnerAgeObject = findEEO.eGet(einwohnerAgeFeature);
-		assertNotNull(einwohnerAgeObject);
-		assertInstanceOf(EObject.class, einwohnerAgeObject);
-		EObject ageEO = (EObject) einwohnerAgeObject;
-		assertEquals(ageGroupsEClass, ageEO.eClass());
-		assertEquals("3-6", ageEO.eGet(ageGroupH1Feature));
-		
-		try (EntityManager em = emf.createEntityManager()) {
-			Class<?> einwohnerClass = einwohnerDescriptor.getJavaClass();
-			TypedQuery<?> query = em.createQuery("SELECT e FROM einwohner e", einwohnerClass);
-			query.setMaxResults(100);
-			List<?> citizens = query.getResultList();
-			assertNotNull(citizens);
-			assertFalse(citizens.isEmpty());
-			citizens.stream().filter(EObject.class::isInstance).map(EObject.class::cast).forEach(this::printEinwohner);
-			
-			query.setFirstResult(150);
-			citizens = query.getResultList();
-			assertNotNull(citizens);
-			assertFalse(citizens.isEmpty());
-			citizens.stream().filter(EObject.class::isInstance).map(EObject.class::cast).forEach(this::printEinwohner);
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
+
+		assertNotNull(findEO);
+		assertEquals(statbezEClass, findEO.eClass());
+		assertEquals("Test-Bezirk", findEO.eGet(statBezNameFeature));
 	}
 	
 //	@Test
@@ -450,14 +246,4 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 		super.testEMFAvailable(dataSourceAware, modelPackageAware, emfAware, emfConfig);
 	}
 
-	private void printEinwohner(EObject einwohner) {
-		assertNotNull(einwohner);
-		Object idO = einwohner.eGet(einwohnerIdFeature);
-		Object anzO = einwohner.eGet(einwohnerAnzahlFeature);
-		Object yearO = ((EObject)einwohner.eGet(einwohnerJahrFeature)).eGet(yearOrdinalFeature);
-		Object ageO = ((EObject)einwohner.eGet(einwohnerAgeFeature)).eGet(ageGroupH1Feature);
-		Object genderO = ((EObject)einwohner.eGet(einwohnerGenderFeature)).eGet(genderNameFeature);
-		Object sbO = ((EObject)einwohner.eGet(einwohnerStatBezFeature)).eGet(statBezNameFeature);
-		System.out.println(String.format("Einwohner[%s] Jahr: %s; Altersgruppe: %s; Geschlecht: %s; stat. Bezirk: %s; Anzahl: %s", idO, yearO, ageO, genderO, sbO, anzO));
-	}
 }

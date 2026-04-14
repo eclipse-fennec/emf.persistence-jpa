@@ -165,10 +165,24 @@ public class TestAnnotations {
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface DefaultEPersistenceSetup {}
 
-	@WithFactoryConfiguration(factoryPid = PID_DATASOURCE, name = "1", location = "?", properties = 
+	@WithFactoryConfiguration(factoryPid = PID_DATASOURCE, name = "1", location = "?", properties =
 			@Property(key = DATASOURCE_PROPERTY_IDENTIFIER, value = "%s", templateArguments = {
-					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_DB_PATH), 	
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_DB_PATH),
 			}))
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface CitizenEPersistenceSetup {}
+
+	@WithFactoryConfiguration(factoryPid = PID_DATASOURCE, name = "1", location = "?", properties =
+			@Property(key = DATASOURCE_PROPERTY_IDENTIFIER, value = "%s", templateArguments = {
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_DB_PATH),
+			}))
+	@WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "test", properties = {
+			@Property(key = "fennec.jpa.model", value = "(emf.name=citizen)"),
+			@Property(key = "fennec.jpa.mappingFile", value = "%s", templateArguments = {
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_MODEL_FILE_PATH)
+			}),
+			@Property(key = "fennec.jpa.persistenceUnitName", value = "citizen")
+	})
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface CitizenEPersistenceConfiguration {}
 }

@@ -37,6 +37,7 @@ import org.eclipse.fennec.persistence.eorm.Inheritance;
 import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.SequenceGenerator;
 import org.eclipse.fennec.persistence.eorm.Table;
+import org.eclipse.fennec.persistence.Keywords;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 import org.eclipse.fennec.persistence.processor.ProcessorImpl;
@@ -140,14 +141,35 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 			// Root of hierarchy — set inheritance strategy + discriminator column
 			target.setDiscriminatorValue(source.getName());
 			Inheritance inheritance = EORMFactory.eINSTANCE.createInheritance();
-			inheritance.setStrategy(InheritanceType.SINGLETABLE);
+			inheritance.setStrategy(resolveInheritanceStrategy());
 			target.setInheritance(inheritance);
-			DiscriminatorColumn dc = EORMFactory.eINSTANCE.createDiscriminatorColumn();
-			dc.setName("DTYPE");
-			dc.setDiscriminatorType(DiscriminatorType.STRING);
-			target.setDiscriminatorColumn(dc);
+			// Discriminator column is needed for SINGLE_TABLE and JOINED (optional for JOINED)
+			if (inheritance.getStrategy() != InheritanceType.TABLEPERCLASS) {
+				DiscriminatorColumn dc = EORMFactory.eINSTANCE.createDiscriminatorColumn();
+				dc.setName("DTYPE");
+				dc.setDiscriminatorType(DiscriminatorType.STRING);
+				target.setDiscriminatorColumn(dc);
+			}
 		}
 		// Standalone entity (no hierarchy) — nothing to configure
+	}
+
+	/**
+	 * Resolves the inheritance strategy for this EClass hierarchy root.
+	 * Checks for an EAnnotation with source {@link Keywords#PERSISTENCE_ANNOTATION_SOURCE}
+	 * and key "inheritance" with value "JOINED", "TABLE_PER_CLASS", or "SINGLE_TABLE".
+	 * Defaults to SINGLE_TABLE if no annotation is found.
+	 */
+	private InheritanceType resolveInheritanceStrategy() {
+		return Optional.ofNullable(source.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+				.map(a -> a.getDetails().get("inheritance"))
+				.map(String::toUpperCase)
+				.map(s -> switch (s) {
+					case "JOINED" -> InheritanceType.JOINED;
+					case "TABLE_PER_CLASS" -> InheritanceType.TABLEPERCLASS;
+					default -> InheritanceType.SINGLETABLE;
+				})
+				.orElse(InheritanceType.SINGLETABLE);
 	}
 
 	/**

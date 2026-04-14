@@ -13,93 +13,115 @@
 package org.eclipse.fennec.persistence.ecore;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
 
-import org.eclipse.daanse.jdbc.db.api.schema.ColumnReference;
-import org.eclipse.daanse.jdbc.db.api.schema.ImportedKey;
-import org.eclipse.emf.common.util.BasicEList;
-import org.eclipse.emf.common.util.EList;
+import java.sql.Types;
+
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
-import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
 class DatabaseEcoreParserTest {
 
-	@Mock
-	EClass eClass;
-	@Mock
-	EClass eClassRef;
+	@Nested
+	@DisplayName("convertType — JDBC type code to EDataType")
+	class ConvertTypeTests {
 
-	@Test
-	void testAddAttribute() {
-		EList<EStructuralFeature> features = new BasicEList<>();
-		when(eClass.getEStructuralFeatures()).thenReturn(features);
-		DatabaseEcoreParser.addAttribute(eClass, "attrib1", EcorePackage.Literals.ESTRING, false);
-		assertThat(features).hasSize(1)
-				.element(0) //
-				.extracting(EStructuralFeature::getName, EStructuralFeature::getEType) //
-				.contains("attrib1", EcorePackage.Literals.ESTRING);
-	}
+		@Test void testIntegerTypes() {
+			assertThat(DatabaseEcoreParser.convertType(Types.TINYINT)).isEqualTo(EcorePackage.Literals.ESHORT_OBJECT);
+			assertThat(DatabaseEcoreParser.convertType(Types.SMALLINT)).isEqualTo(EcorePackage.Literals.ESHORT_OBJECT);
+			assertThat(DatabaseEcoreParser.convertType(Types.INTEGER)).isEqualTo(EcorePackage.Literals.EINTEGER_OBJECT);
+			assertThat(DatabaseEcoreParser.convertType(Types.BIGINT)).isEqualTo(EcorePackage.Literals.ELONG_OBJECT);
+		}
 
-	@Test
-	void testAddReference() {
-		EList<EStructuralFeature> features = new BasicEList<>();
-		when(eClass.getEStructuralFeatures()).thenReturn(features);
-		DatabaseEcoreParser.addReference(eClass, "ref1", eClassRef);
-		assertThat(features).hasSize(1)
-				.element(0) //
-				.extracting(EStructuralFeature::getName, EStructuralFeature::getEType) //
-				.contains("ref1", eClassRef);
-	}
+		@Test void testFloatingPointTypes() {
+			assertThat(DatabaseEcoreParser.convertType(Types.FLOAT)).isEqualTo(EcorePackage.Literals.EFLOAT_OBJECT);
+			assertThat(DatabaseEcoreParser.convertType(Types.REAL)).isEqualTo(EcorePackage.Literals.EFLOAT_OBJECT);
+			assertThat(DatabaseEcoreParser.convertType(Types.DOUBLE)).isEqualTo(EcorePackage.Literals.EDOUBLE_OBJECT);
+		}
 
-	@Test
-	void testCreatePackage() {
-		EPackage ePackage = DatabaseEcoreParser.createPackage("name1", "pref1",
-				"http://model.example.com/model/name1/1.0");
-		assertThat(ePackage) //
-				.extracting(p -> p.getName(), p -> p.getNsPrefix(), p -> p.getNsURI()) //
-				.contains("name1", "pref1", "http://model.example.com/model/name1/1.0");
-	}
+		@Test void testExactNumeric() {
+			assertThat(DatabaseEcoreParser.convertType(Types.DECIMAL)).isEqualTo(EcorePackage.Literals.EBIG_DECIMAL);
+			assertThat(DatabaseEcoreParser.convertType(Types.NUMERIC)).isEqualTo(EcorePackage.Literals.EBIG_DECIMAL);
+		}
 
-	@Test
-	void testCreateEClass() {
-		EClass eclass = DatabaseEcoreParser.createEClass("name1");
-		assertThat(eclass) //
-				.extracting(c -> c.getName()) //
-				.isEqualTo("name1");
+		@Test void testBoolean() {
+			assertThat(DatabaseEcoreParser.convertType(Types.BOOLEAN)).isEqualTo(EcorePackage.Literals.EBOOLEAN_OBJECT);
+			assertThat(DatabaseEcoreParser.convertType(Types.BIT)).isEqualTo(EcorePackage.Literals.EBOOLEAN_OBJECT);
+		}
+
+		@Test void testStringTypes() {
+			assertThat(DatabaseEcoreParser.convertType(Types.VARCHAR)).isEqualTo(EcorePackage.Literals.ESTRING);
+			assertThat(DatabaseEcoreParser.convertType(Types.CHAR)).isEqualTo(EcorePackage.Literals.ESTRING);
+			assertThat(DatabaseEcoreParser.convertType(Types.CLOB)).isEqualTo(EcorePackage.Literals.ESTRING);
+		}
+
+		@Test void testDateTimeTypes() {
+			assertThat(DatabaseEcoreParser.convertType(Types.DATE)).isEqualTo(EcorePackage.Literals.EDATE);
+			assertThat(DatabaseEcoreParser.convertType(Types.TIMESTAMP)).isEqualTo(EcorePackage.Literals.EDATE);
+		}
+
+		@Test void testBinaryTypes() {
+			assertThat(DatabaseEcoreParser.convertType(Types.BLOB)).isEqualTo(EcorePackage.Literals.EBYTE_ARRAY);
+			assertThat(DatabaseEcoreParser.convertType(Types.BINARY)).isEqualTo(EcorePackage.Literals.EBYTE_ARRAY);
+		}
+
+		@Test void testUnknownFallback() {
+			assertThat(DatabaseEcoreParser.convertType(Types.OTHER)).isEqualTo(EcorePackage.Literals.ESTRING);
+			assertThat(DatabaseEcoreParser.convertType(99999)).isEqualTo(EcorePackage.Literals.ESTRING);
+		}
 	}
 
 	@Nested
-	class IsPK {
-		@Mock
-		ImportedKey importKey;
-		@Mock
-		ColumnReference colRef;
+	@DisplayName("Naming transformation")
+	class NamingTests {
 
-		@Test
-		void testIsPK() {
-			when(importKey.primaryKeyColumn()).thenReturn(colRef);
-			when(colRef.name()).thenReturn("col1");
-			boolean isPK = DatabaseEcoreParser.isPK(importKey, "col1");
-			assertThat(isPK).isTrue();
+		@Test void testSnakeToPascalCase() {
+			assertThat(DatabaseEcoreParser.snakeToPascalCase("USER_ACCOUNT")).isEqualTo("UserAccount");
+			assertThat(DatabaseEcoreParser.snakeToPascalCase("first_name")).isEqualTo("FirstName");
+			assertThat(DatabaseEcoreParser.snakeToPascalCase("ID")).isEqualTo("Id");
+			assertThat(DatabaseEcoreParser.snakeToPascalCase("a")).isEqualTo("A");
+			assertThat(DatabaseEcoreParser.snakeToPascalCase("")).isEqualTo("");
+			assertThat(DatabaseEcoreParser.snakeToPascalCase(null)).isNull();
 		}
-		@Test
-		void testIsNotPK() {
-			boolean isPK = DatabaseEcoreParser.isPK(null, "col1");
-			assertThat(isPK).isFalse();
-		}
-		@Test
-		void testIsIdCol() {
-			boolean isPK = DatabaseEcoreParser.isPK(null, "id");
-			assertThat(isPK).isTrue();
+
+		@Test void testSnakeToCamelCase() {
+			assertThat(DatabaseEcoreParser.snakeToCamelCase("USER_ACCOUNT")).isEqualTo("userAccount");
+			assertThat(DatabaseEcoreParser.snakeToCamelCase("FIRST_NAME")).isEqualTo("firstName");
+			assertThat(DatabaseEcoreParser.snakeToCamelCase("ID")).isEqualTo("id");
+			assertThat(DatabaseEcoreParser.snakeToCamelCase("a")).isEqualTo("a");
 		}
 	}
 
+	@Nested
+	@DisplayName("Static helpers")
+	class HelperTests {
+
+		@Test void testAddAttributeRequired() {
+			EClass ec = EcoreFactory.eINSTANCE.createEClass();
+			DatabaseEcoreParser.addAttribute(ec, "name", EcorePackage.Literals.ESTRING, false, true);
+			EAttribute attr = (EAttribute) ec.getEStructuralFeatures().get(0);
+			assertThat(attr.getLowerBound()).isEqualTo(1);
+		}
+
+		@Test void testCreatePackage() {
+			EPackage pkg = DatabaseEcoreParser.createPackage("test", "t", "http://test/1.0");
+			assertThat(pkg.getName()).isEqualTo("test");
+			assertThat(pkg.getNsURI()).isEqualTo("http://test/1.0");
+		}
+
+		@Test void testSetOpposite() {
+			EClass a = EcoreFactory.eINSTANCE.createEClass();
+			EClass b = EcoreFactory.eINSTANCE.createEClass();
+			var ref1 = DatabaseEcoreParser.addReference(a, "b", b);
+			var ref2 = DatabaseEcoreParser.addManyReference(b, "as", a);
+			DatabaseEcoreParser.setOpposite(ref1, ref2);
+			assertThat(ref1.getEOpposite()).isSameAs(ref2);
+			assertThat(ref2.getEOpposite()).isSameAs(ref1);
+		}
+	}
 }

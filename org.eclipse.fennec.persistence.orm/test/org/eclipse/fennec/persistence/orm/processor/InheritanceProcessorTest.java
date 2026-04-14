@@ -16,12 +16,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.Keywords;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.eorm.InheritanceType;
@@ -295,6 +297,88 @@ class InheritanceProcessorTest {
 	}
 
 	@Nested
+	class InheritanceStrategyTests {
+
+		@Test
+		void testDefaultStrategyIsSingleTable() {
+			EClass vehicle = createClassWithId("Vehicle");
+			EClass car = createEClass("Car");
+			car.getESuperTypes().add(vehicle);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(vehicle, car));
+			processor.process();
+
+			Entity vehicleEntity = findEntity(processor.getTarget(), "Vehicle");
+			assertThat(vehicleEntity.getInheritance().getStrategy()).isEqualTo(InheritanceType.SINGLETABLE);
+			assertThat(vehicleEntity.getDiscriminatorColumn()).isNotNull();
+		}
+
+		@Test
+		void testJoinedStrategyViaAnnotation() {
+			EClass vehicle = createClassWithId("Vehicle");
+			addInheritanceAnnotation(vehicle, "JOINED");
+
+			EClass car = createEClass("Car");
+			car.getESuperTypes().add(vehicle);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(vehicle, car));
+			processor.process();
+
+			Entity vehicleEntity = findEntity(processor.getTarget(), "Vehicle");
+			assertThat(vehicleEntity.getInheritance().getStrategy()).isEqualTo(InheritanceType.JOINED);
+			// JOINED still uses discriminator column
+			assertThat(vehicleEntity.getDiscriminatorColumn()).isNotNull();
+		}
+
+		@Test
+		void testTablePerClassStrategyViaAnnotation() {
+			EClass vehicle = createClassWithId("Vehicle");
+			addInheritanceAnnotation(vehicle, "TABLE_PER_CLASS");
+
+			EClass car = createEClass("Car");
+			car.getESuperTypes().add(vehicle);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(vehicle, car));
+			processor.process();
+
+			Entity vehicleEntity = findEntity(processor.getTarget(), "Vehicle");
+			assertThat(vehicleEntity.getInheritance().getStrategy()).isEqualTo(InheritanceType.TABLEPERCLASS);
+			// TABLE_PER_CLASS does NOT use discriminator column
+			assertThat(vehicleEntity.getDiscriminatorColumn()).isNull();
+		}
+
+		@Test
+		void testAnnotationCaseInsensitive() {
+			EClass vehicle = createClassWithId("Vehicle");
+			addInheritanceAnnotation(vehicle, "joined");
+
+			EClass car = createEClass("Car");
+			car.getESuperTypes().add(vehicle);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(vehicle, car));
+			processor.process();
+
+			Entity vehicleEntity = findEntity(processor.getTarget(), "Vehicle");
+			assertThat(vehicleEntity.getInheritance().getStrategy()).isEqualTo(InheritanceType.JOINED);
+		}
+
+		@Test
+		void testUnknownAnnotationValueDefaultsToSingleTable() {
+			EClass vehicle = createClassWithId("Vehicle");
+			addInheritanceAnnotation(vehicle, "UNKNOWN");
+
+			EClass car = createEClass("Car");
+			car.getESuperTypes().add(vehicle);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(vehicle, car));
+			processor.process();
+
+			Entity vehicleEntity = findEntity(processor.getTarget(), "Vehicle");
+			assertThat(vehicleEntity.getInheritance().getStrategy()).isEqualTo(InheritanceType.SINGLETABLE);
+		}
+	}
+
+	@Nested
 	class MixedHierarchyTests {
 
 		@Test
@@ -359,6 +443,13 @@ class InheritanceProcessorTest {
 		}
 		owner.getEStructuralFeatures().add(ref);
 		return ref;
+	}
+
+	private void addInheritanceAnnotation(EClass eClass, String strategy) {
+		EAnnotation ann = EcoreFactory.eINSTANCE.createEAnnotation();
+		ann.setSource(Keywords.PERSISTENCE_ANNOTATION_SOURCE);
+		ann.getDetails().put("inheritance", strategy);
+		eClass.getEAnnotations().add(ann);
 	}
 
 	private Entity findEntity(EntityMappings em, String name) {

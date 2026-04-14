@@ -12,7 +12,6 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Date;
@@ -412,12 +411,18 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class PrimitiveArrayInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
+            if (value == null) return null;
+            String className = eDataType.getInstanceClassName();
+            if (className == null) {
+                logger.warning("EDataType has null instance class name. Not supported by primitive array converter!");
+                return value;
+            }
+            // BLOB path: byte[] from DB → deserialize to primitive array
+            if (value instanceof byte[] bytes) {
+                return deserializeArray(bytes);
+            }
+            // Legacy path: Object[] from DB → convert to primitive array
             if (value instanceof Object[] objArray) {
-                String className = eDataType.getInstanceClassName();
-                if (className == null) {
-                    logger.warning("EDataType has null instance class name. Not supported by primitive array converter!");
-                    return value;
-                }
                 return convertToPrimitiveArray(objArray, className);
             }
             return value;
@@ -425,45 +430,61 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue != null && emfValue.getClass().isArray() && emfValue.getClass().getComponentType().isPrimitive()) {
-                return convertToObjectArray(emfValue);
+            if (emfValue == null) return null;
+            // Serialize primitive arrays to byte[] for BLOB storage
+            if (emfValue.getClass().isArray() && emfValue.getClass().getComponentType().isPrimitive()) {
+                return serializeArray(emfValue);
             }
             return emfValue;
         }
 
-        private Object convertToPrimitiveArray(Object[] objArray, String className) {
-            switch (className) {
-                case "int[]":
-                    int[] intArray = new int[objArray.length];
-                    for (int i = 0; i < objArray.length; i++) {
-                        intArray[i] = objArray[i] instanceof Number ? ((Number) objArray[i]).intValue() : 0;
-                    }
-                    return intArray;
-                case "double[]":
-                    double[] doubleArray = new double[objArray.length];
-                    for (int i = 0; i < objArray.length; i++) {
-                        doubleArray[i] = objArray[i] instanceof Number ? ((Number) objArray[i]).doubleValue() : 0.0;
-                    }
-                    return doubleArray;
-                case "boolean[]":
-                    boolean[] boolArray = new boolean[objArray.length];
-                    for (int i = 0; i < objArray.length; i++) {
-                        boolArray[i] = objArray[i] instanceof Boolean ? (Boolean) objArray[i] : false;
-                    }
-                    return boolArray;
-                // Add other primitive types as needed
-                default:
-                    return null;
+        private byte[] serializeArray(Object array) {
+            try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                 java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(baos)) {
+                oos.writeObject(array);
+                oos.flush();
+                return baos.toByteArray();
+            } catch (java.io.IOException e) {
+                logger.log(java.util.logging.Level.WARNING, "Failed to serialize array", e);
+                return null;
             }
         }
 
-        private Object[] convertToObjectArray(Object primitiveArray) {
-            int length = Array.getLength(primitiveArray);
-            Object[] objArray = new Object[length];
-            for (int i = 0; i < length; i++) {
-                objArray[i] = Array.get(primitiveArray, i);
+        private Object deserializeArray(byte[] bytes) {
+            try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(bytes);
+                 java.io.ObjectInputStream ois = new java.io.ObjectInputStream(bais)) {
+                return ois.readObject();
+            } catch (java.io.IOException | ClassNotFoundException e) {
+                logger.log(java.util.logging.Level.WARNING, "Failed to deserialize array", e);
+                return null;
             }
-            return objArray;
+        }
+
+        private Object convertToPrimitiveArray(Object[] objArray, String className) {
+            return switch (className) {
+                case "int[]" -> {
+                    int[] intArray = new int[objArray.length];
+                    for (int i = 0; i < objArray.length; i++) {
+                        intArray[i] = objArray[i] instanceof Number n ? n.intValue() : 0;
+                    }
+                    yield intArray;
+                }
+                case "double[]" -> {
+                    double[] doubleArray = new double[objArray.length];
+                    for (int i = 0; i < objArray.length; i++) {
+                        doubleArray[i] = objArray[i] instanceof Number n ? n.doubleValue() : 0.0;
+                    }
+                    yield doubleArray;
+                }
+                case "boolean[]" -> {
+                    boolean[] boolArray = new boolean[objArray.length];
+                    for (int i = 0; i < objArray.length; i++) {
+                        boolArray[i] = objArray[i] instanceof Boolean b ? b : false;
+                    }
+                    yield boolArray;
+                }
+                default -> null;
+            };
         }
     }
 }

@@ -40,7 +40,6 @@ import org.eclipse.fennec.persistence.orm.ORMConstants;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
 import org.eclipse.persistence.sessions.server.Server;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.osgi.test.common.annotation.InjectService;
 import org.osgi.test.common.annotation.Property;
@@ -94,7 +93,6 @@ public class TypeConverterEndToEndTest extends EPersistenceModelBase {
             @Property(key = "fennec.jpa.ext.eclipselink.logging.parameters", value = "true")
     })
     @Test
-    @Disabled("Test does not work. Tables are not create appropriately")
     public void testTypeConverterEndToEndPipeline(
             @InjectService(timeout = 5000, filter = "(fennec.jpa.eorm.mapping=typeConverterModel)") ServiceAware<EntityMappings> mappingAware,
             @InjectService(timeout = 10000, filter = "(identifier=./data/typeconverter_test)") ServiceAware<DataSource> dataSourceAware,
@@ -141,6 +139,13 @@ public class TypeConverterEndToEndTest extends EPersistenceModelBase {
         setEObjectValue(testEntity, "scores", testIntArray);
         setEObjectValue(testEntity, "weights", testDoubleArray);
         setEObjectValue(testEntity, "flags", testBooleanArray);
+
+        // Clean up any existing data from previous test runs
+        try (EntityManager cleanEm = emf.createEntityManager()) {
+            cleanEm.getTransaction().begin();
+            cleanEm.createQuery("DELETE FROM " + testEntityClass.getName()).executeUpdate();
+            cleanEm.getTransaction().commit();
+        }
 
         try (EntityManager entityManager = emf.createEntityManager();){
             entityManager.getTransaction().begin();
@@ -227,16 +232,16 @@ public class TypeConverterEndToEndTest extends EPersistenceModelBase {
                 // Verify time fields - these should be stored as database time types
                 assertNotNull(rs.getTimestamp("CREATEDDATETIME"), "DateTime should be stored");
                 assertNotNull(rs.getTimestamp("LASTACCESSINSTANT"), "Instant should be stored");
-                assertNotNull(rs.getTimestamp("SCHEDULEDTIME"), "ZonedDateTime should be stored");
+                assertNotNull(rs.getString("SCHEDULEDTIME"), "ZonedDateTime should be stored as ISO-8601 string");
                 assertNotNull(rs.getLong("PROCESSINGDURATION"), "Duration should be stored as millis");
                 
                 // Verify UUID is stored as string
                 assertEquals(testUuid.toString(), rs.getString("ENTITYUUID"));
-                
-                // Verify arrays are stored (exact format depends on database)
-                assertNotNull(rs.getArray("SCORES"), "Int array should be stored");
-                assertNotNull(rs.getArray("WEIGHTS"), "Double array should be stored");
-                assertNotNull(rs.getArray("FLAGS"), "Boolean array should be stored");
+
+                // Verify arrays are stored as BLOB (serialized byte[])
+                assertNotNull(rs.getBytes("SCORES"), "Int array should be stored as BLOB");
+                assertNotNull(rs.getBytes("WEIGHTS"), "Double array should be stored as BLOB");
+                assertNotNull(rs.getBytes("FLAGS"), "Boolean array should be stored as BLOB");
             }
         }
     }
