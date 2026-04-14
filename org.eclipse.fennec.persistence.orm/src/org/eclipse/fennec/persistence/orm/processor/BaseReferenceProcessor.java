@@ -151,17 +151,12 @@ public abstract class BaseReferenceProcessor<T extends BaseRef> extends NamedBas
 		    // Parent deletion -> children deletion
 			cascade.setCascadeAll(empty);
 		} else {
-			cascade.setCascadeDetach(empty);
-			cascade.setCascadeRemove(EcoreUtil.copy(empty));
-			cascade.setCascadeRefresh(EcoreUtil.copy(empty));
-// TODO Use this recommendation			
-//			// Non-Containment: Only operational cascades, NO remove cascade
-//		    // Referenced objects should survive parent deletion
-//		    cascade.setCascadePersist(EcoreUtil.copy(empty));
-//		    cascade.setCascadeDetach(EcoreUtil.copy(empty));
-//		    cascade.setCascadeRefresh(EcoreUtil.copy(empty));
-//		    // Intentionally NO setCascadeRemove() for non-containment references
-
+			// Non-Containment: Only operational cascades, NO remove cascade
+		    // Referenced objects should survive parent deletion
+		    cascade.setCascadePersist(EcoreUtil.copy(empty));
+		    cascade.setCascadeDetach(EcoreUtil.copy(empty));
+		    cascade.setCascadeRefresh(EcoreUtil.copy(empty));
+		    // Intentionally NO setCascadeRemove() for non-containment references
 		}
 		target.setCascade(cascade);
 	}

@@ -62,7 +62,7 @@ public class EPersistenceContextImpl implements EPersistenceContext {
 		this.persistenceUnit = EcoreUtil.copy(persistenceUnit);
 		if (isNull(this.persistenceUnit.getProperties())) {
 			Properties props = EPersistenceFactory.eINSTANCE.createProperties();
-			persistenceUnit.setProperties(props);
+			this.persistenceUnit.setProperties(props);
 		}
 		updatePackages();
 		id = UUID.randomUUID().toString();

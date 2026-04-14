@@ -23,7 +23,9 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -82,8 +84,9 @@ public class PersistenceUnitConfigurator {
 	@Reference(name = "fennec.jpa.converter")
 	private ConverterService converter;
 	private EORMModelHelper modelHelper;
-	private ServiceRegistration<EntityManagerFactory> emfRegistration;
-	private EntityManagerFactory emf;
+	private volatile ServiceRegistration<EntityManagerFactory> emfRegistration;
+	private volatile EntityManagerFactory emf;
+	private ExecutorService executor;
 
 	@ObjectClassDefinition
 	public @interface PUConfig {
@@ -121,7 +124,8 @@ public class PersistenceUnitConfigurator {
 					converter(converter).
 					properties(emfProperties);
 			
-			PromiseFactory pf = new PromiseFactory(Executors.newSingleThreadExecutor());
+			executor = Executors.newSingleThreadExecutor();
+			PromiseFactory pf = new PromiseFactory(executor);
 			pf.submit(()->{
 				emf = configBuilder.build().configure();
 				Dictionary<String, Object> entityMapperProps = new Hashtable<>();
@@ -140,8 +144,18 @@ public class PersistenceUnitConfigurator {
 
 	@Deactivate
 	void deactivate() {
+		if (nonNull(executor)) {
+			executor.shutdownNow();
+			try {
+				executor.awaitTermination(5, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
 		if (nonNull(emfRegistration)) {
 			emfRegistration.unregister();
+		}
+		if (nonNull(emf) && emf.isOpen()) {
 			emf.close();
 		}
 	}
@@ -208,7 +222,7 @@ public class PersistenceUnitConfigurator {
 		properties.put(PersistenceUnitProperties.THROW_EXCEPTIONS, "true");
 		properties.put(PersistenceUnitProperties.CONNECTION_POOL_MIN, 1);
 //		properties.put(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.CREATE_OR_EXTEND);
-		properties.put("eclipselink.logging.level", "FINE");
+		properties.put("eclipselink.logging.level", "WARNING");
 		properties.put("eclipselink.logging.timestamp", "false");
 		properties.put("eclipselink.logging.thread", "false");
 		properties.put("eclipselink.logging.exceptions", "true");

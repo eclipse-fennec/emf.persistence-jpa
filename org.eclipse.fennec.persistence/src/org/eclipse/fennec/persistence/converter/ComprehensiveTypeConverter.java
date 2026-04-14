@@ -288,7 +288,8 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
             if (value == null) return null;
-            if (value instanceof Number number) return BigDecimal.valueOf(number.doubleValue());
+            if (value instanceof BigDecimal) return value;
+            if (value instanceof Number number) return new BigDecimal(number.toString());
             if (value instanceof String numberStr) return new BigDecimal(numberStr);
             return value;
         }
@@ -296,7 +297,8 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
             if (emfValue == null) return null;
-            if (emfValue instanceof BigDecimal bigDecimal) return bigDecimal.doubleValue();
+            // Pass BigDecimal through natively — JDBC drivers support BigDecimal directly
+            if (emfValue instanceof BigDecimal) return emfValue;
             return emfValue;
         }
     }
@@ -305,6 +307,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
             if (value == null) return null;
+            if (value instanceof BigInteger) return value;
             if (value instanceof Number number) return BigInteger.valueOf(number.longValue());
             if (value instanceof String numberStr) return new BigInteger(numberStr);
             return value;
@@ -313,7 +316,8 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
             if (emfValue == null) return null;
-            if (emfValue instanceof BigInteger bigInteger) return bigInteger.intValue();
+            // Pass BigInteger through natively — avoid truncation via intValue()
+            if (emfValue instanceof BigInteger) return emfValue;
             return emfValue;
         }
     }

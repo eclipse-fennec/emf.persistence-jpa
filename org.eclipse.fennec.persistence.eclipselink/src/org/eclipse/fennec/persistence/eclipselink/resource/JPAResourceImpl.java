@@ -81,9 +81,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			LOG.log(Level.WARNING, "No descriptor found for entity ''{0}''", entityName);
 			return;
 		}
+		// Use the validated alias from the descriptor to prevent JPQL injection
+		String validatedAlias = descriptor.getAlias();
 		try (EntityManager em = emf.createEntityManager()) {
 			List<?> results = em.createQuery(
-					"SELECT e FROM " + entityName + " e", descriptor.getJavaClass())
+					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass())
 					.getResultList();
 			for (Object obj : results) {
 				if (obj instanceof EObject eo) {
@@ -102,10 +104,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
 		try (EntityManager em = emf.createEntityManager()) {
 			em.getTransaction().begin();
-			for (EObject eo : getContents()) {
-				em.merge(eo);
+			try {
+				for (EObject eo : getContents()) {
+					em.merge(eo);
+				}
+				em.getTransaction().commit();
+			} catch (Exception e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
-			em.getTransaction().commit();
 		}
 	}
 
@@ -113,17 +122,25 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	public void delete(Map<?, ?> options) throws IOException {
 		try (EntityManager em = emf.createEntityManager()) {
 			em.getTransaction().begin();
-			for (EObject eo : getContents()) {
-				Object merged = em.merge(eo);
-				em.remove(merged);
+			try {
+				for (EObject eo : getContents()) {
+					Object merged = em.merge(eo);
+					em.remove(merged);
+				}
+				em.getTransaction().commit();
+				getContents().clear();
+			} catch (Exception e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				throw new IOException("Failed to delete resource: " + getURI(), e);
 			}
-			em.getTransaction().commit();
 		}
-		getContents().clear();
 	}
 
 	@Override
 	protected void doUnload() {
+		isLoaded = false;
 		getContents().clear();
 	}
 
@@ -145,7 +162,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		try (EntityManager em = emf.createEntityManager()) {
 			Object typedId = convertId(idValue, descriptor);
-			return (EObject) em.find(descriptor.getJavaClass(), typedId);
+			Object result = em.find(descriptor.getJavaClass(), typedId);
+			if (result instanceof EObject resolved) {
+				// Add the resolved object to this resource's contents so it has
+				// an eResource() and can be found on subsequent accesses without
+				// hitting the database again. This is the standard EMF pattern
+				// for proxy resolution via ResourceSet → Resource → getEObject.
+				if (resolved.eResource() == null && !getContents().contains(resolved)) {
+					getContents().add(resolved);
+				}
+				return resolved;
+			}
+			return null;
 		}
 	}
 
@@ -160,8 +188,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isNull(entityName)) {
 			return 0;
 		}
+		ClassDescriptor descriptor = getDescriptor(entityName);
+		if (isNull(descriptor)) {
+			return 0;
+		}
+		// Use the validated alias from the descriptor to prevent JPQL injection
+		String validatedAlias = descriptor.getAlias();
 		try (EntityManager em = emf.createEntityManager()) {
-			return em.createQuery("SELECT COUNT(e) FROM " + entityName + " e", Long.class)
+			return em.createQuery("SELECT COUNT(e) FROM " + validatedAlias + " e", Long.class)
 					.getSingleResult();
 		}
 	}
@@ -206,7 +240,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	/**
 	 * Finds the EclipseLink descriptor for the given entity name.
 	 */
-	private ClassDescriptor getDescriptor(String entityName) {
+	ClassDescriptor getDescriptor(String entityName) {
 		if (isNull(entityName)) {
 			return null;
 		}
