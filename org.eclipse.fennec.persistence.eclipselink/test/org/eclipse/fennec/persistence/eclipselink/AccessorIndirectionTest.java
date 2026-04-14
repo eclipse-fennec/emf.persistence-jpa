@@ -71,10 +71,11 @@ class AccessorIndirectionTest {
 	class EFeatureAccessorTests {
 
 		@Test
-		void testCreateReturnsSameInstanceForSameFeature() {
+		void testCreateReturnsNewInstancePerCall() {
+			// No shared cache — each create() returns a fresh, immutable instance
 			AttributeAccessor a1 = EFeatureAccessor.create(nameAttr);
 			AttributeAccessor a2 = EFeatureAccessor.create(nameAttr);
-			assertThat(a1).isSameAs(a2);
+			assertThat(a1).isNotSameAs(a2);
 		}
 
 		@Test
@@ -401,6 +402,52 @@ class AccessorIndirectionTest {
 			((InternalEObject) entity).eSetProxyURI(proxyURI);
 			assertThat(entity.eIsProxy()).isTrue();
 			assertThat(((InternalEObject) entity).eProxyURI()).isEqualTo(proxyURI);
+		}
+
+		@Test
+		void testBuildIndirectObjectDoesNotCorruptOriginal() {
+			// Setup: Create an EClass with ID attribute and a non-containment reference
+			EClass sourceClass = EcoreFactory.eINSTANCE.createEClass();
+			sourceClass.setName("Source");
+			testPackage.getEClassifiers().add(sourceClass);
+
+			EClass targetClass = EcoreFactory.eINSTANCE.createEClass();
+			targetClass.setName("Target");
+			testPackage.getEClassifiers().add(targetClass);
+
+			EAttribute targetId = EcoreFactory.eINSTANCE.createEAttribute();
+			targetId.setName("id");
+			targetId.setEType(EcorePackage.Literals.ESTRING);
+			targetId.setID(true);
+			targetClass.getEStructuralFeatures().add(targetId);
+
+			EReference ref = EcoreFactory.eINSTANCE.createEReference();
+			ref.setName("target");
+			ref.setEType(targetClass);
+			ref.setContainment(false); // non-containment
+			sourceClass.getEStructuralFeatures().add(ref);
+
+			// Create a "cached" target object (simulates what EclipseLink cache holds)
+			EObject cachedTarget = EcoreUtil.create(targetClass);
+			cachedTarget.eSet(targetId, "target-42");
+			assertThat(cachedTarget.eIsProxy()).isFalse();
+
+			// Build proxy URI manually (same logic as EBasicIndirectionPolicy)
+			URI baseURI = URI.createURI("jpa://testPU/Target");
+			String id = EcoreUtil.getID(cachedTarget);
+			URI proxyURI = baseURI.appendFragment("//" + ref.getName() + "/" + targetId.getName() + "/" + id);
+
+			// Create a copy as proxy (what the fixed buildIndirectObject does)
+			EObject proxyCopy = EcoreUtil.copy(cachedTarget);
+			((InternalEObject) proxyCopy).eSetProxyURI(proxyURI);
+
+			// The copy is a proxy
+			assertThat(proxyCopy.eIsProxy()).isTrue();
+			assertThat(((InternalEObject) proxyCopy).eProxyURI()).isEqualTo(proxyURI);
+
+			// The original MUST NOT be a proxy (cache integrity)
+			assertThat(cachedTarget.eIsProxy()).isFalse();
+			assertThat(EcoreUtil.getID(cachedTarget)).isEqualTo("target-42");
 		}
 	}
 }

@@ -515,7 +515,7 @@ Review unter Hinzuziehung des EclipseLink-Quellcodes (`/opt/git/eclipselink-4/`)
 | F2-04 | F2 | **Kein Optimistic-Locking-Test** — @Version weder implementiert noch getestet | Tests + Code | Erst F1-06 implementieren, dann testen |
 | F2-05 | F2 | Tests zu groß: Ein Test deckt Setup+Persist+Find ab — widerspricht Prinzip "kleine, nachvollziehbare Tests" | Tests | Aufteilen in Einzel-Aspekt-Tests |
 | F3-01 | F3 | ~~**BigDecimal/BigInteger Converter: Präzisionsverlust/Überlauf**~~ **FIXED (AP-08)** — Native Durchreichung, Precision- und Range-Tests ergänzt | `ComprehensiveTypeConverter.java:291,299,317,318` | ~~Native JDBC-Typen~~ |
-| F3-02 | F3 | **ZonedDateTime: Zeitzonen-Information geht verloren** — nutzt `ZoneId.systemDefault()` bei Rückkonvertierung | `ZonedDateTimeConverter.java` | Zeitzone separat speichern oder ISO-8601 |
+| F3-02 | F3 | ~~**ZonedDateTime: Zeitzonen-Information geht verloren**~~ **FIXED (AP-22)** — ISO-8601 String erhält Timezone, Round-Trip-Test vorhanden | `ComprehensiveTypeConverter.java` | ~~ISO-8601~~ |
 | F3-03 | F3 | **Enum-Converter nicht registriert:** `converters.get("enum")` in findConverter referenziert, aber keiner vorhanden | `ComprehensiveTypeConverter.java:141-143` | Enum-Converter registrieren oder dokumentieren |
 | F3-04 | F3 | **TypeConverterEndToEndTest ist @Disabled** — "Tables are not created appropriately" | `TypeConverterEndToEndTest.java` | Test fixen und aktivieren |
 | F3-05 | F3 | Fehlende Converter: URI, URL, Currency, Locale, OffsetDateTime, OffsetTime, Year, YearMonth | — | Converter ergänzen nach Bedarf |
@@ -526,7 +526,7 @@ Review unter Hinzuziehung des EclipseLink-Quellcodes (`/opt/git/eclipselink-4/`)
 | F5-01 | F5 | **DatabaseEcoreParser nur PostgreSQL-Typen** — `int4`, `float8`, `bpchar` etc. Standard-JDBC-Typen (INTEGER, BIGINT, TIMESTAMP) fehlen komplett | `DatabaseEcoreParser.java:219-257` | JDBC-Standard-Typen ergänzen |
 | F5-02 | F5 | **Citizen-Test komplett auskommentiert** — kein aktiver E2E-Test für Custom-EORM | `EPersistenceCitizenTest.java` | Test reaktivieren |
 | F5-03 | F5 | Keine View-Unterstützung, keine Schema-Evolution | — | Als Feature planen |
-| F6-01 | F6 | **ProxyURI wird auf gecachtem Objekt gesetzt** statt auf Kopie — kann EclipseLink-Cache korrumpieren | `EBasicIndirectionPolicy.java:86` | Kopie erstellen vor ProxyURI-Setzung |
+| F6-01 | F6 | ~~**ProxyURI wird auf gecachtem Objekt gesetzt**~~ **FIXED (AP-20)** — EcoreUtil.copy() als Proxy, Original bleibt unverändert | `EBasicIndirectionPolicy.java:86` | ~~Kopie erstellen~~ |
 | F6-02 | F6 | Weaving="static" konfiguriert aber irrelevant für DynamicEObjectImpl — irreführend | `PersistenceUnitConfigurator.java:204` | Auf "false" setzen |
 | F8-01 | F8 | **Kein bidirektionales Change-Tracking:** `eSet()` ohne EntityManager wird von EclipseLink nicht erkannt — nur Deferred-Detection via Backup-Clone | Code | EContentAdapter als Brücke evaluieren |
 | F9-02 | F9 | ~~`doUnload()` setzt `isLoaded` nicht zurück~~ **FIXED (AP-02)** — `isLoaded = false` in doUnload gesetzt | `JPAResourceImpl.java:127-129` | ~~`isLoaded = false`~~ |
@@ -599,12 +599,12 @@ Review unter Hinzuziehung des EclipseLink-Quellcodes (`/opt/git/eclipselink-4/`)
 | AP-14 | **Deaktivierte Tests reaktivieren:** MeterTargetPersistenceTest, EPersistenceCitizenTest, TypeConverterEndToEndTest (inkl. DB-Round-Trip für BigDecimal/BigInteger aus AP-08), EPersistenceRepositoryTest | F4-01, F5-02, F3-04, F5-04 | M | ❌ Offen |
 | AP-15 | **DatabaseEcoreParser erweitern:** JDBC-Standard-Typen, FK-Kollisions-Fix, NOT NULL, Constraints | F5-01, F14-01, F14-02 | M | ❌ Offen |
 | AP-16 | **EDynamicTypeBuilder refactoring:** God-Class aufteilen in spezialisierte Builder | T11-01 | L | ❌ Offen |
-| AP-17 | **PU-Konfigurator-Deduplizierung:** Gemeinsame Basisklasse für PersistenceUnitConfigurator und EntityMappingPersistenceUnitConfigurator | T4-05 | M | ❌ Offen |
-| AP-18 | **EFeatureAccessor Cache Fix:** Static Cache auf PU-Scope, Eviction, Thread-Safety für Converter | T4-04, T9-04 | M | ❌ Offen |
+| AP-17 | **PU-Konfigurator-Deduplizierung:** `AbstractPersistenceUnitConfigurator` extrahiert mit gemeinsamer Lifecycle-, Property- und Registrierungslogik. Beide Subklassen nur noch spezifische Context-Erstellung. Auch: Weaving="false" (statt "static"), TargetDatabase.Auto, Logging=WARNING konsistent. OSGi-Integrationstests bestätigen Korrektheit. | T4-05 | M | ✅ Done |
+| AP-18 | **EFeatureAccessor Cache Fix:** Statischen globalen Cache entfernt, Converter als immutabler Konstruktor-Parameter. Kein Memory-Leak, keine Thread-Safety-Probleme mehr. | T4-04, T9-04 | M | ✅ Done |
 | AP-19 | **Change-Tracking-Brücke evaluieren:** EContentAdapter für EMF→JPA Dirty-Notification, oder bewusste Limitation dokumentieren | F8-01 | M | ❌ Offen |
-| AP-20 | **ProxyURI auf Cache-Kopie:** EBasicIndirectionPolicy darf nicht direkt auf gecachtem Objekt setzen | F6-01 | S | ❌ Offen |
+| AP-20 | **ProxyURI auf Cache-Kopie:** `buildIndirectObject()` erstellt jetzt `EcoreUtil.copy()` als Proxy statt Original zu modifizieren. Test: Original bleibt non-proxy. | F6-01 | S | ✅ Done |
 | AP-21 | **Proxy-Mechanismus konsolidieren:** NonContainmentConverter vs. EBasicIndirectionPolicy — einen wählen, dokumentieren | F9-03 | M | ❌ Offen |
-| AP-22 | **ZonedDateTime Zeitzonen-Fix:** Zeitzone separat speichern oder ISO-8601 String | F3-02 | S | ❌ Offen |
+| AP-22 | **ZonedDateTime Zeitzonen-Fix:** EMF→DB speichert als ISO-8601 String (erhält Timezone), DB→EMF bei Timestamp nutzt UTC-Konvention. Round-Trip-Test beweist Timezone-Erhaltung. | F3-02 | S | ✅ Done |
 
 ### P3 — Nice-to-have, kann in späterem Release kommen
 
