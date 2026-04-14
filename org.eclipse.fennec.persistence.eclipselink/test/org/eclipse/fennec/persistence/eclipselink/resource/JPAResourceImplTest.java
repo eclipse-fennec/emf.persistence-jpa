@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -83,6 +84,7 @@ class JPAResourceImplTest {
 			verify(em).merge(eo);
 			verify(tx).commit();
 			verify(tx, never()).rollback();
+			verify(em).close();
 		}
 
 		@Test
@@ -100,6 +102,7 @@ class JPAResourceImplTest {
 
 			verify(tx).rollback();
 			verify(tx, never()).commit();
+			verify(em).close();
 		}
 
 		@Test
@@ -115,6 +118,7 @@ class JPAResourceImplTest {
 					.hasCauseInstanceOf(PersistenceException.class);
 
 			verify(tx).rollback();
+			verify(em).close();
 		}
 
 		@Test
@@ -129,6 +133,7 @@ class JPAResourceImplTest {
 					.isInstanceOf(IOException.class);
 
 			verify(tx, never()).rollback();
+			verify(em).close();
 		}
 
 		@Test
@@ -139,6 +144,7 @@ class JPAResourceImplTest {
 			verify(tx).begin();
 			verify(tx).commit();
 			verify(em, never()).merge(any());
+			verify(em).close();
 		}
 	}
 
@@ -160,6 +166,7 @@ class JPAResourceImplTest {
 			verify(em).remove(eo);
 			verify(tx).commit();
 			verify(tx, never()).rollback();
+			verify(em).close();
 			assertThat(resource.getContents()).isEmpty();
 		}
 
@@ -177,6 +184,7 @@ class JPAResourceImplTest {
 
 			verify(tx).rollback();
 			verify(tx, never()).commit();
+			verify(em).close();
 			// Contents must be preserved on failure
 			assertThat(resource.getContents()).hasSize(1);
 		}
@@ -219,42 +227,43 @@ class JPAResourceImplTest {
 
 		@Test
 		@DisplayName("Resolved object is added to resource contents")
-		void testResolvedObjectAddedToContents() {
+		void testResolvedObjectAddedToContents() throws Exception {
 			EObject resolved = createEObject();
 
 			// Create a testable subclass that bypasses EclipseLink descriptor lookup
 			ClassDescriptor descriptor = mock(ClassDescriptor.class);
-			when(descriptor.getJavaClass()).thenReturn((Class) EObject.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
 			DatabaseField pkField = new DatabaseField("id");
 			pkField.setType(String.class);
 			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of(pkField));
 
 			when(em.find(eq(EObject.class), eq("42"))).thenReturn(resolved);
 
-			JPAResourceImpl testResource = new JPAResourceImpl(
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
 					URI.createURI("jpa://test/Person"), emf) {
 				@Override
 				ClassDescriptor getDescriptor(String entityName) {
 					return descriptor;
 				}
-			};
+			}) {
+				EObject result = testResource.getEObject("//personRef/id/42");
 
-			EObject result = testResource.getEObject("//personRef/id/42");
-
-			assertThat(result).isSameAs(resolved);
-			// Core assertion: resolved object is IN the resource contents
-			assertThat(testResource.getContents()).contains(resolved);
-			// And has this resource as its eResource
-			assertThat(resolved.eResource()).isSameAs(testResource);
+				assertThat(result).isSameAs(resolved);
+				// Core assertion: resolved object is IN the resource contents
+				assertThat(testResource.getContents()).contains(resolved);
+				// And has this resource as its eResource
+				assertThat(resolved.eResource()).isSameAs(testResource);
+				verify(em).close();
+			}
 		}
 
 		@Test
 		@DisplayName("Already-contained object is not duplicated")
-		void testAlreadyContainedNotDuplicated() {
+		void testAlreadyContainedNotDuplicated() throws Exception {
 			EObject existing = createEObject();
 
 			ClassDescriptor descriptor = mock(ClassDescriptor.class);
-			when(descriptor.getJavaClass()).thenReturn((Class) EObject.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
 			DatabaseField pkField = new DatabaseField("id");
 			pkField.setType(String.class);
 			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of(pkField));
@@ -262,35 +271,37 @@ class JPAResourceImplTest {
 			// em.find returns the same object that's already in contents
 			when(em.find(eq(EObject.class), eq("42"))).thenReturn(existing);
 
-			JPAResourceImpl testResource = new JPAResourceImpl(
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
 					URI.createURI("jpa://test/Person"), emf) {
 				@Override
 				ClassDescriptor getDescriptor(String entityName) {
 					return descriptor;
 				}
-			};
-			testResource.getContents().add(existing);
+			}) {
+				testResource.getContents().add(existing);
 
-			EObject result = testResource.getEObject("//personRef/id/42");
+				EObject result = testResource.getEObject("//personRef/id/42");
 
-			assertThat(result).isSameAs(existing);
-			// Must not be duplicated
-			assertThat(testResource.getContents()).hasSize(1);
+				assertThat(result).isSameAs(existing);
+				// Must not be duplicated
+				assertThat(testResource.getContents()).hasSize(1);
+				verify(em).close();
+			}
 		}
 
 		@Test
 		@DisplayName("Unknown entity returns null")
-		void testUnknownEntityReturnsNull() {
-			JPAResourceImpl testResource = new JPAResourceImpl(
+		void testUnknownEntityReturnsNull() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
 					URI.createURI("jpa://test/Unknown"), emf) {
 				@Override
 				ClassDescriptor getDescriptor(String entityName) {
 					return null;
 				}
-			};
-
-			EObject result = testResource.getEObject("//ref/id/42");
-			assertThat(result).isNull();
+			}) {
+				EObject result = testResource.getEObject("//ref/id/42");
+				assertThat(result).isNull();
+			}
 		}
 	}
 }

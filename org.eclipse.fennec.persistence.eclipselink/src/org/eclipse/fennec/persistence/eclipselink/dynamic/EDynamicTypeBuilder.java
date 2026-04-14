@@ -158,6 +158,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		configureDatabase(getType());
 		configureIds(getType(), attributes.getId());
 		configureSingleAttributes(getType(), attributes.getBasic());
+		configureVersionAttributes(attributes.getVersion());
 		configureManyAttributes(getType(), attributes.getElementCollection());
 	}
 
@@ -372,6 +373,27 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 	}
 
 	/**
+	 * Configures @Version attributes for optimistic locking.
+	 * Each Version attribute is mapped as a DirectToFieldMapping with the descriptor's
+	 * optimistic locking policy set to use that field.
+	 *
+	 * @param versions the Version mappings from EORM
+	 */
+	private void configureVersionAttributes(List<org.eclipse.fennec.persistence.eorm.Version> versions) {
+		if (isNull(versions) || versions.isEmpty()) {
+			return;
+		}
+		for (org.eclipse.fennec.persistence.eorm.Version version : versions) {
+			org.eclipse.fennec.persistence.eorm.Column col = version.getColumn();
+			String colName = nonNull(col) ? col.getName() : version.getName().toUpperCase();
+			// Add a direct mapping for the version field
+			addDirectMapping(version.getName(), Long.class, colName);
+			// Configure EclipseLink optimistic locking on the descriptor
+			getType().getDescriptor().useVersionLocking(colName, false);
+		}
+	}
+
+	/**
 	 * Configures many attributes
 	 * @param eType the {@link EDynamicType}
 	 * @param elementCollections the {@link ElementCollection} list
@@ -468,7 +490,19 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 				typeClass = String.class;
 				LOG.log(Level.FINER, "[processBasic] {0} is enum, mapping as String (EnumType.STRING)", ea.getName());
 			}
-			// Fallback to String for custom types (UUID, arrays, etc.) that don't have instance classes
+			// Map array types as byte[] (BLOB) — arrays have no standard SQL column type
+			else if (typeClass != null && typeClass.isArray()) {
+				typeClass = byte[].class;
+				LOG.log(Level.FINER, "[processBasic] {0} is array type, mapping as byte[] (BLOB)", ea.getName());
+			}
+			// Map non-standard types to their DB-friendly equivalent so EclipseLink
+			// doesn't attempt unsupported native conversion. The TypeConverter on the
+			// EFeatureAccessor handles the actual EMF↔DB conversion.
+			else if (typeClass != null && !isStandardDatabaseType(typeClass)) {
+				typeClass = mapToDbFriendlyType(typeClass);
+				LOG.log(Level.FINER, "[processBasic] {0} mapped to DB-friendly type: {1}", new Object[]{ea.getName(), typeClass});
+			}
+			// Fallback to String for custom types that don't have instance classes
 			if (typeClass == null) {
 				typeClass = String.class;
 				LOG.log(Level.FINER, "[processBasic] {0} has null typeClass, setting to String.class", ea.getName());
@@ -963,6 +997,38 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		}
 		
 		return false;
+	}
+
+	/**
+	 * Maps a non-standard Java type to a DB-friendly type that EclipseLink can persist natively.
+	 * The actual conversion is handled by the TypeConverter on the EFeatureAccessor.
+	 */
+	private Class<?> mapToDbFriendlyType(Class<?> clazz) {
+		// Temporal types → Timestamp (the converter handles the actual conversion)
+		if (clazz == java.time.Instant.class ||
+			clazz == java.time.LocalDateTime.class ||
+			clazz == java.time.LocalDate.class ||
+			clazz == java.time.LocalTime.class) {
+			return java.sql.Timestamp.class;
+		}
+		// ZonedDateTime → String (ISO-8601 with timezone, see AP-22)
+		if (clazz == java.time.ZonedDateTime.class) {
+			return String.class;
+		}
+		// Duration → Long (millis)
+		if (clazz == java.time.Duration.class) {
+			return Long.class;
+		}
+		// UUID → String
+		if (clazz == java.util.UUID.class) {
+			return String.class;
+		}
+		// BigDecimal/BigInteger → pass through (JDBC supports natively)
+		if (clazz == java.math.BigDecimal.class || clazz == java.math.BigInteger.class) {
+			return clazz;
+		}
+		// Default fallback: String
+		return String.class;
 	}
 
 }

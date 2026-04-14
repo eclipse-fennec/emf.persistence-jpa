@@ -30,12 +30,15 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.persistence.Keywords;
 import org.eclipse.fennec.persistence.eorm.Attributes;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
+import org.eclipse.fennec.persistence.eorm.Column;
 import org.eclipse.fennec.persistence.eorm.ENamedBase;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
+import org.eclipse.fennec.persistence.eorm.Version;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
@@ -179,12 +182,19 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
 				toList();
-		// map and set single valued attributes
+		// map and set single valued attributes (excluding version attributes)
 		attributes.
 		stream().
 		filter(not(EStructuralFeature::isMany)).
+		filter(not(this::isVersionAttribute)).
 		map(this::createBasicProcessor).
 		forEach(EFeatureProcessor::process);
+		// map version attributes
+		attributes.
+		stream().
+		filter(not(EStructuralFeature::isMany)).
+		filter(this::isVersionAttribute).
+		forEach(attr -> createVersionMapping(entity, attr));
 		// map and set many valued attributes
 		attributes.
 		stream().
@@ -326,6 +336,29 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 
 	private ElementCollectionProcessor createECProcessor(EAttribute attribute) {
 		return createProcessor(attribute, ElementCollectionProcessor.class);
+	}
+
+	/**
+	 * Checks whether an EAttribute is marked as a @Version attribute via EAnnotation.
+	 * The annotation source is {@link Keywords#PERSISTENCE_ANNOTATION_SOURCE} with key "version" = "true".
+	 */
+	private boolean isVersionAttribute(EAttribute attr) {
+		return java.util.Optional.ofNullable(attr.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+				.map(a -> a.getDetails().get("version"))
+				.map("true"::equalsIgnoreCase)
+				.orElse(false);
+	}
+
+	/**
+	 * Creates a Version mapping for the given attribute and adds it to the entity.
+	 */
+	private void createVersionMapping(Entity entity, EAttribute attr) {
+		Version version = EORMFactory.eINSTANCE.createVersion();
+		version.setName(attr.getName());
+		Column column = EORMFactory.eINSTANCE.createColumn();
+		column.setName(attr.getName().toUpperCase());
+		version.setColumn(column);
+		entity.getAttributes().getVersion().add(version);
 	}
 
 	private OneToOneProcessor createO2OProcessor(EReference reference) {

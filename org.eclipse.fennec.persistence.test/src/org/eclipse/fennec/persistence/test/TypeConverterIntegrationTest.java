@@ -292,8 +292,10 @@ class TypeConverterIntegrationTest {
         Object arrayEmf = arrayConverter.convertValueToEMF(intArrayType, originalArray);
         Object arrayBack = arrayConverter.convertEMFToValue(intArrayType, arrayEmf);
         assertNotNull(arrayBack, "Array round-trip should return a result");
-        assertTrue(arrayBack instanceof Object[], "Should return Object array");
-        assertArrayEquals(new Object[]{10, 20, 30, 40}, (Object[]) arrayBack, "Array round-trip should preserve values");
+        assertTrue(arrayBack instanceof byte[], "Should return byte[] (BLOB serialized)");
+        // Verify full round-trip: byte[] → int[]
+        Object roundTripped = arrayConverter.convertValueToEMF(intArrayType, arrayBack);
+        assertArrayEquals(new int[]{10, 20, 30, 40}, (int[]) roundTripped, "Full round-trip should preserve values");
     }
 
     // Helper method

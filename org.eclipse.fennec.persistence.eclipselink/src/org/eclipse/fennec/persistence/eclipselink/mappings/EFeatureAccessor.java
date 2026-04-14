@@ -125,9 +125,11 @@ public class EFeatureAccessor extends AttributeAccessor {
 	 * @return the converted value or the original one
 	 */
 	private Object dataTypeConvert(Object value, EDataType dataType) {
-		if(value instanceof String && 
+		if (value instanceof String &&
 				EcorePackage.Literals.ESTRING != dataType) {
 			value = EcoreUtil.createFromString(dataType, value.toString());
+		} else if (nonNull(converter) && converter.isConverterForType(dataType)) {
+			value = converter.convertValueToEMF(dataType, value);
 		}
 		return value;
 	}

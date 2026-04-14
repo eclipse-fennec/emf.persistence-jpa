@@ -311,51 +311,54 @@ class ComprehensiveTypeConverterTest {
     class ArrayTests {
 
         @Test
-        @DisplayName("Primitive array conversion - int[]")
-        void testPrimitiveIntArrayConversion() {
+        @DisplayName("Primitive int[] round-trip via BLOB serialization")
+        void testPrimitiveIntArrayRoundTrip() {
             EDataType dataType = createDataType("int[]");
-            
-            // Test database to EMF conversion
-            Object[] objArray = {1, 2, 3, 4, 5};
-            Object emfValue = converter.convertValueToEMF(dataType, objArray);
-            assertArrayEquals(new int[]{1, 2, 3, 4, 5}, (int[]) emfValue);
-            
-            // Test EMF to database conversion
-            int[] intArray = {10, 20, 30};
-            Object dbValue = converter.convertEMFToValue(dataType, intArray);
-            assertArrayEquals(new Object[]{10, 20, 30}, (Object[]) dbValue);
+
+            // EMF → DB: int[] → byte[] (serialized)
+            int[] original = {1, 2, 3, 4, 5};
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            assertInstanceOf(byte[].class, dbValue);
+
+            // DB → EMF: byte[] → int[] (deserialized)
+            Object emfValue = converter.convertValueToEMF(dataType, dbValue);
+            assertArrayEquals(original, (int[]) emfValue);
         }
 
         @Test
-        @DisplayName("Primitive array conversion - double[]")
-        void testPrimitiveDoubleArrayConversion() {
+        @DisplayName("Primitive double[] round-trip via BLOB serialization")
+        void testPrimitiveDoubleArrayRoundTrip() {
             EDataType dataType = createDataType("double[]");
-            
-            // Test database to EMF conversion
-            Object[] objArray = {1.1, 2.2, 3.3};
-            Object emfValue = converter.convertValueToEMF(dataType, objArray);
-            assertArrayEquals(new double[]{1.1, 2.2, 3.3}, (double[]) emfValue, 0.001);
-            
-            // Test EMF to database conversion
-            double[] doubleArray = {4.4, 5.5, 6.6};
-            Object dbValue = converter.convertEMFToValue(dataType, doubleArray);
-            assertArrayEquals(new Object[]{4.4, 5.5, 6.6}, (Object[]) dbValue);
+
+            double[] original = {1.1, 2.2, 3.3};
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            assertInstanceOf(byte[].class, dbValue);
+
+            Object emfValue = converter.convertValueToEMF(dataType, dbValue);
+            assertArrayEquals(original, (double[]) emfValue, 0.001);
         }
 
         @Test
-        @DisplayName("Primitive array conversion - boolean[]")
-        void testPrimitiveBooleanArrayConversion() {
+        @DisplayName("Primitive boolean[] round-trip via BLOB serialization")
+        void testPrimitiveBooleanArrayRoundTrip() {
             EDataType dataType = createDataType("boolean[]");
-            
-            // Test database to EMF conversion
-            Object[] objArray = {true, false, true};
+
+            boolean[] original = {true, false, true};
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            assertInstanceOf(byte[].class, dbValue);
+
+            Object emfValue = converter.convertValueToEMF(dataType, dbValue);
+            assertArrayEquals(original, (boolean[]) emfValue);
+        }
+
+        @Test
+        @DisplayName("Legacy Object[] input still works for backward compatibility")
+        void testLegacyObjectArrayInput() {
+            EDataType dataType = createDataType("int[]");
+
+            Object[] objArray = {1, 2, 3};
             Object emfValue = converter.convertValueToEMF(dataType, objArray);
-            assertArrayEquals(new boolean[]{true, false, true}, (boolean[]) emfValue);
-            
-            // Test EMF to database conversion
-            boolean[] boolArray = {false, true, false};
-            Object dbValue = converter.convertEMFToValue(dataType, boolArray);
-            assertArrayEquals(new Object[]{false, true, false}, (Object[]) dbValue);
+            assertArrayEquals(new int[]{1, 2, 3}, (int[]) emfValue);
         }
 
         @Test

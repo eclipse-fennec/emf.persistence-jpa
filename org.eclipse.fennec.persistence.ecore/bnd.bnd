@@ -2,8 +2,6 @@
 
 -library: enableEMF
 
--buildpath: \
-	org.eclipse.daanse.jdbc.db.api;version=latest
-
 -testpath: \
-	assertj-core
+	assertj-core,\
+	com.h2database:h2
