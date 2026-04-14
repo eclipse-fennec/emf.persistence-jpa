@@ -586,12 +586,12 @@ public class ECopier extends Copier {
 	            Map<String, EObject> targetById = new HashMap<>();
 	            
 	            for (EObject obj : sourceList) {
-	              String id = org.eclipse.emf.ecore.util.EcoreUtil.getID(obj);
+	              String id = EcoreUtil.getID(obj);
 	              if (id != null) sourceById.put(id, obj);
 	            }
 	            
 	            for (EObject obj : targetList) {
-	              String id = org.eclipse.emf.ecore.util.EcoreUtil.getID(obj);
+	              String id = EcoreUtil.getID(obj);
 	              if (id != null) targetById.put(id, obj);
 	            }
 	            
@@ -600,7 +600,7 @@ public class ECopier extends Copier {
 	            
 	            // Add/update elements from source
 	            for (EObject sourceObj : sourceList) {
-	              String id = org.eclipse.emf.ecore.util.EcoreUtil.getID(sourceObj);
+	              String id = EcoreUtil.getID(sourceObj);
 	              EObject targetObj = targetById.get(id);
 	              
 	              if (targetObj != null) {
@@ -625,8 +625,8 @@ public class ECopier extends Copier {
 	              EObject sourceObj = (EObject)sourceValue;
 	              EObject targetObj = (EObject)targetValue;
 	              
-	              String sourceId = org.eclipse.emf.ecore.util.EcoreUtil.getID(sourceObj);
-	              String targetId = targetObj != null ? org.eclipse.emf.ecore.util.EcoreUtil.getID(targetObj) : null;
+	              String sourceId = EcoreUtil.getID(sourceObj);
+	              String targetId = targetObj != null ? EcoreUtil.getID(targetObj) : null;
 	              
 	              if (targetObj != null && Objects.equals(sourceId, targetId)) {
 	                // Same object - copy attributes from source to existing managed target

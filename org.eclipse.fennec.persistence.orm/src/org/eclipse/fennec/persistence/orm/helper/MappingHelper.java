@@ -258,10 +258,10 @@ public class MappingHelper {
 	 * object's reference value, otherwise false
 	 */
 	public static boolean refValueEqualsAll(Object toCompare, Object object, EStructuralFeature reference) {
-		if (object instanceof Collection) {
-			return ((Collection<?>)object).stream().filter(EObject.class::isInstance).map(EObject.class::cast).allMatch(eo->refValueEquals(toCompare, eo, reference));
-		} else if (object instanceof EObject) {
-				return refValueEquals(toCompare, (EObject)object, reference);
+		if (object instanceof Collection<?> collection) {
+			return collection.stream().filter(EObject.class::isInstance).map(EObject.class::cast).allMatch(eo->refValueEquals(toCompare, eo, reference));
+		} else if (object instanceof EObject eObject) {
+				return refValueEquals(toCompare, eObject, reference);
 		} else {
 			return false;
 		}
@@ -307,14 +307,14 @@ public class MappingHelper {
 	 * object's reference value, otherwise false
 	 */
 	public static boolean refValueContainsAll(Object toCompare, Object object, EStructuralFeature reference) {
-		if (object instanceof Collection) {
-			return ((Collection<?>)object).
+		if (object instanceof Collection<?> collection) {
+			return collection.
 					stream().
 					filter(EObject.class::isInstance).
 					map(EObject.class::cast).
 					allMatch(eo->refValueContains(toCompare, eo, reference));
-		} else if (object instanceof EObject) {
-				return refValueContains(toCompare, (EObject)object, reference);
+		} else if (object instanceof EObject eObject) {
+				return refValueContains(toCompare, eObject, reference);
 		} else {
 			return false;
 		}

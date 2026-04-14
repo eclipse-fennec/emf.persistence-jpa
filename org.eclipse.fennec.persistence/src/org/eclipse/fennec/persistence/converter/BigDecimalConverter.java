@@ -48,11 +48,11 @@ public class BigDecimalConverter implements TypeConverter {
 	@Override
 	public Object convertValueToEMF(EClassifier eDataType,
 			Object databaseValue) {
-		if (databaseValue instanceof Double) {
-			return EcoreUtil.createFromString((EDataType) eDataType, ((Double)databaseValue).toString());
+		if (databaseValue instanceof Double doubleValue) {
+			return EcoreUtil.createFromString((EDataType) eDataType, doubleValue.toString());
 		}
-		if (databaseValue instanceof String) {
-			return EcoreUtil.createFromString((EDataType) eDataType, (String) databaseValue);
+		if (databaseValue instanceof String stringValue) {
+			return EcoreUtil.createFromString((EDataType) eDataType, stringValue);
 		}
 		return databaseValue.toString();
 	}

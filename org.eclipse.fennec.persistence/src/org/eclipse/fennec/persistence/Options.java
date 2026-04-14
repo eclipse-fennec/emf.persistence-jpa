@@ -469,8 +469,8 @@ public interface Options {
 		if (result == null) {
 			return null;
 		}
-		if (result instanceof EClass) {
-			return (EClass) result;
+		if (result instanceof EClass eClass) {
+			return eClass;
 		} else {
 			throw new IllegalStateException("The property OPTION_FILTER_ECLASS is expected to have a value of type EClass but was: " + result.getClass().getName());
 		}
@@ -486,8 +486,8 @@ public interface Options {
 			return null;
 		}
 		Object alias = getTableObject(options);
-		if (alias instanceof EClass) {
-			return (EClass)alias;
+		if (alias instanceof EClass eClass) {
+			return eClass;
 		}
 		return null;
 	}
@@ -515,8 +515,8 @@ public interface Options {
 			return null;
 		}
 		Object alias = getTableObject(options);
-		if (alias instanceof EClass) {
-			return ((EClass)alias).getName();
+		if (alias instanceof EClass eClass) {
+			return eClass.getName();
 		}
 		return alias == null ? null : alias.toString();
 	}

@@ -12,6 +12,11 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Date;
@@ -27,6 +32,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.common.util.URI;
@@ -439,23 +445,23 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         }
 
         private byte[] serializeArray(Object array) {
-            try (java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                 java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(baos)) {
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                 ObjectOutputStream oos = new ObjectOutputStream(baos)) {
                 oos.writeObject(array);
                 oos.flush();
                 return baos.toByteArray();
-            } catch (java.io.IOException e) {
-                logger.log(java.util.logging.Level.WARNING, "Failed to serialize array", e);
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Failed to serialize array", e);
                 return null;
             }
         }
 
         private Object deserializeArray(byte[] bytes) {
-            try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(bytes);
-                 java.io.ObjectInputStream ois = new java.io.ObjectInputStream(bais)) {
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+                 ObjectInputStream ois = new ObjectInputStream(bais)) {
                 return ois.readObject();
-            } catch (java.io.IOException | ClassNotFoundException e) {
-                logger.log(java.util.logging.Level.WARNING, "Failed to deserialize array", e);
+            } catch (IOException | ClassNotFoundException e) {
+                logger.log(Level.WARNING, "Failed to deserialize array", e);
                 return null;
             }
         }

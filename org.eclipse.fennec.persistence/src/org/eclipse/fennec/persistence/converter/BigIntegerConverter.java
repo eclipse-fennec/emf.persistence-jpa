@@ -47,11 +47,11 @@ public class BigIntegerConverter implements TypeConverter {
 	@Override
 	public Object convertValueToEMF(EClassifier eDataType,
 			Object databaseValue) {
-		if (databaseValue instanceof Integer) {
-			return EcoreUtil.createFromString((EDataType) eDataType, ((Integer)databaseValue).toString());
+		if (databaseValue instanceof Integer intValue) {
+			return EcoreUtil.createFromString((EDataType) eDataType, intValue.toString());
 		}
-		if (databaseValue instanceof String) {
-			return EcoreUtil.createFromString((EDataType) eDataType, (String) databaseValue);
+		if (databaseValue instanceof String stringValue) {
+			return EcoreUtil.createFromString((EDataType) eDataType, stringValue);
 		}
 		return databaseValue.toString();
 	}

@@ -20,7 +20,8 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.UUID;
 
-import org.eclipse.emf.common.util.URI;
+import java.net.URI;
+
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -59,7 +60,7 @@ public class EORMModelHelper {
 		requireNonNull(fileExt);
 		requireNonNull(resourceSet);
 		String uriString = UUID.randomUUID().toString() + "." + fileExt;
-		Resource resource = resourceSet.createResource(URI.createURI(uriString));
+		Resource resource = resourceSet.createResource(org.eclipse.emf.common.util.URI.createURI(uriString));
 		requireNonNull(resource, String.format("No resource factory registered for '%s'", uriString));
 		try {
 			resource.load(data, null);
@@ -80,7 +81,7 @@ public class EORMModelHelper {
 	public PersistenceUnit loadPersistenceUnit(String urlString) {
 		requireNonNull(urlString);
 		try {
-			java.net.URI uri = java.net.URI.create(urlString);
+			URI uri = URI.create(urlString);
 			URL url = uri.toURL();
 			return loadPersistenceUnit(url);
 		} catch (IllegalStateException e) {
@@ -112,7 +113,7 @@ public class EORMModelHelper {
 		requireNonNull(urlString);
 		Resource resource = null;
 		try {
-			java.net.URI uri = java.net.URI.create(urlString);
+			URI uri = URI.create(urlString);
 			URL url = uri.toURL();
 			EntityMappings mapping = loadMapping(url);
 			EcoreUtil.resolveAll(mapping);

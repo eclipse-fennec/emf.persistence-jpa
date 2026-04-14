@@ -77,8 +77,8 @@ public abstract class BaseProcessor<T extends SimpleBase> extends NamedBaseProce
 	T createSimpleBase() {
 		target.setFetch(FetchType.EAGER);
 		EDataType type = source.getEAttributeType();
-		if (type instanceof EEnum) {
-			target.setEnumerated((EEnum)source.getEAttributeType());
+		if (type instanceof EEnum eEnum) {
+			target.setEnumerated(eEnum);
 		}
 		Class<?> typeClass = type.getInstanceClass();
 		if (nonNull(typeClass)) {
