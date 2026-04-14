@@ -73,7 +73,7 @@ public class OneToOneProcessor extends BaseReferenceProcessor<OneToOne> {
 	@Override
 	protected void doProcess() {
 		target.setOptional(!source.isRequired());
-		target.setOrphanRemoval(!source.isContainment());
+		target.setOrphanRemoval(source.isContainment());
 		if (isOppositeMapping()) {
 			EReference opposite = source.getEOpposite();
 			BaseRef mapping = context.getMapping(source);

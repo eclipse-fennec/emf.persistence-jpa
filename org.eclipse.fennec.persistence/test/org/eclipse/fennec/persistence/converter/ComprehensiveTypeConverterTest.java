@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.converter;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -206,10 +207,10 @@ class ComprehensiveTypeConverterTest {
             Object stringValue = converter.convertValueToEMF(dataType, "456.78");
             assertEquals(new BigDecimal("456.78"), stringValue);
             
-            // Test EMF to database conversion
+            // Test EMF to database conversion — BigDecimal passes through natively
             BigDecimal bigDecimal = new BigDecimal("789.12");
             Object dbValue = converter.convertEMFToValue(dataType, bigDecimal);
-            assertEquals(789.12, dbValue);
+            assertEquals(new BigDecimal("789.12"), dbValue);
         }
 
         @Test
@@ -222,10 +223,59 @@ class ComprehensiveTypeConverterTest {
             Object emfValue = converter.convertValueToEMF(dataType, longValue);
             assertEquals(BigInteger.valueOf(123456789L), emfValue);
             
-            // Test EMF to database conversion
+            // Test EMF to database conversion — BigInteger passes through natively
             BigInteger bigInteger = new BigInteger("987654321");
             Object dbValue = converter.convertEMFToValue(dataType, bigInteger);
-            assertEquals(987654321, dbValue);
+            assertEquals(new BigInteger("987654321"), dbValue);
+        }
+
+        @Test
+        @DisplayName("BigDecimal precision is preserved for large values")
+        void testBigDecimalPrecisionPreserved() {
+            EDataType dataType = createDataType("java.math.BigDecimal");
+
+            // High-precision value that would lose precision via doubleValue()
+            String preciseValue = "12345678901234567890.12345678901234567890";
+            Object emfValue = converter.convertValueToEMF(dataType, preciseValue);
+            assertEquals(new BigDecimal(preciseValue), emfValue);
+
+            // Round-trip: EMF → DB → EMF should be identical
+            Object dbValue = converter.convertEMFToValue(dataType, emfValue);
+            assertInstanceOf(BigDecimal.class, dbValue);
+            assertEquals(new BigDecimal(preciseValue), dbValue);
+        }
+
+        @Test
+        @DisplayName("BigInteger handles values beyond int range")
+        void testBigIntegerBeyondIntRange() {
+            EDataType dataType = createDataType("java.math.BigInteger");
+
+            // Value exceeding Integer.MAX_VALUE — would overflow with intValue()
+            BigInteger largeValue = new BigInteger("99999999999999999999");
+            Object dbValue = converter.convertEMFToValue(dataType, largeValue);
+            assertInstanceOf(BigInteger.class, dbValue);
+            assertEquals(largeValue, dbValue);
+
+            // Round-trip from Long
+            Long longVal = Long.MAX_VALUE;
+            Object emfValue = converter.convertValueToEMF(dataType, longVal);
+            assertEquals(BigInteger.valueOf(Long.MAX_VALUE), emfValue);
+        }
+
+        @Test
+        @DisplayName("BigDecimal null handling")
+        void testBigDecimalNullHandling() {
+            EDataType dataType = createDataType("java.math.BigDecimal");
+            assertNull(converter.convertValueToEMF(dataType, null));
+            assertNull(converter.convertEMFToValue(dataType, null));
+        }
+
+        @Test
+        @DisplayName("BigInteger null handling")
+        void testBigIntegerNullHandling() {
+            EDataType dataType = createDataType("java.math.BigInteger");
+            assertNull(converter.convertValueToEMF(dataType, null));
+            assertNull(converter.convertEMFToValue(dataType, null));
         }
     }
 

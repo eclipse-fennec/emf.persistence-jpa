@@ -1,67 +1,122 @@
-[![CI Build](https://github.com/eclipse-fennec/emf.codec/actions/workflows/build.yml/badge.svg)](https://github.com/eclipse-fennec/emf.codec/actions/workflows/build.yml)[![License](https://github.com/eclipse-fennec/emf.codec/actions/workflows/license.yml/badge.svg)](https://github.com/eclipse-fennec/emf.codec/actions/workflows/license.yml)
+# Eclipse Fennec Persistence JPA
 
-# Eclipse Fennec Codec
+An OSGi-based persistence framework bridging [EMF](https://eclipse.dev/modeling/emf/) (Eclipse Modeling Framework) with [Jakarta Persistence](https://jakarta.ee/specifications/persistence/) (JPA) via [EclipseLink](https://eclipse.dev/eclipselink/).
 
-An EMF codec framework built on Jackson 3.x for serializing and deserializing EMF EObjects to JSON and other formats (BSON, CSV, etc.).
+It maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities through a processor-based transformation pipeline, allowing EObjects to be persisted to relational databases without writing JPA entity classes.
 
-## Documentation
+## Key Features
 
-The complete codec specification is available in [`docs/codec-v2-spec/`](docs/codec-v2-spec/00-overview.md):
+- **Automatic ORM mapping** from Ecore models -- no hand-written JPA entities required
+- **Custom ORM mapping** via EORM metadata for existing database schemas
+- **Dynamic JPA entities** at runtime using EclipseLink's Dynamic Entity API
+- **All relationship types**: OneToOne, OneToMany, ManyToOne, ManyToMany (containment and non-containment)
+- **Inheritance support** (SINGLE_TABLE strategy)
+- **Type conversion** for common Java types (java.time.*, UUID, BigDecimal, BigInteger, arrays, etc.)
+- **EMF Resource integration** via `jpa://` URI scheme and proxy-based lazy loading
+- **OSGi Declarative Services** for configuration and lifecycle management
+- **Reverse engineering** of Ecore models from existing database schemas
 
-- **[00 - Overview & Table of Contents](docs/codec-v2-spec/00-overview.md)** - Start here
-- **[01 - Architecture](docs/codec-v2-spec/01-architecture.md)** - Component structure, serialization flow
-- **[02 - Configuration Resolution](docs/codec-v2-spec/02-config-resolution.md)** - Source hierarchy, scope chain
-- **[06 - Type Serialization](docs/codec-v2-spec/06-type.md)** - Type strategies (URI, NAME, NUMERIC, etc.)
-- **[09 - ID Serialization](docs/codec-v2-spec/09-id.md)** - ID strategies, key modes, formats
-- **[10 - Reference Serialization](docs/codec-v2-spec/10-reference.md)** - Reference handling, expand, proxy
-- **[11 - Feature Serialization](docs/codec-v2-spec/11-feature.md)** - Attribute/feature configuration
-- **[16 - Annotation Reference](docs/codec-v2-spec/16-annotation-reference.md)** - Complete property reference
+## Module Overview
 
-Further documentation:
+| Module | Role |
+|--------|------|
+| `org.eclipse.fennec.persistence` | Core API: `PersistenceEngine`, `ConverterService`, type converters, `EMFHelper` |
+| `org.eclipse.fennec.persistence.orm` | EORM metadata model (`eorm.ecore`) + processors (Entity, Basic, OneToMany, ManyToOne, etc.) |
+| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, accessors, `JPAResource` |
+| `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` -- reverse-engineers Ecore models from database schemas |
+| `org.eclipse.fennec.persistence.test` | OSGi integration tests (JUnit 5, H2 database) |
 
-| Document | Purpose |
-|----------|---------|
-| [Development Guide](docs/codec-v2-development-guide.md) | Current state, architecture, session continuity |
-| [Plans & Roadmap](docs/codec-v2-plans.md) | Active plans, GAP analysis |
-| [Reference](docs/codec-v2-reference.md) | EMF concepts, terminology, API reference |
+## Quick Start
 
-## Project Structure
+### Prerequisites
 
-| Project | Purpose |
-|---------|---------|
-| `org.eclipse.fennec.codec` | Codec runtime (serialization/deserialization) |
-| `org.eclipse.fennec.codec.api` | Configuration API (TypeConfig, IdConfig, etc.) |
-| `org.eclipse.fennec.codec.metadata` | Codec-specific metadata aspects |
-| `org.eclipse.fennec.model.metadata` | Generic metadata service infrastructure |
-| `org.eclipse.fennec.codec.bson` | BSON (MongoDB) format provider |
-| `org.eclipse.fennec.codec.cbor` | CBOR format provider |
-| `org.eclipse.fennec.codec.yaml` | YAML format provider |
-| `org.eclipse.fennec.codec.geojson` | GeoJSON codec extension |
-| `org.eclipse.fennec.codec.jsonschema` | JSON Schema codec extension |
-| `org.eclipse.fennec.codec.openapi` | OpenAPI codec extension |
-| `org.eclipse.fennec.codec.examples` | Usage examples |
+- Java 17+
+- OSGi runtime with Declarative Services (e.g., Apache Felix, Eclipse Equinox)
+- An Ecore model (`.ecore` file)
+
+### 1. Define your Ecore model
+
+Create an Ecore model with EClasses, EAttributes, and EReferences. Mark one EAttribute per EClass as `iD=true` for the primary key.
+
+### 2. Configure the persistence unit
+
+Create an OSGi factory configuration for `fennec.jpa.EMPersistenceUnit`:
+
+```properties
+fennec.jpa.persistenceUnitName=my-pu
+fennec.jpa.ext.eclipselink.ddl-generation=create-or-extend-tables
+```
+
+### 3. Provide a DataSource
+
+Register a `javax.sql.DataSource` as OSGi service. The configurator binds to it via the `fennec.jpa.dataSource` reference.
+
+### 4. Use the EntityManagerFactory
+
+Once activated, the configurator registers an `EntityManagerFactory` as OSGi service. Use it directly or via `JPAResource`:
+
+```java
+@Reference(target = "(osgi.unit.name=my-pu)")
+EntityManagerFactory emf;
+
+// Via JPAResource (EMF-style)
+JPAResourceImpl resource = new JPAResourceImpl(
+    URI.createURI("jpa://my-pu/Person"), emf);
+resource.load(null);       // loads all Person entities
+resource.save(null);       // persists/merges contents
+resource.delete(null);     // removes contents from DB
+```
 
 ## Build
 
 ```bash
-./gradlew build                                    # Build all
-./gradlew :org.eclipse.fennec.codec:test            # Codec tests (JUnit 5)
-./gradlew :org.eclipse.fennec.codec.metadata:test  # Metadata tests
-./gradlew :org.eclipse.fennec.codec.api:test       # API tests
+./gradlew build                    # Build all modules (excludes @Tag("perf") tests)
+./gradlew perfTest                 # Run performance tests only
+./gradlew :MODULE_NAME:test        # Run tests for a single module
+./gradlew codeCoverageReport       # Generate JaCoCo coverage (XML + HTML)
 ```
 
-## Developers
+## Architecture
 
-* **Juergen Albert** (jalbert) / [j.albert@data-in-motion.biz](mailto:j.albert@data-in-motion.biz) @ [Data In Motion](https://www.datainmotion.de) - *architect*, *developer*
-* **Mark Hoffmann** (mhoffmann) / [m.hoffmann@data-in-motion.biz](mailto:m.hoffmann@data-in-motion.biz) @ [Data In Motion](https://www.datainmotion.de) - *developer*, *architect*
+```
+Ecore Model (.ecore)
+       |
+       v
+ EORM Processor Pipeline
+ (EntityProcessor -> BasicProcessor -> OneToManyProcessor -> ...)
+       |
+       v
+ EORM Metadata (eorm.ecore)
+       |
+       v
+ EDynamicTypeGenerator / EDynamicTypeBuilder
+ (Creates EclipseLink descriptors, mappings, dynamic types at runtime)
+       |
+       v
+ EclipseLink EntityManagerFactory
+ (JPA operations: persist, find, merge, remove)
+       |
+       v
+ Relational Database
+```
+
+The framework uses EclipseLink's Dynamic Entity API to create JPA entity types at runtime from Ecore metadata, avoiding the need for compile-time entity classes or bytecode weaving.
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [Development Guide](docs/development-guide.md) | Architecture details, session continuity |
+| [Review](docs/REVIEW.md) | Structured review: criteria, findings, work packages |
+| [SECURITY.md](SECURITY.md) | Vulnerability reporting, security considerations |
 
 ## License
 
-**Eclipse Public License 2.0**
+[Eclipse Public License 2.0](LICENSE)
 
-## Copyright
+## Contributors
 
-Data In Motion Consulting GmbH - All rights reserved
+* **Mark Hoffmann** @ [Data In Motion](https://www.datainmotion.de)
+* **Juergen Albert** @ [Data In Motion](https://www.datainmotion.de)
 
----
-Data In Motion Consulting GmbH - [info@data-in-motion.biz](mailto:info@data-in-motion.biz)
+Part of the [Eclipse Fennec](https://projects.eclipse.org/projects/modeling.fennec) project.

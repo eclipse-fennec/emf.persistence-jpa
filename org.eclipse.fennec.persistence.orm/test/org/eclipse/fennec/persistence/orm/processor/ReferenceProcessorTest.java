@@ -63,8 +63,8 @@ public class ReferenceProcessorTest {
 			OneToOne result = processor.getMapping();
 			assertThat(result).isNotNull();
 			assertThat(result.getName()).isEqualTo("child");
-			// containment → orphanRemoval=false (isContainment=true → !true=false)
-			assertThat(result.isOrphanRemoval()).isFalse();
+			// containment → orphanRemoval=true (child is owned, removed when detached from parent)
+			assertThat(result.isOrphanRemoval()).isTrue();
 		}
 
 		@Test
@@ -79,8 +79,8 @@ public class ReferenceProcessorTest {
 			assertThat(processor.isProcessed()).isTrue();
 			OneToOne result = processor.getMapping();
 			assertThat(result).isNotNull();
-			// non-containment → orphanRemoval=true
-			assertThat(result.isOrphanRemoval()).isTrue();
+			// non-containment → orphanRemoval=false (referenced objects survive removal)
+			assertThat(result.isOrphanRemoval()).isFalse();
 		}
 
 		@Test
@@ -168,7 +168,8 @@ public class ReferenceProcessorTest {
 			assertThat(result).isNotNull();
 			assertThat(result.getJoinColumn()).isNotEmpty();
 			assertThat(result.getJoinTable()).isNull();
-			assertThat(result.isOrphanRemoval()).isFalse();
+			// containment → orphanRemoval=true (children are owned, deleted when removed from parent)
+			assertThat(result.isOrphanRemoval()).isTrue();
 		}
 
 		@Test
@@ -198,7 +199,8 @@ public class ReferenceProcessorTest {
 			OneToMany result = processor.getMapping();
 			assertThat(result.getJoinTable()).isNotNull();
 			assertThat(result.getJoinColumn()).isEmpty();
-			assertThat(result.isOrphanRemoval()).isTrue();
+			// non-containment → orphanRemoval=false (referenced objects survive removal)
+			assertThat(result.isOrphanRemoval()).isFalse();
 		}
 
 		@Test
@@ -421,7 +423,7 @@ public class ReferenceProcessorTest {
 		}
 
 		@Test
-		void testNonContainmentHasDetachAndRefresh() {
+		void testNonContainmentHasPersistDetachRefreshButNoRemove() {
 			EClass a = createClassWithId("A");
 			EClass b = createClassWithId("B");
 			EReference ref = createReference("b", a, b, false, false);
@@ -432,8 +434,31 @@ public class ReferenceProcessorTest {
 			CascadeType cascade = processor.getMapping().getCascade();
 			assertThat(cascade).isNotNull();
 			assertThat(cascade.getCascadeAll()).isNull();
+			// Non-containment: persist, detach, refresh — but NO remove
+			assertThat(cascade.getCascadePersist()).isNotNull();
 			assertThat(cascade.getCascadeDetach()).isNotNull();
 			assertThat(cascade.getCascadeRefresh()).isNotNull();
+			// Referenced objects must survive parent deletion
+			assertThat(cascade.getCascadeRemove()).isNull();
+			assertThat(cascade.getCascadeMerge()).isNull();
+		}
+
+		@Test
+		void testNonContainmentOneToManyHasNoCascadeRemove() {
+			EClass a = createClassWithId("A");
+			EClass b = createClassWithId("B");
+			EReference ref = createReference("items", a, b, true, false);
+
+			OneToManyProcessor processor = new OneToManyProcessor(ref, context);
+			processor.process();
+
+			CascadeType cascade = processor.getMapping().getCascade();
+			assertThat(cascade).isNotNull();
+			assertThat(cascade.getCascadeAll()).isNull();
+			assertThat(cascade.getCascadePersist()).isNotNull();
+			assertThat(cascade.getCascadeDetach()).isNotNull();
+			assertThat(cascade.getCascadeRefresh()).isNotNull();
+			assertThat(cascade.getCascadeRemove()).isNull();
 		}
 
 		@Test

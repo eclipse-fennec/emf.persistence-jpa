@@ -95,7 +95,8 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 			}
 		} else if (source.isContainment()) {
 			// CONTAINMENT: Use JoinColumn (FK in target table)
-			target.setOrphanRemoval(false);
+			// OrphanRemoval=true: children are deleted when removed from parent collection
+			target.setOrphanRemoval(true);
 			JoinColumn jc = createContainmentJoinColumn(source);
 			if (nonNull(jc)) {
 				target.getJoinColumn().add(jc);
@@ -103,7 +104,8 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 			}
 		} else {
 			// NON-CONTAINMENT: Use JoinTable
-			target.setOrphanRemoval(true);
+			// OrphanRemoval=false: referenced objects survive removal from collection
+			target.setOrphanRemoval(false);
 			JoinTable jt = createJoinTable(source);
 			target.setJoinTable(jt);
 		}
