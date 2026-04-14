@@ -15,8 +15,6 @@ package org.eclipse.fennec.persistence.eclipselink.mappings;
 import static java.util.Objects.nonNull;
 
 import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EAttribute;
@@ -42,22 +40,29 @@ public class EFeatureAccessor extends AttributeAccessor {
 	/** serialVersionUID */
 	private static final long serialVersionUID = 1L;
 	private final EStructuralFeature feature;
-	private static final Map<EStructuralFeature, EFeatureAccessor> accessorMap = new ConcurrentHashMap<>();
-	private TypeConverter converter;
-	
-	public static AttributeAccessor create(EStructuralFeature feature) {
-		return accessorMap.computeIfAbsent(feature, EFeatureAccessor::new);
+	private final TypeConverter converter;
+
+	/**
+	 * Creates a new accessor for the given feature without a converter.
+	 * @param feature the structural feature
+	 * @return a new accessor instance
+	 */
+	public static EFeatureAccessor create(EStructuralFeature feature) {
+		return new EFeatureAccessor(feature, null);
 	}
 
-	private EFeatureAccessor(EStructuralFeature feature) {
-		this.feature = feature;
-	}
-	
 	/**
-	 * Sets a converter
-	 * @param converter the converter to set. Can be <code>null</code>
+	 * Creates a new accessor for the given feature with a converter.
+	 * @param feature the structural feature
+	 * @param converter the type converter, may be {@code null}
+	 * @return a new accessor instance
 	 */
-	public void setConverter(TypeConverter converter) {
+	public static EFeatureAccessor create(EStructuralFeature feature, TypeConverter converter) {
+		return new EFeatureAccessor(feature, converter);
+	}
+
+	private EFeatureAccessor(EStructuralFeature feature, TypeConverter converter) {
+		this.feature = feature;
 		this.converter = converter;
 	}
 	

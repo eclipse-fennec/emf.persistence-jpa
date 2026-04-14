@@ -14,19 +14,10 @@ package org.eclipse.fennec.persistence.eclipselink.spi;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
-import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.Collections;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.sql.DataSource;
@@ -40,12 +31,8 @@ import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.epersistence.EPersistencePackage;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
 import org.eclipse.fennec.persistence.orm.helper.EORMModelHelper;
-import org.eclipse.persistence.config.PersistenceUnitProperties;
-import org.eclipse.persistence.jpa.PersistenceProvider;
-import org.eclipse.persistence.platform.database.H2Platform;
 import org.eclipse.fennec.emf.osgi.constants.EMFNamespaces;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -55,45 +42,41 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
-import org.osgi.util.promise.PromiseFactory;
-
-import jakarta.persistence.EntityManagerFactory;
 
 /**
- * Configurator component 
+ * Configurator component that creates an EntityManagerFactory from a
+ * persistence unit file or mapping file configuration.
+ *
  * @author Mark Hoffmann
  * @since 10.12.2024
  */
 @Designate(factory = true, ocd = PersistenceUnitConfigurator.PUConfig.class)
 @Component(name = PersistenceUnitConfigurator.PID, configurationPolicy = ConfigurationPolicy.REQUIRE)
-public class PersistenceUnitConfigurator {
+public class PersistenceUnitConfigurator extends AbstractPersistenceUnitConfigurator {
 
 	private static final Logger LOG = Logger.getLogger(PersistenceUnitConfigurator.class.getName());
 
 	public static final String PID = "fennec.jpa.PersistenceUnit";
 	public static final String EPERSISTENCE_MODEL_TARGET = "(&(" + EMFNamespaces.EMF_NAME + "=" + EPersistencePackage.eNAME + ")(" + EMFNamespaces.EMF_NAME + "=" + EORMPackage.eNAME + "))";
-	public static final String PROPERTY_PREFIX = "fennec.jpa.";
-	public static final String PROPERTY_PREFIX_EXT = PROPERTY_PREFIX + "ext.";
 
 	@Reference(target = EPERSISTENCE_MODEL_TARGET)
 	private ResourceSet resourceSet;
-    @Reference(name = "fennec.jpa.dataSource")
-    private DataSource dataSource;
-    @Reference(name = "fennec.jpa.model")
-    private EPackage modelPackage;
+	@Reference(name = "fennec.jpa.dataSource")
+	private DataSource dataSource;
+	@Reference(name = "fennec.jpa.model")
+	private EPackage modelPackage;
 	@Reference(name = "fennec.jpa.converter")
 	private ConverterService converter;
+
 	private EORMModelHelper modelHelper;
-	private volatile ServiceRegistration<EntityManagerFactory> emfRegistration;
-	private volatile EntityManagerFactory emf;
-	private ExecutorService executor;
+	private EPersistenceContextImpl pctx;
 
 	@ObjectClassDefinition
 	public @interface PUConfig {
 
 		public static final String PREFIX_ = PROPERTY_PREFIX;
 
-		@AttributeDefinition(name = "Persistence unit file", description="Optional attribute, if a single mapping file is given")
+		@AttributeDefinition(name = "Persistence unit file", description = "Optional attribute, if a single mapping file is given")
 		String persistenceUnitFile();
 
 		@AttributeDefinition(name = "Entity mapping file")
@@ -101,134 +84,76 @@ public class PersistenceUnitConfigurator {
 
 		@AttributeDefinition(name = "Persistence unit name", description = "Only needed, if no persistence unit file is given")
 		String persistenceUnitName();
-
 	}
 
 	@Activate
 	void activate(BundleContext bctx, PUConfig config, Map<String, Object> properties)
 			throws IOException, ConfigurationException {
 		modelHelper = new EORMModelHelper(resourceSet);
-		EPersistenceContextImpl pctx = createPersistenceContext(config);
-		
-		URL url = bctx.getBundle().getEntry("META-INF/persistence.xml");
-		pctx.setMetadataURL(url);
-		// Forward prefixed properties
-		Map<String, Object> emfProperties = createForwardedProperties(properties);
-		setEMFProperties(emfProperties);
-		
-		try {
-			Builder configBuilder = Builder.
-					create(bctx, resourceSet).
-					dataSource(dataSource).
-					context(pctx).
-					converter(converter).
-					properties(emfProperties);
-			
-			executor = Executors.newSingleThreadExecutor();
-			PromiseFactory pf = new PromiseFactory(executor);
-			pf.submit(()->{
-				emf = configBuilder.build().configure();
-				Dictionary<String, Object> entityMapperProps = new Hashtable<>();
-				entityMapperProps.put("osgi.unit.name", pctx.getPersistenceUnitName());
-				entityMapperProps.put("osgi.unit.version", bctx.getBundle().getVersion().toString());
-				entityMapperProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
-				emfRegistration = bctx.registerService(EntityManagerFactory.class, emf, entityMapperProps);
-				return emfRegistration;
-			}).onFailure(t -> LOG.log(Level.SEVERE, "Failed to create EntityManagerFactory", t));
+		this.pctx = createPersistenceContext(config);
+		pctx.setMetadataURL(getMetadataURL(bctx));
 
-		} catch (Exception e) {
-			throw new IllegalStateException("Error configuring persistence unit", e);
-		}
-
+		doActivate(bctx, properties);
 	}
 
 	@Deactivate
 	void deactivate() {
-		if (nonNull(executor)) {
-			executor.shutdownNow();
-			try {
-				executor.awaitTermination(5, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-		}
-		if (nonNull(emfRegistration)) {
-			emfRegistration.unregister();
-		}
-		if (nonNull(emf) && emf.isOpen()) {
-			emf.close();
-		}
+		doDeactivate();
 	}
-	
-	/**
-	 * Validates the configration and creates a {@link EPersistenceContextImpl} out of it.
-	 * @param config the configuration
-	 * @return the {@link EPersistenceContextImpl}
-	 * @throws ConfigurationException thrown, if an invalid configuration was provided
-	 */
+
+	@Override
+	protected Logger getLogger() {
+		return LOG;
+	}
+
+	@Override
+	protected DataSource getDataSource() {
+		return dataSource;
+	}
+
+	@Override
+	protected ConverterService getConverterService() {
+		return converter;
+	}
+
+	@Override
+	protected String getPersistenceUnitName() {
+		return pctx.getPersistenceUnitName();
+	}
+
+	@Override
+	protected Builder createConfigBuilder(BundleContext bctx, Map<String, Object> emfProperties) {
+		return Builder.create(bctx, resourceSet)
+				.dataSource(dataSource)
+				.context(pctx)
+				.converter(converter)
+				.properties(emfProperties);
+	}
+
 	private EPersistenceContextImpl createPersistenceContext(PUConfig config) throws ConfigurationException {
-		EPersistenceContextImpl pctx;
 		if (nonNull(config.persistenceUnitFile())) {
 			try {
 				PersistenceUnit pu = modelHelper.loadPersistenceUnit(config.persistenceUnitFile());
-				pctx = new EPersistenceContextImpl(pu);
+				return new EPersistenceContextImpl(pu);
 			} catch (Exception e) {
-				throw new ConfigurationException("persistenceUnitFile", String.format("The file from this uri '%s' cannot be loaded", config.persistenceUnitFile()), e);
+				throw new ConfigurationException("persistenceUnitFile",
+						String.format("The file from this uri '%s' cannot be loaded", config.persistenceUnitFile()), e);
 			}
 		} else {
 			if (isNull(config.persistenceUnitName())) {
-				throw new ConfigurationException("persistenceUnitName", String.format("No persistence unit name was provided"));
+				throw new ConfigurationException("persistenceUnitName", "No persistence unit name was provided");
 			}
 			if (isNull(config.mappingFile())) {
-				throw new ConfigurationException("mappingFile", String.format("No mapping file path was provided"));
+				throw new ConfigurationException("mappingFile", "No mapping file path was provided");
 			}
 			try {
 				EntityMappings mapping = modelHelper.loadMapping(config.mappingFile());
-				pctx = new EPersistenceContextImpl(config.persistenceUnitName(), Collections.singletonList(mapping));
+				return new EPersistenceContextImpl(config.persistenceUnitName(), Collections.singletonList(mapping));
 			} catch (Exception e) {
-				throw new ConfigurationException("mappingFile", String.format("The file from this uri '%s' cannot be loaded", config.mappingFile()), e);
+				throw new ConfigurationException("mappingFile",
+						String.format("The file from this uri '%s' cannot be loaded", config.mappingFile()), e);
 			}
 		}
-		return pctx;
-	}
-
-	/**
-	 * Takes the configuration properties and extracts forwarded properties and puts
-	 * them in an own property map
-	 * @param properties the configuration properties
-	 * @return a new property map, with the replaced properties
-	 */
-	private Map<String, Object> createForwardedProperties(Map<String, Object> properties) {
-		Map<String, Object> emfProperties = new HashMap<>();
-		properties.forEach((k,v)->{
-			if (k.startsWith(PROPERTY_PREFIX_EXT)) {
-				emfProperties.put(k.replace(PROPERTY_PREFIX_EXT, ""), v);
-			}
-		});
-		return emfProperties;
-	}
-
-	/**
-	 * Sets some connection and {@link EntityManagerFactory} properties
-	 * @param properties the properties map
-	 */
-	private void setEMFProperties(Map<String, Object> properties) {
-		requireNonNull(properties);
-//		properties.put(PersistenceUnitProperties.CLASSLOADER, dcl);
-		properties.put(PersistenceUnitProperties.WEAVING, "static");
-		properties.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
-		properties.put(PersistenceUnitProperties.NON_JTA_DATASOURCE, dataSource);
-		properties.put(PersistenceUnitProperties.TARGET_DATABASE, H2Platform.class.getName());
-		properties.put(PersistenceUnitProperties.THROW_EXCEPTIONS, "true");
-		properties.put(PersistenceUnitProperties.CONNECTION_POOL_MIN, 1);
-//		properties.put(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.CREATE_OR_EXTEND);
-		properties.put("eclipselink.logging.level", "WARNING");
-		properties.put("eclipselink.logging.timestamp", "false");
-		properties.put("eclipselink.logging.thread", "false");
-		properties.put("eclipselink.logging.exceptions", "true");
-//        properties.put("eclipselink.ddl-generation.output-mode", "database");
-//        properties.put("eclipselink.ddl-generation", "none");
-//        properties.put("eclipselink.cache.shared.default", "false");
 	}
 
 }

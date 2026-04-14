@@ -235,16 +235,19 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
             if (value == null) return null;
-            if (value instanceof Timestamp timestamp) return timestamp.toInstant().atZone(ZoneId.systemDefault());
-            if (value instanceof java.util.Date utilDate) return utilDate.toInstant().atZone(ZoneId.systemDefault());
+            // ISO-8601 string preserves timezone information (preferred path)
             if (value instanceof String dateTimeStr) return ZonedDateTime.parse(dateTimeStr);
+            // Timestamp/Date have no timezone — use UTC as convention
+            if (value instanceof Timestamp timestamp) return timestamp.toInstant().atZone(ZoneId.of("UTC"));
+            if (value instanceof java.util.Date utilDate) return utilDate.toInstant().atZone(ZoneId.of("UTC"));
             return value;
         }
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
             if (emfValue == null) return null;
-            if (emfValue instanceof ZonedDateTime zonedDateTime) return Timestamp.from(zonedDateTime.toInstant());
+            // Store as ISO-8601 string to preserve timezone information
+            if (emfValue instanceof ZonedDateTime zonedDateTime) return zonedDateTime.toString();
             return emfValue;
         }
     }

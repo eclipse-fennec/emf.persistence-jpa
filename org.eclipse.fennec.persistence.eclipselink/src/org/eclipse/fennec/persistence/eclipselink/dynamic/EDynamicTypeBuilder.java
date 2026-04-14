@@ -487,15 +487,14 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		/**
 		 * Converter handling - both explicit and automatic
 		 */
-		EFeatureAccessor efa = (EFeatureAccessor) EFeatureAccessor.create(feature);
 		TypeConverter converter = null;
-		
+
 		// First check for explicit converter configuration
 		Convert convert = basic.getConvert();
 		if (nonNull(convert) && nonNull(convert.getConverter())) {
 			String name = convert.getConverter();
 			converter = context.getConverter(name);
-		} 
+		}
 		// If no explicit converter, try automatic detection for non-standard database types
 		else if (feature instanceof EAttribute ea) {
 			Class<?> originalTypeClass = ea.getEAttributeType().getInstanceClass();
@@ -516,10 +515,8 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 				}
 			}
 		}
-		
-		if (nonNull(converter)) {
-			efa.setConverter(converter);
-		}
+
+		EFeatureAccessor efa = EFeatureAccessor.create(feature, converter);
 		mapping.setAttributeAccessor(efa);
 	}
 
@@ -558,17 +555,16 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 		/**
 		 * Automatic converter detection for element collections with custom types
 		 */
-		EFeatureAccessor efa = (EFeatureAccessor) EFeatureAccessor.create(ea);
+		TypeConverter converter = null;
 		if (typeClass == String.class && attrType.getInstanceClass() != String.class) {
 			// This is a type that fell back to String due to unsupported instance class - try to find a converter
 			try {
 				LOG.log(Level.FINER, "[ElementCollection] Trying to find converter for {0} (instanceClass: {1})",
 					new Object[]{attrType.getName(), attrType.getInstanceClass()});
-				TypeConverter converter = context.getConverter(attrType);
+				converter = context.getConverter(attrType);
 				if (nonNull(converter)) {
 					LOG.log(Level.FINER, "[ElementCollection] Found converter: {0} for {1}",
 						new Object[]{converter.getName(), attrType.getName()});
-					efa.setConverter(converter);
 				} else {
 					LOG.log(Level.FINER, "[ElementCollection] No converter found for {0}", attrType.getName());
 				}
@@ -576,6 +572,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 				LOG.log(Level.WARNING, e, () -> "[ElementCollection] Exception finding converter for " + attrType.getName());
 			}
 		}
+		EFeatureAccessor efa = EFeatureAccessor.create(ea, converter);
 		mapping.setAttributeAccessor(efa);
 	}
 

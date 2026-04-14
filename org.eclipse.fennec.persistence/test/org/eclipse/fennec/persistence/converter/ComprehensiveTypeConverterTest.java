@@ -137,19 +137,46 @@ class ComprehensiveTypeConverterTest {
         }
 
         @Test
-        @DisplayName("ZonedDateTime conversion")
-        void testZonedDateTimeConversion() {
+        @DisplayName("ZonedDateTime conversion from Timestamp uses UTC")
+        void testZonedDateTimeFromTimestamp() {
             EDataType dataType = createDataType("java.time.ZonedDateTime");
-            
-            // Test database to EMF conversion
+
             Timestamp timestamp = new Timestamp(System.currentTimeMillis());
             Object emfValue = converter.convertValueToEMF(dataType, timestamp);
-            assertTrue(emfValue instanceof ZonedDateTime);
-            
-            // Test EMF to database conversion
-            ZonedDateTime zonedDateTime = ZonedDateTime.now();
-            Object dbValue = converter.convertEMFToValue(dataType, zonedDateTime);
-            assertEquals(Timestamp.from(zonedDateTime.toInstant()), dbValue);
+            assertInstanceOf(ZonedDateTime.class, emfValue);
+            // Timestamp has no timezone — converter uses UTC as convention
+            assertEquals("UTC", ((ZonedDateTime) emfValue).getZone().getId());
+        }
+
+        @Test
+        @DisplayName("ZonedDateTime EMF→DB stores as ISO-8601 string")
+        void testZonedDateTimeToISOString() {
+            EDataType dataType = createDataType("java.time.ZonedDateTime");
+
+            ZonedDateTime zdt = ZonedDateTime.of(2026, 4, 14, 10, 30, 0, 0,
+                    java.time.ZoneId.of("Europe/Berlin"));
+            Object dbValue = converter.convertEMFToValue(dataType, zdt);
+            assertInstanceOf(String.class, dbValue);
+            assertTrue(((String) dbValue).contains("Europe/Berlin"));
+        }
+
+        @Test
+        @DisplayName("ZonedDateTime round-trip preserves timezone")
+        void testZonedDateTimeRoundTripPreservesTimezone() {
+            EDataType dataType = createDataType("java.time.ZonedDateTime");
+
+            ZonedDateTime original = ZonedDateTime.of(2026, 1, 15, 14, 30, 0, 0,
+                    java.time.ZoneId.of("America/New_York"));
+
+            // EMF → DB (ISO string)
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            // DB → EMF (parse ISO string)
+            Object roundTripped = converter.convertValueToEMF(dataType, dbValue);
+
+            assertInstanceOf(ZonedDateTime.class, roundTripped);
+            ZonedDateTime result = (ZonedDateTime) roundTripped;
+            assertEquals(original, result);
+            assertEquals("America/New_York", result.getZone().getId());
         }
 
         @Test

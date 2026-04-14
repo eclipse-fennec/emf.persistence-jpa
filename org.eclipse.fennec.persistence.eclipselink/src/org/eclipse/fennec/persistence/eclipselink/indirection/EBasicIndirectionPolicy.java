@@ -66,24 +66,28 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#buildIndirectObject(org.eclipse.persistence.indirection.ValueHolderInterface)
 	 */
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Override
 	public Object buildIndirectObject(ValueHolderInterface valueHolder) {
 		if (isNull(valueHolder)) {
 			return null;
 		}
-		if (nonNull(valueHolder.getValue()) && 
-				valueHolder.getValue() instanceof EObject eValue && 
+		if (nonNull(valueHolder.getValue()) &&
+				valueHolder.getValue() instanceof EObject eValue &&
 				!eValue.eIsProxy()) {
-			// We leave the data as they are, but give the EObject an EProxy
 			URI baseURI = type.getBaseURI();
 			String id = EcoreUtil.getID(eValue);
 			EAttribute idAttribute = eValue.eClass().getEIDAttribute();
-			if (nonNull(id) && 
+			if (nonNull(id) &&
 					nonNull(idAttribute)) {
 				baseURI = baseURI.appendFragment("//" + reference.getName() + "/" + idAttribute.getName() + "/" + id);
 			}
-			((InternalEObject)eValue).eSetProxyURI(baseURI);
+			// Create a proxy copy instead of modifying the cached object directly.
+			// Setting eSetProxyURI on the original would corrupt EclipseLink's cache,
+			// causing other lookups to receive a proxy instead of the real object.
+			EObject proxyCopy = EcoreUtil.copy(eValue);
+			((InternalEObject) proxyCopy).eSetProxyURI(baseURI);
+			valueHolder.setValue(proxyCopy);
 		}
 		return valueHolder;
 	}
