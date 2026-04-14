@@ -102,8 +102,8 @@ public class EDynamicHelper extends JPADynamicHelper {
             cm = session.getPlatform().getConversionManager();
         }
 
-        if (cm.getLoader() instanceof DynamicClassLoader) {
-            return (DynamicClassLoader) cm.getLoader();
+        if (cm.getLoader() instanceof DynamicClassLoader dcLoader) {
+            return dcLoader;
         }
 
         DynamicClassLoader _dcl = isNull(this.dcl) ? new DynamicClassLoader(getClass().getClassLoader()) : this.dcl;

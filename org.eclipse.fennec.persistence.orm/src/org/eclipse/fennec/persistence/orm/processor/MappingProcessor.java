@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -343,7 +344,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	 * The annotation source is {@link Keywords#PERSISTENCE_ANNOTATION_SOURCE} with key "version" = "true".
 	 */
 	private boolean isVersionAttribute(EAttribute attr) {
-		return java.util.Optional.ofNullable(attr.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+		return Optional.ofNullable(attr.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
 				.map(a -> a.getDetails().get("version"))
 				.map("true"::equalsIgnoreCase)
 				.orElse(false);

@@ -17,10 +17,19 @@ import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -859,8 +868,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 	 * Indirection is equal to the resolving proxies in EMF
 	 */
 	private void setContainerIndirectionPolicy(DatabaseMapping mapping, String mapKey, boolean resolveProxy, EStructuralFeature feature) {
-		if (mapping instanceof ContainerMapping) {
-			ContainerMapping cMapping = (ContainerMapping) mapping;
+		if (mapping instanceof ContainerMapping cMapping) {
 			if (resolveProxy && (mapping instanceof ForeignReferenceMapping)) {
 				CollectionMapping collectionMapping = (CollectionMapping)mapping;
 				if (feature.isUnique()) {
@@ -869,8 +877,8 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 					collectionMapping.useTransparentList();
 				}
 			} else {
-				if (mapping instanceof CollectionMapping) {
-					((CollectionMapping)mapping).dontUseIndirection();
+				if (mapping instanceof CollectionMapping collMapping) {
+					collMapping.dontUseIndirection();
 				}
 			}
 			//			if (feature.isUnique()) {
@@ -882,8 +890,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 			//				cMapping.useCollectionClass(java.util.Vector.class);
 			//			}
 			cMapping.useCollectionClass(java.util.LinkedList.class);
-		} else if (mapping instanceof ForeignReferenceMapping) {
-			ForeignReferenceMapping frMapping = (ForeignReferenceMapping) mapping;
+		} else if (mapping instanceof ForeignReferenceMapping frMapping) {
 			if (resolveProxy) {
 				frMapping.setIndirectionPolicy(new BasicIndirectionPolicy());
 				//				frMapping.setIndirectionPolicy(new WeavedObjectBasicIndirectionPolicy(getGetMethodName(), getSetMethodName(), actualAttributeType, true));
@@ -1005,26 +1012,26 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 	 */
 	private Class<?> mapToDbFriendlyType(Class<?> clazz) {
 		// Temporal types → Timestamp (the converter handles the actual conversion)
-		if (clazz == java.time.Instant.class ||
-			clazz == java.time.LocalDateTime.class ||
-			clazz == java.time.LocalDate.class ||
-			clazz == java.time.LocalTime.class) {
+		if (clazz == Instant.class ||
+			clazz == LocalDateTime.class ||
+			clazz == LocalDate.class ||
+			clazz == LocalTime.class) {
 			return java.sql.Timestamp.class;
 		}
 		// ZonedDateTime → String (ISO-8601 with timezone, see AP-22)
-		if (clazz == java.time.ZonedDateTime.class) {
+		if (clazz == ZonedDateTime.class) {
 			return String.class;
 		}
 		// Duration → Long (millis)
-		if (clazz == java.time.Duration.class) {
+		if (clazz == Duration.class) {
 			return Long.class;
 		}
 		// UUID → String
-		if (clazz == java.util.UUID.class) {
+		if (clazz == UUID.class) {
 			return String.class;
 		}
 		// BigDecimal/BigInteger → pass through (JDBC supports natively)
-		if (clazz == java.math.BigDecimal.class || clazz == java.math.BigInteger.class) {
+		if (clazz == BigDecimal.class || clazz == BigInteger.class) {
 			return clazz;
 		}
 		// Default fallback: String

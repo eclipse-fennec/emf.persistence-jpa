@@ -48,10 +48,9 @@ public class DefaultConverter implements TypeConverter {
 	 */
 	@Override
 	public boolean isConverterForType(EClassifier classifier) {
-		if (!(classifier instanceof EDataType)) {
+		if (!(classifier instanceof EDataType eDataType)) {
 			return false;
 		}
-		EDataType eDataType = (EDataType) classifier;
 		int classifierId = eDataType.getClassifierID();
 		return classifierId == EcorePackage.EBYTE_ARRAY ||
 				classifierId == EcorePackage.EBYTE_OBJECT ||

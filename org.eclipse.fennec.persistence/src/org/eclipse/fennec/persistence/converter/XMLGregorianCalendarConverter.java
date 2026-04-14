@@ -45,8 +45,8 @@ public class XMLGregorianCalendarConverter implements TypeConverter {
 			Date date;
 			if (databaseValue instanceof Long) {
 				date = new Date((long) databaseValue);
-			} else if (databaseValue instanceof Date) {
-				date = (Date) databaseValue;
+			} else if (databaseValue instanceof Date dateValue) {
+				date = dateValue;
 			} else {
 				logger.log(Level.WARNING, String.format("Cannot convert '%s' into XMLGregorianCalendar", databaseValue));
 				return null;

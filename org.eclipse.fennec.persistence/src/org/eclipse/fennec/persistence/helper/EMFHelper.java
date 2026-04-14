@@ -79,8 +79,8 @@ public class EMFHelper {
 		EPackage ePackage = resourceSet.getPackageRegistry().getEPackage(theUri.trimSegments(1).trimFragment().toString());
 		if(ePackage != null) {
 			EClassifier eClassifier = (EClassifier) ePackage.getEClassifier(classifier);
-			if(eClassifier != null && eClassifier instanceof EClass) {
-				return (EClass) eClassifier;
+			if(eClassifier instanceof EClass eClass) {
+				return eClass;
 			}
 		}
 

@@ -151,8 +151,8 @@ public class CompositeIdAnalyzer {
         // If eKeys are specified, use those
         if (!idClassReference.getEKeys().isEmpty()) {
             return idClassReference.getEKeys().stream()
-                .filter(key -> key instanceof EAttribute)
-                .map(key -> (EAttribute) key)
+                .filter(EAttribute.class::isInstance)
+                .map(EAttribute.class::cast)
                 .collect(Collectors.toList());
         }
         

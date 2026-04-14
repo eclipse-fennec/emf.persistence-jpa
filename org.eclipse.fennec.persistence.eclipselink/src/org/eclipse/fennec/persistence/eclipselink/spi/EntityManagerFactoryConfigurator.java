@@ -146,7 +146,7 @@ public class EntityManagerFactoryConfigurator {
             throws IOException {
     	
 
-        PersistenceProvider persistenceProvider = new org.eclipse.persistence.jpa.PersistenceProvider();
+        PersistenceProvider persistenceProvider = new PersistenceProvider();
         URL url = ctx.getBundle().getEntry("META-INF/persistence.xml");
 
         if (isNull(url)) {

@@ -63,8 +63,7 @@ public class EReferenceAccessor extends AttributeAccessor {
 	 */
 	@Override
 	public Object getAttributeValueFromObject(Object object) throws DescriptorException {
-		if (object instanceof EObject && nonNull(reference)) {
-			EObject eo = (EObject) object;
+		if (object instanceof EObject eo && nonNull(reference)) {
 			return eo.eGet(reference);
 		}
 		return object;
@@ -76,9 +75,8 @@ public class EReferenceAccessor extends AttributeAccessor {
 	 */
 	@Override
 	public void setAttributeValueInObject(Object object, Object value) throws DescriptorException {
-		if (object instanceof EObject &&
+		if (object instanceof EObject eObject &&
 				nonNull(reference)) {
-			EObject eObject = (EObject) object;
 			value = unwrapValueHolder(value);
 			//			value = calculateReferenceValue(eObject, value);
 			if (nonNull(value) && 

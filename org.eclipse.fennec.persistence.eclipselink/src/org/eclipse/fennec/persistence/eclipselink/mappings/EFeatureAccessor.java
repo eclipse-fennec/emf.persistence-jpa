@@ -73,12 +73,11 @@ public class EFeatureAccessor extends AttributeAccessor {
 	 */
 	@Override
 	public Object getAttributeValueFromObject(Object object) throws DescriptorException {
-		if (object instanceof EObject && nonNull(feature)) {
-			EObject eo = (EObject) object;
+		if (object instanceof EObject eo && nonNull(feature)) {
 			Object value = eo.eGet(feature);
 			if (isEEnumFeature()) {
-				if (value instanceof Enumerator) {
-					return ((Enumerator)value).getLiteral();
+				if (value instanceof Enumerator enumerator) {
+					return enumerator.getLiteral();
 				}
 			}
 			if (nonNull(converter)) {
@@ -98,10 +97,9 @@ public class EFeatureAccessor extends AttributeAccessor {
 	 */
 	@Override
 	public void setAttributeValueInObject(Object object, Object value) throws DescriptorException {
-		if (object instanceof EObject &&
+		if (object instanceof EObject eo &&
 				!isDefaultValue(value) &&
 				nonNull(feature)) {
-			EObject eo = (EObject) object;
 			if (feature instanceof EReference ref) {
 				if (nonNull(converter)) {
 					value = converter.convertValueToEMF(ref.getEReferenceType(), value);

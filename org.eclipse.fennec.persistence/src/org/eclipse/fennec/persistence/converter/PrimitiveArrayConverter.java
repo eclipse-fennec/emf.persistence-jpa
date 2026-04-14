@@ -135,10 +135,10 @@ public class PrimitiveArrayConverter implements TypeConverter {
             case "char[]":
                 char[] charArray = new char[objArray.length];
                 for (int i = 0; i < objArray.length; i++) {
-                    if (objArray[i] instanceof Character) {
-                        charArray[i] = (Character) objArray[i];
-                    } else if (objArray[i] instanceof String && !((String) objArray[i]).isEmpty()) {
-                        charArray[i] = ((String) objArray[i]).charAt(0);
+                    if (objArray[i] instanceof Character charValue) {
+                        charArray[i] = charValue;
+                    } else if (objArray[i] instanceof String strValue && !strValue.isEmpty()) {
+                        charArray[i] = strValue.charAt(0);
                     } else {
                         charArray[i] = '\0';
                     }

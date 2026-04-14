@@ -36,6 +36,7 @@ import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
+import org.eclipse.emf.ecore.EModelElement;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
@@ -477,10 +478,10 @@ public class DatabaseEcoreParser {
 	}
 
 	static void addAnnotation(EClass eClass, String key, String value) {
-		addAnnotation((org.eclipse.emf.ecore.EModelElement) eClass, key, value);
+		addAnnotation((EModelElement) eClass, key, value);
 	}
 
-	static void addAnnotation(org.eclipse.emf.ecore.EModelElement element, String key, String value) {
+	static void addAnnotation(EModelElement element, String key, String value) {
 		EAnnotation ann = element.getEAnnotation(ANNOTATION_SOURCE);
 		if (isNull(ann)) {
 			ann = EcoreFactory.eINSTANCE.createEAnnotation();
