@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -71,8 +72,11 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         converters.put("java.time.Instant", new InstantInternalConverter());
         converters.put("java.time.ZonedDateTime", new ZonedDateTimeInternalConverter());
         converters.put("java.time.Duration", new DurationInternalConverter());
-        
+        converters.put("java.time.OffsetDateTime", new OffsetDateTimeInternalConverter());
+
         // Common types
+        converters.put("java.net.URI", new URIInternalConverter());
+        converters.put("java.net.URL", new URLInternalConverter());
         converters.put("java.util.UUID", new UUIDInternalConverter());
         converters.put("UUID", new UUIDInternalConverter());
         converters.put("java.math.BigDecimal", new BigDecimalInternalConverter());
@@ -326,6 +330,63 @@ public class ComprehensiveTypeConverter implements TypeConverter {
             if (emfValue == null) return null;
             // Pass BigInteger through natively — avoid truncation via intValue()
             if (emfValue instanceof BigInteger) return emfValue;
+            return emfValue;
+        }
+    }
+
+    private static class OffsetDateTimeInternalConverter implements InternalConverter {
+        @Override
+        public Object convertValueToEMF(EClassifier eDataType, Object value) {
+            if (value == null) return null;
+            if (value instanceof String dateTimeStr) return OffsetDateTime.parse(dateTimeStr);
+            if (value instanceof Timestamp timestamp) return timestamp.toInstant().atOffset(java.time.ZoneOffset.UTC);
+            if (value instanceof java.util.Date utilDate) return utilDate.toInstant().atOffset(java.time.ZoneOffset.UTC);
+            return value;
+        }
+
+        @Override
+        public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
+            if (emfValue == null) return null;
+            if (emfValue instanceof OffsetDateTime offsetDateTime) return offsetDateTime.toString();
+            return emfValue;
+        }
+    }
+
+    private static class URIInternalConverter implements InternalConverter {
+        @Override
+        public Object convertValueToEMF(EClassifier eDataType, Object value) {
+            if (value == null) return null;
+            if (value instanceof String uriStr) return java.net.URI.create(uriStr);
+            return value;
+        }
+
+        @Override
+        public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
+            if (emfValue == null) return null;
+            if (emfValue instanceof java.net.URI uri) return uri.toString();
+            return emfValue;
+        }
+    }
+
+    private static class URLInternalConverter implements InternalConverter {
+        @Override
+        public Object convertValueToEMF(EClassifier eDataType, Object value) {
+            if (value == null) return null;
+            if (value instanceof String urlStr) {
+                try {
+                    return new java.net.URL(urlStr);
+                } catch (java.net.MalformedURLException e) {
+                    logger.log(Level.WARNING, "Malformed URL: " + urlStr, e);
+                    return null;
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
+            if (emfValue == null) return null;
+            if (emfValue instanceof java.net.URL url) return url.toString();
             return emfValue;
         }
     }

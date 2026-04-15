@@ -22,7 +22,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import org.eclipse.emf.ecore.EAttribute;
@@ -32,7 +31,6 @@ import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.eorm.AccessType;
-import org.eclipse.fennec.persistence.eorm.Basic;
 import org.eclipse.fennec.persistence.eorm.Column;
 import org.eclipse.fennec.persistence.eorm.EClassObject;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
@@ -104,6 +102,7 @@ class AttributeConfiguratorTest {
 			assertThat(configurator.isStandardDatabaseType(LocalDate.class)).isFalse();
 			assertThat(configurator.isStandardDatabaseType(LocalDateTime.class)).isFalse();
 			assertThat(configurator.isStandardDatabaseType(ZonedDateTime.class)).isFalse();
+			assertThat(configurator.isStandardDatabaseType(java.time.OffsetDateTime.class)).isFalse();
 			assertThat(configurator.isStandardDatabaseType(Duration.class)).isFalse();
 		}
 
@@ -144,6 +143,11 @@ class AttributeConfiguratorTest {
 		}
 
 		@Test
+		void testOffsetDateTimeToString() {
+			assertThat(configurator.mapToDbFriendlyType(java.time.OffsetDateTime.class)).isEqualTo(String.class);
+		}
+
+		@Test
 		void testDurationToLong() {
 			assertThat(configurator.mapToDbFriendlyType(Duration.class)).isEqualTo(Long.class);
 		}
@@ -160,8 +164,9 @@ class AttributeConfiguratorTest {
 		}
 
 		@Test
-		void testUnknownTypeDefaultsToString() {
+		void testUriToString() {
 			assertThat(configurator.mapToDbFriendlyType(java.net.URI.class)).isEqualTo(String.class);
+			assertThat(configurator.mapToDbFriendlyType(java.net.URL.class)).isEqualTo(String.class);
 		}
 	}
 

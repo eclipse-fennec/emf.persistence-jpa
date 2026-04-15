@@ -392,7 +392,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-16 | **EDynamicTypeBuilder Refactoring:** God-Class (1061 Zeilen) via Delegate-Pattern in Orchestrator (265 Zeilen) + 4 Konfiguratoren aufgeteilt: `IdConfigurator`, `AttributeConfigurator`, `CollectionConfigurator`, `ReferenceConfigurator`. Package-privates `BuilderOperations`-Interface für Callbacks. Keine API-Änderung. 24 neue Unit-Tests (ID/Composite, Version-Attribute, Type-Mapping). | T11-01 | L | ✅ Done |
 | AP-17 | **PU-Konfigurator-Deduplizierung:** `AbstractPersistenceUnitConfigurator` extrahiert mit gemeinsamer Lifecycle-, Property- und Registrierungslogik. Beide Subklassen nur noch spezifische Context-Erstellung. Auch: Weaving="false" (statt "static"), TargetDatabase.Auto, Logging=WARNING konsistent. OSGi-Integrationstests bestätigen Korrektheit. | T4-05 | M | ✅ Done |
 | AP-18 | **EFeatureAccessor Cache Fix:** Statischen globalen Cache entfernt, Converter als immutabler Konstruktor-Parameter. Kein Memory-Leak, keine Thread-Safety-Probleme mehr. | T4-04, T9-04 | M | ✅ Done |
-| AP-19 | **Change-Tracking-Brücke evaluieren:** EContentAdapter für EMF→JPA Dirty-Notification, oder bewusste Limitation dokumentieren | F8-01 | M | ❌ Offen |
+| AP-19 | **Change-Tracking-Brücke evaluiert:** EContentAdapter-Ansatz analysiert und verworfen (Notification-Overhead beim Laden, Detached-Entity-Problem, Non-Containment-Lücke, Paradigmen-Mismatch). Bewusste Design-Entscheidung: Explizites `merge()` via `resource.save()` beibehalten — Standard-JPA-Pattern, performant, vollständig getestet. Konzeptdokument: `docs/AP-19_Change-Tracking-Konzept.md` | F8-01 | M | ✅ Done |
 | AP-20 | **ProxyURI auf Cache-Kopie:** `buildIndirectObject()` erstellt jetzt `EcoreUtil.copy()` als Proxy statt Original zu modifizieren. Test: Original bleibt non-proxy. | F6-01 | S | ✅ Done |
 | AP-21 | **Proxy-Mechanismus evaluiert:** Kein Konsolidierungsbedarf — zwei komplementäre Mechanismen für unterschiedliche Persistierungsstrategien: `EBasicIndirectionPolicy` für FK-basierte Referenz-Mappings (Lazy Loading via ValueHolder), `NonContainmentConverter` für String-URI-basierte Referenzen in Basic-Mappings. Siehe Analyse unten. | F9-03 | S | ✅ Done |
 | AP-22 | **ZonedDateTime Zeitzonen-Fix:** EMF→DB speichert als ISO-8601 String (erhält Timezone), DB→EMF bei Timestamp nutzt UTC-Konvention. Round-Trip-Test beweist Timezone-Erhaltung. | F3-02 | S | ✅ Done |
@@ -404,7 +404,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-23 | **Java 17 Code-Modernisierung:** Pattern Matching instanceof (18 Stellen in 14 Dateien modernisiert), FQCN→Imports (~25 Stellen in 7 Dateien). **Verbleibend:** switch Arrow-Syntax, Objects.* Konsistenz | T5-01 bis T5-05 | M | ✅ Done |
 | AP-24 | **@Embedded/@Embeddable Processor** | F1-04 | L | ❌ Offen |
 | AP-25 | **@MappedSuperclass Processor** (oder bewusste Design-Entscheidung dokumentieren) | F1-05 | M | ❌ Offen |
-| AP-26 | **Fehlende Converter:** URI, URL, OffsetDateTime, Enum-Converter | F3-03, F3-05 | M | ❌ Offen |
+| AP-26 | **Fehlende Converter:** `URIInternalConverter` (java.net.URI↔String), `URLInternalConverter` (java.net.URL↔String), `OffsetDateTimeInternalConverter` (java.time.OffsetDateTime↔ISO-8601-String). Alle in `ComprehensiveTypeConverter`. Enum-Converter bewusst nicht implementiert — EEnum wird bereits korrekt über `EFeatureAccessor` + `EcoreUtil.createFromString()` gehandhabt. 8 neue Tests. | F3-03, F3-05 | M | ✅ Done |
 | AP-27 | **Package-Info Bereinigung:** @Export/@Version überall konsistent, EPL-2.0 Header | T6-01, T6-02, T6-05 | S | ❌ Offen |
 | AP-28 | **Options-Klasse bereinigen:** MongoDB-Legacy entfernen, Tippfehler, tote Referenzen | T4-01, T4-03, F15-04 | S | ❌ Offen |
 | AP-29 | **Unit-Tests für Kernklassen:** JPAResourceImpl, EFeatureAccessor, PU-Konfiguratoren | T3-01 bis T3-03 | L | ❌ Offen |
@@ -517,27 +517,27 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 22 von 36 Arbeitspaketen erledigt (61%)**
+**Gesamtstand: 24 von 36 Arbeitspaketen erledigt (67%)**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ Teilweise | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
-| P2 | 13 | 12 | 0 | 1 |
-| P3 | 14 | 2 | 0 | 12 |
+| P2 | 13 | 13 | 0 | 0 |
+| P3 | 14 | 3 | 0 | 11 |
 
 ### 4.4 Testübersicht
 
-**553 Tests gesamt — alle grün, 0 @Disabled**
+**563 Tests gesamt — alle grün, 0 @Disabled**
 
 | Modul | Typ | Anzahl |
 |-------|-----|--------|
-| `persistence` (core) | Unit | 76 |
+| `persistence` (core) | Unit | 84 |
 | `persistence.orm` | Unit | 221 |
 | `persistence.ecore` | Unit | 27 |
-| `persistence.eclipselink` | Unit | 126 |
-| **Unit-Tests gesamt** | | **450** |
+| `persistence.eclipselink` | Unit | 128 |
+| **Unit-Tests gesamt** | | **460** |
 | `persistence.test` | Integration (OSGi) | 101 |
-| **Gesamt** | | **553** |
+| **Gesamt** | | **563** |
 
 ### 4.5 Empfohlene Reihenfolge der Arbeitspakete
 
@@ -549,5 +549,5 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 6 — Tests & Parser:** AP-14, AP-15 → ✅ Erledigt
 **Welle 7 — Lifecycle & Modernisierung:** AP-11, AP-23 → ✅ Erledigt
 **Welle 8 — Migration & Locking:** AP-06, AP-36 → ✅ Erledigt
-**Welle 9 — Qualität:** AP-16 (✅ Done), AP-19, AP-21 (✅ Done)
+**Welle 9 — Qualität:** AP-16, AP-19, AP-21 → ✅ Erledigt
 **Welle 10 — Erweiterungen:** AP-24 bis AP-35
