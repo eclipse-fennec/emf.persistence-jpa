@@ -394,7 +394,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-18 | **EFeatureAccessor Cache Fix:** Statischen globalen Cache entfernt, Converter als immutabler Konstruktor-Parameter. Kein Memory-Leak, keine Thread-Safety-Probleme mehr. | T4-04, T9-04 | M | ✅ Done |
 | AP-19 | **Change-Tracking-Brücke evaluieren:** EContentAdapter für EMF→JPA Dirty-Notification, oder bewusste Limitation dokumentieren | F8-01 | M | ❌ Offen |
 | AP-20 | **ProxyURI auf Cache-Kopie:** `buildIndirectObject()` erstellt jetzt `EcoreUtil.copy()` als Proxy statt Original zu modifizieren. Test: Original bleibt non-proxy. | F6-01 | S | ✅ Done |
-| AP-21 | **Proxy-Mechanismus konsolidieren:** NonContainmentConverter vs. EBasicIndirectionPolicy — einen wählen, dokumentieren | F9-03 | M | ❌ Offen |
+| AP-21 | **Proxy-Mechanismus evaluiert:** Kein Konsolidierungsbedarf — zwei komplementäre Mechanismen für unterschiedliche Persistierungsstrategien: `EBasicIndirectionPolicy` für FK-basierte Referenz-Mappings (Lazy Loading via ValueHolder), `NonContainmentConverter` für String-URI-basierte Referenzen in Basic-Mappings. Siehe Analyse unten. | F9-03 | S | ✅ Done |
 | AP-22 | **ZonedDateTime Zeitzonen-Fix:** EMF→DB speichert als ISO-8601 String (erhält Timezone), DB→EMF bei Timestamp nutzt UTC-Konvention. Round-Trip-Test beweist Timezone-Erhaltung. | F3-02 | S | ✅ Done |
 
 ### P3 — Nice-to-have, kann in späterem Release kommen
@@ -446,6 +446,44 @@ if (nonNull(lockMapping) && nonNull(feature)) {
 
 ---
 
+### AP-21: Proxy-Mechanismus — Analyse & Design-Entscheidung
+
+**Status:** ✅ Done — Bewusste Design-Entscheidung: Beide Mechanismen beibehalten.
+
+#### Ausgangsfrage
+
+Es existieren zwei parallele Proxy-Mechanismen für Non-Containment-Referenzen. Die Frage war, ob einer entfernt oder beide konsolidiert werden sollten.
+
+#### Die zwei Mechanismen
+
+**1. `EBasicIndirectionPolicy` (ORM-Mapping-Ebene)**
+- **Wo:** `ForeignReferenceMapping` (OneToOne, OneToMany, ManyToOne, ManyToMany)
+- **Wann:** Referenz wird als FK-Relation in der DB abgebildet
+- **Wie:** EclipseLink ValueHolder → Lazy Loading → `buildIndirectObject()` erstellt EMF-Proxy-Kopie mit `jpa://`-URI
+- **Proxy-Resolution:** `JPAResourceImpl.getEObject()` parst Fragment, ruft `em.find()` auf
+- **Cache-Schutz:** AP-20 Fix — `EcoreUtil.copy()` statt Original zu modifizieren
+
+**2. `NonContainmentConverter` (TypeConverter-Ebene)**
+- **Wo:** `EFeatureAccessor` für `Basic`-Mappings (DirectToFieldMapping) auf `EReference`-Features
+- **Wann:** Referenz wird als String-URI-Spalte in der DB gespeichert (kein FK)
+- **Wie:** `EObject` ↔ `String` (URI-Serialisierung), setzt `eSetProxyURI()` beim Laden
+
+#### Ergebnis
+
+**Kein Konflikt, kein Konsolidierungsbedarf.** Die Mechanismen bedienen unterschiedliche Persistierungsstrategien:
+
+| Aspekt | `EBasicIndirectionPolicy` | `NonContainmentConverter` |
+|--------|--------------------------|--------------------------|
+| DB-Repräsentation | FK-Spalte (Relation) | String-Spalte (URI) |
+| EclipseLink-Mapping | `ForeignReferenceMapping` | `DirectToFieldMapping` |
+| Lazy Loading | Ja (ValueHolder) | Nein |
+| Cache-Schutz | Ja (Proxy-Kopie) | Nein (direkt auf Objekt) |
+| Proxy-Format | `jpa://puName/Entity#//ref/idAttr/id` | Beliebige EMF-URI |
+
+Die Mechanismen ergänzen sich und werden nie für dieselbe Referenz gleichzeitig aktiv.
+
+---
+
 ## 4. Zusammenfassung
 
 ### 4.1 Gesamtbewertung
@@ -479,12 +517,12 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 20 von 36 Arbeitspaketen erledigt (56%)**
+**Gesamtstand: 21 von 36 Arbeitspaketen erledigt (58%)**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ Teilweise | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
-| P2 | 13 | 10 | 0 | 3 |
+| P2 | 13 | 11 | 0 | 2 |
 | P3 | 14 | 2 | 0 | 12 |
 
 ### 4.4 Testübersicht
@@ -511,5 +549,5 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 6 — Tests & Parser:** AP-14, AP-15 → ✅ Erledigt
 **Welle 7 — Lifecycle & Modernisierung:** AP-11, AP-23 → ✅ Erledigt
 **Welle 8 — Migration & Locking:** AP-06, AP-36 → ✅ Erledigt
-**Welle 9 — Qualität:** AP-16, AP-19, AP-21
+**Welle 9 — Qualität:** AP-16, AP-19, AP-21 (✅ Done)
 **Welle 10 — Erweiterungen:** AP-24 bis AP-35
