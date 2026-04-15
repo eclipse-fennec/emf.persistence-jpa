@@ -14,12 +14,9 @@ package org.eclipse.fennec.persistence.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,7 +34,6 @@ import org.eclipse.fennec.persistence.test.annotations.TestAnnotations;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
 import org.eclipse.persistence.sessions.server.Server;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.osgi.test.common.annotation.InjectService;
@@ -45,7 +41,6 @@ import org.osgi.test.common.service.ServiceAware;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.RollbackException;
 
 /**
@@ -76,11 +71,8 @@ public class EPersistenceLifecycleTest extends EPersistenceBase {
 		assertNotNull(classDO2MClass);
 		versionedEntityClass = (EClass) ePackage.getEClassifier("VersionedEntity");
 		assertNotNull(versionedEntityClass);
-		// Note: VersionedEntity not included in mappings because EclipseLink's
-		// VersionLockingPolicy is incompatible with DynamicEObjectImpl (ClassCastException).
-		// The version tests are @Disabled until a custom VersionLockingPolicy is implemented.
 		return mapper.createMappings(List.of(
-				classAO2MClass, classBO2MClass, classDO2MClass));
+				classAO2MClass, classBO2MClass, classDO2MClass, versionedEntityClass));
 	}
 
 	// ── Update ────────────────────────────────────────────────────────────
@@ -267,7 +259,6 @@ public class EPersistenceLifecycleTest extends EPersistenceBase {
 	// ── Optimistic Locking (@Version) ─────────────────────────────────────
 
 	@Test
-	@Disabled("EclipseLink version locking casts to DynamicEntityImpl which is incompatible with DynamicEObjectImpl — requires custom VersionLockingPolicy")
 	@DisplayName("Optimistic locking: concurrent modification triggers conflict (AP-13 proof)")
 	@TestAnnotations.DefaultEPersistenceConfiguration
 	public void testOptimisticLockingConflict(
@@ -283,7 +274,6 @@ public class EPersistenceLifecycleTest extends EPersistenceBase {
 		assertNotNull(vDesc, "VersionedEntity descriptor must be registered");
 
 		EStructuralFeature nameFeature = versionedEntityClass.getEStructuralFeature("name");
-		EStructuralFeature versionFeature = versionedEntityClass.getEStructuralFeature("versionNum");
 
 		// Persist initial entity
 		EObject vEO = (EObject) vDesc.getInstantiationPolicy().buildNewInstance();
@@ -337,7 +327,6 @@ public class EPersistenceLifecycleTest extends EPersistenceBase {
 	// ── Update: version is incremented ────────────────────────────────────
 
 	@Test
-	@Disabled("EclipseLink version locking casts to DynamicEntityImpl which is incompatible with DynamicEObjectImpl — requires custom VersionLockingPolicy")
 	@DisplayName("Version field is incremented on update")
 	@TestAnnotations.DefaultEPersistenceConfiguration
 	public void testVersionIncrementOnUpdate(
