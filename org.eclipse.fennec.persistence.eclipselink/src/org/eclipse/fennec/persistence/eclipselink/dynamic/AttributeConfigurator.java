@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -222,7 +223,7 @@ class AttributeConfigurator {
 			clazz == LocalTime.class) {
 			return java.sql.Timestamp.class;
 		}
-		if (clazz == ZonedDateTime.class) {
+		if (clazz == ZonedDateTime.class || clazz == OffsetDateTime.class) {
 			return String.class;
 		}
 		if (clazz == Duration.class) {

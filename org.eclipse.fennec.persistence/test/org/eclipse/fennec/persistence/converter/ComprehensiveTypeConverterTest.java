@@ -30,6 +30,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.UUID;
 
@@ -180,6 +182,53 @@ class ComprehensiveTypeConverterTest {
         }
 
         @Test
+        @DisplayName("OffsetDateTime conversion from String")
+        void testOffsetDateTimeFromString() {
+            EDataType dataType = createDataType("java.time.OffsetDateTime");
+
+            String isoString = "2026-04-15T10:30:00+02:00";
+            Object emfValue = converter.convertValueToEMF(dataType, isoString);
+            assertInstanceOf(OffsetDateTime.class, emfValue);
+            OffsetDateTime odt = (OffsetDateTime) emfValue;
+            assertEquals(10, odt.getHour());
+            assertEquals(ZoneOffset.ofHours(2), odt.getOffset());
+        }
+
+        @Test
+        @DisplayName("OffsetDateTime EMF→DB stores as ISO-8601 string")
+        void testOffsetDateTimeToISOString() {
+            EDataType dataType = createDataType("java.time.OffsetDateTime");
+
+            OffsetDateTime odt = OffsetDateTime.of(2026, 4, 15, 10, 30, 0, 0, ZoneOffset.ofHours(2));
+            Object dbValue = converter.convertEMFToValue(dataType, odt);
+            assertInstanceOf(String.class, dbValue);
+            assertTrue(((String) dbValue).contains("+02:00"));
+        }
+
+        @Test
+        @DisplayName("OffsetDateTime round-trip preserves offset")
+        void testOffsetDateTimeRoundTrip() {
+            EDataType dataType = createDataType("java.time.OffsetDateTime");
+
+            OffsetDateTime original = OffsetDateTime.of(2026, 1, 15, 14, 30, 0, 0, ZoneOffset.ofHours(-5));
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            Object roundTripped = converter.convertValueToEMF(dataType, dbValue);
+
+            assertEquals(original, roundTripped);
+        }
+
+        @Test
+        @DisplayName("OffsetDateTime from Timestamp uses UTC")
+        void testOffsetDateTimeFromTimestamp() {
+            EDataType dataType = createDataType("java.time.OffsetDateTime");
+
+            Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+            Object emfValue = converter.convertValueToEMF(dataType, timestamp);
+            assertInstanceOf(OffsetDateTime.class, emfValue);
+            assertEquals(ZoneOffset.UTC, ((OffsetDateTime) emfValue).getOffset());
+        }
+
+        @Test
         @DisplayName("Duration conversion")
         void testDurationConversion() {
             EDataType dataType = createDataType("java.time.Duration");
@@ -199,6 +248,57 @@ class ComprehensiveTypeConverterTest {
     @Nested
     @DisplayName("Common Type Conversions")
     class CommonTypeTests {
+
+        @Test
+        @DisplayName("URI conversion")
+        void testURIConversion() {
+            EDataType dataType = createDataType("java.net.URI");
+
+            // DB → EMF
+            Object emfValue = converter.convertValueToEMF(dataType, "https://example.com/path?q=1");
+            assertInstanceOf(java.net.URI.class, emfValue);
+            assertEquals(java.net.URI.create("https://example.com/path?q=1"), emfValue);
+
+            // EMF → DB
+            java.net.URI uri = java.net.URI.create("file:///tmp/test.txt");
+            Object dbValue = converter.convertEMFToValue(dataType, uri);
+            assertEquals("file:///tmp/test.txt", dbValue);
+        }
+
+        @Test
+        @DisplayName("URI round-trip preserves all components")
+        void testURIRoundTrip() {
+            EDataType dataType = createDataType("java.net.URI");
+
+            java.net.URI original = java.net.URI.create("https://user:pass@host:8080/path?q=v#frag");
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            Object roundTripped = converter.convertValueToEMF(dataType, dbValue);
+            assertEquals(original, roundTripped);
+        }
+
+        @Test
+        @DisplayName("URL conversion")
+        void testURLConversion() throws Exception {
+            EDataType dataType = createDataType("java.net.URL");
+
+            // DB → EMF
+            Object emfValue = converter.convertValueToEMF(dataType, "https://example.com/api");
+            assertInstanceOf(java.net.URL.class, emfValue);
+
+            // EMF → DB
+            java.net.URL url = new java.net.URL("https://example.com/api");
+            Object dbValue = converter.convertEMFToValue(dataType, url);
+            assertEquals("https://example.com/api", dbValue);
+        }
+
+        @Test
+        @DisplayName("URL with malformed string returns null")
+        void testURLMalformed() {
+            EDataType dataType = createDataType("java.net.URL");
+
+            Object result = converter.convertValueToEMF(dataType, "not a valid url %%%");
+            assertNull(result);
+        }
 
         @Test
         @DisplayName("UUID conversion")
@@ -411,11 +511,14 @@ class ComprehensiveTypeConverterTest {
             assertTrue(converter.isConverterForType(createDataType("java.time.Instant")));
             assertTrue(converter.isConverterForType(createDataType("java.time.ZonedDateTime")));
             assertTrue(converter.isConverterForType(createDataType("java.time.Duration")));
+            assertTrue(converter.isConverterForType(createDataType("java.time.OffsetDateTime")));
         }
 
         @Test
         @DisplayName("Common type detection")
         void testCommonTypeDetection() {
+            assertTrue(converter.isConverterForType(createDataType("java.net.URI")));
+            assertTrue(converter.isConverterForType(createDataType("java.net.URL")));
             assertTrue(converter.isConverterForType(createDataType("java.util.UUID")));
             assertTrue(converter.isConverterForType(createDataType("UUID")));
             assertTrue(converter.isConverterForType(createDataType("java.math.BigDecimal")));
