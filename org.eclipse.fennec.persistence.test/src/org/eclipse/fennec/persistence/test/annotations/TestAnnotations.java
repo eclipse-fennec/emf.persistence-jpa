@@ -173,15 +173,17 @@ public class TestAnnotations {
 	public @interface CitizenEPersistenceSetup {}
 
 	@WithFactoryConfiguration(factoryPid = PID_DATASOURCE, name = "1", location = "?", properties =
-			@Property(key = DATASOURCE_PROPERTY_IDENTIFIER, value = "%s", templateArguments = {
-					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_DB_PATH),
+			@Property(key = DATASOURCE_PROPERTY_IDENTIFIER, value = "%s/h2/%s", templateArguments = {
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_MODEL_PATH),
+					@TemplateArgument(source = ValueSource.TestMethod)
 			}))
 	@WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "test", properties = {
 			@Property(key = "fennec.jpa.model", value = "(emf.name=citizen)"),
 			@Property(key = "fennec.jpa.mappingFile", value = "%s", templateArguments = {
 					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_MODEL_FILE_PATH)
 			}),
-			@Property(key = "fennec.jpa.persistenceUnitName", value = "citizen")
+			@Property(key = "fennec.jpa.persistenceUnitName", value = "citizen"),
+			@Property(key = "fennec.jpa.ext.eclipselink.ddl-generation", value = "create-or-extend-tables")
 	})
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface CitizenEPersistenceConfiguration {}

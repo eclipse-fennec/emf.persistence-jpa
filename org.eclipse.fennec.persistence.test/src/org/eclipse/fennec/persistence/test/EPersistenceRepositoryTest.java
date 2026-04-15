@@ -36,7 +36,6 @@
 //import org.eclipse.fennec.persistence.eorm.EntityMappings;
 //import org.eclipse.fennec.persistence.orm.EntityMapper;
 //import org.eclipse.fennec.persistence.test.annotations.TestAnnotations;
-//import org.gecko.emf.repository.EMFRepository;
 //import org.junit.jupiter.api.Test;
 //import org.osgi.test.common.annotation.InjectService;
 //import org.osgi.test.common.service.ServiceAware;

@@ -48,15 +48,15 @@ public interface Keywords {
 	/**
 	 * Source for persistence {@link EAnnotation}.
 	 */
-	public static final String PERSISTENCE_ANNOTATION_SOURCE = "http://org.geckoprojects.com/1.0.0/EMFPersistence";
+	public static final String PERSISTENCE_ANNOTATION_SOURCE = "http://eclipse.org/fennec/jpa-persistence/1.0.0";
 	/**
 	 * Name for persistence {@link EAnnotation} to define alias database, table or column name.
 	 */
 	public static final String PERSISTENCE_ANNOTATION_NAME = "name";
 
-	public static final String CAPABILITY_NAMESPACE = "org.eclipse.fennec.persistence.old.old";
+	public static final String CAPABILITY_NAMESPACE = "org.eclipse.fennec.persistence";
 	
-	public static final String CAPABILITY_EXTENSION_NAMESPACE = "org.eclipse.fennec.persistence.old.old.extension";
+	public static final String CAPABILITY_EXTENSION_NAMESPACE = "org.eclipse.fennec.persistence.extension";
 
 	public static final String CAPABILITY_VERSION = "1.0";
 
