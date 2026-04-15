@@ -40,7 +40,6 @@
 //import org.eclipse.emf.ecore.resource.Resource;
 //import org.eclipse.emf.ecore.util.EcoreUtil;
 //import org.eclipse.fennec.persistence.orm.ORMConstants;
-//import org.gecko.emf.repository.EMFRepository;
 //import org.junit.jupiter.api.Test;
 //import org.osgi.test.common.annotation.InjectService;
 //import org.osgi.test.common.annotation.Property;

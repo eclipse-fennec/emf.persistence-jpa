@@ -94,7 +94,7 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 		assertNotNull(plraumEClass);
 		townEClass = (EClass) ePackage.getEClassifier("Town");
 		assertNotNull(townEClass);
-		yearEClass = (EClass) ePackage.getEClassifier("Year");
+		yearEClass = (EClass) ePackage.getEClassifier("YearEntity");
 		assertNotNull(yearEClass);
 		mapper.setStrict(true);
 		EntityMappings mapping = mapper.createMappings(List.of(statbezEClass, townEClass, yearEClass, ageGroupsEClass, genderEClass, plraumEClass, einwohnerEClass));
@@ -135,19 +135,20 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 		ClassDescriptor genderDescriptor = server.getDescriptorForAlias(genderEClass.getName());
 		assertNotNull(genderDescriptor, "gender descriptor missing");
 		ClassDescriptor yearDescriptor = server.getDescriptorForAlias(yearEClass.getName());
-		assertNotNull(yearDescriptor, "Year descriptor missing");
+		assertNotNull(yearDescriptor, "YearEntity descriptor missing");
 		ClassDescriptor statBezDescriptor = server.getDescriptorForAlias(statbezEClass.getName());
 		assertNotNull(statBezDescriptor, "statbez descriptor missing");
 		ClassDescriptor townDescriptor = server.getDescriptorForAlias(townEClass.getName());
 		assertNotNull(townDescriptor, "Town descriptor missing");
 
-		// Verify statbez persist/find roundtrip (uses no reserved SQL words)
-		EObject statBezEO = (EObject) statBezDescriptor.getInstantiationPolicy().buildNewInstance();
+		// Persist/find roundtrip for statbez
 		statBezNameFeature = statbezEClass.getEStructuralFeature("statbez_name");
 		assertNotNull(statBezNameFeature);
+
+		EObject statBezEO = (EObject) statBezDescriptor.getInstantiationPolicy().buildNewInstance();
 		EStructuralFeature gidFeature = statbezEClass.getEStructuralFeature("gid");
 		assertNotNull(gidFeature);
-		statBezEO.eSet(gidFeature, 999);
+		statBezEO.eSet(gidFeature, 1);
 		statBezEO.eSet(statBezNameFeature, "Test-Bezirk");
 
 		EObject findEO = null;
@@ -157,7 +158,7 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 			em.getTransaction().commit();
 			em.clear();
 
-			findEO = em.find(statBezDescriptor.getJavaClass(), 999);
+			findEO = em.find(statBezDescriptor.getJavaClass(), 1);
 		} catch (Exception e) {
 			fail("Fail statbez persist/find roundtrip", e);
 		}

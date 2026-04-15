@@ -219,6 +219,16 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="weights" eType="#//EDoubleArray"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="flags" eType="#//EBooleanArray"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VersionedEntity">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="versionNum" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://eclipse.org/fennec/jpa-persistence/1.0.0">
+        <details key="version" value="true"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Vehicle" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="vehicleId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
         iD="true"/>
