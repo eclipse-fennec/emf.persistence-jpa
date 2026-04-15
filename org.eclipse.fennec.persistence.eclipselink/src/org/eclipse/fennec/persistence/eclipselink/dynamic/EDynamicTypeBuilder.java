@@ -51,6 +51,7 @@ import org.eclipse.fennec.persistence.eorm.Basic;
 import org.eclipse.fennec.persistence.eorm.CascadeType;
 import org.eclipse.fennec.persistence.eorm.CollectionTable;
 import org.eclipse.fennec.persistence.eorm.Column;
+import org.eclipse.fennec.persistence.eorm.Version;
 import org.eclipse.fennec.persistence.eorm.Convert;
 import org.eclipse.fennec.persistence.eorm.DiscriminatorColumn;
 import org.eclipse.fennec.persistence.eorm.EFeatureObject;
@@ -388,17 +389,36 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder {
 	 *
 	 * @param versions the Version mappings from EORM
 	 */
-	private void configureVersionAttributes(List<org.eclipse.fennec.persistence.eorm.Version> versions) {
+	private void configureVersionAttributes(List<Version> versions) {
 		if (isNull(versions) || versions.isEmpty()) {
 			return;
 		}
-		for (org.eclipse.fennec.persistence.eorm.Version version : versions) {
-			org.eclipse.fennec.persistence.eorm.Column col = version.getColumn();
+		EClass eClass = getType().getEClass();
+		for (Version version : versions) {
+			Column col = version.getColumn();
 			String colName = nonNull(col) ? col.getName() : version.getName().toUpperCase();
+			// Determine the Java type from the EStructuralFeature (EInt→int, ELong→long, etc.)
+			EStructuralFeature feature = eClass.getEStructuralFeature(version.getName());
+			Class<?> versionType = Long.class;
+			if (feature instanceof EAttribute ea) {
+				Class<?> instanceClass = ea.getEAttributeType().getInstanceClass();
+				if (nonNull(instanceClass)) {
+					versionType = instanceClass;
+				}
+			}
 			// Add a direct mapping for the version field
-			addDirectMapping(version.getName(), Long.class, colName);
+			addDirectMapping(version.getName(), versionType, colName);
 			// Configure EclipseLink optimistic locking on the descriptor
-			getType().getDescriptor().useVersionLocking(colName, false);
+			ClassDescriptor descriptor = getType().getDescriptor();
+			descriptor.useVersionLocking(colName, false);
+			// Patch the lock mapping's accessor: EclipseLink's default ValuesAccessor
+			// casts to DynamicEntityImpl which is incompatible with our DynamicEObjectImpl.
+			// Replace it with EFeatureAccessor that uses EObject.eGet()/eSet().
+			DatabaseMapping lockMapping = descriptor.getMappingForAttributeName(version.getName());
+			if (nonNull(lockMapping) && nonNull(feature)) {
+				lockMapping.setAttributeAccessor(EFeatureAccessor.create(feature));
+				LOG.log(Level.FINE, "Patched version lock mapping accessor for {0} to EFeatureAccessor", version.getName());
+			}
 		}
 	}
 
