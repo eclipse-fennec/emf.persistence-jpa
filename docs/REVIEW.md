@@ -389,7 +389,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-13 | **@Version / Optimistic Locking (Mapping-Pipeline):** EAnnotation "version"="true" markiert Attribute als Version. MappingProcessor erzeugt Version-Mapping statt Basic. EDynamicTypeBuilder konfiguriert `useVersionLocking()` auf Descriptor. Runtime-Fix via AP-36: Lock-Mapping-Accessor gepatcht. E2E-Tests aktiv (Conflict + Version-Increment). | F1-06, F2-04 | M | ✅ Done |
 | AP-14 | **Deaktivierte Tests reaktiviert:** (1) ✅ TypeConverterEndToEndTest — Array-Types als BLOB, DB-friendly Type-Mapping. (2) ✅ EPersistenceAttributeNoCacheTest — EFeatureAccessor.dataTypeConvert nutzt jetzt Converter für EAttribute-Werte (Timestamp→LocalDate Fix). (3) ✅ EPersistenceCitizenTest — CitizenEPersistenceConfiguration Annotation, sauberer Deskriptor-Registrierungs- und Roundtrip-Test. (4) ManyToMany/NoCacheTest Debug-Tests entfernt (testeten falsches Modell in falscher Klasse). (5) EORMMappingProviderTest: bewusst disabled. | F4-01, F5-02, F3-04, F5-04 | M | ✅ Done |
 | AP-15 | **DatabaseEcoreParser Rewrite:** Daanse→Standard-JDBC. JDBCType-Mapping (20+ Typen). FK→ManyToOne+OneToMany mit EOpposite. Junction-Table→ManyToMany. Containment-Heuristik (NOT NULL+CASCADE). Views (read-only EClasses). Multi-Schema (ein EPackage pro Schema). Naming (SNAKE→CamelCase, konfigurierbar). 27 Tests (13 Unit + 14 H2-Integration). | F5-01, F14-01, F14-02 | M | ✅ Done |
-| AP-16 | **EDynamicTypeBuilder refactoring:** God-Class aufteilen in spezialisierte Builder | T11-01 | L | ❌ Offen |
+| AP-16 | **EDynamicTypeBuilder Refactoring:** God-Class (1061 Zeilen) via Delegate-Pattern in Orchestrator (265 Zeilen) + 4 Konfiguratoren aufgeteilt: `IdConfigurator`, `AttributeConfigurator`, `CollectionConfigurator`, `ReferenceConfigurator`. Package-privates `BuilderOperations`-Interface für Callbacks. Keine API-Änderung. 24 neue Unit-Tests (ID/Composite, Version-Attribute, Type-Mapping). | T11-01 | L | ✅ Done |
 | AP-17 | **PU-Konfigurator-Deduplizierung:** `AbstractPersistenceUnitConfigurator` extrahiert mit gemeinsamer Lifecycle-, Property- und Registrierungslogik. Beide Subklassen nur noch spezifische Context-Erstellung. Auch: Weaving="false" (statt "static"), TargetDatabase.Auto, Logging=WARNING konsistent. OSGi-Integrationstests bestätigen Korrektheit. | T4-05 | M | ✅ Done |
 | AP-18 | **EFeatureAccessor Cache Fix:** Statischen globalen Cache entfernt, Converter als immutabler Konstruktor-Parameter. Kein Memory-Leak, keine Thread-Safety-Probleme mehr. | T4-04, T9-04 | M | ✅ Done |
 | AP-19 | **Change-Tracking-Brücke evaluieren:** EContentAdapter für EMF→JPA Dirty-Notification, oder bewusste Limitation dokumentieren | F8-01 | M | ❌ Offen |
@@ -504,7 +504,7 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 - ~~**Unvollständige Migration:** 7 Gecko-bnd-Libraries in Build-Tooling verbleibend~~ ✅ Gefixt (AP-06 — `cnf/ext/` komplett entfernt, Build läuft ohne Gecko-Abhängigkeiten)
 - ~~**Test-Gaps:** E2E-Tests für Lifecycle~~ ✅ Gefixt (AP-11). Verbleibend: Cross-Resource-Referenzen (AP-30), Detach/Cache (AP-11b)
 - ~~**Dokumentation:** README beschreibt falsches Projekt~~ ✅ Gefixt (AP-07)
-- **Code-Qualität:** EDynamicTypeBuilder God-Class (AP-16), toter Code/Legacy (AP-28, AP-34)
+- ~~**Code-Qualität:** EDynamicTypeBuilder God-Class~~ ✅ Gefixt (AP-16 — 1061→265 Zeilen via Delegate-Pattern). Verbleibend: toter Code/Legacy (AP-28, AP-34)
 
 ### 4.2 Top-Risiken (aktualisiert)
 
@@ -513,31 +513,31 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 3. ~~**Resource-Leak:** Race Condition + Thread-Leak~~ ✅ Gefixt (AP-03)
 4. ~~**Architektonisches Risiko:** Non-Containment-Proxy-Resolution~~ ✅ Gefixt (AP-05)
 5. ~~**Eclipse-Fennec-Blocker:** 7 Gecko-bnd-Libraries in Build-Tooling~~ ✅ Gefixt (AP-06 — `cnf/ext/` komplett entfernt)
-6. **Wartbarkeit:** EDynamicTypeBuilder als God-Class erschwert Erweiterungen (AP-16)
+6. ~~**Wartbarkeit:** EDynamicTypeBuilder als God-Class erschwert Erweiterungen~~ ✅ Gefixt (AP-16 — Delegate-Pattern, 1061→265 Zeilen)
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 21 von 36 Arbeitspaketen erledigt (58%)**
+**Gesamtstand: 22 von 36 Arbeitspaketen erledigt (61%)**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ Teilweise | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
-| P2 | 13 | 11 | 0 | 2 |
+| P2 | 13 | 12 | 0 | 1 |
 | P3 | 14 | 2 | 0 | 12 |
 
 ### 4.4 Testübersicht
 
-**529 Tests gesamt — alle grün, 0 @Disabled**
+**553 Tests gesamt — alle grün, 0 @Disabled**
 
 | Modul | Typ | Anzahl |
 |-------|-----|--------|
 | `persistence` (core) | Unit | 76 |
 | `persistence.orm` | Unit | 221 |
 | `persistence.ecore` | Unit | 27 |
-| `persistence.eclipselink` | Unit | 102 |
-| **Unit-Tests gesamt** | | **426** |
+| `persistence.eclipselink` | Unit | 126 |
+| **Unit-Tests gesamt** | | **450** |
 | `persistence.test` | Integration (OSGi) | 101 |
-| **Gesamt** | | **529** |
+| **Gesamt** | | **553** |
 
 ### 4.5 Empfohlene Reihenfolge der Arbeitspakete
 
@@ -549,5 +549,5 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 6 — Tests & Parser:** AP-14, AP-15 → ✅ Erledigt
 **Welle 7 — Lifecycle & Modernisierung:** AP-11, AP-23 → ✅ Erledigt
 **Welle 8 — Migration & Locking:** AP-06, AP-36 → ✅ Erledigt
-**Welle 9 — Qualität:** AP-16, AP-19, AP-21 (✅ Done)
+**Welle 9 — Qualität:** AP-16 (✅ Done), AP-19, AP-21 (✅ Done)
 **Welle 10 — Erweiterungen:** AP-24 bis AP-35
