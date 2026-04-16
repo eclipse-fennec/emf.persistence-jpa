@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.eclipse.emf.common.util.URI;
@@ -34,16 +33,15 @@ import org.eclipse.persistence.sessions.Session;
  * @author Mark Hoffmann
  * @since 21.12.2024
  */
-public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeBuilder> implements ProcessingContext {
-	
-	/** serialVersionUID */
-	private static final long serialVersionUID = 1090088991386752211L;
+public class EDynamicTypeContext implements ProcessingContext {
+
+	private final Map<Entity, EDynamicTypeBuilder> builders = new ConcurrentHashMap<>();
 	private final Map<EClassifier, Entity> entityMap = new ConcurrentHashMap<>();
 	private ConverterService converter;
 	private URI baseURI;
 	private Session session;
 	private ClassLoader classloader;
-	
+
 	/**
 	 * Sets the session.
 	 * @param session the session to set
@@ -51,7 +49,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	void setSession(Session session) {
 		this.session = session;
 	}
-	
+
 	/**
 	 * Returns the session.
 	 * @return the session
@@ -59,7 +57,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	public Session getSession() {
 		return session;
 	}
-	
+
 	/**
 	 * Sets the converter.
 	 * @param converter the converter to set
@@ -67,7 +65,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	void setConverter(ConverterService converter) {
 		this.converter = converter;
 	}
-	
+
 	/**
 	 * Returns the converter.
 	 * @param name the converter name
@@ -79,7 +77,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 		}
 		return converter.getConverter(name);
 	}
-	
+
 	/**
 	 * Returns the converter.
 	 * @param type the converter type
@@ -91,95 +89,71 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 		}
 		return converter.getConverter(type);
 	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#put(java.lang.Object, java.lang.Object)
+
+	/**
+	 * Associates the given entity with the builder.
+	 * @param key the entity
+	 * @param value the builder
+	 * @return the previous builder, or null
 	 */
-	@Override
 	public EDynamicTypeBuilder put(Entity key, EDynamicTypeBuilder value) {
-		EDynamicTypeBuilder r = super.put(key, value);
+		EDynamicTypeBuilder r = builders.put(key, value);
 		entityMap.put(key.getClass_(), key);
 		return r;
 	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#putIfAbsent(java.lang.Object, java.lang.Object)
+
+	/**
+	 * Returns the builder for the given entity, or null.
+	 * @param key the entity
+	 * @return the builder or null
 	 */
-	@Override
-	public EDynamicTypeBuilder putIfAbsent(Entity key, EDynamicTypeBuilder value) {
-		EDynamicTypeBuilder r = super.putIfAbsent(key, value);
-		entityMap.put(key.getClass_(), key);
-		return r;
+	public EDynamicTypeBuilder get(Entity key) {
+		return builders.get(key);
 	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#compute(java.lang.Object, java.util.function.BiFunction)
+
+	/**
+	 * Associates the entity with the builder if not already present.
+	 * @param key the entity
+	 * @param mappingFunction function to create the builder if absent
+	 * @return the existing or computed builder
 	 */
-	@Override
-	public EDynamicTypeBuilder compute(Entity key,
-			BiFunction<? super Entity, ? super EDynamicTypeBuilder, ? extends EDynamicTypeBuilder> remappingFunction) {
-		EDynamicTypeBuilder r = super.compute(key, remappingFunction);
-		entityMap.put(key.getClass_(), key);
-		return r;
-	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#computeIfAbsent(java.lang.Object, java.util.function.Function)
-	 */
-	@Override
 	public EDynamicTypeBuilder computeIfAbsent(Entity key,
 			Function<? super Entity, ? extends EDynamicTypeBuilder> mappingFunction) {
-		EDynamicTypeBuilder r = super.computeIfAbsent(key, mappingFunction);
+		EDynamicTypeBuilder r = builders.computeIfAbsent(key, mappingFunction);
 		entityMap.put(key.getClass_(), key);
 		return r;
 	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#computeIfPresent(java.lang.Object, java.util.function.BiFunction)
+
+	/**
+	 * Removes the builder for the given entity.
+	 * @param key the entity
+	 * @return the removed builder, or null
 	 */
-	@Override
-	public EDynamicTypeBuilder computeIfPresent(Entity key,
-			BiFunction<? super Entity, ? super EDynamicTypeBuilder, ? extends EDynamicTypeBuilder> remappingFunction) {
-		EDynamicTypeBuilder r = super.computeIfPresent(key, remappingFunction);
-		entityMap.put(key.getClass_(), key);
+	public EDynamicTypeBuilder remove(Entity key) {
+		EDynamicTypeBuilder r = builders.remove(key);
+		if (key.getClass_() != null) {
+			entityMap.remove(key.getClass_());
+		}
 		return r;
 	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#remove(java.lang.Object)
+
+	/**
+	 * Clears all builders and entity mappings.
 	 */
-	@Override
-	public EDynamicTypeBuilder remove(Object key) {
-		EDynamicTypeBuilder r = super.remove(key);
-		entityMap.remove(key);
-		return r;
-	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see java.util.concurrent.ConcurrentHashMap#clear()
-	 */
-	@Override
 	public void clear() {
-		super.clear();
+		builders.clear();
 		entityMap.clear();
 	}
-	
+
 	/**
 	 * Returns the {@link Entity} for a given {@link EClassifier} or <code>null</code>
 	 * @param key the {@link EClassifier}
-	 * @return the {@link Entity} or <code>null</code> 
+	 * @return the {@link Entity} or <code>null</code>
 	 */
 	public Entity getEntity(EClassifier key) {
 		return entityMap.get(key);
 	}
-	
+
 	/**
 	 * Returns the {@link EDynamicTypeBuilder} for the given {@link EClassifier}
 	 * or return <code>null</code>
@@ -189,11 +163,11 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	public EDynamicTypeBuilder getETypeBuilder(EClassifier key) {
 		Entity e = entityMap.get(key);
 		if (nonNull(e)) {
-			return get(e);
+			return builders.get(e);
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Returns a lambda friendly variant of the {@link EDynamicTypeBuilder}
 	 * @see EDynamicTypeContext#getETypeBuilder(EClassifier)
@@ -203,7 +177,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	public Optional<EDynamicTypeBuilder> getOptionalETypeBuilder(EClassifier key) {
 		return Optional.ofNullable(getETypeBuilder(key));
 	}
-	
+
 	/**
 	 * Sets the baseURI.
 	 * @param baseURI the baseURI to set
@@ -219,7 +193,7 @@ public class EDynamicTypeContext extends ConcurrentHashMap<Entity, EDynamicTypeB
 	public URI getBaseURI() {
 		return baseURI;
 	}
-	
+
 	/**
 	 * Returns the classloader.
 	 * @return the classloader

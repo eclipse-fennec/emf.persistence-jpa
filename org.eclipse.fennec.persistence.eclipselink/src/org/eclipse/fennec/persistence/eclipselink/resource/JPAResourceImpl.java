@@ -215,7 +215,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	@Override
 	public PersistenceEngine getEngine() {
-		return null;
+		throw new UnsupportedOperationException("JPAResourceImpl does not use a PersistenceEngine — persistence is managed directly via EntityManagerFactory");
 	}
 
 	@Override

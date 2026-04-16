@@ -48,7 +48,8 @@ public interface PersistenceEngine {
 	public Map<Object, Object> getResponse();
 	
 	/**
-	 * Releases a resources
+	 * Releases all resources held by this engine (options, properties, resource reference).
+	 * After calling this method, the engine should not be used.
 	 */
 	void dispose();
 
