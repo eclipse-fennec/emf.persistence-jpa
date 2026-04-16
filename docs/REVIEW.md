@@ -402,7 +402,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP | Titel | Quelle | Aufwand | Status |
 |----|-------|--------|---------|--------|
 | AP-39 | **SINGLE_TABLE Inheritance Fix:** Zwei Bugs in `EDynamicTypeBuilder.configureInheritance()` gefixt: (1) Discriminator-Registrierung auf Root statt direktem Parent — behebt "Cannot find value in class indicator mapping". (2) `EClassDescriptor.convertClassNamesToClasses()` unterstützt jetzt auch `DynamicClassLoader` (nicht nur OSGi-Variante). ID-Mappings werden NICHT manuell kopiert — EclipseLink erbt sie automatisch via `InheritancePolicy.initialize()` (concatenateVectors). `inheritIdMappings()` entfernt. Non-OSGi-Integrationstest `InheritanceIntegrationTest` (H2, 7 Tests inkl. 3-Level-Hierarchie Persist/Find-Roundtrip). | F1-03, AP-12 | M | ✅ Done |
-| AP-40 | **XMI→DB→XMI Roundtrip-Test (OSM-Modell):** Non-OSGi `OsmRoundtripTest` mit in-memory H2 (statt OSGi — vermeidet H2-File-Korruption bei 435-Spalten SINGLE_TABLE). 500 Objekte, 222 Typen, 435 EClasses. Persist + Read-Back + Attribut-Spot-Check + XMI-Export. Reserved-Word-Handling (`user`, `natural`, `key`, `value`, `interval`) via `ExtendedMetaData`-Annotation im Ecore. `domain.ecore` angepasst: `GeoFeature.id` als `iD=true`, DomainTag/WikiInfo/FieldMapping mit eigener `id`. Perf-Test mit 10.225 Objekten vorbereitet (`@Tag("perf")`). | — | L | ✅ Done |
+| AP-40 | **XMI→DB→XMI Roundtrip-Test (OSM-Modell):** Non-OSGi `OsmRoundtripTest` mit in-memory H2. **Small-Test** (500 Objekte): 5.763 Attribute deep-verglichen, 0 Mismatches. **Perf-Test** (`@Tag("perf")`, 10.225 Objekte): 102.205 Attribute deep-verglichen, 0 Mismatches. Timing: Load XMI 561ms, Persist 12.6s, Read-Back 2.0s, Deep-Compare 142ms, Write XMI 537ms. `domain_full.xmi` als `.gz` im Repo (22MB→981KB, zur Laufzeit entpackt). Reserved-Word-Handling (`user`, `natural`, `key`, `value`, `interval`) via `ExtendedMetaData`-Annotation. `domain.ecore`: `GeoFeature.id` als `iD=true`, DomainTag/WikiInfo/FieldMapping mit eigener `id`. Batch-Writing (`JDBC`, size=500) konfiguriert. | — | L | ✅ Done |
 | AP-41 | **Non-OSGi-Testinfrastruktur:** `test/`-Ordner im `persistence.test`-Modul für Non-OSGi-Tests eingerichtet. `-testpath` mit H2, EclipseLink ASM/JPA/JPQL, Fennec-Modulen. Blaupause: `EDynamicPersistenceUnitInfo` + `PersistenceProvider` + `EDynamicTypeGenerator` + `EDynamicHelper.addETypes()` ohne OSGi-Container. **Verbleibend:** Bestehende OSGi-Integrationstests als Non-OSGi-Tests migrieren, Test-Setup als wiederverwendbare Basisklasse extrahieren. | T3-01 bis T3-04 | L | ⚠️ In Arbeit |
 | AP-42 | **Detached DynamicEObjectImpl persist/merge:** `JPAResourceImpl.toManagedEntity()` konvertiert fremde `DynamicEObjectImpl`-Objekte (z.B. aus XMI geladen) zu EclipseLink-Entities via Descriptor-Lookup per `eClass().getName()` + ECopier mit Factory-Function. `JPAResourceImpl.doSave()` nutzt dies transparent. `getServer()` defensiv (gibt null bei Non-EclipseLink EMF). Durch OSM-Roundtrip-Test mit 500 Objekten E2E verifiziert. | — | M | ✅ Done |
 
@@ -419,7 +419,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-29 | **Unit-Tests für Kernklassen:** JPAResourceImpl, EFeatureAccessor, PU-Konfiguratoren | T3-01 bis T3-03 | L | ❌ Offen |
 | AP-30 | **Cross-Resource-Referenzen:** Tests für JPA↔JPA und JPA↔XMI Cross-Resource-Refs | F4-04 | M | ❌ Offen |
 | AP-31 | **View-Unterstützung und Schema-Evolution** | F5-03 | XL | ❌ Offen |
-| AP-32 | **Batch Writing / Fetch-Optimierung:** EclipseLink-Properties exponieren, Paginierung in `doLoad()`, `setShouldNewObjectsBeCached` konfigurierbar | F12-01, T8-01, F2-06 | M | ❌ Offen |
+| AP-32 | **Batch Writing / Fetch-Optimierung:** Batch-Writing (`eclipselink.jdbc.batch-writing=JDBC`, size=500) im OSM-Perf-Test konfiguriert und gemessen. Ergebnis: Bei in-memory H2 mit SINGLE_TABLE (435 Spalten) ist der Commit/Flush-Phase (74%) das Bottleneck, nicht die SQL-Batch-Größe — Batch-Writing bringt nur ~6% Verbesserung. `toManagedEntity()` ist mit 3% nicht der Flaschenhals. Entity-Factory-Function wird pro `doSave()`-Aufruf einmal erstellt statt pro Objekt. **Verbleibend:** Paginierung in `doLoad()`, `setShouldNewObjectsBeCached` konfigurierbar, Batch-Writing als Property im PU-Konfigurator exponieren. | F12-01, T8-01, F2-06 | M | ⚠️ Teilweise |
 | AP-33 | **dispose()-Implementierung:** `BasicPersistenceEngine.dispose()` leert `mergedOptions`, `engineProperties` und setzt `resource=null`. Auskommentierter Legacy-Code (ConverterService, QueryEngine, PrimaryKeyFactory, handlerList) und veralteter Javadoc entfernt. `PersistenceEngine.dispose()` Javadoc verbessert. 4 Unit-Tests (set+get, dispose clears, idempotent, fresh engine). | T2-01 | S | ✅ Done |
 | AP-34 | **Code-Bereinigung:** (1) ✅ T2-04: `JPAResourceImpl.getEngine()` wirft `UnsupportedOperationException`. (2) ✅ T4-06: `EDynamicTypeContext` Komposition statt Vererbung — `ConcurrentHashMap` als Feld, nur benötigte Methoden exponiert, Bug in `remove()` behoben, 8 Tests. (3) ✅ T4-08: Debug-Test `testConverterDebugOrig` entfernt, Imports bereinigt. (4) T1-01/T1-02: Entfällt (bereits in früheren APs bereinigt). (5) T4-02: Entfällt (bereits in AP-06 bereinigt). | T1-01, T1-02, T2-04, T4-02, T4-06, T4-08 | M | ✅ Done |
 | AP-35 | **Derived/volatile Features filtern:** `MappingProcessor` filtert jetzt `isDerived()` und `isVolatile()` in allen 4 Mapping-Stufen (Attributes, Containment-Refs, Non-Containment-Refs, Opposites) — analog zum bestehenden `isTransient()`-Filter. 7 neue Tests in `MappingProcessorPipelineTest` (Attribute, Multi-valued, Containment-Ref, Non-Containment-Ref, Bidirektional). | F1-07 | S | ✅ Done |
@@ -535,11 +535,11 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 | P1 | 9 | 9 | 0 | 0 |
 | P1b | 4 | 3 | 1 | 0 |
 | P2 | 13 | 13 | 0 | 0 |
-| P3 | 16 | 8 | 0 | 8 |
+| P3 | 16 | 8 | 1 | 7 |
 
 ### 4.4 Testübersicht
 
-**591 Tests gesamt — alle grün, 0 @Disabled**
+**591 Tests gesamt — alle grün, 0 @Disabled** (+ 1 Perf-Test separat)
 
 | Modul | Typ | Anzahl |
 |-------|-----|--------|
@@ -551,6 +551,19 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 | **Unit-/Integrationstests gesamt** | | **490** |
 | `persistence.test` | Integration (OSGi) | 101 |
 | **Gesamt** | | **591** |
+| `persistence.test` | Perf (`@Tag("perf")`, separat via `perfTest`) | 1 |
+
+**Perf-Test-Ergebnis** (10.225 Objekte, 435 EClasses, SINGLE_TABLE, H2 in-memory):
+
+| Phase | Zeit |
+|-------|------|
+| Load Ecore + Mappings + EMF + DDL | 3,5s |
+| Load XMI (22 MB, .gz komprimiert) | 561ms |
+| Persist (toManagedEntity + merge) | 12,6s |
+| Read back (JPQL per Typ) | 2,0s |
+| Deep comparison (102.205 Attribute) | 142ms |
+| Write XMI (24 MB) | 537ms |
+| **Total** | **~16s** |
 
 ### 4.5 Empfohlene Reihenfolge der Arbeitspakete
 
