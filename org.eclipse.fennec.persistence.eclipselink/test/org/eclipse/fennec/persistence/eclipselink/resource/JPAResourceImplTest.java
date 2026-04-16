@@ -41,6 +41,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.PersistenceException;
+import jakarta.persistence.TypedQuery;
 
 /**
  * Tests for {@link JPAResourceImpl} transaction safety and lifecycle.
@@ -191,11 +192,116 @@ class JPAResourceImplTest {
 	}
 
 	@Nested
+	@DisplayName("load / doLoad lifecycle")
+	class LoadTests {
+
+		@Test
+		@DisplayName("isLoaded is false after failed doLoad")
+		void testIsLoadedFalseAfterFailure() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<EObject> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(EObject.class))).thenReturn(query);
+			doThrow(new PersistenceException("DB down")).when(query).getResultList();
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				assertThatThrownBy(() -> testResource.load(null))
+						.isInstanceOf(PersistenceException.class);
+
+				// isLoaded must NOT be true after failed load
+				assertThat(testResource.isLoaded()).isFalse();
+				assertThat(testResource.getContents()).isEmpty();
+
+				// A subsequent load attempt must be possible (not stuck)
+				doReturn(List.of(createEObject())).when(query).getResultList();
+				testResource.load(null);
+				assertThat(testResource.isLoaded()).isTrue();
+				assertThat(testResource.getContents()).hasSize(1);
+			}
+		}
+
+		@Test
+		@DisplayName("Reload after unload does not produce duplicates")
+		void testReloadAfterUnloadNoDuplicates() throws Exception {
+			EObject eo1 = createEObject();
+			EObject eo2 = createEObject();
+			EObject eo3 = createEObject();
+
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<EObject> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(EObject.class))).thenReturn(query);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				// First load: 2 objects
+				when(query.getResultList()).thenReturn(List.of(eo1, eo2));
+				testResource.load(null);
+				assertThat(testResource.getContents()).hasSize(2);
+
+				// Unload + reload with different data
+				testResource.unload();
+				assertThat(testResource.getContents()).isEmpty();
+
+				when(query.getResultList()).thenReturn(List.of(eo3));
+				testResource.load(null);
+				// Must have exactly 1, not 3
+				assertThat(testResource.getContents()).hasSize(1).containsExactly(eo3);
+			}
+		}
+
+		@Test
+		@DisplayName("Second load call is no-op when already loaded")
+		void testSecondLoadIsNoop() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<EObject> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(EObject.class))).thenReturn(query);
+			when(query.getResultList()).thenReturn(List.of(createEObject()));
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				testResource.load(null);
+				assertThat(testResource.getContents()).hasSize(1);
+
+				// Second load must not add duplicates
+				testResource.load(null);
+				assertThat(testResource.getContents()).hasSize(1);
+			}
+		}
+	}
+
+	@Nested
 	@DisplayName("doUnload lifecycle")
 	class UnloadTests {
 
 		@Test
-		@DisplayName("Unload clears contents")
+		@DisplayName("Unload clears contents and resets isLoaded")
 		void testUnloadClearsContents() {
 			EObject eo = createEObject();
 			resource.getContents().add(eo);
@@ -203,6 +309,7 @@ class JPAResourceImplTest {
 			resource.unload();
 
 			assertThat(resource.getContents()).isEmpty();
+			assertThat(resource.isLoaded()).isFalse();
 		}
 	}
 

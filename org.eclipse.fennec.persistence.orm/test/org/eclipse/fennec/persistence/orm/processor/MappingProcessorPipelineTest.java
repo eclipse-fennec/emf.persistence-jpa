@@ -295,6 +295,130 @@ public class MappingProcessorPipelineTest {
 	}
 
 	@Nested
+	class DerivedVolatileFeatureTests {
+
+		@Test
+		void testDerivedAttributeExcluded() {
+			EClass entity = createClassWithId("WithDerived");
+			addAttribute(entity, "name", EcorePackage.Literals.ESTRING);
+			EAttribute derived = addAttribute(entity, "fullName", EcorePackage.Literals.ESTRING);
+			derived.setDerived(true);
+
+			MappingProcessor processor = MappingProcessor.create(entity);
+			processor.process();
+
+			Entity e = findEntity(processor.getTarget(), "WithDerived");
+			assertThat(e.getAttributes().getBasic())
+				.extracting("name")
+				.contains("name")
+				.doesNotContain("fullName");
+		}
+
+		@Test
+		void testVolatileAttributeExcluded() {
+			EClass entity = createClassWithId("WithVolatile");
+			addAttribute(entity, "name", EcorePackage.Literals.ESTRING);
+			EAttribute volatileAttr = addAttribute(entity, "computed", EcorePackage.Literals.ESTRING);
+			volatileAttr.setVolatile(true);
+
+			MappingProcessor processor = MappingProcessor.create(entity);
+			processor.process();
+
+			Entity e = findEntity(processor.getTarget(), "WithVolatile");
+			assertThat(e.getAttributes().getBasic())
+				.extracting("name")
+				.contains("name")
+				.doesNotContain("computed");
+		}
+
+		@Test
+		void testDerivedVolatileAttributeExcluded() {
+			EClass entity = createClassWithId("WithBoth");
+			addAttribute(entity, "name", EcorePackage.Literals.ESTRING);
+			EAttribute derivedVolatile = addAttribute(entity, "label", EcorePackage.Literals.ESTRING);
+			derivedVolatile.setDerived(true);
+			derivedVolatile.setVolatile(true);
+
+			MappingProcessor processor = MappingProcessor.create(entity);
+			processor.process();
+
+			Entity e = findEntity(processor.getTarget(), "WithBoth");
+			assertThat(e.getAttributes().getBasic())
+				.extracting("name")
+				.contains("name")
+				.doesNotContain("label");
+		}
+
+		@Test
+		void testDerivedMultiValuedAttributeExcluded() {
+			EClass entity = createClassWithId("WithDerivedMany");
+			EAttribute derived = addAttribute(entity, "allNames", EcorePackage.Literals.ESTRING);
+			derived.setDerived(true);
+			derived.setUpperBound(-1);
+
+			MappingProcessor processor = MappingProcessor.create(entity);
+			processor.process();
+
+			Entity e = findEntity(processor.getTarget(), "WithDerivedMany");
+			assertThat(e.getAttributes().getElementCollection())
+				.extracting("name")
+				.doesNotContain("allNames");
+		}
+
+		@Test
+		void testDerivedContainmentReferenceExcluded() {
+			EClass parent = createClassWithId("Parent");
+			EClass child = createClassWithId("Child");
+			EReference ref = addReference(parent, "derivedChildren", child, true, true);
+			ref.setDerived(true);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(parent, child));
+			processor.process();
+
+			Entity parentEntity = findEntity(processor.getTarget(), "Parent");
+			assertThat(parentEntity.getAttributes().getOneToMany())
+				.extracting("name")
+				.doesNotContain("derivedChildren");
+		}
+
+		@Test
+		void testVolatileNonContainmentReferenceExcluded() {
+			EClass a = createClassWithId("A");
+			EClass b = createClassWithId("B");
+			EReference ref = addReference(a, "volatileRef", b, false, false);
+			ref.setVolatile(true);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(a, b));
+			processor.process();
+
+			Entity entityA = findEntity(processor.getTarget(), "A");
+			assertThat(entityA.getAttributes().getOneToOne())
+				.extracting("name")
+				.doesNotContain("volatileRef");
+		}
+
+		@Test
+		void testDerivedBidirectionalReferenceExcludedFromOpposites() {
+			EClass parent = createClassWithId("Parent");
+			EClass child = createClassWithId("Child");
+			EReference parentToChild = addReference(parent, "children", child, true, true);
+			EReference childToParent = addReference(child, "parent", parent, false, false);
+			childToParent.setDerived(true);
+			parentToChild.setEOpposite(childToParent);
+			childToParent.setEOpposite(parentToChild);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(parent, child));
+			processor.process();
+
+			// The derived opposite should not produce a ManyToOne mapping
+			Entity childEntity = findEntity(processor.getTarget(), "Child");
+			assertThat(childEntity.getAttributes().getManyToOne())
+				.extracting("name")
+				.doesNotContain("parent");
+		}
+	}
+
+	@Nested
 	class PackageMetadataTests {
 
 		@Test

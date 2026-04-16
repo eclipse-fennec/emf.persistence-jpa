@@ -167,6 +167,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		opposites.
 		stream().
 		filter(not(EStructuralFeature::isTransient)).
+		filter(not(EStructuralFeature::isDerived)).
+		filter(not(EStructuralFeature::isVolatile)).
 		forEach(this::createOppositeMapping);
 	}
 
@@ -182,6 +184,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		List<EAttribute> attributes = getEffectiveAttributes(eClass).
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
+				filter(not(EStructuralFeature::isDerived)).
+				filter(not(EStructuralFeature::isVolatile)).
 				toList();
 		// map and set single valued attributes (excluding version attributes)
 		attributes.
@@ -219,6 +223,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		List<EReference> references = getEffectiveReferences(eClass).
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
+				filter(not(EStructuralFeature::isDerived)).
+				filter(not(EStructuralFeature::isVolatile)).
 				filter(EReference::isContainment).
 				toList();
 		// map and set one to one containment references unidirectional 
@@ -249,6 +255,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		List<EReference> references = getEffectiveReferences(eClass).
 				stream().
 				filter(not(EStructuralFeature::isTransient)).
+				filter(not(EStructuralFeature::isDerived)).
+				filter(not(EStructuralFeature::isVolatile)).
 				filter(not(EReference::isContainment)).
 				toList();
 		// map and set one to one non-containment references unidirectional
