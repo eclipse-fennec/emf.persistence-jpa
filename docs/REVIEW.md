@@ -1,7 +1,7 @@
 # Eclipse Fennec Persistence JPA — Structured Review
 
 > Lebendes Arbeitsdokument: Review-Kriterien, Ergebnisse und abgeleitete Arbeitspakete.
-> Stand: 2026-04-14 | Review durchgeführt: 2026-04-14 | Letzte Aktualisierung: 2026-04-14
+> Stand: 2026-04-14 | Review durchgeführt: 2026-04-14 | Letzte Aktualisierung: 2026-04-16
 
 **Review-Quellen:**
 - Projekt-Quellcode: `/opt/git/emf.persistence-jpa/`
@@ -221,7 +221,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 
 | ID | Kriterium | Finding | Datei | Empfehlung |
 |----|-----------|---------|-------|------------|
-| T2-01 | T2 | ~~`dispose()` in `BasicPersistenceEngine` ist leer — kein Cleanup~~ Bestätigt, aber nicht kritisch: Engine verwaltet keine eigenen Ressourcen (EM/EMF-Lifecycle liegt bei Konfiguratoren). Downgraded zu **Minor** (→ AP-33) | `BasicPersistenceEngine.java:51` | ~~Ressourcen-Cleanup implementieren~~ |
+| T2-01 | T2 | ~~`dispose()` in `BasicPersistenceEngine` ist leer — kein Cleanup~~ **FIXED (AP-33)** — `dispose()` leert mergedOptions, engineProperties und setzt resource=null. Javadoc auf PersistenceEngine.dispose() verbessert. 4 Unit-Tests. | `BasicPersistenceEngine.java` | ~~Ressourcen-Cleanup implementieren~~ |
 | T2-02 | T2 | ~~`CascadeType.REMOVE` bei Non-Containment (`OneToManyProcessor`)~~ **FIXED (AP-01)** — Cascade für Non-Containment korrigiert: persist/detach/refresh, kein remove. OrphanRemoval nur bei Containment. | `OneToManyProcessor.java:50-68` | ~~Cascade-Logik korrigieren~~ |
 | T9-01 | T9 | ~~`EPersistenceContextImpl` setzt Properties auf `persistenceUnit`, nicht `this`~~ **FIXED (AP-04)** | `EPersistenceContextImpl.java:74-76` | ~~Properties auf this setzen~~ |
 | T9-02 | T9 | ~~Race Condition in `PersistenceUnitConfigurator.activate()` und `EntityMappingPersistenceUnitConfigurator`~~ **FIXED (AP-03)** — volatile fields, ExecutorService als Feld, proper shutdown | `PersistenceUnitConfigurator.java:125-143` | ~~volatile + shutdown~~ |
@@ -233,18 +233,18 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 
 | ID | Kriterium | Finding | Datei | Empfehlung |
 |----|-----------|---------|-------|------------|
-| T1-01 | T1 | `PersistenceEngine.doSave()` Javadoc sagt "one or more" EObjects, Implementierung akzeptiert beliebig viele (→ AP-34) | `PersistenceEngine.java:43-48` | Javadoc anpassen |
-| T1-02 | T1 | `EPersistenceContext`: mehrere Methoden nur `return null` (`createNamedQuery`, `getMappedSuperclassNames`) (→ AP-34) | `EPersistenceContextImpl.java:106-121` | `UnsupportedOperationException` |
+| T1-01 | T1 | ~~`PersistenceEngine.doSave()` Javadoc sagt "one or more" EObjects~~ Nicht mehr zutreffend: `doSave()` existiert nicht mehr im Interface (wurde in früheren APs bereinigt) | `PersistenceEngine.java` | ~~Entfällt~~ |
+| T1-02 | T1 | ~~`EPersistenceContext`: mehrere Methoden nur `return null`~~ Nicht mehr zutreffend: `createNamedQuery`/`getMappedSuperclassNames` existieren nicht mehr in der aktuellen Implementierung (wurden in früheren APs bereinigt) | `EPersistenceContextImpl.java` | ~~Entfällt~~ |
 | T2-03 | T2 | ~~`JPAResourceImpl.doSave()` und `delete()`: Kein Rollback bei Exception~~ **FIXED (AP-02)** — try/catch/rollback + IOException wrapping + 8 Unit-Tests | `JPAResourceImpl.java:102-123` | ~~try/catch mit `rollback()`~~ |
-| T2-04 | T2 | `JPAResourceImpl.getEngine()` gibt hart `null` zurück — Vertragsbruch des Interfaces (→ AP-34) | `JPAResourceImpl.java:180-182` | `UnsupportedOperationException` oder implementieren |
+| T2-04 | T2 | ~~`JPAResourceImpl.getEngine()` gibt hart `null` zurück — Vertragsbruch des Interfaces~~ **FIXED (AP-34)** — Wirft jetzt `UnsupportedOperationException` mit Begründung | `JPAResourceImpl.java` | ~~`UnsupportedOperationException`~~ |
 | T2-05 | T2 | ~~`BaseReferenceProcessor.calculateCascadeType()` setzt `cascadeRemove` für Non-Containment~~ **FIXED (AP-01)** | `BaseReferenceProcessor.java:153-165` | ~~Non-Containment: persist+detach+refresh, KEIN remove~~ |
 | T2-06 | T2 | ~~`PersistenceUnitConfigurator` hardcodiert `H2Platform`~~ **FIXED (AP-17)** — `AbstractPersistenceUnitConfigurator` nutzt `TargetDatabase.Auto` als Default | `AbstractPersistenceUnitConfigurator.java` | ~~`TargetDatabase.Auto`~~ |
 | T4-01 | T4 | ~~`Options.CAP_USE_TIMESTAMP` und `CAP_TIMESTAMP_FIELD_NAME` haben identischen Wert `"TIMESTMAP_FIELD_NAME"` (Tippfehler)~~ **FIXED (AP-28)** — Beide Konstanten entfernt (unbenutzt) | `Options.java` | ~~Tippfehler korrigieren~~ |
-| T4-02 | T4 | `Keywords.CAPABILITY_NAMESPACE` enthält `"org.eclipse.fennec.persistence.old.old"` — Migrations-Artefakt (→ AP-34) | `Keywords.java:57-59` | Namespace bereinigen |
+| T4-02 | T4 | ~~`Keywords.CAPABILITY_NAMESPACE` enthält `"org.eclipse.fennec.persistence.old.old"`~~ Bereits bereinigt (AP-06) — aktueller Wert: `"org.eclipse.fennec.persistence"` | `Keywords.java:57` | ~~Entfällt~~ |
 | T4-03 | T4 | ~~`Options`-Javadoc referenziert nicht-existente Typen: `DBObjectBuilderImpl`, `NativeQueryEngine`, MongoDB-Formulierungen~~ **FIXED (AP-28)** — Options komplett bereinigt (525→105 Zeilen) | `Options.java` | ~~Javadoc aktualisieren~~ |
 | T4-04 | T4 | ~~`EFeatureAccessor.accessorMap`: Statische ConcurrentHashMap ohne Eviction~~ **FIXED (AP-18)** — Statischer Cache entfernt, Converter als Konstruktor-Parameter | `EFeatureAccessor.java` | ~~Cache entfernen~~ |
 | T4-05 | T4 | ~~Code-Duplikation: beide PU-Konfiguratoren nahezu identisch~~ **FIXED (AP-17)** — `AbstractPersistenceUnitConfigurator` extrahiert | `spi/AbstractPersistenceUnitConfigurator.java` | ~~Basisklasse extrahieren~~ |
-| T4-06 | T4 | `EDynamicTypeContext` erbt von `ConcurrentHashMap` — Anti-Pattern, exponiert alle Map-Methoden (→ AP-34) | `EDynamicTypeContext.java:37` | Komposition statt Vererbung |
+| T4-06 | T4 | ~~`EDynamicTypeContext` erbt von `ConcurrentHashMap` — Anti-Pattern, exponiert alle Map-Methoden~~ **FIXED (AP-34)** — Komposition: `private final ConcurrentHashMap` als Feld, nur benötigte Methoden (`get`, `put`, `computeIfAbsent`, `remove`, `clear`) exponiert. Bug in `remove()` behoben (entfernte aus falscher Map). 8 Unit-Tests. | `EDynamicTypeContext.java` | ~~Komposition statt Vererbung~~ |
 | T8-01 | T8 | `JPAResourceImpl.doLoad()`: `SELECT e FROM EntityName e` ohne Paginierung — OOM bei großen Tabellen (→ AP-32) | `JPAResourceImpl.java:85-93` | Paginierung via setFirstResult/setMaxResults |
 | T8-02 | T8 | ~~`Executors.newSingleThreadExecutor()` wird nie heruntergefahren~~ **FIXED (AP-03)** — executor als Feld, shutdownNow+awaitTermination in deactivate | `EntityMappingPersistenceUnitConfigurator.java`, `PersistenceUnitConfigurator.java` | ~~ExecutorService shutdown~~ |
 | T9-06 | T9 | ~~`BigDecimalInternalConverter`: `doubleValue()` — Präzisionsverlust~~ **FIXED (AP-08)** | `ComprehensiveTypeConverter.java:291,299` | ~~`BigDecimal` nativ an JDBC durchreichen~~ |
@@ -297,7 +297,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | ID | Kriterium | Finding | Datei | Empfehlung |
 |----|-----------|---------|-------|------------|
 | T4-07 | T4 | ~~Auskommentierter Code in `EDynamicTypeBuilder` (>50 Zeilen)~~ **FIXED (AP-16)** — Kompletter Rewrite via Delegate-Pattern | `EDynamicTypeBuilder.java` | ~~Entfernt~~ |
-| T4-08 | T4 | Auskommentierter Code in `EPersistenceCitizenTest` (deaktivierte Tests) (→ AP-34) | `EPersistenceCitizenTest.java` | Entfernen |
+| T4-08 | T4 | ~~Auskommentierter Code in `EPersistenceCitizenTest` (deaktivierte Tests)~~ **FIXED (AP-34)** — Debug-Methode `testConverterDebugOrig` (auskommentiertes `@Test`, `Thread.sleep`) entfernt. `@Disabled testEMFAvailable` beibehalten (notwendig: ererbter Test funktioniert nicht mit Citizen-Modell). Unbenutzte Imports bereinigt. | `EPersistenceCitizenTest.java` | ~~Entfernt~~ |
 
 ### 2.2 Fachliche Findings
 
@@ -320,7 +320,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | F1-04 | F1 | @Embedded/@Embeddable: EORM-Metamodell vorhanden, aber kein Processor implementiert | — | EmbeddableProcessor implementieren |
 | F1-05 | F1 | @MappedSuperclass: EORM-Metamodell vorhanden, aber nicht implementiert — abstrakte EClasses werden immer als Entity gemappt | — | Design-Entscheidung dokumentieren oder implementieren |
 | F1-06 | F1 | ~~@Version (Optimistic Locking): Runtime-Cast-Fehler `ValuesAccessor` → `DynamicEntityImpl`~~ **FIXED (AP-13 + AP-36)** — Lock-Mapping-Accessor durch `EFeatureAccessor` ersetzt, Version-Typ aus EStructuralFeature abgeleitet. 2 E2E-Tests aktiv. | `EDynamicTypeBuilder.java` | ~~Custom LockingPolicy~~ |
-| F1-07 | F1 | Derived/volatile EStructuralFeatures werden als normale Attribute gemappt — erzeugt DDL-Fehler wenn Feature keinen Backing-Store hat | `MappingProcessor.java` | Derived/volatile Features filtern |
+| F1-07 | F1 | ~~Derived/volatile EStructuralFeatures werden als normale Attribute gemappt — erzeugt DDL-Fehler wenn Feature keinen Backing-Store hat~~ **FIXED (AP-35)** — `isDerived()` und `isVolatile()` in allen 4 Filter-Stufen des MappingProcessor ergänzt | `MappingProcessor.java` | ~~Derived/volatile Features filtern~~ |
 | F2-01 | F2 | ~~Kein Test für Entity-Update (merge detached)~~ **FIXED (AP-11)** — `testUpdateAttribute` | Tests | ~~Update-Tests~~ |
 | F2-02 | F2 | ~~Kein Test für Entity-Remove mit Cascade-Verhalten~~ **FIXED (AP-11)** — `testDeleteParentContainmentCascade`, `testDeleteParentNonContainmentRefSurvives` | Tests | ~~Delete-Cascade-Tests~~ |
 | F2-03 | F2 | Kein Test für Detach/Reattach-Lifecycle — verbleibend (→ AP-29) | Tests | Detach-Tests |
@@ -333,8 +333,8 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | F3-04 | F3 | ~~EEnum-Converter: `findConverter` gibt null für EEnum zurück — kein "enum"-Key registriert~~ **FIXED (AP-14)** — Enum-Handling über EclipseLink-Mappings, kein separater Converter nötig | `ComprehensiveTypeConverter.java` | ~~Architektur-Entscheidung dokumentiert~~ |
 | F3-05 | F3 | Kein Converter für `EEnumLiteral` ↔ String/Ordinal — Enum-Persistierung nutzt EclipseLink-Mapping direkt | — | Dokumentieren als bewusste Entscheidung |
 | F4-01 | F4 | ~~Deaktivierte Tests in `EPersistenceCitizenTest`, `TypeConverterEndToEndTest`~~ **FIXED (AP-14)** — TypeConverterEndToEndTest und CitizenTest reaktiviert | Tests | ~~Tests analysieren und reaktivieren~~ |
-| F4-02 | F4 | `JPAResourceImpl.doLoad()` setzt `isLoaded = false` auch bei Erfolg, dann `isLoaded = true` — Race Window (→ AP-37) | `JPAResourceImpl.java:82-96` | `isLoaded` erst nach erfolgreichem Load setzen |
-| F4-03 | F4 | `JPAResourceImpl.doLoad()`: Neue Objekte werden ge-`add`ed ohne vorherige Contents zu leeren (→ AP-37) | `JPAResourceImpl.java:90` | Contents leeren oder Duplikat-Check |
+| F4-02 | F4 | ~~`JPAResourceImpl.doLoad()` setzt `isLoaded = false` auch bei Erfolg, dann `isLoaded = true` — Race Window~~ **FIXED (AP-37)** — `isLoaded` wird erst nach erfolgreichem `doLoad()` gesetzt | `JPAResourceImpl.java` | ~~`isLoaded` erst nach erfolgreichem Load setzen~~ |
+| F4-03 | F4 | ~~`JPAResourceImpl.doLoad()`: Neue Objekte werden ge-`add`ed ohne vorherige Contents zu leeren~~ **FIXED (AP-37)** — `getContents().clear()` vor Query (mit Guard wegen EMF `ContentsEList.didClear()`) | `JPAResourceImpl.java` | ~~Contents leeren oder Duplikat-Check~~ |
 | F4-04 | F4 | Cross-Resource-Referenzen: Keine Tests für JPA↔JPA oder JPA↔XMI Cross-Resource Szenarien | Tests | Cross-Resource-Tests |
 | F5-01 | F5 | ~~`DatabaseEcoreParser` hatte Daanse/OLAP-Abhängigkeiten, nutzte nicht-standard JDBC~~ **FIXED (AP-15)** — Komplett auf Standard-JDBC umgeschrieben | `DatabaseEcoreParser.java` | ~~Standard-JDBC nutzen~~ |
 | F5-02 | F5 | ~~Keine Foreign-Key → Referenz-Auflösung in `DatabaseEcoreParser`~~ **FIXED (AP-15)** — FK→ManyToOne+OneToMany mit EOpposite, Junction→ManyToMany | `DatabaseEcoreParser.java` | ~~FK-Analyse implementieren~~ |
@@ -411,11 +411,11 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-30 | **Cross-Resource-Referenzen:** Tests für JPA↔JPA und JPA↔XMI Cross-Resource-Refs | F4-04 | M | ❌ Offen |
 | AP-31 | **View-Unterstützung und Schema-Evolution** | F5-03 | XL | ❌ Offen |
 | AP-32 | **Batch Writing / Fetch-Optimierung:** EclipseLink-Properties exponieren, Paginierung in `doLoad()`, `setShouldNewObjectsBeCached` konfigurierbar | F12-01, T8-01, F2-06 | M | ❌ Offen |
-| AP-33 | **dispose()-Implementierung** in BasicPersistenceEngine | T2-02 | S | ❌ Offen |
-| AP-34 | **Code-Bereinigung:** Toter/auskommentierter Code entfernen, Javadoc-Mismatch fixen (`doSave`), `return null`-Methoden in `EPersistenceContext`/`JPAResourceImpl` mit `UnsupportedOperationException` versehen, `Keywords.CAPABILITY_NAMESPACE` "old.old" bereinigen, `EDynamicTypeContext` Komposition statt Vererbung | T1-01, T1-02, T2-04, T4-02, T4-06, T4-08 | M | ❌ Offen |
-| AP-35 | **Derived/volatile Features filtern** statt als normale Attribute zu mappen | F1-07 | S | ❌ Offen |
+| AP-33 | **dispose()-Implementierung:** `BasicPersistenceEngine.dispose()` leert `mergedOptions`, `engineProperties` und setzt `resource=null`. Auskommentierter Legacy-Code (ConverterService, QueryEngine, PrimaryKeyFactory, handlerList) und veralteter Javadoc entfernt. `PersistenceEngine.dispose()` Javadoc verbessert. 4 Unit-Tests (set+get, dispose clears, idempotent, fresh engine). | T2-01 | S | ✅ Done |
+| AP-34 | **Code-Bereinigung:** (1) ✅ T2-04: `JPAResourceImpl.getEngine()` wirft `UnsupportedOperationException`. (2) ✅ T4-06: `EDynamicTypeContext` Komposition statt Vererbung — `ConcurrentHashMap` als Feld, nur benötigte Methoden exponiert, Bug in `remove()` behoben, 8 Tests. (3) ✅ T4-08: Debug-Test `testConverterDebugOrig` entfernt, Imports bereinigt. (4) T1-01/T1-02: Entfällt (bereits in früheren APs bereinigt). (5) T4-02: Entfällt (bereits in AP-06 bereinigt). | T1-01, T1-02, T2-04, T4-02, T4-06, T4-08 | M | ✅ Done |
+| AP-35 | **Derived/volatile Features filtern:** `MappingProcessor` filtert jetzt `isDerived()` und `isVolatile()` in allen 4 Mapping-Stufen (Attributes, Containment-Refs, Non-Containment-Refs, Opposites) — analog zum bestehenden `isTransient()`-Filter. 7 neue Tests in `MappingProcessorPipelineTest` (Attribute, Multi-valued, Containment-Ref, Non-Containment-Ref, Bidirektional). | F1-07 | S | ✅ Done |
 | AP-36 | **Version-Locking Accessor Fix:** Statt eigener `EVersionLockingPolicy` (Option A) reichte Option C: Nach `useVersionLocking()` wird der `ValuesAccessor` des Lock-Mappings durch `EFeatureAccessor` ersetzt. Zusätzlich: Version-Typ wird aus EStructuralFeature abgeleitet statt hartkodiert `Long.class`. 2 E2E-Tests aktiviert (Conflict-Detection + Version-Increment). | F1-06, AP-13 | S | ✅ Done |
-| AP-37 | **JPAResourceImpl.doLoad() Robustheit:** Race Window bei `isLoaded`-Flag (wird vor erfolgreichem Load zurückgesetzt), Contents werden nicht geleert bei erneutem Load (Duplikate möglich) | F4-02, F4-03 | S | ❌ Offen |
+| AP-37 | **JPAResourceImpl.doLoad() Robustheit:** (1) `isLoaded` wird erst nach erfolgreichem `doLoad()` gesetzt — bei Exception bleibt Flag `false`, erneuter Load möglich (kein "stuck"-Zustand). (2) `getContents().clear()` vor Query verhindert Duplikate bei Reload nach `unload()`. Guard `!isEmpty()` nötig wegen EMF `ContentsEList.didClear()` das bei leerer Liste `setLoaded(true)` triggert. 3 neue Tests (Failure-Recovery, Reload-ohne-Duplikate, Idempotenz). | F4-02, F4-03 | S | ✅ Done |
 | AP-38 | **Erweiterte Dokumentation:** Getting-Started-Anleitung mit Beispiel-Projekt, Konfigurationsreferenz (`fennec.jpa.*` Properties) | F15-02, F15-03 | M | ❌ Offen |
 
 ---
@@ -506,7 +506,7 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 - ~~**Unvollständige Migration:** 7 Gecko-bnd-Libraries in Build-Tooling verbleibend~~ ✅ Gefixt (AP-06 — `cnf/ext/` komplett entfernt, Build läuft ohne Gecko-Abhängigkeiten)
 - ~~**Test-Gaps:** E2E-Tests für Lifecycle~~ ✅ Gefixt (AP-11). Verbleibend: Cross-Resource-Referenzen (AP-30), Detach/Cache (AP-11b)
 - ~~**Dokumentation:** README beschreibt falsches Projekt~~ ✅ Gefixt (AP-07)
-- ~~**Code-Qualität:** EDynamicTypeBuilder God-Class~~ ✅ Gefixt (AP-16). ~~Options MongoDB-Legacy~~ ✅ Gefixt (AP-28 — 525→105 Zeilen). Verbleibend: toter Code (AP-34)
+- ~~**Code-Qualität:** EDynamicTypeBuilder God-Class~~ ✅ Gefixt (AP-16). ~~Options MongoDB-Legacy~~ ✅ Gefixt (AP-28). ~~Toter Code, Anti-Patterns~~ ✅ Gefixt (AP-34 — EDynamicTypeContext Komposition, getEngine UOE, Debug-Tests entfernt)
 
 ### 4.2 Top-Risiken (aktualisiert)
 
@@ -519,27 +519,27 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 25 von 38 Arbeitspaketen erledigt (66%)**
+**Gesamtstand: 29 von 38 Arbeitspaketen erledigt (76%)**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ Teilweise | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
 | P2 | 13 | 13 | 0 | 0 |
-| P3 | 16 | 4 | 0 | 12 |
+| P3 | 16 | 8 | 0 | 8 |
 
 ### 4.4 Testübersicht
 
-**563 Tests gesamt — alle grün, 0 @Disabled**
+**583 Tests gesamt — alle grün, 0 @Disabled**
 
 | Modul | Typ | Anzahl |
 |-------|-----|--------|
-| `persistence` (core) | Unit | 84 |
-| `persistence.orm` | Unit | 221 |
+| `persistence` (core) | Unit | 88 |
+| `persistence.orm` | Unit | 228 |
 | `persistence.ecore` | Unit | 27 |
-| `persistence.eclipselink` | Unit | 128 |
-| **Unit-Tests gesamt** | | **460** |
+| `persistence.eclipselink` | Unit | 139 |
+| **Unit-Tests gesamt** | | **482** |
 | `persistence.test` | Integration (OSGi) | 101 |
-| **Gesamt** | | **563** |
+| **Gesamt** | | **583** |
 
 ### 4.5 Empfohlene Reihenfolge der Arbeitspakete
 
@@ -552,4 +552,6 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 7 — Lifecycle & Modernisierung:** AP-11, AP-23 → ✅ Erledigt
 **Welle 8 — Migration & Locking:** AP-06, AP-36 → ✅ Erledigt
 **Welle 9 — Qualität:** AP-16, AP-19, AP-21 → ✅ Erledigt
-**Welle 10 — Erweiterungen:** AP-24 bis AP-38
+**Welle 10 — Robustheit & Mapping:** AP-35, AP-37 → ✅ Erledigt
+**Welle 11 — Cleanup & Lifecycle:** AP-33, AP-34 → ✅ Erledigt
+**Welle 12 — Erweiterungen:** AP-24 bis AP-38

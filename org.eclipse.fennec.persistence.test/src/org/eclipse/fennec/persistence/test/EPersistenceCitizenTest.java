@@ -16,13 +16,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import javax.sql.ConnectionPoolDataSource;
 import javax.sql.DataSource;
@@ -42,9 +39,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.osgi.service.cm.Configuration;
 import org.osgi.test.common.annotation.InjectService;
-import org.osgi.test.common.annotation.config.InjectConfiguration;
-import org.osgi.test.common.annotation.config.WithFactoryConfiguration;
-import org.osgi.test.common.dictionary.Dictionaries;
 import org.osgi.test.common.service.ServiceAware;
 
 import jakarta.persistence.EntityManager;
@@ -167,83 +161,12 @@ public class EPersistenceCitizenTest extends EPersistenceBase{
 		assertEquals(statbezEClass, findEO.eClass());
 		assertEquals("Test-Bezirk", findEO.eGet(statBezNameFeature));
 	}
-	
-//	@Test
-	@TestAnnotations.CitizenEPersistenceSetup
-	public void testConverterDebugOrig(@InjectService(timeout = 500) ServiceAware<DataSource> dataSourceAware,
-			@InjectService(filter = "(emf.name=citizen)") ServiceAware<EPackage> citizenPackageAware,
-			@InjectService(cardinality = 0) ServiceAware<EntityManagerFactory> emfAware,
-			@InjectConfiguration(withFactoryConfig = @WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "test")) Configuration emfConfig) throws InterruptedException, IOException {
-		assertFalse(citizenPackageAware.isEmpty());
-		assertFalse(dataSourceAware.isEmpty());
-		assertTrue(emfAware.isEmpty());
-		assertNull(emfConfig.getProperties());
-		
-		emfConfig.update(Dictionaries.asDictionary(
-				Map.of(
-						"fennec.jpa.model.target", "(emf.name=citizen)", 
-						"fennec.jpa.converter.target", "(fennec.persistence.converter=geojson)", 
-						"fennec.jpa.mappingFile", System.getProperty("rootPathConverter"), 
-						"fennec.jpa.persistenceUnitName", "citizen")));
-		
-//		Thread.sleep(50000);
-		assertNotNull(emfAware.waitForService(5000l));
-		
-		
-		
-		EntityManagerFactory emf = emfAware.getService();
-		Server server = JpaHelper.getServerSession(emf);
-		
-		
-		ClassDescriptor ageGroupsDescriptor = server.getDescriptorForAlias(ageGroupsEClass.getName());
-		assertNotNull(ageGroupsDescriptor);
-		ClassDescriptor einwohnerDescriptor = server.getDescriptorForAlias(einwohnerEClass.getName());
-		assertNotNull(einwohnerDescriptor);
-		ClassDescriptor plraumDescriptor = server.getDescriptorForAlias(plraumEClass.getName());
-		assertNotNull(plraumDescriptor);
-		ClassDescriptor genderDescriptor = server.getDescriptorForAlias(genderEClass.getName());
-		assertNotNull(genderDescriptor);
-		ClassDescriptor yearDescriptor = server.getDescriptorForAlias(yearEClass.getName());
-		assertNotNull(yearDescriptor);
-		ClassDescriptor statBezDescriptor = server.getDescriptorForAlias(statbezEClass.getName());
-		assertNotNull(statBezDescriptor);
-		ClassDescriptor townDescriptor = server.getDescriptorForAlias(townEClass.getName());
-		assertNotNull(townDescriptor);
-		
-		EObject findSBEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			findSBEO = em.find(statBezDescriptor.getJavaClass(), 62);
-			
-		} catch (Exception e) {
-			fail("Fail test One-to-One containment bidi-mapping find", e);
-		}
-		
-		assertNotNull(findSBEO);
-		assertEquals(statbezEClass, findSBEO.eClass());
-		
-		statBezNameFeature = statbezEClass.getEStructuralFeature("statbez_name");
-		assertNotNull(statBezNameFeature);
-		EStructuralFeature geojsonFeature = statbezEClass.getEStructuralFeature("geojsonO");
-		assertNotNull(geojsonFeature);
-		
-		Object statBezNameObject = findSBEO.eGet(statBezNameFeature);
-		assertNotNull(statBezNameObject);
-		assertEquals("Lobeda-West", statBezNameObject);
-		Object geojsonObject = findSBEO.eGet(geojsonFeature);
-		assertNotNull(geojsonObject);
-		
-	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see org.eclipse.fennec.persistence.test.EPersistenceBase#testEMFAvailable(org.osgi.test.common.service.ServiceAware, org.osgi.test.common.service.ServiceAware, org.osgi.test.common.service.ServiceAware, org.osgi.service.cm.Configuration)
-	 */
+
 	@Override
-	@Disabled
+	@Disabled("Does not work with the citizen model — requires different PU configuration")
 	public void testEMFAvailable(ServiceAware<DataSource> dataSourceAware, ServiceAware<EPackage> modelPackageAware,
 			ServiceAware<EntityManagerFactory> emfAware, Configuration emfConfig)
 			throws InterruptedException, IOException {
-		// Does not work with the citizen model
 		super.testEMFAvailable(dataSourceAware, modelPackageAware, emfAware, emfConfig);
 	}
 
