@@ -66,8 +66,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isLoaded) {
 			return;
 		}
-		isLoaded = true;
 		doLoad(null, options);
+		isLoaded = true;
 	}
 
 	@Override
@@ -83,6 +83,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		// Use the validated alias from the descriptor to prevent JPQL injection
 		String validatedAlias = descriptor.getAlias();
+		if (!getContents().isEmpty()) {
+			getContents().clear();
+		}
 		try (EntityManager em = emf.createEntityManager()) {
 			List<?> results = em.createQuery(
 					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass())
