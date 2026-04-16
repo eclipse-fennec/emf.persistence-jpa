@@ -140,7 +140,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 			LOG.log(Level.FINE, "Configured inheritance root: {0} strategy={1}",
 					new Object[]{entity.getName(), inheritance.getStrategy()});
 		} else if (nonNull(discriminatorValue)) {
-			// Child entity — set parent class + register indicator on parent
+			// Child entity — set parent class + register indicator on root
 			EClass eClass = (EClass) entity.getClass_();
 			if (!eClass.getESuperTypes().isEmpty()) {
 				EClass parentEClass = eClass.getESuperTypes().get(0);
@@ -148,11 +148,21 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 				if (nonNull(parentBuilder)) {
 					getType().getDescriptor().getInheritancePolicy()
 						.setParentClass(parentBuilder.getType().getJavaClass());
-					// Register this child's class indicator on the parent (both directions)
-					parentBuilder.getType().getDescriptor().getInheritancePolicy()
+
+					// Find the inheritance root (the entity with @Inheritance)
+					EDynamicTypeBuilder rootBuilder = findInheritanceRoot(parentBuilder);
+
+					// Register this child's class indicator on the ROOT (not the direct parent)
+					rootBuilder.getType().getDescriptor().getInheritancePolicy()
 						.addClassIndicator(getType().getJavaClass(), discriminatorValue);
-					LOG.log(Level.FINE, "Configured inheritance child: {0} parent={1} discriminator={2}",
-							new Object[]{entity.getName(), parentEClass.getName(), discriminatorValue});
+
+					// EclipseLink inherits parent mappings (including ID) in
+					// InheritancePolicy.initialize() (concatenateVectors)
+					// No manual ID mapping inheritance needed.
+
+					LOG.log(Level.FINE, "Configured inheritance child: {0} parent={1} root={2} discriminator={3}",
+							new Object[]{entity.getName(), parentEClass.getName(),
+									rootBuilder.getType().getEClass().getName(), discriminatorValue});
 				}
 			}
 		}
@@ -204,6 +214,30 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 	public void configureMappedByReferences() {
 		referenceConfigurator.configureMappedByReferences();
 	}
+
+	/**
+	 * Finds the root of the inheritance hierarchy — the entity that has @Inheritance set.
+	 */
+	private EDynamicTypeBuilder findInheritanceRoot(EDynamicTypeBuilder builder) {
+		while (isNull(builder.getType().getEntity().getInheritance())) {
+			EClass ec = (EClass) builder.getType().getEntity().getClass_();
+			if (ec.getESuperTypes().isEmpty()) {
+				break;
+			}
+			EDynamicTypeBuilder parent = context.getETypeBuilder(ec.getESuperTypes().get(0));
+			if (isNull(parent)) {
+				break;
+			}
+			builder = parent;
+		}
+		return builder;
+	}
+
+	// Note: ID mapping inheritance is NOT needed — EclipseLink's InheritancePolicy.initialize()
+	// automatically concatenates parent mappings onto child descriptors (see EclipseLink
+	// InheritancePolicy.java line 963: concatenateVectors(parent.getMappings(), child.getMappings())).
+	// The only fix needed was registering class indicators on the ROOT descriptor (findInheritanceRoot)
+	// instead of the direct parent.
 
 	// ── Initialization ───────────────────────────────────────────────────
 

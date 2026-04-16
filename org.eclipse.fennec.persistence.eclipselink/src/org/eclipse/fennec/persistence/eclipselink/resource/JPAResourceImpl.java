@@ -25,6 +25,8 @@ import java.util.logging.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
+import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
+import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.engine.PersistenceEngine;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
@@ -105,11 +107,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	@Override
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
+		Server server = getServer();
 		try (EntityManager em = emf.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
 				for (EObject eo : getContents()) {
-					em.merge(eo);
+					EObject managed = server != null ? toManagedEntity(eo, server) : eo;
+					em.merge(managed);
 				}
 				em.getTransaction().commit();
 			} catch (Exception e) {
@@ -241,14 +245,60 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
+	 * Returns the EclipseLink Server session, or null if the EMF is not EclipseLink-backed.
+	 */
+	private Server getServer() {
+		try {
+			return JpaHelper.getServerSession(emf);
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
+	}
+
+	/**
 	 * Finds the EclipseLink descriptor for the given entity name.
 	 */
 	ClassDescriptor getDescriptor(String entityName) {
 		if (isNull(entityName)) {
 			return null;
 		}
-		Server server = JpaHelper.getServerSession(emf);
-		return server.getDescriptorForAlias(entityName);
+		Server server = getServer();
+		return server != null ? server.getDescriptorForAlias(entityName) : null;
+	}
+
+	/**
+	 * Converts an EObject to a managed EclipseLink entity if necessary.
+	 * If the object is already of the correct dynamic class (i.e. EclipseLink knows its Java class),
+	 * it is returned as-is. Otherwise, a new entity is created via the descriptor's instantiation
+	 * policy and all features are copied from the source using {@link ECopier}.
+	 * This enables persisting plain {@code DynamicEObjectImpl} objects loaded from XMI or
+	 * created outside EclipseLink.
+	 */
+	private EObject toManagedEntity(EObject source, Server server) {
+		// Fast path: EclipseLink already knows this object's class
+		ClassDescriptor descriptor = server.getDescriptor(source.getClass());
+		if (descriptor != null) {
+			return source;
+		}
+		// Slow path: look up by EClass alias and convert
+		descriptor = server.getDescriptorForAlias(source.eClass().getName());
+		if (descriptor == null) {
+			LOG.log(Level.WARNING, "No descriptor found for EClass ''{0}'' — passing object as-is", source.eClass().getName());
+			return source;
+		}
+		EObject target = EDynamicHelper.createInstance(descriptor);
+		ECopier copier = new ECopier(target, null);
+		copier.setCopyContainments(true);
+		copier.setCopyFunction(src -> {
+			ClassDescriptor childDesc = server.getDescriptorForAlias(src.eClass().getName());
+			if (childDesc != null) {
+				return EDynamicHelper.createInstance(childDesc);
+			}
+			return null;
+		});
+		EObject result = copier.copy(source);
+		copier.copyReferences();
+		return result;
 	}
 
 	/**

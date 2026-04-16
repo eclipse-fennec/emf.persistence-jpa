@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.eclipselink.classloader.OSGiDynamicClassloader;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopyPolicy;
 import org.eclipse.fennec.persistence.eorm.Entity;
+import org.eclipse.persistence.dynamic.DynamicClassLoader;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.persistence.descriptors.RelationalDescriptor;
 
@@ -67,6 +68,8 @@ public class EClassDescriptor extends RelationalDescriptor {
 		} else {
 			String fqClassName = EORMHelper.getEClassName(entity);
 			if (classLoader instanceof OSGiDynamicClassloader dcl) {
+				javaClass = dcl.createDynamicClass(fqClassName, DynamicEObjectImpl.class);
+			} else if (classLoader instanceof DynamicClassLoader dcl) {
 				javaClass = dcl.createDynamicClass(fqClassName, DynamicEObjectImpl.class);
 			}
 		}
