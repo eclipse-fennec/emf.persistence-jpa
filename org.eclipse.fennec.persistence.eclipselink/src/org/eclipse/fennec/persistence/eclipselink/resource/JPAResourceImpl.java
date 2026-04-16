@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -108,11 +109,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	@Override
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
 		Server server = getServer();
+		// Pre-build the entity factory function once for all objects (avoids lambda allocation per object)
+		Function<EObject, EObject> entityFactory = server != null
+				? src -> {
+					ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
+					return desc != null ? EDynamicHelper.createInstance(desc) : null;
+				}
+				: null;
 		try (EntityManager em = emf.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
 				for (EObject eo : getContents()) {
-					EObject managed = server != null ? toManagedEntity(eo, server) : eo;
+					EObject managed = server != null ? toManagedEntity(eo, server, entityFactory) : eo;
 					em.merge(managed);
 				}
 				em.getTransaction().commit();
@@ -274,7 +282,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * This enables persisting plain {@code DynamicEObjectImpl} objects loaded from XMI or
 	 * created outside EclipseLink.
 	 */
-	private EObject toManagedEntity(EObject source, Server server) {
+	private EObject toManagedEntity(EObject source, Server server,
+			Function<EObject, EObject> entityFactory) {
 		// Fast path: EclipseLink already knows this object's class
 		ClassDescriptor descriptor = server.getDescriptor(source.getClass());
 		if (descriptor != null) {
@@ -289,13 +298,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		EObject target = EDynamicHelper.createInstance(descriptor);
 		ECopier copier = new ECopier(target, null);
 		copier.setCopyContainments(true);
-		copier.setCopyFunction(src -> {
-			ClassDescriptor childDesc = server.getDescriptorForAlias(src.eClass().getName());
-			if (childDesc != null) {
-				return EDynamicHelper.createInstance(childDesc);
-			}
-			return null;
-		});
+		copier.setCopyFunction(entityFactory);
 		EObject result = copier.copy(source);
 		copier.copyReferences();
 		return result;

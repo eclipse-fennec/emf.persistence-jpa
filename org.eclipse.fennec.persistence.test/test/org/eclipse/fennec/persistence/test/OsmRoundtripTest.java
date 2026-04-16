@@ -16,8 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.util.zip.GZIPInputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +30,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
@@ -78,26 +82,32 @@ class OsmRoundtripTest {
 
 	@BeforeEach
 	void setUp() throws IOException {
+		long t0 = System.currentTimeMillis();
+
 		rs = new ResourceSetImpl();
 		rs.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
 		rs.getResourceFactoryRegistry().getExtensionToFactoryMap().put("*", new XMIResourceFactoryImpl());
 
-		// Load domain.ecore from project data directory
+		// Load domain.ecore
 		File ecoreFile = new File("data/osm/domain.ecore");
 		assertThat(ecoreFile).as("domain.ecore must exist").exists();
 		Resource ecoreResource = rs.createResource(URI.createFileURI(ecoreFile.getAbsolutePath()));
 		ecoreResource.load(null);
 		domainPackage = (EPackage) ecoreResource.getContents().get(0);
 		rs.getPackageRegistry().put(domainPackage.getNsURI(), domainPackage);
+		long t1 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Load Ecore (435 classes): %d ms%n", t1 - t0);
 
-		// Create EORM mappings for all EClasses (including abstract)
+		// Create EORM mappings
 		List<EClassifier> allClasses = domainPackage.getEClassifiers().stream()
 				.filter(EClass.class::isInstance)
 				.collect(Collectors.toList());
 		EntityMapper mapper = new EntityMapper();
 		EntityMappings mappings = mapper.createMappings(allClasses);
+		long t2 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Create EORM mappings: %d ms%n", t2 - t1);
 
-		// Set up EclipseLink with in-memory H2
+		// Create empty EntityManagerFactory
 		DynamicClassLoader dcl = new DynamicClassLoader(getClass().getClassLoader());
 		Map<String, Object> props = new HashMap<>();
 		props.put(PersistenceUnitProperties.CLASSLOADER, dcl);
@@ -111,6 +121,8 @@ class OsmRoundtripTest {
 		props.put(PersistenceUnitProperties.WEAVING, "false");
 		props.put(PersistenceUnitProperties.TARGET_DATABASE, "Auto");
 		props.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
+		props.put(PersistenceUnitProperties.BATCH_WRITING, "JDBC");
+		props.put(PersistenceUnitProperties.BATCH_WRITING_SIZE, "500");
 
 		PersistenceUnit pu = EPersistenceFactory.eINSTANCE.createPersistenceUnit();
 		pu.setName("osm");
@@ -121,11 +133,21 @@ class OsmRoundtripTest {
 		PersistenceProvider provider = new PersistenceProvider();
 		emf = provider.createContainerEntityManagerFactory(pui, props);
 		serverSession = JpaHelper.getServerSession(emf);
+		long t3 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Create EMF (empty): %d ms%n", t3 - t2);
 
+		// Generate dynamic types from EORM mappings
 		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl, serverSession, "osm");
 		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
+		long t4 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Generate dynamic types (%d types): %d ms%n", types.size(), t4 - t3);
+
+		// Add to session + DDL generation
 		EDynamicHelper helper = new EDynamicHelper(emf, dcl);
 		helper.addETypes(true, true, types);
+		long t5 = System.currentTimeMillis();
+		System.out.printf("[TIMING] addETypes + DDL generation: %d ms%n", t5 - t4);
+		System.out.printf("[TIMING] Total setUp: %d ms%n", t5 - t0);
 	}
 
 	@AfterEach
@@ -145,10 +167,20 @@ class OsmRoundtripTest {
 	@Tag("perf")
 	@DisplayName("XMI → DB → XMI roundtrip: 10k objects (full)")
 	void testXmiRoundtripFull() throws IOException {
-		runRoundtrip("data/osm/domain_full.xmi");
+		// Decompress .gz on the fly — keeps the repo small (22 MB → 981 KB)
+		File gz = new File("data/osm/domain_full.xmi.gz");
+		assertThat(gz).as("domain_full.xmi.gz must exist").exists();
+		File xmiFile = new File(tempDir, "domain_full.xmi");
+		try (var gzIn = new GZIPInputStream(new FileInputStream(gz));
+			 var out = new FileOutputStream(xmiFile)) {
+			gzIn.transferTo(out);
+		}
+		runRoundtrip(xmiFile.getAbsolutePath());
 	}
 
 	private void runRoundtrip(String xmiPath) throws IOException {
+		long t0 = System.currentTimeMillis();
+
 		// 1. Load XMI from project data directory
 		File xmiFile = new File(xmiPath);
 		assertThat(xmiFile).as(xmiPath + " must exist").exists();
@@ -156,7 +188,9 @@ class OsmRoundtripTest {
 		xmiResource.load(null);
 		List<EObject> sourceObjects = new ArrayList<>(xmiResource.getContents());
 		int totalSourceCount = sourceObjects.size();
-		System.out.println("Loaded " + totalSourceCount + " root objects from XMI");
+		long t1 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Load XMI (%s, %d KB): %d ms — %d objects%n",
+				xmiFile.getName(), xmiFile.length() / 1024, t1 - t0, totalSourceCount);
 
 		Map<String, List<EObject>> sourceByType = sourceObjects.stream()
 				.collect(Collectors.groupingBy(
@@ -166,6 +200,7 @@ class OsmRoundtripTest {
 		System.out.println("Distinct entity types: " + sourceByType.size());
 
 		// 2. Persist via JPAResource (uses toManagedEntity for XMI objects)
+		long t2 = System.currentTimeMillis();
 		try (JPAResourceImpl saveResource = new JPAResourceImpl(
 				URI.createURI("jpa://osm/BulkSave"), emf)) {
 			saveResource.getContents().addAll(sourceObjects);
@@ -173,7 +208,8 @@ class OsmRoundtripTest {
 		} catch (Exception e) {
 			fail("Failed to persist XMI objects", e);
 		}
-		System.out.println("Persisted " + totalSourceCount + " objects to DB");
+		long t3 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Persist %d objects: %d ms%n", totalSourceCount, t3 - t2);
 
 		// 3. Read back per entity type
 		List<EObject> readBackObjects = new ArrayList<>();
@@ -194,7 +230,8 @@ class OsmRoundtripTest {
 				}
 			}
 		}
-		System.out.println("Read back " + readBackObjects.size() + " objects from DB");
+		long t4 = System.currentTimeMillis();
+		System.out.printf("[TIMING] Read back %d objects: %d ms%n", readBackObjects.size(), t4 - t3);
 
 		// 4. Verify counts per type
 		Map<String, List<EObject>> readBackByType = readBackObjects.stream()
@@ -216,32 +253,89 @@ class OsmRoundtripTest {
 					.isEqualTo(expected);
 		}
 
-		// 5. Spot-check attribute values
-		EClass alcoholShopClass = (EClass) domainPackage.getEClassifier("AlcoholShop");
-		if (alcoholShopClass != null) {
-			EStructuralFeature nameFeature = alcoholShopClass.getEStructuralFeature("name");
-			List<EObject> alcoholShops = readBackByType.getOrDefault("AlcoholShop", List.of());
-			assertThat(alcoholShops).isNotEmpty();
-			List<String> names = alcoholShops.stream()
-					.map(eo -> (String) eo.eGet(nameFeature))
-					.collect(Collectors.toList());
-			assertThat(names).contains("Whiskey Center Jena", "Weinhandlung Rosemann");
+		// 5. Deep attribute comparison: match by id, compare all set EAttribute values
+		EStructuralFeature idFeature = domainPackage.getEClassifier("GeoFeature") != null
+				? ((EClass) domainPackage.getEClassifier("GeoFeature")).getEStructuralFeature("id")
+				: null;
+
+		if (idFeature != null) {
+			// Build lookup: id → read-back object
+			Map<Object, EObject> readBackById = new HashMap<>();
+			for (EObject eo : readBackObjects) {
+				Object id = eo.eGet(idFeature);
+				if (id != null) {
+					readBackById.put(id, eo);
+				}
+			}
+
+			int comparedObjects = 0;
+			int comparedAttributes = 0;
+			List<String> mismatches = new ArrayList<>();
+
+			for (EObject source : sourceObjects) {
+				Object sourceId = source.eGet(idFeature);
+				if (sourceId == null) {
+					continue;
+				}
+				EObject readBack = readBackById.get(sourceId);
+				assertThat(readBack)
+						.as("Object with id=%s (%s) should exist in DB", sourceId, source.eClass().getName())
+						.isNotNull();
+
+				// Compare all EAttributes (skip containment references — those are separate entities)
+				for (EStructuralFeature feature : source.eClass().getEAllStructuralFeatures()) {
+					if (!(feature instanceof EAttribute)) {
+						continue;
+					}
+					if (feature.isDerived() || feature.isTransient() || feature.isVolatile()) {
+						continue;
+					}
+					Object sourceVal = source.eGet(feature);
+					Object dbVal = readBack.eGet(feature);
+
+					// Only compare non-default values that were actually set in the XMI
+					if (sourceVal != null && !sourceVal.equals(feature.getDefaultValue())) {
+						if (!sourceVal.equals(dbVal)) {
+							mismatches.add(String.format("%s[id=%s].%s: expected=<%s> actual=<%s>",
+									source.eClass().getName(), sourceId, feature.getName(), sourceVal, dbVal));
+						}
+						comparedAttributes++;
+					}
+				}
+				comparedObjects++;
+			}
+
+			long t5a = System.currentTimeMillis();
+			System.out.printf("[TIMING] Deep comparison: %d objects, %d attributes — %d ms, %d mismatches%n",
+					comparedObjects, comparedAttributes, t5a - t4, mismatches.size());
+
+			if (!mismatches.isEmpty()) {
+				// Print first 20 mismatches for debugging
+				mismatches.stream().limit(20).forEach(System.err::println);
+			}
+			assertThat(mismatches)
+					.as("All attribute values should survive the DB roundtrip")
+					.isEmpty();
 		}
 
 		// 6. Write read-back objects to XMI
+		long t5 = System.currentTimeMillis();
 		File outputFile = new File(tempDir, "roundtrip_output.xmi");
 		Resource outputResource = rs.createResource(URI.createFileURI(outputFile.getAbsolutePath()));
 		outputResource.getContents().addAll(readBackObjects);
 		outputResource.save(null);
 
+		long t6 = System.currentTimeMillis();
 		assertThat(outputFile).exists();
 		assertThat(outputFile.length()).isGreaterThan(0);
-		System.out.println("Wrote " + readBackObjects.size() + " objects to " + outputFile.getName()
-				+ " (" + outputFile.length() / 1024 + " KB)");
+		System.out.printf("[TIMING] Write XMI (%d KB): %d ms%n", outputFile.length() / 1024, t6 - t5);
 
-		// 7. Total count
+		// 7. Total count + summary
 		assertThat(readBackObjects)
 				.as("Total object count should match XMI source")
 				.hasSameSizeAs(sourceObjects);
+
+		long tEnd = System.currentTimeMillis();
+		System.out.printf("[TIMING] Total roundtrip: %d ms%n", tEnd - t0);
 	}
 }
