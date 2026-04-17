@@ -403,7 +403,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 |----|-------|--------|---------|--------|
 | AP-39 | **SINGLE_TABLE Inheritance Fix:** Zwei Bugs in `EDynamicTypeBuilder.configureInheritance()` gefixt: (1) Discriminator-Registrierung auf Root statt direktem Parent — behebt "Cannot find value in class indicator mapping". (2) `EClassDescriptor.convertClassNamesToClasses()` unterstützt jetzt auch `DynamicClassLoader` (nicht nur OSGi-Variante). ID-Mappings werden NICHT manuell kopiert — EclipseLink erbt sie automatisch via `InheritancePolicy.initialize()` (concatenateVectors). `inheritIdMappings()` entfernt. Non-OSGi-Integrationstest `InheritanceIntegrationTest` (H2, 7 Tests inkl. 3-Level-Hierarchie Persist/Find-Roundtrip). | F1-03, AP-12 | M | ✅ Done |
 | AP-40 | **XMI→DB→XMI Roundtrip-Test (OSM-Modell):** Non-OSGi `OsmRoundtripTest` mit in-memory H2. **Small-Test** (500 Objekte): 5.763 Attribute deep-verglichen, 0 Mismatches. **Perf-Test** (`@Tag("perf")`, 10.225 Objekte): 102.205 Attribute deep-verglichen, 0 Mismatches. Timing: Load XMI 561ms, Persist 12.6s, Read-Back 2.0s, Deep-Compare 142ms, Write XMI 537ms. `domain_full.xmi` als `.gz` im Repo (22MB→981KB, zur Laufzeit entpackt). Reserved-Word-Handling (`user`, `natural`, `key`, `value`, `interval`) via `ExtendedMetaData`-Annotation. `domain.ecore`: `GeoFeature.id` als `iD=true`, DomainTag/WikiInfo/FieldMapping mit eigener `id`. Batch-Writing (`JDBC`, size=500) konfiguriert. | — | L | ✅ Done |
-| AP-41 | **Non-OSGi-Testinfrastruktur:** `test/`-Ordner im `persistence.test`-Modul für Non-OSGi-Tests eingerichtet. `-testpath` mit H2, EclipseLink ASM/JPA/JPQL, Fennec-Modulen. Blaupause: `EDynamicPersistenceUnitInfo` + `PersistenceProvider` + `EDynamicTypeGenerator` + `EDynamicHelper.addETypes()` ohne OSGi-Container. **Verbleibend:** Bestehende OSGi-Integrationstests als Non-OSGi-Tests migrieren, Test-Setup als wiederverwendbare Basisklasse extrahieren. | T3-01 bis T3-04 | L | ⚠️ In Arbeit |
+| AP-41 | **Non-OSGi-Testinfrastruktur:** `test/`-Ordner im `persistence.test`-Modul für Non-OSGi-Tests eingerichtet. `-testpath` mit H2, EclipseLink ASM/JPA/JPQL, Fennec-Modulen. Blaupause: `EDynamicPersistenceUnitInfo` + `PersistenceProvider` + `EDynamicTypeGenerator` + `EDynamicHelper.addETypes()` ohne OSGi-Container. Wiederverwendbare Basisklasse `NonOsgiPersistenceTestBase` extrahiert (Ecore-Load, H2-EMF-Bootstrap, `ConverterService`-Wiring via `DefaultConverterService`, Dynamic-Type-Registrierung, Teardown; `defaultProperties()` und `configureMapper()` als Hooks für Cache/Strict-Varianten). **Migration + Cleanup abgeschlossen**: 18 Non-OSGi-Testklassen mit 64 Tests (alle grün) decken Attribute/NoCache, O2O/NoCache, O2M/NoCache, M2M/NoCache, Inheritance, Lifecycle, CompositeId, CompositeIdEclipseLink, Citizen, GltContainment, TypeConverterEndToEnd, TypeConverterIntegration, JPAResourceIntegration und OsmRoundtripTest ab. 21 migrierte bzw. komplett auskommentierte OSGi-Testdateien gelöscht. Verbleibende OSGi-Tests (22 Tests): ServiceIsolationTest, H2DataSourceTest, DynamicModelRegistrationTest, EORMLoaderTest, EORMMappingProviderTest, copier/ECopierIntegrationTest — alle testen genuin OSGi-spezifisches Verhalten (Service-Injection, ConfigAdmin-Lifecycle, ORMMappingProvider-Service) und bleiben bewusst OSGi. Bei Non-OSGi-Tests wird das Schema immer per EclipseLink-DDL generiert, nicht per JDBC pre-seeded — damit Setup-Fehler (falsche Mappings, falsche ID-Strategie) früh auffallen. Build grün (22 OSGi + 64 Non-OSGi Tests). | T3-01 bis T3-04 | L | ✅ Done |
 | AP-42 | **Detached DynamicEObjectImpl persist/merge:** `JPAResourceImpl.toManagedEntity()` konvertiert fremde `DynamicEObjectImpl`-Objekte (z.B. aus XMI geladen) zu EclipseLink-Entities via Descriptor-Lookup per `eClass().getName()` + ECopier mit Factory-Function. `JPAResourceImpl.doSave()` nutzt dies transparent. `getServer()` defensiv (gibt null bei Non-EclipseLink EMF). Durch OSM-Roundtrip-Test mit 500 Objekten E2E verifiziert. | — | M | ✅ Done |
 
 ### P3 — Nice-to-have, kann in späterem Release kommen
@@ -528,12 +528,12 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 32 von 42 Arbeitspaketen erledigt (76%)**
+**Gesamtstand: 33 von 42 Arbeitspaketen erledigt (79%)**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ In Arbeit | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
-| P1b | 4 | 3 | 1 | 0 |
+| P1b | 4 | 4 | 0 | 0 |
 | P2 | 13 | 13 | 0 | 0 |
 | P3 | 16 | 8 | 1 | 7 |
 
@@ -579,5 +579,5 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 10 — Robustheit & Mapping:** AP-35, AP-37 → ✅ Erledigt
 **Welle 11 — Cleanup & Lifecycle:** AP-33, AP-34 → ✅ Erledigt
 **Welle 12 — Inheritance & XMI-Roundtrip:** AP-39, AP-40, AP-42 → ✅ Erledigt
-**Welle 13 — Non-OSGi-Testinfrastruktur:** AP-41 → ⚠️ In Arbeit (Grundlagen stehen, Migration ausstehend)
+**Welle 13 — Non-OSGi-Testinfrastruktur:** AP-41 → ✅ Done (Basisklasse + 18 Non-OSGi-Testklassen mit 64 Tests; 21 migrierte OSGi-Testdateien gelöscht; 22 genuin OSGi-Tests bleiben)
 **Welle 14 — Erweiterungen:** AP-24 bis AP-38

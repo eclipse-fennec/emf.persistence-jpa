@@ -19,142 +19,62 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
-import java.util.zip.GZIPInputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
-import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
-import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
-import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicPersistenceUnitInfo;
-import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
-import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicTypeGenerator;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
-import org.eclipse.fennec.persistence.eorm.EntityMappings;
-import org.eclipse.fennec.persistence.epersistence.EPersistenceFactory;
-import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
-import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
-import org.eclipse.persistence.dynamic.DynamicClassLoader;
-import org.eclipse.persistence.jpa.JpaHelper;
-import org.eclipse.persistence.jpa.PersistenceProvider;
-import org.eclipse.persistence.sessions.server.Server;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 
 /**
  * Non-OSGi XMI → DB → XMI roundtrip test using the OSM domain model.
  * Uses in-memory H2 to avoid file corruption with large SINGLE_TABLE schemas.
  */
-class OsmRoundtripTest {
+class OsmRoundtripTest extends NonOsgiPersistenceTestBase {
 
 	@TempDir
 	File tempDir;
 
-	private ResourceSet rs;
 	private EPackage domainPackage;
-	private EntityManagerFactory emf;
-	private Server serverSession;
 
 	@BeforeEach
-	void setUp() throws IOException {
+	void setUp() {
 		long t0 = System.currentTimeMillis();
-
-		rs = new ResourceSetImpl();
-		rs.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
-		rs.getResourceFactoryRegistry().getExtensionToFactoryMap().put("*", new XMIResourceFactoryImpl());
-
-		// Load domain.ecore
-		File ecoreFile = new File("data/osm/domain.ecore");
-		assertThat(ecoreFile).as("domain.ecore must exist").exists();
-		Resource ecoreResource = rs.createResource(URI.createFileURI(ecoreFile.getAbsolutePath()));
-		ecoreResource.load(null);
-		domainPackage = (EPackage) ecoreResource.getContents().get(0);
-		rs.getPackageRegistry().put(domainPackage.getNsURI(), domainPackage);
+		domainPackage = loadEcore("data/osm/domain.ecore");
 		long t1 = System.currentTimeMillis();
 		System.out.printf("[TIMING] Load Ecore (435 classes): %d ms%n", t1 - t0);
 
-		// Create EORM mappings
-		List<EClassifier> allClasses = domainPackage.getEClassifiers().stream()
+		Map<String, Object> extra = new HashMap<>();
+		extra.put(PersistenceUnitProperties.BATCH_WRITING, "JDBC");
+		extra.put(PersistenceUnitProperties.BATCH_WRITING_SIZE, "500");
+
+		List<EClass> eClasses = domainPackage.getEClassifiers().stream()
 				.filter(EClass.class::isInstance)
+				.map(EClass.class::cast)
 				.collect(Collectors.toList());
-		EntityMapper mapper = new EntityMapper();
-		EntityMappings mappings = mapper.createMappings(allClasses);
+		bootstrapPersistence("osm", eClasses, extra);
 		long t2 = System.currentTimeMillis();
-		System.out.printf("[TIMING] Create EORM mappings: %d ms%n", t2 - t1);
-
-		// Create empty EntityManagerFactory
-		DynamicClassLoader dcl = new DynamicClassLoader(getClass().getClassLoader());
-		Map<String, Object> props = new HashMap<>();
-		props.put(PersistenceUnitProperties.CLASSLOADER, dcl);
-		props.put(PersistenceUnitProperties.DDL_GENERATION, "create-or-extend-tables");
-		props.put(PersistenceUnitProperties.DDL_GENERATION_MODE, "database");
-		props.put(PersistenceUnitProperties.JDBC_DRIVER, "org.h2.Driver");
-		props.put(PersistenceUnitProperties.JDBC_URL, "jdbc:h2:mem:osmtest_" + UUID.randomUUID());
-		props.put(PersistenceUnitProperties.JDBC_USER, "sa");
-		props.put(PersistenceUnitProperties.JDBC_PASSWORD, "");
-		props.put(PersistenceUnitProperties.LOGGING_LEVEL, "WARNING");
-		props.put(PersistenceUnitProperties.WEAVING, "false");
-		props.put(PersistenceUnitProperties.TARGET_DATABASE, "Auto");
-		props.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
-		props.put(PersistenceUnitProperties.BATCH_WRITING, "JDBC");
-		props.put(PersistenceUnitProperties.BATCH_WRITING_SIZE, "500");
-
-		PersistenceUnit pu = EPersistenceFactory.eINSTANCE.createPersistenceUnit();
-		pu.setName("osm");
-		pu.setProperties(EPersistenceFactory.eINSTANCE.createProperties());
-		URL puRoot = getClass().getProtectionDomain().getCodeSource().getLocation();
-		EDynamicPersistenceUnitInfo pui = new EDynamicPersistenceUnitInfo(pu, puRoot, props);
-
-		PersistenceProvider provider = new PersistenceProvider();
-		emf = provider.createContainerEntityManagerFactory(pui, props);
-		serverSession = JpaHelper.getServerSession(emf);
-		long t3 = System.currentTimeMillis();
-		System.out.printf("[TIMING] Create EMF (empty): %d ms%n", t3 - t2);
-
-		// Generate dynamic types from EORM mappings
-		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl, serverSession, "osm");
-		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
-		long t4 = System.currentTimeMillis();
-		System.out.printf("[TIMING] Generate dynamic types (%d types): %d ms%n", types.size(), t4 - t3);
-
-		// Add to session + DDL generation
-		EDynamicHelper helper = new EDynamicHelper(emf, dcl);
-		helper.addETypes(true, true, types);
-		long t5 = System.currentTimeMillis();
-		System.out.printf("[TIMING] addETypes + DDL generation: %d ms%n", t5 - t4);
-		System.out.printf("[TIMING] Total setUp: %d ms%n", t5 - t0);
-	}
-
-	@AfterEach
-	void tearDown() {
-		if (emf != null && emf.isOpen()) {
-			emf.close();
-		}
+		System.out.printf("[TIMING] Bootstrap persistence (%d types): %d ms%n", eClasses.size(), t2 - t1);
+		System.out.printf("[TIMING] Total setUp: %d ms%n", t2 - t0);
 	}
 
 	@Test

@@ -1,0 +1,445 @@
+/********************************************************************
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Data In Motion Consulting - initial implementation
+ ********************************************************************/
+package org.eclipse.fennec.persistence.test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import jakarta.persistence.EntityManager;
+
+/**
+ * Non-OSGi port of {@code EPersistenceOneToManyTest}. Covers all OneToMany
+ * permutations (containment uni/bi, non-containment uni/bi with/without
+ * opposite) against in-memory H2 via {@link NonOsgiPersistenceTestBase}.
+ */
+class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
+
+	private EPackage modelPackage;
+	private EClass classAEClass;
+	private EClass classBEClass;
+	private EClass classCEClass;
+	private EClass classDEClass;
+	private EClass classEEClass;
+
+	@BeforeEach
+	void setUp() {
+		modelPackage = loadEcore("data/model.ecore");
+		classAEClass = (EClass) modelPackage.getEClassifier("ClassAO2M");
+		classBEClass = (EClass) modelPackage.getEClassifier("ClassBO2M");
+		classCEClass = (EClass) modelPackage.getEClassifier("ClassCO2M");
+		classDEClass = (EClass) modelPackage.getEClassifier("ClassDO2M");
+		classEEClass = (EClass) modelPackage.getEClassifier("ClassEO2M");
+		assertNotNull(classAEClass);
+		assertNotNull(classBEClass);
+		assertNotNull(classCEClass);
+		assertNotNull(classDEClass);
+		assertNotNull(classEEClass);
+		bootstrapPersistence("person",
+				List.of(classAEClass, classBEClass, classCEClass, classDEClass, classEEClass));
+	}
+
+	@Test
+	void testOneToManyContainmentUni() {
+		ClassDescriptor classADescriptor = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor classBDescriptor = serverSession.getDescriptorForAlias(classBEClass.getName());
+		assertNotNull(classADescriptor);
+		assertNotNull(classBDescriptor);
+
+		EObject classAEO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classB01EO = (EObject) classBDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classB02EO = (EObject) classBDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classB03EO = (EObject) classBDescriptor.getInstantiationPolicy().buildNewInstance();
+
+		EStructuralFeature aNameFeature = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature bContainmentFeature = classAEClass.getEStructuralFeature("bContainment");
+		EStructuralFeature bNameFeature = classBEClass.getEStructuralFeature("name");
+		assertNotNull(aNameFeature);
+		assertNotNull(bContainmentFeature);
+		assertNotNull(bNameFeature);
+
+		classAEO.eSet(aNameFeature, "The A-Class!");
+		classB01EO.eSet(bNameFeature, "The First B-Class!");
+		classB02EO.eSet(bNameFeature, "The Second B-Class!");
+		classB03EO.eSet(bNameFeature, "The Third B-Class!");
+
+		List<EObject> bContainmentList = List.of(classB01EO, classB02EO, classB03EO);
+		classAEO.eSet(bContainmentFeature, bContainmentList);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(classAEO);
+			em.getTransaction().commit();
+			em.clear();
+		} catch (Exception e) {
+			fail("Fail test One-to-Many containment uni persist", e);
+		}
+
+		EObject findEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classAEO);
+			findEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many containment uni find", e);
+		}
+
+		assertNotNull(findEO);
+		assertEquals("The A-Class!", findEO.eGet(aNameFeature));
+
+		List<?> resultList = (List<?>) findEO.eGet(bContainmentFeature);
+		assertNotNull(resultList);
+		assertEquals(3, resultList.size());
+		Set<String> values = new HashSet<>(Set.of("The First B-Class!", "The Second B-Class!", "The Third B-Class!"));
+		for (Object o : resultList) {
+			EObject eo = (EObject) o;
+			assertEquals(classBEClass, eo.eClass());
+			assertTrue(values.remove(eo.eGet(bNameFeature)));
+			assertFalse(bContainmentList.contains(eo));
+		}
+		assertTrue(values.isEmpty());
+	}
+
+	@Test
+	void testOneToManyContainmentBidi() {
+		ClassDescriptor classADescriptor = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor classCDescriptor = serverSession.getDescriptorForAlias(classCEClass.getName());
+		assertNotNull(classADescriptor);
+		assertNotNull(classCDescriptor);
+
+		EObject classAEO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classC01EO = (EObject) classCDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classC02EO = (EObject) classCDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classC03EO = (EObject) classCDescriptor.getInstantiationPolicy().buildNewInstance();
+
+		EStructuralFeature aNameFeature = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature aCContainmentFeature = classAEClass.getEStructuralFeature("cContainmentBidi");
+		EStructuralFeature cNameFeature = classCEClass.getEStructuralFeature("name");
+		EStructuralFeature cClassAFeature = classCEClass.getEStructuralFeature("cClassA");
+		assertNotNull(aNameFeature);
+		assertNotNull(aCContainmentFeature);
+		assertNotNull(cNameFeature);
+		assertNotNull(cClassAFeature);
+
+		classAEO.eSet(aNameFeature, "The A-Class!");
+		classC01EO.eSet(cNameFeature, "The First C-Class!");
+		classC02EO.eSet(cNameFeature, "The Second C-Class!");
+		classC03EO.eSet(cNameFeature, "The Third C-Class!");
+
+		List<EObject> cContainmentList = List.of(classC01EO, classC02EO, classC03EO);
+		classAEO.eSet(aCContainmentFeature, cContainmentList);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(classAEO);
+			em.getTransaction().commit();
+			em.clear();
+		} catch (Exception e) {
+			fail("Fail test One-to-Many containment bidi persist", e);
+		}
+
+		EObject findAEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classAEO);
+			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many containment bidi find A", e);
+		}
+
+		assertNotNull(findAEO);
+		assertEquals("The A-Class!", findAEO.eGet(aNameFeature));
+		List<?> resultList = (List<?>) findAEO.eGet(aCContainmentFeature);
+		assertEquals(3, resultList.size());
+		Set<String> values = new HashSet<>(Set.of("The First C-Class!", "The Second C-Class!", "The Third C-Class!"));
+		for (Object o : resultList) {
+			EObject eo = (EObject) o;
+			assertTrue(values.remove(eo.eGet(cNameFeature)));
+			assertEquals(findAEO, eo.eGet(cClassAFeature));
+		}
+		assertTrue(values.isEmpty());
+
+		EObject findCEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classC02EO);
+			findCEO = em.find(classCDescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many containment bidi find C", e);
+		}
+
+		assertNotNull(findCEO);
+		assertEquals("The Second C-Class!", findCEO.eGet(cNameFeature));
+		EObject classAFEO = (EObject) findCEO.eGet(cClassAFeature);
+		assertNotNull(classAFEO);
+		assertNotEquals(findAEO, classAFEO);
+		List<?> containmentFromC = (List<?>) classAFEO.eGet(aCContainmentFeature);
+		assertEquals(3, containmentFromC.size());
+		assertTrue(containmentFromC.contains(findCEO));
+	}
+
+	@Test
+	void testOneToManyNonContainmentUni() {
+		ClassDescriptor classADescriptor = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor classDDescriptor = serverSession.getDescriptorForAlias(classDEClass.getName());
+		assertNotNull(classADescriptor);
+		assertNotNull(classDDescriptor);
+
+		EObject classA01EO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classA02EO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classD01EO = (EObject) classDDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classD02EO = (EObject) classDDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classD03EO = (EObject) classDDescriptor.getInstantiationPolicy().buildNewInstance();
+
+		EStructuralFeature aNameFeature = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature dNonContainmentFeature = classAEClass.getEStructuralFeature("dNonContainment");
+		EStructuralFeature dNameFeature = classDEClass.getEStructuralFeature("name");
+		EStructuralFeature dClassAFeature = classDEClass.getEStructuralFeature("dClassA");
+		assertNotNull(aNameFeature);
+		assertNotNull(dNonContainmentFeature);
+		assertNotNull(dNameFeature);
+		assertNotNull(dClassAFeature);
+
+		classA01EO.eSet(aNameFeature, "The First A-Class!");
+		classA02EO.eSet(aNameFeature, "The Second A-Class!");
+		classD01EO.eSet(dNameFeature, "The First D-Class!");
+		classD02EO.eSet(dNameFeature, "The Second D-Class!");
+		classD03EO.eSet(dNameFeature, "The Third D-Class!");
+
+		List<EObject> dList = List.of(classD01EO, classD02EO, classD03EO);
+		classA01EO.eSet(dNonContainmentFeature, dList);
+		classD01EO.eSet(dClassAFeature, classA01EO);
+		classD02EO.eSet(dClassAFeature, classA01EO);
+		classD03EO.eSet(dClassAFeature, classA02EO);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(classD01EO);
+			em.persist(classD02EO);
+			em.persist(classD03EO);
+			em.persist(classA01EO);
+			em.persist(classA02EO);
+			em.getTransaction().commit();
+			em.clear();
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment uni persist", e);
+		}
+
+		EObject findAEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classA01EO);
+			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment uni find", e);
+		}
+
+		assertNotNull(findAEO);
+		assertEquals("The First A-Class!", findAEO.eGet(aNameFeature));
+		List<?> resultList = (List<?>) findAEO.eGet(dNonContainmentFeature);
+		assertEquals(3, resultList.size());
+		Set<String> dValues = new HashSet<>(Set.of("The First D-Class!", "The Second D-Class!", "The Third D-Class!"));
+		Set<String> aValues = new HashSet<>(Set.of("The First A-Class!-0", "The First A-Class!-1", "The Second A-Class!"));
+		int aCount = 0;
+		for (Object o : resultList) {
+			EObject eo = (EObject) o;
+			assertTrue(dValues.remove(eo.eGet(dNameFeature)));
+			EObject aeo = (EObject) eo.eGet(dClassAFeature);
+			Object aeoName = aeo.eGet(aNameFeature);
+			if ("The First A-Class!".equals(aeoName)) {
+				assertTrue(aValues.remove(aeoName + "-" + aCount));
+				aCount++;
+			} else {
+				assertTrue(aValues.remove(aeoName));
+			}
+		}
+		assertTrue(dValues.isEmpty());
+		assertTrue(aValues.isEmpty());
+	}
+
+	@Test
+	void testOneToManyNonContainmentBidiNoEOpposite() {
+		ClassDescriptor classADescriptor = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor classDDescriptor = serverSession.getDescriptorForAlias(classDEClass.getName());
+		assertNotNull(classADescriptor);
+		assertNotNull(classDDescriptor);
+
+		EObject classA01EO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classA02EO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classD01EO = (EObject) classDDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classD02EO = (EObject) classDDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classD03EO = (EObject) classDDescriptor.getInstantiationPolicy().buildNewInstance();
+
+		EStructuralFeature aNameFeature = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature aDNonContainmentFeature = classAEClass.getEStructuralFeature("dNonContainment");
+		EStructuralFeature dNameFeature = classDEClass.getEStructuralFeature("name");
+		EStructuralFeature dClassAFeature = classDEClass.getEStructuralFeature("dClassA");
+
+		classA01EO.eSet(aNameFeature, "The First A-Class!");
+		classA02EO.eSet(aNameFeature, "The Second A-Class!");
+		classD01EO.eSet(dNameFeature, "The First D-Class!");
+		classD02EO.eSet(dNameFeature, "The Second D-Class!");
+		classD03EO.eSet(dNameFeature, "The Third D-Class!");
+
+		List<EObject> dList = List.of(classD01EO, classD02EO, classD03EO);
+		classA01EO.eSet(aDNonContainmentFeature, dList);
+		classD01EO.eSet(dClassAFeature, classA01EO);
+		classD02EO.eSet(dClassAFeature, classA01EO);
+		classD03EO.eSet(dClassAFeature, classA01EO);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(classD01EO);
+			em.persist(classD02EO);
+			em.persist(classD03EO);
+			em.persist(classA01EO);
+			em.persist(classA02EO);
+			em.getTransaction().commit();
+			em.clear();
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment bidi-no-opposite persist", e);
+		}
+
+		EObject findAEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classA01EO);
+			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment bidi-no-opposite find A", e);
+		}
+
+		assertNotNull(findAEO);
+		assertEquals("The First A-Class!", findAEO.eGet(aNameFeature));
+		List<?> dResult = (List<?>) findAEO.eGet(aDNonContainmentFeature);
+		assertEquals(3, dResult.size());
+		Set<String> dValues = new HashSet<>(Set.of("The First D-Class!", "The Second D-Class!", "The Third D-Class!"));
+		for (Object o : dResult) {
+			EObject eo = (EObject) o;
+			assertTrue(dValues.remove(eo.eGet(dNameFeature)));
+			assertEquals("The First A-Class!", ((EObject) eo.eGet(dClassAFeature)).eGet(aNameFeature));
+		}
+		assertTrue(dValues.isEmpty());
+
+		EObject findDEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classD03EO);
+			findDEO = em.find(classDDescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment bidi-no-opposite find D", e);
+		}
+
+		assertNotNull(findDEO);
+		assertEquals("The Third D-Class!", findDEO.eGet(dNameFeature));
+		EObject backRefA = (EObject) findDEO.eGet(dClassAFeature);
+		assertNotNull(backRefA);
+		assertEquals("The First A-Class!", backRefA.eGet(aNameFeature));
+
+		List<?> backRefList = (List<?>) backRefA.eGet(aDNonContainmentFeature);
+		assertEquals(3, backRefList.size());
+		Set<String> again = new HashSet<>(Set.of("The First D-Class!", "The Second D-Class!", "The Third D-Class!"));
+		backRefList.forEach(o -> {
+			EObject eo = (EObject) o;
+			assertTrue(again.remove(eo.eGet(dNameFeature)));
+		});
+		assertTrue(again.isEmpty());
+	}
+
+	@Test
+	void testOneToManyNonContainmentBidiEOpposite() {
+		ClassDescriptor classADescriptor = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor classEDescriptor = serverSession.getDescriptorForAlias(classEEClass.getName());
+		assertNotNull(classADescriptor);
+		assertNotNull(classEDescriptor);
+
+		EObject classAEO = (EObject) classADescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classE01EO = (EObject) classEDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classE02EO = (EObject) classEDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject classE03EO = (EObject) classEDescriptor.getInstantiationPolicy().buildNewInstance();
+
+		EStructuralFeature aNameFeature = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature aEContainmentFeature = classAEClass.getEStructuralFeature("eNonContainmentBidi");
+		EStructuralFeature eNameFeature = classEEClass.getEStructuralFeature("name");
+		EStructuralFeature eClassAFeature = classEEClass.getEStructuralFeature("eClassA");
+
+		classAEO.eSet(aNameFeature, "The A-Class!");
+		classE01EO.eSet(eNameFeature, "The First E-Class!");
+		classE02EO.eSet(eNameFeature, "The Second E-Class!");
+		classE03EO.eSet(eNameFeature, "The Third E-Class!");
+
+		List<EObject> eContainmentList = List.of(classE01EO, classE02EO, classE03EO);
+		classAEO.eSet(aEContainmentFeature, eContainmentList);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(classE01EO);
+			em.persist(classE02EO);
+			em.persist(classE03EO);
+			em.persist(classAEO);
+			em.getTransaction().commit();
+			em.clear();
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment bidi-opposite persist", e);
+		}
+
+		EObject findAEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classAEO);
+			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment bidi-opposite find A", e);
+		}
+
+		assertNotNull(findAEO);
+		assertEquals("The A-Class!", findAEO.eGet(aNameFeature));
+		List<?> eContainmentResultList = (List<?>) findAEO.eGet(aEContainmentFeature);
+		assertEquals(3, eContainmentResultList.size());
+		Set<String> values = new HashSet<>(Set.of("The First E-Class!", "The Second E-Class!", "The Third E-Class!"));
+		for (Object o : eContainmentResultList) {
+			EObject eo = (EObject) o;
+			assertEquals(classEEClass, eo.eClass());
+			assertTrue(values.remove(eo.eGet(eNameFeature)));
+			assertEquals(findAEO, eo.eGet(eClassAFeature));
+		}
+		assertTrue(values.isEmpty());
+
+		EObject findEEO = null;
+		try (EntityManager em = emf.createEntityManager()) {
+			String id = EcoreUtil.getID(classE02EO);
+			findEEO = em.find(classEDescriptor.getJavaClass(), Integer.valueOf(id));
+		} catch (Exception e) {
+			fail("Fail test One-to-Many non-containment bidi-opposite find E", e);
+		}
+
+		assertNotNull(findEEO);
+		assertEquals("The Second E-Class!", findEEO.eGet(eNameFeature));
+		EObject classAFEO = (EObject) findEEO.eGet(eClassAFeature);
+		assertEquals("The A-Class!", classAFEO.eGet(aNameFeature));
+		List<?> backList = (List<?>) classAFEO.eGet(aEContainmentFeature);
+		assertEquals(3, backList.size());
+		assertInstanceOf(EObject.class, backList.get(0));
+		assertTrue(backList.contains(findEEO));
+	}
+}
