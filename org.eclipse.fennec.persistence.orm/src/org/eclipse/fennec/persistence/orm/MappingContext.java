@@ -87,6 +87,14 @@ public class MappingContext implements ProcessingContext {
 	 * other bi-directional mappings
 	 */
 	private Map<EReference, MappedBy> mappedByMap = new HashMap<>();
+	/*
+	 * Entity currently being processed in stages 2-5. Takes precedence over
+	 * source.getEContainingClass() when a processor attaches its mapping —
+	 * required so that inherited attributes mapped onto TABLE_PER_CLASS /
+	 * MappedSuperclass children land on the child, not on the declaring
+	 * (parent) EClass.
+	 */
+	private Entity currentEntity;
 
 	public BasicProcessor createBasicAccessor(EAttribute attribute) {
 		return new BasicProcessor(attribute, this);
@@ -299,6 +307,20 @@ public class MappingContext implements ProcessingContext {
 
 	public List<EClass> getAllEClasses() {
 		return allEClasses;
+	}
+
+	/**
+	 * Returns the entity currently being processed, or {@code null} when no
+	 * stage has set one. Processors should prefer this over the containing
+	 * EClass of their source feature, so inherited features (for TPC /
+	 * MappedSuperclass) end up on the iterating child entity.
+	 */
+	public Entity getCurrentEntity() {
+		return currentEntity;
+	}
+
+	public void setCurrentEntity(Entity currentEntity) {
+		this.currentEntity = currentEntity;
 	}
 
 }

@@ -12,8 +12,6 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.test;
 
-import org.junit.jupiter.api.Disabled;
-
 /**
  * Inheritance roundtrip tests for the {@code TABLE_PER_CLASS} strategy —
  * VehicleTpc (abstract) → CarTpc / MotorcycleTpc. Each concrete subclass gets
@@ -25,7 +23,7 @@ import org.junit.jupiter.api.Disabled;
  * mapping cloning) is fundamentally incomplete for EclipseLink + Dynamic
  * entities. See AP-44 for the dedicated fix.
  */
-@Disabled("TABLE_PER_CLASS not yet functional with EclipseLink Dynamic — see AP-44")
+// @Disabled("TABLE_PER_CLASS not yet functional with EclipseLink Dynamic — see AP-44")
 class NonOsgiInheritanceTablePerClassTest extends NonOsgiInheritanceRoundtripBase {
 
 	@Override

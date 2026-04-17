@@ -2,7 +2,8 @@
 
 > Evaluierung: Soll `@MappedSuperclass` in der EMF→JPA-Mapping-Pipeline implementiert werden?
 > Ursprünglicher Stand: 2026-04-17 | Ursprüngliches Ergebnis: Bewusste Limitation, nicht implementieren.
-> **Revidiert: 2026-04-17 — siehe [§ 6 Revision](#6-revision-nach-ap-43).** Ergebnis nach Revision: **Implementieren, zusammen mit dem TABLE_PER_CLASS-Fix in AP-44** (gemeinsame Mapping-Maschinerie).
+> **Revidiert: 2026-04-17 — siehe [§ 6 Revision](#6-revision-nach-ap-43).** Ergebnis nach Revision: Implementieren, zusammen mit dem TABLE_PER_CLASS-Fix in AP-44 (gemeinsame Mapping-Maschinerie).
+> **Umgesetzt: 2026-04-17 (AP-44) — siehe [§ 7 Umsetzungsergebnis](#7-umsetzungsergebnis-ap-44).**
 
 ---
 
