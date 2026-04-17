@@ -318,7 +318,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 |----|-----------|---------|-------|------------|
 | F1-03 | F1 | ~~Nur SINGLE_TABLE Inheritance~~ **FIXED (AP-12)** — Alle 3 Strategien via EAnnotation konfigurierbar | `EntityProcessor.java` | ~~Konfigurierbar machen~~ |
 | F1-04 | F1 | @Embedded/@Embeddable: EORM-Metamodell vorhanden, aber kein Processor implementiert | — | EmbeddableProcessor implementieren |
-| F1-05 | F1 | @MappedSuperclass: EORM-Metamodell vorhanden, aber nicht implementiert — abstrakte EClasses werden immer als Entity gemappt | — | Design-Entscheidung dokumentieren oder implementieren |
+| F1-05 | F1 | ~~@MappedSuperclass: EORM-Metamodell vorhanden, aber nicht implementiert — abstrakte EClasses werden immer als Entity gemappt~~ **Evaluiert (AP-25)** — Bewusste Design-Entscheidung: nicht implementieren, `TABLE_PER_CLASS` ist Alternative. Konzept: `docs/AP-25_MappedSuperclass-Decision.md` | — | ~~Design-Entscheidung dokumentieren oder implementieren~~ |
 | F1-06 | F1 | ~~@Version (Optimistic Locking): Runtime-Cast-Fehler `ValuesAccessor` → `DynamicEntityImpl`~~ **FIXED (AP-13 + AP-36)** — Lock-Mapping-Accessor durch `EFeatureAccessor` ersetzt, Version-Typ aus EStructuralFeature abgeleitet. 2 E2E-Tests aktiv. | `EDynamicTypeBuilder.java` | ~~Custom LockingPolicy~~ |
 | F1-07 | F1 | ~~Derived/volatile EStructuralFeatures werden als normale Attribute gemappt — erzeugt DDL-Fehler wenn Feature keinen Backing-Store hat~~ **FIXED (AP-35)** — `isDerived()` und `isVolatile()` in allen 4 Filter-Stufen des MappingProcessor ergänzt | `MappingProcessor.java` | ~~Derived/volatile Features filtern~~ |
 | F2-01 | F2 | ~~Kein Test für Entity-Update (merge detached)~~ **FIXED (AP-11)** — `testUpdateAttribute` | Tests | ~~Update-Tests~~ |
@@ -412,7 +412,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 |----|-------|--------|---------|--------|
 | AP-23 | **Java 17 Code-Modernisierung:** Pattern Matching instanceof (18 Stellen in 14 Dateien modernisiert), FQCN→Imports (~25 Stellen in 7 Dateien). **Verbleibend:** switch Arrow-Syntax, Objects.* Konsistenz | T5-01 bis T5-05 | M | ✅ Done |
 | AP-24 | **@Embedded/@Embeddable Processor** | F1-04 | L | ❌ Offen |
-| AP-25 | **@MappedSuperclass Processor** (oder bewusste Design-Entscheidung dokumentieren) | F1-05 | M | ❌ Offen |
+| AP-25 | **@MappedSuperclass Bewusste Limitation:** `MappedSuperclass`-Metamodell existiert vollständig im EORM, aber Processor-Pipeline und Dynamic-Generator implementieren das Konzept nicht. Entscheidung: nicht implementieren — `TABLE_PER_CLASS` (AP-12) deckt 80 % ab, EclipseLink Dynamic + MappedSuperclass hat keine belastbare Referenzimplementierung. Metamodell bleibt erhalten für externe `.eorm`-Kompatibilität und mögliche Reaktivierung. Konzept: `docs/AP-25_MappedSuperclass-Decision.md` | F1-05 | M | ✅ Done |
 | AP-26 | **Fehlende Converter:** `URIInternalConverter` (java.net.URI↔String), `URLInternalConverter` (java.net.URL↔String), `OffsetDateTimeInternalConverter` (java.time.OffsetDateTime↔ISO-8601-String). Alle in `ComprehensiveTypeConverter`. Enum-Converter bewusst nicht implementiert — EEnum wird bereits korrekt über `EFeatureAccessor` + `EcoreUtil.createFromString()` gehandhabt. 8 neue Tests. | F3-03, F3-05 | M | ✅ Done |
 | AP-27 | **Package-Info Bereinigung:** @Export/@Version überall konsistent, EPL-2.0 Header | T6-01, T6-02, T6-05 | S | ❌ Offen |
 | AP-28 | **Options-Klasse bereinigt:** 525→105 Zeilen. MongoDB-Legacy-Javadoc entfernt (`DBObjectBuilderImpl`, `NativeQueryEngine`, MongoDB-Terminologie). Tippfehler `TIMESTMAP_FIELD_NAME` behoben. 17 unbenutzte Konstanten + 4 tote Utility-Methoden entfernt. Behalten: `READ_FILTER_ECLASS`, `OPTION_TABLE_NAME` + genutzte Hilfsmethoden. | T4-01, T4-03, F15-04 | S | ✅ Done |
@@ -426,6 +426,8 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-36 | **Version-Locking Accessor Fix:** Statt eigener `EVersionLockingPolicy` (Option A) reichte Option C: Nach `useVersionLocking()` wird der `ValuesAccessor` des Lock-Mappings durch `EFeatureAccessor` ersetzt. Zusätzlich: Version-Typ wird aus EStructuralFeature abgeleitet statt hartkodiert `Long.class`. 2 E2E-Tests aktiviert (Conflict-Detection + Version-Increment). | F1-06, AP-13 | S | ✅ Done |
 | AP-37 | **JPAResourceImpl.doLoad() Robustheit:** (1) `isLoaded` wird erst nach erfolgreichem `doLoad()` gesetzt — bei Exception bleibt Flag `false`, erneuter Load möglich (kein "stuck"-Zustand). (2) `getContents().clear()` vor Query verhindert Duplikate bei Reload nach `unload()`. Guard `!isEmpty()` nötig wegen EMF `ContentsEList.didClear()` das bei leerer Liste `setLoaded(true)` triggert. 3 neue Tests (Failure-Recovery, Reload-ohne-Duplikate, Idempotenz). | F4-02, F4-03 | S | ✅ Done |
 | AP-38 | **Erweiterte Dokumentation:** Getting-Started-Anleitung mit Beispiel-Projekt, Konfigurationsreferenz (`fennec.jpa.*` Properties) | F15-02, F15-03 | M | ❌ Offen |
+| AP-43 | **Inheritance-Roundtrip-Tests + TPC-Vorarbeit:** Wiederverwendbare Basisklasse `NonOsgiInheritanceRoundtripBase` mit 5 Tests pro Strategie (Persist+Find-by-Subklasse, Find-via-abstrakte-Basis, polymorphes Query, polymorpher Filter auf geerbtem Attribut, voller Attribut-Roundtrip). Modell erweitert: `VehicleJ/CarJ/MotorcycleJ` (JOINED) und `VehicleTpc/CarTpc/MotorcycleTpc` (TABLE_PER_CLASS) parallel zur bestehenden SINGLE_TABLE-Hierarchie. 10 Tests grün (SINGLE_TABLE + JOINED). Dabei aufgedeckt: AP-12 TABLE_PER_CLASS war nicht funktionsfähig — Subklassen landeten fälschlicherweise auf Root-Tabelle, `InheritancePolicy` statt `TablePerClassPolicy`, fehlende child-ID-Mappings. Teil-Fixes in `EntityProcessor` (tablePerClass → subclass hat eigene Tabelle + eigene ID), `MappingProcessor` (TPC-Children sehen geerbte Attribute via `getEffectiveAttributes`) und `EDynamicTypeBuilder` (dedizierter `TablePerClassPolicy`-Pfad, kein Class-Indicator). Vollständige TPC-Aktivierung braucht weitere Arbeit (siehe AP-44) — TPC-Test-Klasse bleibt `@Disabled`. | F1-03 vertieft | L | ⚠️ Teilweise |
+| AP-44 | **TABLE_PER_CLASS vollständig zum Laufen bringen:** Beim Bootstrap einer TPC-Hierarchie wirft EclipseLink `DescriptorException: Multiple writable mappings exist for the field [ROOT_TABLE.attr]` auf dem Root-Descriptor. Ursache vermutlich: `DirectToFieldMapping` auf child-Descriptor qualifiziert das Feld nicht korrekt auf die Child-Tabelle (nutzt Default-Table-Mechanik, die mit `TablePerClassPolicy`-Setup kollidiert), oder der abstrakte Root-Descriptor sollte bei TPC gar keine Mappings schreiben. Weitere Schritte: (1) `configureDatabase` für abstrakten TPC-Root untersuchen, ggf. Descriptor `setAbstract(true)` setzen und Table-Registrierung überdenken; (2) bei Child-Mappings explizit `DatabaseField.setTableName(childTable)` setzen; (3) EclipseLink-Referenz `InheritanceMetadata.addTablePerClassParentMappings()` genauer nachbilden (Reload-Semantik der Parent-Accessors). Tests: 5 Roundtrip-Tests in `NonOsgiInheritanceTablePerClassTest` sofort aktivierbar (Klasse-`@Disabled` entfernen). | F1-03 | M | ❌ Offen |
 
 ---
 
@@ -528,14 +530,14 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 33 von 42 Arbeitspaketen erledigt (79%)**
+**Gesamtstand: 34 von 44 Arbeitspaketen erledigt (77 %), 2 in Arbeit**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ In Arbeit | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
 | P1b | 4 | 4 | 0 | 0 |
 | P2 | 13 | 13 | 0 | 0 |
-| P3 | 16 | 8 | 1 | 7 |
+| P3 | 18 | 9 | 2 | 7 |
 
 ### 4.4 Testübersicht
 
@@ -580,4 +582,6 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 11 — Cleanup & Lifecycle:** AP-33, AP-34 → ✅ Erledigt
 **Welle 12 — Inheritance & XMI-Roundtrip:** AP-39, AP-40, AP-42 → ✅ Erledigt
 **Welle 13 — Non-OSGi-Testinfrastruktur:** AP-41 → ✅ Done (Basisklasse + 18 Non-OSGi-Testklassen mit 64 Tests; 21 migrierte OSGi-Testdateien gelöscht; 22 genuin OSGi-Tests bleiben)
-**Welle 14 — Erweiterungen:** AP-24 bis AP-38
+**Welle 14 — MappedSuperclass-Design:** AP-25 → ✅ Evaluiert (bewusste Limitation dokumentiert, siehe `docs/AP-25_MappedSuperclass-Decision.md`)
+**Welle 15 — Inheritance-Roundtrip + TPC-Analyse:** AP-43 → ⚠️ Teilweise (SINGLE_TABLE + JOINED Roundtrip-Tests grün; TPC-Bugs aufgedeckt, Teil-Fixes eingebaut), AP-44 → ❌ Offen (TPC vollständig aktivieren)
+**Welle 16 — Erweiterungen:** AP-24, AP-27, AP-29 bis AP-32, AP-38

@@ -32,6 +32,7 @@ import org.eclipse.fennec.persistence.eorm.SecondaryTable;
 import org.eclipse.fennec.persistence.eorm.Table;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.descriptors.InheritancePolicy;
+import org.eclipse.persistence.descriptors.TablePerClassPolicy;
 import org.eclipse.persistence.dynamic.DynamicType;
 import org.eclipse.persistence.dynamic.DynamicTypeBuilder;
 import org.eclipse.persistence.internal.helper.DatabaseTable;
@@ -114,6 +115,12 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 	/**
 	 * Configures JPA inheritance on the EclipseLink descriptor.
 	 * Must be called after all entities are created (so parent/child descriptors exist).
+	 * <p>
+	 * SINGLE_TABLE and JOINED use {@link InheritancePolicy} with a class-indicator
+	 * (discriminator) column on the root and subclass mappings registered there.
+	 * TABLE_PER_CLASS uses {@link TablePerClassPolicy} — each subclass keeps its
+	 * own table, there is no discriminator, and the descriptors are linked via
+	 * {@code addParentDescriptor} / {@code addChildDescriptor} on that policy.
 	 */
 	public void configureInheritance() {
 		Entity entity = getType().getEntity();
@@ -121,50 +128,66 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 		String discriminatorValue = entity.getDiscriminatorValue();
 
 		if (nonNull(inheritance)) {
-			// Root entity — configure InheritancePolicy with strategy + discriminator column
-			InheritancePolicy ip = getType().getDescriptor().getInheritancePolicy();
-			switch (inheritance.getStrategy()) {
-				case SINGLETABLE -> ip.setSingleTableStrategy();
-				case JOINED -> ip.setJoinedStrategy();
-				case TABLEPERCLASS -> { /* TABLE_PER_CLASS — no special config needed */ }
+			// Root entity of a hierarchy
+			ClassDescriptor descriptor = getType().getDescriptor();
+			if (inheritance.getStrategy() == org.eclipse.fennec.persistence.eorm.InheritanceType.TABLEPERCLASS) {
+				descriptor.setTablePerClassPolicy(new TablePerClassPolicy(descriptor));
+			} else {
+				InheritancePolicy ip = descriptor.getInheritancePolicy();
+				switch (inheritance.getStrategy()) {
+					case SINGLETABLE -> ip.setSingleTableStrategy();
+					case JOINED -> ip.setJoinedStrategy();
+					default -> {
+						/* handled above */
+					}
+				}
+				DiscriminatorColumn dc = entity.getDiscriminatorColumn();
+				if (nonNull(dc)) {
+					ip.setClassIndicatorFieldName(dc.getName());
+				}
+				if (nonNull(discriminatorValue)) {
+					ip.addClassIndicator(getType().getJavaClass(), discriminatorValue);
+				}
+				ip.setShouldReadSubclasses(true);
 			}
-			DiscriminatorColumn dc = entity.getDiscriminatorColumn();
-			if (nonNull(dc)) {
-				ip.setClassIndicatorFieldName(dc.getName());
-			}
-			// Register root class indicator (both directions: class↔value)
-			if (nonNull(discriminatorValue)) {
-				ip.addClassIndicator(getType().getJavaClass(), discriminatorValue);
-			}
-			ip.setShouldReadSubclasses(true);
 			LOG.log(Level.FINE, "Configured inheritance root: {0} strategy={1}",
 					new Object[]{entity.getName(), inheritance.getStrategy()});
 		} else if (nonNull(discriminatorValue)) {
-			// Child entity — set parent class + register indicator on root
+			// Child entity — attach to parent via the strategy chosen on the root
 			EClass eClass = (EClass) entity.getClass_();
-			if (!eClass.getESuperTypes().isEmpty()) {
-				EClass parentEClass = eClass.getESuperTypes().get(0);
-				EDynamicTypeBuilder parentBuilder = context.getETypeBuilder(parentEClass);
-				if (nonNull(parentBuilder)) {
-					getType().getDescriptor().getInheritancePolicy()
-						.setParentClass(parentBuilder.getType().getJavaClass());
-
-					// Find the inheritance root (the entity with @Inheritance)
-					EDynamicTypeBuilder rootBuilder = findInheritanceRoot(parentBuilder);
-
-					// Register this child's class indicator on the ROOT (not the direct parent)
-					rootBuilder.getType().getDescriptor().getInheritancePolicy()
-						.addClassIndicator(getType().getJavaClass(), discriminatorValue);
-
-					// EclipseLink inherits parent mappings (including ID) in
-					// InheritancePolicy.initialize() (concatenateVectors)
-					// No manual ID mapping inheritance needed.
-
-					LOG.log(Level.FINE, "Configured inheritance child: {0} parent={1} root={2} discriminator={3}",
-							new Object[]{entity.getName(), parentEClass.getName(),
-									rootBuilder.getType().getEClass().getName(), discriminatorValue});
-				}
+			if (eClass.getESuperTypes().isEmpty()) {
+				return;
 			}
+			EClass parentEClass = eClass.getESuperTypes().get(0);
+			EDynamicTypeBuilder parentBuilder = context.getETypeBuilder(parentEClass);
+			if (isNull(parentBuilder)) {
+				return;
+			}
+			EDynamicTypeBuilder rootBuilder = findInheritanceRoot(parentBuilder);
+			ClassDescriptor childDescriptor = getType().getDescriptor();
+			ClassDescriptor parentDescriptor = parentBuilder.getType().getDescriptor();
+			ClassDescriptor rootDescriptor = rootBuilder.getType().getDescriptor();
+
+			if (rootDescriptor.hasTablePerClassPolicy()) {
+				// TABLE_PER_CLASS: each subclass owns its tables and full mapping
+				// (including ID). Parent/child linkage goes through the policy.
+				if (!childDescriptor.hasTablePerClassPolicy()) {
+					childDescriptor.setTablePerClassPolicy(new TablePerClassPolicy(childDescriptor));
+				}
+				childDescriptor.getTablePerClassPolicy().addParentDescriptor(parentDescriptor);
+				parentDescriptor.getTablePerClassPolicy().addChildDescriptor(childDescriptor);
+			} else {
+				// SINGLE_TABLE / JOINED: parent class + root-level class indicator.
+				// EclipseLink inherits parent mappings (including ID) in
+				// InheritancePolicy.initialize() (concatenateVectors).
+				childDescriptor.getInheritancePolicy()
+						.setParentClass(parentBuilder.getType().getJavaClass());
+				rootDescriptor.getInheritancePolicy()
+						.addClassIndicator(getType().getJavaClass(), discriminatorValue);
+			}
+			LOG.log(Level.FINE, "Configured inheritance child: {0} parent={1} root={2}",
+					new Object[]{entity.getName(), parentEClass.getName(),
+							rootBuilder.getType().getEClass().getName()});
 		}
 	}
 

@@ -13,23 +13,24 @@
 package org.eclipse.fennec.persistence.test;
 
 /**
- * Inheritance roundtrip tests for the {@code SINGLE_TABLE} strategy (default) —
- * Vehicle (abstract) → Car / Motorcycle.
+ * Inheritance roundtrip tests for the {@code JOINED} strategy —
+ * VehicleJ (abstract) → CarJ / MotorcycleJ, root has its own table and each
+ * subclass has a separate table joined via the shared PK.
  */
-class NonOsgiInheritanceTest extends NonOsgiInheritanceRoundtripBase {
+class NonOsgiInheritanceJoinedTest extends NonOsgiInheritanceRoundtripBase {
 
 	@Override
 	protected String vehicleClassName() {
-		return "Vehicle";
+		return "VehicleJ";
 	}
 
 	@Override
 	protected String carClassName() {
-		return "Car";
+		return "CarJ";
 	}
 
 	@Override
 	protected String motorcycleClassName() {
-		return "Motorcycle";
+		return "MotorcycleJ";
 	}
 }

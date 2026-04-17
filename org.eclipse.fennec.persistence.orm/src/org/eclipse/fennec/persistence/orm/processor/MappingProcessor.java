@@ -39,6 +39,7 @@ import org.eclipse.fennec.persistence.eorm.ENamedBase;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
+import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.Version;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
@@ -406,11 +407,14 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 
 	/**
 	 * Returns the effective attributes for an EClass considering inheritance.
-	 * For child entities (with super type), returns only locally declared attributes.
-	 * For root/standalone entities, returns all attributes (including inherited).
+	 * For SINGLE_TABLE and JOINED child entities, returns only locally declared
+	 * attributes — inherited ones come via EclipseLink's InheritancePolicy.
+	 * For root/standalone entities and TABLE_PER_CLASS children, returns all
+	 * attributes including inherited ones; every TPC subclass owns its full
+	 * set of columns in its own table.
 	 */
 	private List<EAttribute> getEffectiveAttributes(EClass eClass) {
-		if (hasMappedSuperType(eClass)) {
+		if (hasMappedSuperType(eClass) && !isTablePerClassChild(eClass)) {
 			return eClass.getEAttributes();
 		}
 		return eClass.getEAllAttributes();
@@ -418,11 +422,12 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 
 	/**
 	 * Returns the effective references for an EClass considering inheritance.
-	 * For child entities (with mapped super type), returns only locally declared references.
-	 * For root/standalone entities, returns all references (including inherited).
+	 * Same rule as {@link #getEffectiveAttributes(EClass)} — TPC children see
+	 * inherited references too, since the relationship column lives in the
+	 * subclass's own table.
 	 */
 	private List<EReference> getEffectiveReferences(EClass eClass) {
-		if (hasMappedSuperType(eClass)) {
+		if (hasMappedSuperType(eClass) && !isTablePerClassChild(eClass)) {
 			return eClass.getEReferences();
 		}
 		return eClass.getEAllReferences();
@@ -433,6 +438,41 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	 */
 	private boolean hasMappedSuperType(EClass eClass) {
 		return eClass.getESuperTypes().stream().anyMatch(context.getAllEClasses()::contains);
+	}
+
+	/**
+	 * Returns {@code true} when {@code eClass} has a mapped super type and the
+	 * root of that hierarchy is annotated with {@code inheritance="TABLE_PER_CLASS"}.
+	 */
+	private boolean isTablePerClassChild(EClass eClass) {
+		if (!hasMappedSuperType(eClass)) {
+			return false;
+		}
+		EClass root = findMappedRoot(eClass);
+		return rootInheritanceStrategy(root) == InheritanceType.TABLEPERCLASS;
+	}
+
+	private EClass findMappedRoot(EClass eClass) {
+		EClass current = eClass;
+		while (current.getESuperTypes().stream().anyMatch(context.getAllEClasses()::contains)) {
+			current = current.getESuperTypes().stream()
+					.filter(context.getAllEClasses()::contains)
+					.findFirst()
+					.orElse(current);
+		}
+		return current;
+	}
+
+	private InheritanceType rootInheritanceStrategy(EClass root) {
+		return Optional.ofNullable(root.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+				.map(a -> a.getDetails().get("inheritance"))
+				.map(String::toUpperCase)
+				.map(s -> switch (s) {
+					case "JOINED" -> InheritanceType.JOINED;
+					case "TABLE_PER_CLASS" -> InheritanceType.TABLEPERCLASS;
+					default -> InheritanceType.SINGLETABLE;
+				})
+				.orElse(InheritanceType.SINGLETABLE);
 	}
 
 }

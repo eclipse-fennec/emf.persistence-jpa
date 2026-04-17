@@ -106,8 +106,13 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		if (nonNull(altName)) {
 			tableName = altName;
 		}
-		// For SINGLE_TABLE children, use the root entity's table name
-		if (hasMappedSuperType()) {
+		// SINGLE_TABLE and JOINED children reuse the root entity's table name
+		// (EclipseLink's setJoinedStrategy() reassigns per-subclass tables later).
+		// TABLE_PER_CLASS subclasses keep their own table name — each concrete
+		// subclass owns an independent table with all inherited columns.
+		InheritanceType hierarchyStrategy = rootInheritanceStrategy();
+		boolean tablePerClass = hierarchyStrategy == InheritanceType.TABLEPERCLASS;
+		if (hasMappedSuperType() && !tablePerClass) {
 			EClass root = getMappedRoot();
 			tableName = root.getName();
 		}
@@ -115,8 +120,11 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		target.setTable(table);
 		Attributes attrs = EORMFactory.eINSTANCE.createAttributes();
 		target.setAttributes(attrs);
-		// set id field(s), including composite ID support — only for root entities (no mapped super type)
-		if (!hasMappedSuperType()) {
+		// Root entities always get IDs. SINGLE_TABLE/JOINED children inherit the
+		// root's ID via EclipseLink's InheritancePolicy.initialize(). TABLE_PER_CLASS
+		// children need their own non-read-only ID mapping because each subclass
+		// lives in its own table.
+		if (!hasMappedSuperType() || tablePerClass) {
 			createIds().forEach(attrs.getId()::add);
 		}
 		// store entity in a map
@@ -141,7 +149,7 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 			// Root of hierarchy — set inheritance strategy + discriminator column
 			target.setDiscriminatorValue(source.getName());
 			Inheritance inheritance = EORMFactory.eINSTANCE.createInheritance();
-			inheritance.setStrategy(resolveInheritanceStrategy());
+			inheritance.setStrategy(rootInheritanceStrategy());
 			target.setInheritance(inheritance);
 			// Discriminator column is needed for SINGLE_TABLE and JOINED (optional for JOINED)
 			if (inheritance.getStrategy() != InheritanceType.TABLEPERCLASS) {
@@ -155,13 +163,15 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	}
 
 	/**
-	 * Resolves the inheritance strategy for this EClass hierarchy root.
-	 * Checks for an EAnnotation with source {@link Keywords#PERSISTENCE_ANNOTATION_SOURCE}
-	 * and key "inheritance" with value "JOINED", "TABLE_PER_CLASS", or "SINGLE_TABLE".
-	 * Defaults to SINGLE_TABLE if no annotation is found.
+	 * Resolves the inheritance strategy for this entity's hierarchy. The
+	 * strategy is read from the {@linkplain Keywords#PERSISTENCE_ANNOTATION_SOURCE
+	 * persistence EAnnotation} on the root of the hierarchy — children inherit
+	 * the strategy transparently. Values: "JOINED", "TABLE_PER_CLASS",
+	 * "SINGLE_TABLE" (default).
 	 */
-	private InheritanceType resolveInheritanceStrategy() {
-		return Optional.ofNullable(source.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+	private InheritanceType rootInheritanceStrategy() {
+		EClass root = hasMappedSuperType() ? getMappedRoot() : source;
+		return Optional.ofNullable(root.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
 				.map(a -> a.getDetails().get("inheritance"))
 				.map(String::toUpperCase)
 				.map(s -> switch (s) {
