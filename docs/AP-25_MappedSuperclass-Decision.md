@@ -187,3 +187,56 @@ Solange AP-44 nicht fertig ist, funktioniert weder MappedSuperclass noch TABLE_P
 
 - Das EORM-Metamodell bleibt unverändert — `MappedSuperclass`-EClass und `EntityMappings.getMappedSuperclass()` sind von Anfang an vorhanden und werden jetzt endlich genutzt.
 - Die Abgrenzungstabelle zwischen Inheritance-Strategien und MappedSuperclass (§ 2) bleibt semantisch korrekt und für die Doku relevant.
+
+---
+
+## 7. Umsetzungsergebnis (AP-44)
+
+AP-44 hat **beide** Teile komplett geliefert: TABLE_PER_CLASS (endlich funktionsfähig) und MappedSuperclass (neu). Zusammenfassung des tatsächlichen Fix:
+
+### 7.1 Kernstück: `currentEntity`-Routing
+
+Ursache der bisherigen Probleme (TPC-Duplikate auf Root-Descriptor, MS-Children ohne Mappings): `NamedBaseProcessor.registerMapping()` nahm die **deklarierende** EClass als Ziel. Für inherited Attribute ist das der Parent — bei TPC schrieb deshalb jedes Child seine Attribute auf den Parent (→ `Multiple writable mappings exist for ROOT.attr`), bei MS hätten Children gar keine Mappings bekommen.
+
+Fix: `MappingContext` kennt jetzt die aktuell iterierte Entity (`currentEntity`). `MappingProcessor` setzt sie vor jeder Stage und räumt im `finally` auf. `registerMapping()` bevorzugt `currentEntity` und fällt nur für Unit-Tests mit Direkt-Invocation auf die alte Lookup-Logik zurück. Inherited Attribute aus nicht-gemappten Super-Types (z.B. `ENamedElement`) werden explizit gedroppt — Back-Compat zu einem bestehenden Processor-Test.
+
+### 7.2 Gemeinsame Entscheider in `MappingProcessor` / `EntityProcessor`
+
+- `isAttributeInheritingChild(eClass)` = TPC-Child **oder** MS-Child → bekommt inherited Attrs/Refs.
+- `childOwnsTable()` = Child einer TPC- oder MS-Hierarchie → eigene Tabelle + eigene ID-Mappings.
+- `isMappedSuperclassRoot(root)` → EAnnotation `mappedSuperclass="true"` entscheidet.
+- `rootInheritanceStrategy()` bleibt nur für die JPA-Inheritance-Strategie-Werte zuständig (SINGLE_TABLE / JOINED / TABLE_PER_CLASS).
+
+### 7.3 TABLE_PER_CLASS-Spezifika
+
+- `EDynamicTypeBuilder.configureInheritance()` setzt bei `InheritanceType.TABLEPERCLASS` eine `TablePerClassPolicy` statt einer `InheritancePolicy` (kein Class-Indicator).
+- Parent↔Children verlinken über `TablePerClassPolicy.addParentDescriptor` / `addChildDescriptor`.
+- Polymorphe `SELECT v FROM VehicleTpc v`-Queries funktionieren (EclipseLink UNION über die Subklassen-Tabellen).
+
+### 7.4 MappedSuperclass-Spezifika
+
+- `MappingProcessor` Stage 1 filtert MS-Roots aus dem EntityProcessor-Fluss — sie werden keine Entities.
+- `EntityProcessor.configureInheritance()` überspringt MS-Children bewusst — keine Discriminator-Values, keine Parent-Class-Verlinkung auf EclipseLink-Ebene.
+- MS-Children werden als vollkommen unabhängige Entities gemappt (eigene Tabelle CARMS, MOTORCYCLEMS, ...).
+- Kein EclipseLink-Descriptor für den MS-Root (`serverSession.getDescriptorForAlias("VehicleMs")` → `null`).
+
+### 7.5 Tests
+
+- `NonOsgiInheritanceTablePerClassTest` (5 Tests) aktiviert, alle grün: Persist+Find-by-Sub, Find-via-Basis, polymorphes Query (UNION), polymorpher Filter auf geerbtem Attribut, Full-Attribut-Roundtrip.
+- `NonOsgiMappedSuperclassTest` (5 Tests) neu, alle grün: Persist+Find-by-Sub, Full-Attribut-Roundtrip, plus drei MS-spezifische Tests, die explizit belegen dass der Root keinen Descriptor hat und dass Filterung auf geerbten Attributen per konkretem Subklassen-Query funktioniert (CARMS.modelYear, MOTORCYCLEMS.modelYear).
+- Modell-Fixture `VehicleMs/CarMs/MotorcycleMs` in `data/model.ecore` parallel zu `Vehicle/VehicleJ/VehicleTpc`.
+
+### 7.6 Gesamt-Testbilanz
+
+| Kategorie | vor AP-44 | nach AP-44 |
+|---|---|---|
+| Non-OSGi Tests | 78 (5 skipped) | 83 (0 skipped) |
+| Inheritance-Tests | 10 grün (ST+JD), 5 skipped (TPC) | 15 grün (ST+JD+TPC) + 5 MS |
+| OSGi-Tests | 22 | 22 (unverändert) |
+| Failures | 0 | 0 |
+
+### 7.7 Lessons Learned
+
+1. **Die Entscheidung „nicht implementieren" war zu früh.** Sie beruhte auf der Annahme, MS wäre eigene Maschinerie; tatsächlich ist MS ein Spezialfall derselben Child-owns-Table-Mechanik, die TPC sowieso braucht.
+2. **Roundtrip-Tests fangen Bootstrap-Fehler früh ab.** TPC war in `InheritanceProcessorTest` (Unit-Level) grün, scheiterte aber bei der ersten echten DDL/Bootstrap-Runde — genau das, was AP-43 aufgedeckt hat.
+3. **Der Trick lag nicht wo erwartet.** Meine initiale Hypothese für AP-44 war „Field-Qualifikation auf Child-Tabelle"; der tatsächliche Kern-Fix war `registerMapping` und die deklarierende-EClass-Falle. Die Stack-Trace-Analyse (dieselbe DirectToFieldMapping zweimal auf Parent-Descriptor) hat den Weg gewiesen.
