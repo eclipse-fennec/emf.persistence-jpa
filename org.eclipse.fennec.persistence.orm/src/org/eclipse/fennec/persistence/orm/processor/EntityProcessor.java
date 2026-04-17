@@ -108,11 +108,11 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		}
 		// SINGLE_TABLE and JOINED children reuse the root entity's table name
 		// (EclipseLink's setJoinedStrategy() reassigns per-subclass tables later).
-		// TABLE_PER_CLASS subclasses keep their own table name — each concrete
-		// subclass owns an independent table with all inherited columns.
-		InheritanceType hierarchyStrategy = rootInheritanceStrategy();
-		boolean tablePerClass = hierarchyStrategy == InheritanceType.TABLEPERCLASS;
-		if (hasMappedSuperType() && !tablePerClass) {
+		// TABLE_PER_CLASS and MappedSuperclass subclasses keep their own table
+		// name — each concrete subclass owns an independent table with all
+		// inherited columns.
+		boolean independentTable = childOwnsTable();
+		if (hasMappedSuperType() && !independentTable) {
 			EClass root = getMappedRoot();
 			tableName = root.getName();
 		}
@@ -122,9 +122,9 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		target.setAttributes(attrs);
 		// Root entities always get IDs. SINGLE_TABLE/JOINED children inherit the
 		// root's ID via EclipseLink's InheritancePolicy.initialize(). TABLE_PER_CLASS
-		// children need their own non-read-only ID mapping because each subclass
-		// lives in its own table.
-		if (!hasMappedSuperType() || tablePerClass) {
+		// and MappedSuperclass children need their own non-read-only ID mapping
+		// because each subclass lives in its own table.
+		if (!hasMappedSuperType() || independentTable) {
 			createIds().forEach(attrs.getId()::add);
 		}
 		// store entity in a map
@@ -142,6 +142,11 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	 * </ul>
 	 */
 	private void configureInheritance() {
+		if (hasMappedSuperType() && isMappedSuperclassRoot(getMappedRoot())) {
+			// MappedSuperclass child: behaves like a standalone entity — no
+			// JPA-level inheritance linkage (no discriminator, no parent class).
+			return;
+		}
 		if (hasMappedSuperType()) {
 			// Child entity — set discriminator value
 			target.setDiscriminatorValue(source.getName());
@@ -180,6 +185,30 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 					default -> InheritanceType.SINGLETABLE;
 				})
 				.orElse(InheritanceType.SINGLETABLE);
+	}
+
+	/**
+	 * Returns {@code true} when this child should get its own table (and own
+	 * ID mapping) rather than sharing the root table. Both TABLE_PER_CLASS
+	 * and MappedSuperclass hierarchies behave this way.
+	 */
+	private boolean childOwnsTable() {
+		if (!hasMappedSuperType()) {
+			return false;
+		}
+		return rootInheritanceStrategy() == InheritanceType.TABLEPERCLASS
+				|| isMappedSuperclassRoot(getMappedRoot());
+	}
+
+	/**
+	 * Returns {@code true} when the given root EClass carries the
+	 * {@code mappedSuperclass="true"} EAnnotation.
+	 */
+	private boolean isMappedSuperclassRoot(EClass root) {
+		return Optional.ofNullable(root.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+				.map(a -> a.getDetails().get("mappedSuperclass"))
+				.map("true"::equalsIgnoreCase)
+				.orElse(false);
 	}
 
 	/**

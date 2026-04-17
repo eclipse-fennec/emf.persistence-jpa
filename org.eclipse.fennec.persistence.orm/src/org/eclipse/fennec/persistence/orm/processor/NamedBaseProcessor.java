@@ -144,17 +144,45 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 	}
 
 	/**
-	 * Register this mapping and {@link Processor} to the context
+	 * Register this mapping and {@link Processor} to the context.
+	 * <p>
+	 * Attributes declared on a non-mapped super type (e.g. {@code ENamedElement}
+	 * when only {@code EReference} is mapped) are silently dropped — preserving
+	 * the long-standing behaviour that the framework only materialises
+	 * mappings for EClasses that were asked to be mapped.
+	 * <p>
+	 * Otherwise, the entity currently being iterated by the orchestrating
+	 * {@code MappingProcessor} stage (see {@link MappingContext#getCurrentEntity()})
+	 * takes precedence over the declaring EClass. This is essential for
+	 * TABLE_PER_CLASS and MappedSuperclass hierarchies: an inherited attribute
+	 * must be registered on the CHILD entity, not on the (abstract) parent
+	 * that declared it — otherwise the parent accumulates duplicate mappings
+	 * and the child gets none.
 	 */
 	void registerMapping() {
 		if (isDelegate()) {
 			return;
 		}
-		EClass eClass = source.getEContainingClass();
-		if (isNull(eClass)) {
+		EClass declaringClass = source.getEContainingClass();
+		if (isNull(declaringClass)) {
 			return;
 		}
-		Entity entity = context.getEntity(eClass);
+		Entity currentEntity = context.getCurrentEntity();
+		if (nonNull(currentEntity)) {
+			// Stage 2-5 orchestration path: register on the entity currently
+			// being iterated. Inherited attributes are kept when their
+			// declaring EClass is part of the mapping (as Entity OR
+			// MappedSuperclass root); inherited attributes from non-mapped
+			// super types (e.g. ENamedElement when only EReference is
+			// mapped) are silently dropped.
+			if (context.getAllEClasses().contains(declaringClass)) {
+				addMappingToEntity(currentEntity);
+			}
+			return;
+		}
+		// Legacy path (direct processor invocation, typically from unit tests):
+		// look up the entity via the declaring class.
+		Entity entity = context.getEntity(declaringClass);
 		if (nonNull(entity)) {
 			addMappingToEntity(entity);
 		}

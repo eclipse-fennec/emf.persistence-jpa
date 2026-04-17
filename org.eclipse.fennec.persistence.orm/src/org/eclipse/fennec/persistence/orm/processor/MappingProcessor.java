@@ -136,13 +136,21 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 			target.setSchema(ePackage.getName().toUpperCase());
 		}
 		/*
-		 * Stage 1: map all entities with id and EAttributes
+		 * Stage 1: map all entities with id and EAttributes.
+		 * MappedSuperclass roots (EAnnotation `mappedSuperclass="true"`) are
+		 * intentionally not turned into Entities — their children will still
+		 * pull in the inherited attributes via getEffectiveAttributes().
 		 */
-		eClasses.stream().map(this::createEntityProcessor).map(Processor::process).map(Processor::getTarget).forEach(target.getEntity()::add);
+		eClasses.stream()
+				.filter(not(this::isMappedSuperclass))
+				.map(this::createEntityProcessor)
+				.map(Processor::process)
+				.map(Processor::getTarget)
+				.forEach(target.getEntity()::add);
 		/*
 		 * Stage 2: map all EAttributes
 		 */
-		eClasses.stream().map(context::getEntity).forEach(this::mapAttributes);
+		eClasses.stream().map(context::getEntity).filter(Objects::nonNull).forEach(this::mapAttributes);
 		/*
 		 * Stage 3: map containment EReferences
 		 *  - with bi-directional mappings, references can also just be one-to-one or many-to-one, 
@@ -188,25 +196,30 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 				filter(not(EStructuralFeature::isDerived)).
 				filter(not(EStructuralFeature::isVolatile)).
 				toList();
-		// map and set single valued attributes (excluding version attributes)
-		attributes.
-		stream().
-		filter(not(EStructuralFeature::isMany)).
-		filter(not(this::isVersionAttribute)).
-		map(this::createBasicProcessor).
-		forEach(EFeatureProcessor::process);
-		// map version attributes
-		attributes.
-		stream().
-		filter(not(EStructuralFeature::isMany)).
-		filter(this::isVersionAttribute).
-		forEach(attr -> createVersionMapping(entity, attr));
-		// map and set many valued attributes
-		attributes.
-		stream().
-		filter(EStructuralFeature::isMany).
-		map(this::createECProcessor).
-		forEach(EFeatureProcessor::process);
+		context.setCurrentEntity(entity);
+		try {
+			// map and set single valued attributes (excluding version attributes)
+			attributes.
+			stream().
+			filter(not(EStructuralFeature::isMany)).
+			filter(not(this::isVersionAttribute)).
+			map(this::createBasicProcessor).
+			forEach(EFeatureProcessor::process);
+			// map version attributes
+			attributes.
+			stream().
+			filter(not(EStructuralFeature::isMany)).
+			filter(this::isVersionAttribute).
+			forEach(attr -> createVersionMapping(entity, attr));
+			// map and set many valued attributes
+			attributes.
+			stream().
+			filter(EStructuralFeature::isMany).
+			map(this::createECProcessor).
+			forEach(EFeatureProcessor::process);
+		} finally {
+			context.setCurrentEntity(null);
+		}
 	}
 
 	/**
@@ -228,18 +241,23 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 				filter(not(EStructuralFeature::isVolatile)).
 				filter(EReference::isContainment).
 				toList();
-		// map and set one to one containment references unidirectional 
-		references.
-		stream().
-		filter(not(EStructuralFeature::isMany)).
-		map(this::createO2OProcessor).
-		forEach(Processor::process);
-		// map and set one to many containment references unidirectional
-		references.
-		stream().
-		filter(EStructuralFeature::isMany).
-		map(this::createO2MProcessor).
-		forEach(Processor::process);
+		context.setCurrentEntity(entity);
+		try {
+			// map and set one to one containment references unidirectional
+			references.
+			stream().
+			filter(not(EStructuralFeature::isMany)).
+			map(this::createO2OProcessor).
+			forEach(Processor::process);
+			// map and set one to many containment references unidirectional
+			references.
+			stream().
+			filter(EStructuralFeature::isMany).
+			map(this::createO2MProcessor).
+			forEach(Processor::process);
+		} finally {
+			context.setCurrentEntity(null);
+		}
 	}
 
 	/**
@@ -260,31 +278,36 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 				filter(not(EStructuralFeature::isVolatile)).
 				filter(not(EReference::isContainment)).
 				toList();
-		// map and set one to one non-containment references unidirectional
-		references.
-		stream().
-		filter(not(EStructuralFeature::isMany)).
-		map(this::createO2OProcessor).
-		forEach(Processor::process);
-		// map and set one to many non-containment references unidirectional
-		references.
-		stream().
-		filter(EStructuralFeature::isMany).
-		map(this::createO2MProcessor).
-		forEach(Processor::process);
-		// map and set many to one non-containment references unidirectional
-		references.
-		stream().
-		filter(not(EStructuralFeature::isMany)).
-		filter(MappingHelper::isOppositeRelation).
-		map(this::createM2OProcessor).
-		forEach(Processor::process);
-		// map and set many to many non-containment references unidirectional
-		references.
-		stream().
-		filter(EStructuralFeature::isMany).
-		map(this::createM2MProcessor).
-		forEach(Processor::process);
+		context.setCurrentEntity(entity);
+		try {
+			// map and set one to one non-containment references unidirectional
+			references.
+			stream().
+			filter(not(EStructuralFeature::isMany)).
+			map(this::createO2OProcessor).
+			forEach(Processor::process);
+			// map and set one to many non-containment references unidirectional
+			references.
+			stream().
+			filter(EStructuralFeature::isMany).
+			map(this::createO2MProcessor).
+			forEach(Processor::process);
+			// map and set many to one non-containment references unidirectional
+			references.
+			stream().
+			filter(not(EStructuralFeature::isMany)).
+			filter(MappingHelper::isOppositeRelation).
+			map(this::createM2OProcessor).
+			forEach(Processor::process);
+			// map and set many to many non-containment references unidirectional
+			references.
+			stream().
+			filter(EStructuralFeature::isMany).
+			map(this::createM2MProcessor).
+			forEach(Processor::process);
+		} finally {
+			context.setCurrentEntity(null);
+		}
 	}
 
 	/**
@@ -414,7 +437,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	 * set of columns in its own table.
 	 */
 	private List<EAttribute> getEffectiveAttributes(EClass eClass) {
-		if (hasMappedSuperType(eClass) && !isTablePerClassChild(eClass)) {
+		if (hasMappedSuperType(eClass) && !isAttributeInheritingChild(eClass)) {
 			return eClass.getEAttributes();
 		}
 		return eClass.getEAllAttributes();
@@ -422,12 +445,12 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 
 	/**
 	 * Returns the effective references for an EClass considering inheritance.
-	 * Same rule as {@link #getEffectiveAttributes(EClass)} — TPC children see
-	 * inherited references too, since the relationship column lives in the
-	 * subclass's own table.
+	 * Same rule as {@link #getEffectiveAttributes(EClass)} — TPC and
+	 * MappedSuperclass children see inherited references too, since the
+	 * relationship column lives in the subclass's own table.
 	 */
 	private List<EReference> getEffectiveReferences(EClass eClass) {
-		if (hasMappedSuperType(eClass) && !isTablePerClassChild(eClass)) {
+		if (hasMappedSuperType(eClass) && !isAttributeInheritingChild(eClass)) {
 			return eClass.getEReferences();
 		}
 		return eClass.getEAllReferences();
@@ -441,15 +464,29 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	}
 
 	/**
-	 * Returns {@code true} when {@code eClass} has a mapped super type and the
-	 * root of that hierarchy is annotated with {@code inheritance="TABLE_PER_CLASS"}.
+	 * Returns {@code true} when {@code eClass} is a child that must receive
+	 * the inherited attributes/references on its own table — i.e. either a
+	 * TABLE_PER_CLASS or MappedSuperclass child. For SINGLE_TABLE / JOINED
+	 * EclipseLink's InheritancePolicy inherits the parent mappings instead.
 	 */
-	private boolean isTablePerClassChild(EClass eClass) {
+	private boolean isAttributeInheritingChild(EClass eClass) {
 		if (!hasMappedSuperType(eClass)) {
 			return false;
 		}
 		EClass root = findMappedRoot(eClass);
-		return rootInheritanceStrategy(root) == InheritanceType.TABLEPERCLASS;
+		return rootInheritanceStrategy(root) == InheritanceType.TABLEPERCLASS
+				|| isMappedSuperclass(root);
+	}
+
+	/**
+	 * Returns {@code true} when {@code eClass} is annotated with
+	 * {@code mappedSuperclass="true"} on {@link Keywords#PERSISTENCE_ANNOTATION_SOURCE}.
+	 */
+	private boolean isMappedSuperclass(EClass eClass) {
+		return Optional.ofNullable(eClass.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE))
+				.map(a -> a.getDetails().get("mappedSuperclass"))
+				.map("true"::equalsIgnoreCase)
+				.orElse(false);
 	}
 
 	private EClass findMappedRoot(EClass eClass) {
