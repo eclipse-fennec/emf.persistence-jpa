@@ -259,13 +259,19 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 		return super.validateAttributeOfInstantiatedObject(attributeValue);
 	}
 
-	/* 
+	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#objectIsInstantiated(java.lang.Object)
 	 */
 	@Override
 	public boolean objectIsInstantiated(Object object) {
 		if (!usesIndirection()) {
+			return true;
+		}
+		// AP-46 lazy proxy: the attribute slot holds an EObject directly (not a VH).
+		// Such an object already represents a materialised identity — tell EclipseLink
+		// it is instantiated so change-tracking does not try to cast it to VH.
+		if (object instanceof EObject) {
 			return true;
 		}
 		return super.objectIsInstantiated(object);

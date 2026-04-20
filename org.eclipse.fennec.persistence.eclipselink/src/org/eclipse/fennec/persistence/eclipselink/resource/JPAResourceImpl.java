@@ -23,8 +23,13 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import java.util.Objects;
+
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
@@ -142,8 +147,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			applyCacheNewObjectsOption(em, options);
 			try {
 				for (EObject eo : getContents()) {
-					EObject managed = server != null ? toManagedEntity(eo, server, entityFactory) : eo;
-					em.merge(managed);
+					EObject source = server != null ? toManagedEntity(eo, server, entityFactory) : eo;
+					upsert(em, source, server);
 				}
 				em.getTransaction().commit();
 			} catch (Exception e) {
@@ -152,6 +157,121 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
+		}
+	}
+
+	/**
+	 * INSERT or UPDATE — chosen explicitly instead of relying on {@code em.merge} which
+	 * does not cope well with detached graphs that contain our AP-46 lazy-proxies: merge
+	 * cascades into the proxies and tries to INSERT them as new entities.
+	 * <p>
+	 * Strategy: if the entity has an id and a row exists, copy the source's attribute
+	 * and (containment/explicit non-proxy) reference state onto the managed existing
+	 * entity; otherwise persist the source as new. Non-containment references whose
+	 * value is still an {@link EObject#eIsProxy() unresolved proxy} are left alone —
+	 * the existing row's FK already points where the proxy points.
+	 */
+	private void upsert(EntityManager em, EObject source, Server server) {
+		ClassDescriptor descriptor = server != null
+				? server.getDescriptorForAlias(source.eClass().getName())
+				: null;
+		if (descriptor == null) {
+			em.merge(source);
+			return;
+		}
+		EAttribute idAttr = source.eClass().getEIDAttribute();
+		Object id = idAttr != null ? source.eGet(idAttr) : null;
+		if (id == null || isDefaultIdValue(id)) {
+			em.persist(source);
+			return;
+		}
+		Object existing = em.find(descriptor.getJavaClass(), id);
+		if (existing instanceof EObject existingEO) {
+			copyStateInto(source, existingEO, server, em);
+		} else {
+			em.persist(source);
+		}
+	}
+
+	private static boolean isDefaultIdValue(Object id) {
+		if (id instanceof Number n) {
+			return n.longValue() == 0L;
+		}
+		if (id instanceof String s) {
+			return s.isEmpty();
+		}
+		return false;
+	}
+
+	/**
+	 * Mirrors attribute values and containment references from {@code source} onto
+	 * {@code target}. Non-containment singular references are updated via
+	 * {@link EntityManager#getReference(Class, Object)} so that {@code target} ends up
+	 * with a JPA-managed reference (hollow proxy) — never a detached {@link EObject}
+	 * that commit's cascade-register-new scan would try to INSERT.
+	 * <p>
+	 * A non-containment ref is only rewritten when the id pointed to by {@code source}
+	 * differs from the id currently held by {@code target}; otherwise the existing
+	 * managed state is left alone, avoiding spurious dirty-tracking.
+	 */
+	private static void copyStateInto(EObject source, EObject target, Server server, EntityManager em) {
+		for (EAttribute attr : source.eClass().getEAllAttributes()) {
+			if (!attr.isChangeable() || attr.isDerived() || attr.isTransient()) {
+				continue;
+			}
+			Object srcValue = source.eGet(attr);
+			Object tgtValue = target.eGet(attr);
+			if (!Objects.equals(srcValue, tgtValue)) {
+				target.eSet(attr, srcValue);
+			}
+		}
+		for (EReference ref : source.eClass().getEAllReferences()) {
+			if (!ref.isChangeable() || ref.isDerived() || ref.isTransient()) {
+				continue;
+			}
+			if (ref.isMany()) {
+				continue; // collections handled by EclipseLink's IndirectList
+			}
+			Object srcValue = ((InternalEObject) source).eGet(ref, false);
+			if (ref.isContainment()) {
+				target.eSet(ref, srcValue);
+				continue;
+			}
+			// Non-containment singular ref: use em.getReference to avoid handing a
+			// detached/proxy EObject to EclipseLink's cascade-register-new.
+			copyNonContainmentRef(target, ref, srcValue, server, em);
+		}
+	}
+
+	private static void copyNonContainmentRef(EObject target, EReference ref, Object srcValue,
+			Server server, EntityManager em) {
+		EAttribute refIdAttr = ref.getEReferenceType().getEIDAttribute();
+		if (refIdAttr == null) {
+			target.eSet(ref, srcValue);
+			return;
+		}
+		Object srcRefId = srcValue instanceof EObject eo ? eo.eGet(refIdAttr) : null;
+		if (srcRefId == null) {
+			target.eSet(ref, null);
+			return;
+		}
+		// Always route through em.getReference so the attribute slot holds a
+		// JPA-managed reference — never a detached or lazy-proxy EObject that
+		// commit's cascade-register-new scan would mistake for a new entity.
+		ClassDescriptor refDesc = server != null
+				? server.getDescriptorForAlias(ref.getEReferenceType().getName())
+				: null;
+		if (refDesc == null) {
+			target.eSet(ref, srcValue instanceof EObject eo ? eo : null);
+			return;
+		}
+		try {
+			Object managed = em.getReference(refDesc.getJavaClass(), srcRefId);
+			if (managed instanceof EObject managedEO) {
+				target.eSet(ref, managedEO);
+			}
+		} catch (RuntimeException e) {
+			LOG.log(Level.FINE, "em.getReference failed for ref " + ref.getName(), e);
 		}
 	}
 

@@ -144,6 +144,116 @@ class NonOsgiLazyLoadingTest extends NonOsgiPersistenceTestBase {
 	}
 
 	@Test
+	void testOneToOnePersistWithUnresolvedProxy() throws Exception {
+		// Load A (D-ref stays a proxy), mutate an A attribute, save — must produce
+		// an UPDATE on A and must NOT try to insert D (the proxy represents an
+		// existing row, not a new one).
+		ClassDescriptor aDesc = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor dDesc = serverSession.getDescriptorForAlias(classDEClass.getName());
+		EStructuralFeature aName = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature aRef = classAEClass.getEStructuralFeature("dNonContainment");
+
+		EObject d = (EObject) dDesc.getInstantiationPolicy().buildNewInstance();
+		d.eSet(classDEClass.getEStructuralFeature("name"), "D-original");
+		EObject a = (EObject) aDesc.getInstantiationPolicy().buildNewInstance();
+		a.eSet(aName, "A-original");
+		a.eSet(aRef, d);
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(d);
+			em.persist(a);
+			em.getTransaction().commit();
+		}
+		String aId = EcoreUtil.getID(a);
+		emf.getCache().evictAll();
+
+		ResourceSet rs = newJpaResourceSet();
+		Resource aResource = rs.createResource(URI.createURI("jpa://lazy/ClassAO2O"));
+		aResource.load(null);
+		EObject aLoaded = null;
+		for (EObject eo : aResource.getContents()) {
+			if (aId.equals(EcoreUtil.getID(eo))) {
+				aLoaded = eo;
+				break;
+			}
+		}
+		assertThat(aLoaded).isNotNull();
+		aLoaded.eSet(aName, "A-updated");
+		aResource.save(null);
+
+		// Reload and assert the update landed, D is untouched.
+		emf.getCache().evictAll();
+		try (EntityManager em = emf.createEntityManager()) {
+			EObject refreshed = (EObject) em.find(aDesc.getJavaClass(), Integer.valueOf(aId));
+			assertThat(refreshed.eGet(aName)).isEqualTo("A-updated");
+			EObject dStill = (EObject) em.find(dDesc.getJavaClass(),
+					Integer.valueOf(EcoreUtil.getID(d)));
+			assertThat(dStill.eGet(classDEClass.getEStructuralFeature("name")))
+					.as("D row must still hold its original content")
+					.isEqualTo("D-original");
+		}
+	}
+
+	@Test
+	void testOneToOneReplaceRefUpdatesForeignKey() throws Exception {
+		ClassDescriptor aDesc = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor dDesc = serverSession.getDescriptorForAlias(classDEClass.getName());
+		EStructuralFeature aName = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature aRef = classAEClass.getEStructuralFeature("dNonContainment");
+		EStructuralFeature dName = classDEClass.getEStructuralFeature("name");
+
+		EObject d1 = (EObject) dDesc.getInstantiationPolicy().buildNewInstance();
+		d1.eSet(dName, "D-old");
+		EObject d2 = (EObject) dDesc.getInstantiationPolicy().buildNewInstance();
+		d2.eSet(dName, "D-new");
+		EObject a = (EObject) aDesc.getInstantiationPolicy().buildNewInstance();
+		a.eSet(aName, "A");
+		a.eSet(aRef, d1);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(d1);
+			em.persist(d2);
+			em.persist(a);
+			em.getTransaction().commit();
+		}
+		String aId = EcoreUtil.getID(a);
+		String d2Id = EcoreUtil.getID(d2);
+		emf.getCache().evictAll();
+
+		ResourceSet rs = newJpaResourceSet();
+		Resource aResource = rs.createResource(URI.createURI("jpa://lazy/ClassAO2O"));
+		Resource dResource = rs.createResource(URI.createURI("jpa://lazy/ClassDO2O"));
+		aResource.load(null);
+		dResource.load(null);
+
+		EObject aLoaded = findById(aResource, aId);
+		EObject d2Loaded = findById(dResource, d2Id);
+		assertThat(aLoaded).isNotNull();
+		assertThat(d2Loaded).isNotNull();
+
+		aLoaded.eSet(aRef, d2Loaded);
+		aResource.save(null);
+
+		emf.getCache().evictAll();
+		try (EntityManager em = emf.createEntityManager()) {
+			EObject refreshed = (EObject) em.find(aDesc.getJavaClass(), Integer.valueOf(aId));
+			EObject dRef = (EObject) refreshed.eGet(aRef);
+			assertThat(dRef).isNotNull();
+			assertThat(EcoreUtil.getID(dRef)).isEqualTo(d2Id);
+		}
+	}
+
+	private EObject findById(Resource resource, String expectedId) {
+		for (EObject eo : resource.getContents()) {
+			if (expectedId.equals(EcoreUtil.getID(eo))) {
+				return eo;
+			}
+		}
+		return null;
+	}
+
+	@Test
 	void testOneToOneProxyAttributeAccessDoesNotResolve() throws Exception {
 		// Accessing an owner attribute on a loaded entity must not trigger any
 		// resolution of its non-containment proxy refs.
