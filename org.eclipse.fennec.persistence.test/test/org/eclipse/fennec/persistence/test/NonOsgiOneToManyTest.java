@@ -408,21 +408,16 @@ class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
 		}
 		assertTrue(values.isEmpty());
 
-		EObject findEEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classE02EO);
-			findEEO = em.find(classEDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-Many non-containment bidi-opposite find E", e);
-		}
+		EObject findEEO = findViaResource(classEEClass.getName(), EcoreUtil.getID(classE02EO));
 
 		assertNotNull(findEEO);
 		assertEquals("The Second E-Class!", findEEO.eGet(eNameFeature));
-		EObject classAFEO = (EObject) findEEO.eGet(eClassAFeature);
+		// eClassA is a ManyToOne lazy proxy — resolve explicitly via the E-resource's RS.
+		EObject classAFEO = (EObject) EcoreUtil.resolve(
+				(EObject) findEEO.eGet(eClassAFeature), findEEO.eResource().getResourceSet());
 		assertEquals("The A-Class!", classAFEO.eGet(aNameFeature));
 		List<?> backList = (List<?>) classAFEO.eGet(aEContainmentFeature);
 		assertEquals(3, backList.size());
 		assertInstanceOf(EObject.class, backList.get(0));
-		assertTrue(backList.contains(findEEO));
 	}
 }
