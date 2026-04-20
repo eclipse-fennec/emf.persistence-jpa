@@ -106,8 +106,11 @@ The framework uses EclipseLink's Dynamic Entity API to create JPA entity types a
 
 | Document | Purpose |
 |----------|---------|
+| [Getting Started](docs/getting-started.md) | Full walkthrough: Ecore model, bootstrap (OSGi + Non-OSGi), CRUD via `jpa://` Resource, lazy-loading semantics |
+| [Configuration Reference](docs/configuration-reference.md) | Every `fennec.jpa.*` property, forwarded EclipseLink keys, load/save `Options` |
 | [Development Guide](docs/development-guide.md) | Architecture details, session continuity |
 | [Review](docs/REVIEW.md) | Structured review: criteria, findings, work packages |
+| [Lazy-Loading Analysis](docs/AP-46_Lazy-Loading-Analysis.md) | Deep dive into the non-containment lazy mechanism |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting, security considerations |
 
 ## License
