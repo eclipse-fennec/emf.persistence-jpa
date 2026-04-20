@@ -50,6 +50,8 @@ public abstract class AbstractPersistenceUnitConfigurator {
 
 	public static final String PROPERTY_PREFIX = "fennec.jpa.";
 	public static final String PROPERTY_PREFIX_EXT = PROPERTY_PREFIX + "ext.";
+	public static final String CONFIG_BATCH_WRITING = "batchWriting";
+	public static final String CONFIG_BATCH_SIZE = "batchSize";
 
 	private volatile ServiceRegistration<EntityManagerFactory> emfRegistration;
 	private volatile EntityManagerFactory emf;
@@ -144,7 +146,44 @@ public abstract class AbstractPersistenceUnitConfigurator {
 				emfProperties.put(k.replace(PROPERTY_PREFIX_EXT, ""), v);
 			}
 		});
+		translateBatchWriting(properties, emfProperties);
 		return emfProperties;
+	}
+
+	/**
+	 * Maps the typed OCD properties {@code batchWriting} / {@code batchSize} onto the
+	 * corresponding EclipseLink properties. Explicit {@code fennec.jpa.ext.eclipselink.jdbc.batch-writing*}
+	 * entries take precedence — they are forwarded first and we do not overwrite them.
+	 */
+	private static void translateBatchWriting(Map<String, Object> src, Map<String, Object> dst) {
+		Object mode = src.get(CONFIG_BATCH_WRITING);
+		if (mode instanceof String s && !s.isEmpty()) {
+			dst.putIfAbsent(PersistenceUnitProperties.BATCH_WRITING, s);
+		}
+		Object size = src.get(CONFIG_BATCH_SIZE);
+		int sizeValue = asPositiveInt(size);
+		if (sizeValue > 0) {
+			dst.putIfAbsent(PersistenceUnitProperties.BATCH_WRITING_SIZE, String.valueOf(sizeValue));
+		}
+	}
+
+	private static int asPositiveInt(Object value) {
+		if (value instanceof Integer i) {
+			return i > 0 ? i : 0;
+		}
+		if (value instanceof Number n) {
+			int i = n.intValue();
+			return i > 0 ? i : 0;
+		}
+		if (value instanceof String s && !s.isEmpty()) {
+			try {
+				int i = Integer.parseInt(s);
+				return i > 0 ? i : 0;
+			} catch (NumberFormatException e) {
+				return 0;
+			}
+		}
+		return 0;
 	}
 
 	/**
