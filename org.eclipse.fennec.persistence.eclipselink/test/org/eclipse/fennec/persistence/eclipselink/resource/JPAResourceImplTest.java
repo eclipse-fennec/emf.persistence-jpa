@@ -24,14 +24,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
+import org.eclipse.fennec.persistence.Options;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.internal.helper.DatabaseField;
+import org.eclipse.persistence.sessions.UnitOfWork;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -421,6 +425,297 @@ class JPAResourceImplTest {
 				EObject result = testResource.getEObject("//ref/id/42");
 				assertThat(result).isNull();
 			}
+		}
+
+		@Test
+		@DisplayName("convertId dispatches to Integer for int PK")
+		void testConvertIdInteger() throws Exception {
+			EObject resolved = createEObject();
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			DatabaseField pkField = new DatabaseField("id");
+			pkField.setType(Integer.class);
+			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of(pkField));
+			when(em.find(eq(EObject.class), eq(Integer.valueOf(42)))).thenReturn(resolved);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				EObject result = testResource.getEObject("//ref/id/42");
+				assertThat(result).isSameAs(resolved);
+				verify(em).find(eq(EObject.class), eq(Integer.valueOf(42)));
+			}
+		}
+
+		@Test
+		@DisplayName("convertId dispatches to Long for long PK")
+		void testConvertIdLong() throws Exception {
+			EObject resolved = createEObject();
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			DatabaseField pkField = new DatabaseField("id");
+			pkField.setType(Long.class);
+			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of(pkField));
+			when(em.find(eq(EObject.class), eq(Long.valueOf(9999999999L)))).thenReturn(resolved);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				EObject result = testResource.getEObject("//ref/id/9999999999");
+				assertThat(result).isSameAs(resolved);
+			}
+		}
+
+		@Test
+		@DisplayName("convertId uses String fallback when pk fields are empty")
+		void testConvertIdStringFallback() throws Exception {
+			EObject resolved = createEObject();
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of());
+			when(em.find(eq(EObject.class), eq("uuid-abc"))).thenReturn(resolved);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				EObject result = testResource.getEObject("//ref/id/uuid-abc");
+				assertThat(result).isSameAs(resolved);
+			}
+		}
+	}
+
+	@Nested
+	@DisplayName("count / exist")
+	class CountTests {
+
+		@Test
+		@DisplayName("count returns 0 when URI has no segments")
+		void testCountEmptyUriReturnsZero() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(URI.createURI(""), emf)) {
+				assertThat(testResource.count()).isZero();
+				verify(em, never()).createQuery(any(String.class), eq(Long.class));
+			}
+		}
+
+		@Test
+		@DisplayName("count returns 0 when descriptor is missing")
+		void testCountMissingDescriptorReturnsZero() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Unknown"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return null;
+				}
+			}) {
+				assertThat(testResource.count()).isZero();
+				verify(em, never()).createQuery(any(String.class), eq(Long.class));
+			}
+		}
+
+		@Test
+		@DisplayName("count returns the DB count")
+		void testCountReturnsResult() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<Long> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(Long.class))).thenReturn(query);
+			when(query.getSingleResult()).thenReturn(7L);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				assertThat(testResource.count()).isEqualTo(7L);
+			}
+		}
+
+		@Test
+		@DisplayName("exist is false for count=0, true otherwise")
+		void testExistReflectsCount() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<Long> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(Long.class))).thenReturn(query);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				when(query.getSingleResult()).thenReturn(0L);
+				assertThat(testResource.exist()).isFalse();
+
+				when(query.getSingleResult()).thenReturn(3L);
+				assertThat(testResource.exist()).isTrue();
+			}
+		}
+
+		@Test
+		@DisplayName("count(options) behaves like count() — options are currently ignored")
+		void testCountWithOptionsMap() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<Long> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(Long.class))).thenReturn(query);
+			when(query.getSingleResult()).thenReturn(4L);
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				Map<Object, Object> options = new HashMap<>();
+				options.put("irrelevant", "value");
+				assertThat(testResource.count(options)).isEqualTo(4L);
+				assertThat(testResource.exist(options)).isTrue();
+			}
+		}
+	}
+
+	@Nested
+	@DisplayName("doLoad early-return paths")
+	@SuppressWarnings("unchecked")
+	class DoLoadGuardTests {
+
+		@Test
+		@DisplayName("Empty URI returns early without querying")
+		void testEmptyUriReturnsEarly() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(URI.createURI(""), emf)) {
+				testResource.load(null);
+				assertThat(testResource.getContents()).isEmpty();
+				verify(em, never()).createQuery(any(String.class), any(Class.class));
+			}
+		}
+
+		@Test
+		@DisplayName("Missing descriptor returns early without querying")
+		void testMissingDescriptorReturnsEarly() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Unknown"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return null;
+				}
+			}) {
+				testResource.load(null);
+				assertThat(testResource.getContents()).isEmpty();
+				verify(em, never()).createQuery(any(String.class), any(Class.class));
+			}
+		}
+	}
+
+	@Nested
+	@DisplayName("cache-new-objects option")
+	class CacheNewObjectsTests {
+
+		@Test
+		@DisplayName("Unwrap failure is swallowed — save still commits")
+		void testUnwrapFailureIsSwallowed() throws IOException {
+			EObject eo = createEObject();
+			resource.getContents().add(eo);
+			when(em.unwrap(UnitOfWork.class)).thenThrow(new PersistenceException("not an EclipseLink EM"));
+
+			Map<Object, Object> options = new HashMap<>();
+			options.put(Options.OPTION_CACHE_NEW_OBJECTS, Boolean.FALSE);
+			resource.save(options);
+
+			verify(tx).begin();
+			verify(em).merge(eo);
+			verify(tx).commit();
+			verify(tx, never()).rollback();
+		}
+
+		@Test
+		@DisplayName("Null options map skips unwrap entirely")
+		void testNullOptionsSkipsUnwrap() throws IOException {
+			EObject eo = createEObject();
+			resource.getContents().add(eo);
+
+			resource.save(null);
+
+			verify(em, never()).unwrap(UnitOfWork.class);
+			verify(tx).commit();
+		}
+
+		@Test
+		@DisplayName("Options without cache-new-objects key skips unwrap")
+		void testMissingKeySkipsUnwrap() throws IOException {
+			EObject eo = createEObject();
+			resource.getContents().add(eo);
+
+			Map<Object, Object> options = new HashMap<>();
+			options.put("some.other.key", "value");
+			resource.save(options);
+
+			verify(em, never()).unwrap(UnitOfWork.class);
+			verify(tx).commit();
+		}
+
+		@Test
+		@DisplayName("Explicit false calls setShouldNewObjectsBeCached(false)")
+		void testExplicitFalseCallsUow() throws IOException {
+			EObject eo = createEObject();
+			resource.getContents().add(eo);
+			UnitOfWork uow = mock(UnitOfWork.class);
+			when(em.unwrap(UnitOfWork.class)).thenReturn(uow);
+
+			Map<Object, Object> options = new HashMap<>();
+			options.put(Options.OPTION_CACHE_NEW_OBJECTS, Boolean.FALSE);
+			resource.save(options);
+
+			verify(uow).setShouldNewObjectsBeCached(false);
+			verify(tx).commit();
+		}
+	}
+
+	@Nested
+	@DisplayName("close / updateDefaultOptions")
+	class MiscTests {
+
+		@Test
+		@DisplayName("close unloads the resource")
+		void testCloseUnloads() throws Exception {
+			EObject eo = createEObject();
+			resource.getContents().add(eo);
+
+			resource.close();
+
+			assertThat(resource.getContents()).isEmpty();
+			assertThat(resource.isLoaded()).isFalse();
+		}
+
+		@Test
+		@DisplayName("updateDefaultOptions is a no-op (does not throw)")
+		void testUpdateDefaultOptionsNoop() {
+			Map<Object, Object> opts = new HashMap<>();
+			resource.updateDefaultOptions(opts); // no ActionType args
+			// Nothing should change
+			assertThat(opts).isEmpty();
 		}
 	}
 }

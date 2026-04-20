@@ -13,6 +13,7 @@
 package org.eclipse.fennec.persistence.eclipselink.spi;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +24,7 @@ import javax.sql.DataSource;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
+import org.eclipse.persistence.config.TargetDatabase;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.BundleContext;
 
@@ -111,6 +113,67 @@ class AbstractPersistenceUnitConfiguratorTest {
 		assertThat(forwarded)
 				.containsEntry(PersistenceUnitProperties.BATCH_WRITING, "JDBC")
 				.doesNotContainKey(PersistenceUnitProperties.BATCH_WRITING_SIZE);
+	}
+
+	@Test
+	void createForwardedProperties_emptyMap_returnsEmpty() {
+		Map<String, Object> forwarded = subject.createForwardedProperties(new HashMap<>());
+		assertThat(forwarded).isEmpty();
+	}
+
+	@Test
+	void createForwardedProperties_onlyIgnoredKeys_returnsEmpty() {
+		Map<String, Object> raw = new HashMap<>();
+		raw.put("unrelated.a", 1);
+		raw.put("fennec.jpa.someSetting", "x"); // fennec.jpa. prefix but NOT fennec.jpa.ext.
+
+		Map<String, Object> forwarded = subject.createForwardedProperties(raw);
+		assertThat(forwarded).isEmpty();
+	}
+
+	@Test
+	void setEMFProperties_appliesEclipseLinkDefaults() {
+		Map<String, Object> props = new HashMap<>();
+		subject.setEMFProperties(props);
+
+		assertThat(props)
+				.containsEntry(PersistenceUnitProperties.WEAVING, "false")
+				.containsEntry(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL")
+				.containsEntry(PersistenceUnitProperties.THROW_EXCEPTIONS, "true")
+				.containsEntry(PersistenceUnitProperties.CONNECTION_POOL_MIN, 1)
+				.containsKey(PersistenceUnitProperties.NON_JTA_DATASOURCE)
+				.containsEntry(PersistenceUnitProperties.TARGET_DATABASE, TargetDatabase.Auto)
+				.containsEntry(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.NONE)
+				.containsEntry("eclipselink.logging.level", "WARNING")
+				.containsEntry("eclipselink.logging.timestamp", "false")
+				.containsEntry("eclipselink.logging.thread", "false")
+				.containsEntry("eclipselink.logging.exceptions", "true");
+	}
+
+	@Test
+	void setEMFProperties_doesNotOverrideExplicitDdlGeneration() {
+		Map<String, Object> props = new HashMap<>();
+		props.put(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.CREATE_OR_EXTEND);
+		subject.setEMFProperties(props);
+
+		assertThat(props).containsEntry(PersistenceUnitProperties.DDL_GENERATION,
+				PersistenceUnitProperties.CREATE_OR_EXTEND);
+	}
+
+	@Test
+	void setEMFProperties_doesNotOverrideExplicitTargetDatabase() {
+		Map<String, Object> props = new HashMap<>();
+		props.put(PersistenceUnitProperties.TARGET_DATABASE, "HSQL");
+		subject.setEMFProperties(props);
+
+		assertThat(props).containsEntry(PersistenceUnitProperties.TARGET_DATABASE, "HSQL");
+	}
+
+	@Test
+	void setEMFProperties_nullProperties_throwsNPE() {
+		// Contractually, setEMFProperties uses requireNonNull — null must fail fast
+		assertThatThrownBy(() -> subject.setEMFProperties(null))
+				.isInstanceOf(NullPointerException.class);
 	}
 
 	private static final class StubConfigurator extends AbstractPersistenceUnitConfigurator {

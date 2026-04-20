@@ -13,6 +13,12 @@
 package org.eclipse.fennec.persistence.eclipselink;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 
@@ -28,6 +34,7 @@ import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.api.TypeConverter;
 import org.eclipse.fennec.persistence.eclipselink.mappings.EFeatureAccessor;
 import org.eclipse.persistence.mappings.AttributeAccessor;
 import org.junit.jupiter.api.BeforeEach;
@@ -139,6 +146,139 @@ class AccessorIndirectionTest {
 			Object value = accessor.getAttributeValueFromObject(person);
 			// name not set → returns null (EMF default)
 			assertThat(value).isNull();
+		}
+
+		@Test
+		void testSetOnNonEObjectIsNoop() {
+			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			// Does not throw and does nothing — no EObject to set on
+			accessor.setAttributeValueInObject("not-an-eobject", "anything");
+		}
+
+		@Test
+		void testSetDefaultValueIsSkipped() {
+			EAttribute withDefault = EcoreFactory.eINSTANCE.createEAttribute();
+			withDefault.setName("nick");
+			withDefault.setEType(EcorePackage.Literals.ESTRING);
+			withDefault.setDefaultValueLiteral("unknown");
+			personClass.getEStructuralFeatures().add(withDefault);
+
+			EObject person = EcoreUtil.create(personClass);
+			// Pre-set a different value
+			person.eSet(withDefault, "Alice");
+
+			AttributeAccessor accessor = EFeatureAccessor.create(withDefault);
+			accessor.setAttributeValueInObject(person, "unknown");
+			// Default literal is skipped — pre-set value remains untouched
+			assertThat(person.eGet(withDefault)).isEqualTo("Alice");
+		}
+
+		@Test
+		void testSetManyValuedCollectionConvertsEachElement() {
+			EAttribute tags = EcoreFactory.eINSTANCE.createEAttribute();
+			tags.setName("tags");
+			tags.setEType(EcorePackage.Literals.EINT);
+			tags.setUpperBound(-1);
+			personClass.getEStructuralFeatures().add(tags);
+
+			EObject person = EcoreUtil.create(personClass);
+			AttributeAccessor accessor = EFeatureAccessor.create(tags);
+			accessor.setAttributeValueInObject(person, List.of("10", "20", "30"));
+
+			@SuppressWarnings("unchecked")
+			List<Integer> stored = (List<Integer>) person.eGet(tags);
+			assertThat(stored).containsExactly(10, 20, 30);
+		}
+
+		@Test
+		void testGetEReferenceValueRoutesThroughConverter() {
+			EClass targetClass = EcoreFactory.eINSTANCE.createEClass();
+			targetClass.setName("Target");
+			testPackage.getEClassifiers().add(targetClass);
+
+			EReference targetRef = EcoreFactory.eINSTANCE.createEReference();
+			targetRef.setName("target");
+			targetRef.setEType(targetClass);
+			personClass.getEStructuralFeatures().add(targetRef);
+
+			EObject person = EcoreUtil.create(personClass);
+			EObject target = EcoreUtil.create(targetClass);
+			person.eSet(targetRef, target);
+
+			TypeConverter converter = mock(TypeConverter.class);
+			when(converter.convertEMFToValue(eq(targetClass), any())).thenReturn("serialized://target");
+
+			AttributeAccessor accessor = EFeatureAccessor.create(targetRef, converter);
+			Object value = accessor.getAttributeValueFromObject(person);
+
+			assertThat(value).isEqualTo("serialized://target");
+			verify(converter).convertEMFToValue(eq(targetClass), eq(target));
+		}
+
+		@Test
+		void testSetEReferenceValueRoutesThroughConverter() {
+			EClass targetClass = EcoreFactory.eINSTANCE.createEClass();
+			targetClass.setName("Target");
+			testPackage.getEClassifiers().add(targetClass);
+
+			EReference targetRef = EcoreFactory.eINSTANCE.createEReference();
+			targetRef.setName("target");
+			targetRef.setEType(targetClass);
+			personClass.getEStructuralFeatures().add(targetRef);
+
+			EObject person = EcoreUtil.create(personClass);
+			EObject expectedTarget = EcoreUtil.create(targetClass);
+
+			TypeConverter converter = mock(TypeConverter.class);
+			when(converter.convertValueToEMF(eq(targetClass), eq("serialized://target")))
+					.thenReturn(expectedTarget);
+
+			AttributeAccessor accessor = EFeatureAccessor.create(targetRef, converter);
+			accessor.setAttributeValueInObject(person, "serialized://target");
+
+			assertThat(person.eGet(targetRef)).isSameAs(expectedTarget);
+		}
+
+		@Test
+		void testSetEAttributeRoutesThroughConverterWhenApplicable() {
+			TypeConverter converter = mock(TypeConverter.class);
+			when(converter.isConverterForType(EcorePackage.Literals.EINT)).thenReturn(true);
+			when(converter.convertValueToEMF(eq(EcorePackage.Literals.EINT), eq(42)))
+					.thenReturn(100);
+
+			EObject person = EcoreUtil.create(personClass);
+			AttributeAccessor ageAccessor = EFeatureAccessor.create(ageAttr, converter);
+			ageAccessor.setAttributeValueInObject(person, 42);
+
+			assertThat(person.eGet(ageAttr)).isEqualTo(100);
+			verify(converter).convertValueToEMF(eq(EcorePackage.Literals.EINT), eq(42));
+		}
+
+		@Test
+		void testSetEAttributeSkipsConverterWhenNotApplicable() {
+			TypeConverter converter = mock(TypeConverter.class);
+			when(converter.isConverterForType(any())).thenReturn(false);
+
+			EObject person = EcoreUtil.create(personClass);
+			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr, converter);
+			accessor.setAttributeValueInObject(person, "Alice");
+
+			// Fast path: String + ESTRING dataType → not converted, set as-is
+			assertThat(person.eGet(nameAttr)).isEqualTo("Alice");
+			verify(converter, never()).convertValueToEMF(any(), any());
+		}
+
+		@Test
+		void testGetWithoutConverterDoesNotInvokeConverter() {
+			TypeConverter converter = mock(TypeConverter.class);
+			EObject person = EcoreUtil.create(personClass);
+			person.eSet(nameAttr, "Alice");
+
+			// Accessor constructed WITHOUT converter — converter must never be called
+			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			accessor.getAttributeValueFromObject(person);
+
+			verify(converter, never()).convertEMFToValue(any(), any());
 		}
 	}
 
