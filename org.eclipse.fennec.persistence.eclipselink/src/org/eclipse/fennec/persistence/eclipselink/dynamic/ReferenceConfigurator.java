@@ -257,8 +257,7 @@ class ReferenceConfigurator {
 			mapping.setIsReadOnly(false);
 		}
 		setMappingDefaults(mapping, reference);
-		mapping.setUsesIndirection(false);
-		mapping.dontUseIndirection();
+		setIndirection(mapping, reference);
 	}
 
 	private void processManyToMany(ManyToMany manyToMany) {
