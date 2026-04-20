@@ -20,6 +20,9 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
@@ -29,13 +32,19 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
+import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.exceptions.DescriptorException;
 import org.eclipse.persistence.indirection.ValueHolder;
 import org.eclipse.persistence.indirection.ValueHolderInterface;
+import org.eclipse.persistence.internal.identitymaps.CacheId;
 import org.eclipse.persistence.internal.identitymaps.CacheKey;
 import org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy;
+import org.eclipse.persistence.internal.sessions.AbstractRecord;
 import org.eclipse.persistence.internal.sessions.AbstractSession;
 import org.eclipse.persistence.internal.sessions.UnitOfWorkImpl;
 import org.eclipse.persistence.mappings.DatabaseMapping;
+import org.eclipse.persistence.mappings.ObjectReferenceMapping;
+import org.eclipse.persistence.queries.ReadQuery;
 
 /**
  * 
@@ -43,6 +52,8 @@ import org.eclipse.persistence.mappings.DatabaseMapping;
  * @since 12.01.2025
  */
 public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
+
+	private static final Logger LOG = Logger.getLogger(EBasicIndirectionPolicy.class.getName());
 
 	/** serialVersionUID */
 	private static final long serialVersionUID = 1L;
@@ -62,7 +73,102 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 		setMapping(mapping);
 	}
 
-	/* 
+	/**
+	 * Overrides the default lazy-load hook: instead of returning a QueryBasedValueHolder
+	 * that will trigger a SELECT on first access, we read the FK straight from the source
+	 * row, build an EclipseLink-managed dynamic proxy for the target EClass, set the PK
+	 * attribute + an {@code eProxyURI} that targets the JPA resource, and return the proxy
+	 * directly. Subsequent {@code eGet} on the proxy flows through
+	 * {@code ResourceSet.getEObject} → {@code JPAResourceImpl.getEObject} →
+	 * {@code em.find}, at which point the one-and-only DB round-trip for the target runs.
+	 * <p>
+	 * For containment references we delegate to the parent policy (the containment
+	 * branch is never configured with indirection anyway — {@link #usesIndirection()}
+	 * returns {@code false} — but we guard defensively).
+	 */
+	@Override
+	public Object valueFromQuery(ReadQuery query, AbstractRecord row, Object sourceObject, AbstractSession session) {
+		if (!usesIndirection() || !(mapping instanceof ObjectReferenceMapping refMapping)) {
+			return super.valueFromQuery(query, row, sourceObject, session);
+		}
+		EObject proxy = buildLazyProxy(refMapping, row);
+		if (proxy == null) {
+			return super.valueFromQuery(query, row, sourceObject, session);
+		}
+		return proxy;
+	}
+
+	@Override
+	public Object valueFromQuery(ReadQuery query, AbstractRecord row, AbstractSession session) {
+		if (!usesIndirection() || !(mapping instanceof ObjectReferenceMapping refMapping)) {
+			return super.valueFromQuery(query, row, session);
+		}
+		EObject proxy = buildLazyProxy(refMapping, row);
+		if (proxy == null) {
+			return super.valueFromQuery(query, row, session);
+		}
+		return proxy;
+	}
+
+	/**
+	 * Reads the FK from the source row (no DB call) and materialises a minimal EMF proxy
+	 * for the target. Returns {@code null} if the FK is unavailable or the proxy cannot
+	 * be instantiated — callers must then fall back to the eager/VH path.
+	 */
+	private EObject buildLazyProxy(ObjectReferenceMapping refMapping, AbstractRecord row) {
+		Object targetPk = refMapping.extractPrimaryKeysForReferenceObjectFromRow(row);
+		if (targetPk == null) {
+			return null;
+		}
+		// Extract the primitive id value from a CacheId composite, if present.
+		Object idValue = unwrapSinglePk(targetPk);
+		if (idValue == null) {
+			return null;
+		}
+		ClassDescriptor targetDescriptor = refMapping.getReferenceDescriptor();
+		if (targetDescriptor == null) {
+			return null;
+		}
+		Object instance;
+		try {
+			instance = targetDescriptor.getInstantiationPolicy().buildNewInstance();
+		} catch (DescriptorException e) {
+			LOG.log(Level.FINE, "Unable to build proxy instance for lazy non-containment ref", e);
+			return null;
+		}
+		if (!(instance instanceof EObject proxy)) {
+			return null;
+		}
+		EAttribute idAttr = reference.getEReferenceType().getEIDAttribute();
+		if (idAttr == null) {
+			return null;
+		}
+		proxy.eSet(idAttr, idValue);
+		URI baseURI = type.getContext().getBaseURI();
+		if (baseURI == null) {
+			return null;
+		}
+		URI proxyURI = baseURI
+				.appendSegment(reference.getEReferenceType().getName())
+				.appendFragment("//" + reference.getName() + "/" + idAttr.getName() + "/" + idValue);
+		((InternalEObject) proxy).eSetProxyURI(proxyURI);
+		return proxy;
+	}
+
+	/**
+	 * EclipseLink returns a single PK value directly when the descriptor's cache key type
+	 * is ID_VALUE, or wraps composite PKs in a CacheId. We only support single-field PKs
+	 * here — that's the case for every model EClass with exactly one EID attribute.
+	 */
+	private Object unwrapSinglePk(Object targetPk) {
+		if (targetPk instanceof CacheId cacheId) {
+			Object[] pk = cacheId.getPrimaryKey();
+			return pk.length == 1 ? pk[0] : null;
+		}
+		return targetPk;
+	}
+
+	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#buildIndirectObject(org.eclipse.persistence.indirection.ValueHolderInterface)
 	 */
@@ -132,6 +238,14 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	@Override
 	public Object validateAttributeOfInstantiatedObject(Object attributeValue) {
 		if (!usesIndirection()) {
+			return attributeValue;
+		}
+		// Lazy proxy (from valueFromQuery): leave untouched. Wrapping it in a VH would
+		// force EReferenceAccessor.unwrapValueHolder to call vh.getValue() on access,
+		// which would still return the proxy — but the EMF eIsProxy() contract on the
+		// raw slot value would be lost and eGet(feature, false) would see the VH, not
+		// the proxy.
+		if (attributeValue instanceof EObject eo && eo.eIsProxy()) {
 			return attributeValue;
 		}
 		if (attributeValue instanceof EObject eo) {
@@ -210,7 +324,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 		} 
 	}
 	
-	/* 
+	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#cloneAttribute(java.lang.Object, java.lang.Object, org.eclipse.persistence.internal.identitymaps.CacheKey, java.lang.Object, java.lang.Integer, org.eclipse.persistence.internal.sessions.AbstractSession, boolean)
 	 */
@@ -229,8 +343,42 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	        boolean isExisting = !cloningSession.isUnitOfWork() || (((UnitOfWorkImpl) cloningSession).isObjectRegistered(clone) && (!(((UnitOfWorkImpl)cloningSession).isOriginalNewObject(original))));
 	        return this.getMapping().buildCloneForPartObject(attributeValue, original, cacheKey, clone, cloningSession, refreshCascade, isExisting, isExisting);// only assume from shared cache if it is existing
 		}
+		// Lazy non-containment: valueFromQuery already returned an EMF proxy; the UoW
+		// clone slot should hold the same proxy (lightweight — just ID + eProxyURI).
+		// Resolution happens on first eGet, not during cloning.
+		if (attributeValue instanceof EObject) {
+			return attributeValue;
+		}
 		return super.cloneAttribute(attributeValue, original, cacheKey, clone, refreshCascade, cloningSession,
 				buildDirectlyFromRow);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#getRealAttributeValueFromObject(java.lang.Object, java.lang.Object)
+	 */
+	@Override
+	public Object getRealAttributeValueFromObject(Object object, Object attribute) {
+		// When the slot holds an EMF proxy (our lazy non-containment case), there is
+		// no ValueHolder to unwrap — return the proxy itself. Default impl would do
+		// ((ValueHolderInterface) attribute).getValue() and throw ClassCastException.
+		if (attribute instanceof EObject) {
+			return attribute;
+		}
+		return super.getRealAttributeValueFromObject(object, attribute);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#extractPrimaryKeyForReferenceObject(java.lang.Object, org.eclipse.persistence.internal.sessions.AbstractSession)
+	 */
+	@Override
+	public Object extractPrimaryKeyForReferenceObject(Object referenceObject, AbstractSession session) {
+		// The proxy carries the id attribute value directly — don't force resolution.
+		if (referenceObject instanceof EObject eo && eo.eIsProxy()) {
+			return mapping.getReferenceDescriptor().getObjectBuilder().extractPrimaryKeyFromObject(eo, session);
+		}
+		return super.extractPrimaryKeyForReferenceObject(referenceObject, session);
 	}
 
 }

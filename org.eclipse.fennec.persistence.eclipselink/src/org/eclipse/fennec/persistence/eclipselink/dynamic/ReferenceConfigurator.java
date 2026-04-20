@@ -318,7 +318,11 @@ class ReferenceConfigurator {
 		mapping.setDerivesId(false);
 		mapping.setIsPrivateOwned(false);
 		mapping.setIsCacheable(true);
-		mapping.setIsLazy(false);
+		// Containment: eager — EMF-Komposition erfordert, dass das Ziel mit dem Besitzer
+		// materialisiert wird. Non-Containment: lazy — EBasicIndirectionPolicy stellt einen
+		// EMF-Proxy ins Attribut, damit nur FK gelesen wird und Target-Load erst on demand
+		// via ResourceSet.getEObject → JPAResourceImpl.getEObject läuft.
+		mapping.setIsLazy(!reference.isContainment());
 		mapping.setAttributeAccessor(EReferenceAccessor.create(reference, context));
 	}
 
