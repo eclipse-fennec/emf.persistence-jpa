@@ -416,7 +416,7 @@ Kontext: Das Projekt soll in das **Eclipse Fennec**-Projekt einfließen. Abhäng
 | AP-26 | **Fehlende Converter:** `URIInternalConverter` (java.net.URI↔String), `URLInternalConverter` (java.net.URL↔String), `OffsetDateTimeInternalConverter` (java.time.OffsetDateTime↔ISO-8601-String). Alle in `ComprehensiveTypeConverter`. Enum-Converter bewusst nicht implementiert — EEnum wird bereits korrekt über `EFeatureAccessor` + `EcoreUtil.createFromString()` gehandhabt. 8 neue Tests. | F3-03, F3-05 | M | ✅ Done |
 | AP-27 | **Package-Info + License-Header vereinheitlicht:** Alle 26 `package-info.java` (Nicht-generated) auf m2m-Stil umgestellt — einheitlicher Header „Copyright (c) 2026 Contributors to the Eclipse Foundation" mit Stern-Bar-Rahmen, Beitragszeile „Data In Motion Consulting - initial implementation". Doppelte Javadoc-Blöcke in 5 Dateien entfernt; 2 Dateien ohne Header (`ecore`, `eclipselink/resource`) nachgerüstet. `@Export`/`@Version`/`@RequireEMF`/`@RequireConfigurationAdmin`/`@RequireConfigurator` unverändert an ihren Stellen — OSGi-Tests bleiben grün (22 OSGi + 490 Unit/Integration). `.licenserc.yaml` aus m2m übernommen (`comment: always`, Copyright-Content 2026) plus emf-spezifische `paths-ignore`-Einträge (`.txt`, `.eorm`, `.sql`, `.xmi`, `.db`). Regular `.java`-Files hatten den neuen Header bereits. | T6-01, T6-02, T6-05 | S | ✅ Done |
 | AP-28 | **Options-Klasse bereinigt:** 525→105 Zeilen. MongoDB-Legacy-Javadoc entfernt (`DBObjectBuilderImpl`, `NativeQueryEngine`, MongoDB-Terminologie). Tippfehler `TIMESTMAP_FIELD_NAME` behoben. 17 unbenutzte Konstanten + 4 tote Utility-Methoden entfernt. Behalten: `READ_FILTER_ECLASS`, `OPTION_TABLE_NAME` + genutzte Hilfsmethoden. | T4-01, T4-03, F15-04 | S | ✅ Done |
-| AP-29 | **Unit-Tests für Kernklassen:** JPAResourceImpl, EFeatureAccessor, PU-Konfiguratoren | T3-01 bis T3-03 | L | ❌ Offen |
+| AP-29 | **Unit-Tests für Kernklassen:** `JPAResourceImpl` +16 Tests (count/exist, doLoad-Guards, convertId Integer/Long/String-Fallback, cache-new-objects-Options inkl. UoW-Unwrap-Fehlerpfad, close, updateDefaultOptions). `EFeatureAccessor` via `AccessorIndirectionTest` +7 Tests (non-EObject set-noop, Default-Value skip, Many-valued Collection-Conversion, EReference mit Converter get+set, EAttribute mit Converter, Fast-Path ohne Converter). `AbstractPersistenceUnitConfigurator` +6 Tests (empty/ignored-only Maps, setEMFProperties Defaults, No-Override bei DDL_GENERATION/TARGET_DATABASE, null-Guard). Neu: `PersistenceUnitConfiguratorTest` 6 Tests für `createPersistenceContext`-Branches (PU-File-Pfad, mapping+name, ConfigurationException bei missing name/mappingFile/invalid URIs) — `createPersistenceContext` Visibility auf package-private. Neu: `EntityMappingPersistenceUnitConfiguratorTest` 2 Tests (null-Name → ConfigurationException, valid-Config delegiert an doActivate) mit Subklasse-Seam um EMF-Bootstrap zu umgehen. Annotation-Proxy-Helper für @interface-Stubs. Insgesamt 37 neue Tests, alle grün, Full-Build grün. | T3-01 bis T3-03 | L | ✅ Done |
 | AP-30 | **Cross-Resource-Referenzen:** Tests für JPA↔JPA und JPA↔XMI Cross-Resource-Refs | F4-04 | M | ❌ Offen |
 | AP-31 | **View-Unterstützung und Schema-Evolution** | F5-03 | XL | ❌ Offen |
 | AP-32 | **Batch Writing / Fetch-Optimierung:** (1) Batch-Writing (`eclipselink.jdbc.batch-writing=JDBC`, size=500) im OSM-Perf-Test konfiguriert und gemessen — bei in-memory H2 mit SINGLE_TABLE (435 Spalten) ist der Commit/Flush ~74 % der Zeit, Batch-Writing bringt ~6 %. `toManagedEntity()` mit 3 % kein Flaschenhals; Entity-Factory-Function wird pro `doSave()` einmal erstellt. (2) **Pagination in `doLoad()`**: `Options.OPTION_PAGE_SIZE` (Integer). Bei > 0 iteriert `JPAResourceImpl.doLoad()` per `setFirstResult`/`setMaxResults`, andernfalls Single-Query-Default. `Options.getPageSize()` akzeptiert Integer/Number/String. 3 neue Tests (Pagination mit 25/10, page-size=total, page-size=0 deaktiviert). (3) **`setShouldNewObjectsBeCached`**: `Options.OPTION_CACHE_NEW_OBJECTS` (Boolean). Bei `FALSE` wird nach `em.getTransaction().begin()` per `em.unwrap(UnitOfWork.class).setShouldNewObjectsBeCached(false)` das Caching neuer Objekte deaktiviert — Memory-Entlastung bei Bulk-Insert. 1 neuer Test. (4) **Batch-Writing als PU-Property**: typisierte OCD-Einträge `batchWriting` (String) + `batchSize` (int) in beiden PUConfigs (`PersistenceUnitConfigurator`, `EntityMappingPersistenceUnitConfigurator`). `AbstractPersistenceUnitConfigurator.createForwardedProperties()` mappt sie auf `PersistenceUnitProperties.BATCH_WRITING`/`BATCH_WRITING_SIZE`; `putIfAbsent` — explizite `fennec.jpa.ext.*`-Overrides gewinnen. 6 neue Unit-Tests. Insgesamt: 13 OptionsTest (neu) + 6 AbstractPersistenceUnitConfiguratorTest (neu) + 4 neue Non-OSGi-Tests in JPAResource. | F12-01, T8-01, F2-06 | M | ✅ Done |
@@ -530,14 +530,14 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 
 ### 4.3 Fortschritt
 
-**Gesamtstand: 38 von 44 Arbeitspaketen erledigt (86 %)**
+**Gesamtstand: 39 von 44 Arbeitspaketen erledigt (89 %)**
 
 | Priorität | Gesamt | ✅ Done | ⚠️ In Arbeit | ❌ Offen |
 |-----------|--------|---------|-------------|---------|
 | P1 | 9 | 9 | 0 | 0 |
 | P1b | 4 | 4 | 0 | 0 |
 | P2 | 13 | 13 | 0 | 0 |
-| P3 | 18 | 13 | 0 | 5 |
+| P3 | 18 | 14 | 0 | 4 |
 
 ### 4.4 Testübersicht
 
@@ -586,4 +586,5 @@ Das Projekt ist architektonisch ambitioniert und in den Kernbereichen solide umg
 **Welle 15 — Inheritance-Roundtrip + TPC/MappedSuperclass-Pipeline:** AP-43 → ✅ Done (SINGLE_TABLE + JOINED Roundtrip-Tests grün, TPC-Bugs aufgedeckt), AP-44 → ✅ Done (TPC und MappedSuperclass auf geteilter Pipeline vollständig implementiert)
 **Welle 16 — Cleanup:** AP-27 → ✅ Done (package-info + .licenserc.yaml auf m2m-Stil angeglichen)
 **Welle 17 — Fetch/Write-Tuning:** AP-32 → ✅ Done (Pagination in `doLoad`, cache-new-objects-Option in `doSave`, typisierte `batchWriting`/`batchSize`-OCD-Properties)
-**Welle 18 — Erweiterungen:** AP-24, AP-29, AP-30, AP-31, AP-38
+**Welle 18 — Unit-Test-Verbreiterung:** AP-29 → ✅ Done (37 neue Tests für JPAResourceImpl, EFeatureAccessor, AbstractPersistenceUnitConfigurator, PersistenceUnitConfigurator, EntityMappingPersistenceUnitConfigurator)
+**Welle 19 — Erweiterungen:** AP-24, AP-30, AP-31, AP-38

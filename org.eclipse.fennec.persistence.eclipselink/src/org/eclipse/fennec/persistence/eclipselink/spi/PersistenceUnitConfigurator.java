@@ -140,7 +140,7 @@ public class PersistenceUnitConfigurator extends AbstractPersistenceUnitConfigur
 				.properties(emfProperties);
 	}
 
-	private EPersistenceContextImpl createPersistenceContext(PUConfig config) throws ConfigurationException {
+	EPersistenceContextImpl createPersistenceContext(PUConfig config) throws ConfigurationException {
 		if (nonNull(config.persistenceUnitFile())) {
 			try {
 				PersistenceUnit pu = modelHelper.loadPersistenceUnit(config.persistenceUnitFile());
