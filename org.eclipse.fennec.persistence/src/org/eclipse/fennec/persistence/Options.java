@@ -52,6 +52,77 @@ public interface Options {
 	String OPTION_TABLE_NAME = "TABLE_NAME";
 
 	/**
+	 * Page size for paginated loads. If set to a positive {@link Integer},
+	 * the resource loads entities in pages via {@code setFirstResult}/{@code setMaxResults}
+	 * instead of a single query returning the full result set.
+	 * Zero or a missing value disables pagination (default: load all).
+	 *
+	 * <pre>{@code
+	 * resourceSet.getLoadOptions().put(Options.OPTION_PAGE_SIZE, 500);
+	 * }</pre>
+	 *
+	 * Value type: {@link Integer}
+	 */
+	String OPTION_PAGE_SIZE = "fennec.jpa.page-size";
+
+	/**
+	 * If set to {@link Boolean#FALSE}, newly persisted objects are not registered in
+	 * EclipseLink's shared identity map at commit time. This reduces memory pressure
+	 * on bulk-insert workloads where the inserted objects are not needed in the
+	 * second-level cache afterwards. Applies to {@code doSave()} only.
+	 *
+	 * <pre>{@code
+	 * resourceSet.getSaveOptions().put(Options.OPTION_CACHE_NEW_OBJECTS, Boolean.FALSE);
+	 * }</pre>
+	 *
+	 * Value type: {@link Boolean}
+	 */
+	String OPTION_CACHE_NEW_OBJECTS = "fennec.jpa.cache-new-objects";
+
+	/**
+	 * Returns the cache-new-objects setting from the options, or {@code null} if unset.
+	 */
+	static Boolean getCacheNewObjects(Map<?, ?> options) {
+		if (options == null) {
+			return null;
+		}
+		Object value = options.get(OPTION_CACHE_NEW_OBJECTS);
+		if (value instanceof Boolean b) {
+			return b;
+		}
+		if (value instanceof String s) {
+			return Boolean.parseBoolean(s);
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the page size from the options, or {@code 0} if unset/invalid.
+	 */
+	static int getPageSize(Map<?, ?> options) {
+		if (options == null) {
+			return 0;
+		}
+		Object value = options.get(OPTION_PAGE_SIZE);
+		if (value instanceof Integer i) {
+			return i > 0 ? i : 0;
+		}
+		if (value instanceof Number n) {
+			int i = n.intValue();
+			return i > 0 ? i : 0;
+		}
+		if (value instanceof String s) {
+			try {
+				int i = Integer.parseInt(s);
+				return i > 0 ? i : 0;
+			} catch (NumberFormatException e) {
+				return 0;
+			}
+		}
+		return 0;
+	}
+
+	/**
 	 * Returns the {@link EClass} filter from the options, or {@code null}.
 	 * @throws IllegalStateException if the value is not an {@link EClass}
 	 */

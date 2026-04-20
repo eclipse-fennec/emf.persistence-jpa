@@ -18,7 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
@@ -29,6 +31,7 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
@@ -160,6 +163,101 @@ class NonOsgiJPAResourceIntegrationTest extends NonOsgiPersistenceTestBase {
 			EObject found = em.find(personDescriptor.getJavaClass(), id);
 			assertNotNull(found);
 			assertEquals("SaveTest1_Updated", found.eGet(personEClass.getEStructuralFeature("stringDefault")));
+		}
+	}
+
+	@Test
+	void testLoadPaginated() throws Exception {
+		ClassDescriptor personDescriptor = serverSession.getDescriptorForAlias(personEClass.getName());
+		EStructuralFeature nameFeature = personEClass.getEStructuralFeature("stringDefault");
+
+		int totalCount = 25;
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			for (int i = 0; i < totalCount; i++) {
+				EObject person = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
+				person.eSet(nameFeature, "Paginated_" + i);
+				em.persist(person);
+			}
+			em.getTransaction().commit();
+		}
+
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://person/Person"), emf)) {
+			Map<Object, Object> options = new HashMap<>();
+			options.put(Options.OPTION_PAGE_SIZE, 10);
+			resource.load(options);
+			assertEquals(totalCount, resource.getContents().size(),
+					"Paginated load should return all entities in total");
+		}
+	}
+
+	@Test
+	void testLoadPaginatedPageSizeEqualsTotal() throws Exception {
+		ClassDescriptor personDescriptor = serverSession.getDescriptorForAlias(personEClass.getName());
+		EStructuralFeature nameFeature = personEClass.getEStructuralFeature("stringDefault");
+
+		int totalCount = 10;
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			for (int i = 0; i < totalCount; i++) {
+				EObject person = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
+				person.eSet(nameFeature, "Exact_" + i);
+				em.persist(person);
+			}
+			em.getTransaction().commit();
+		}
+
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://person/Person"), emf)) {
+			Map<Object, Object> options = new HashMap<>();
+			options.put(Options.OPTION_PAGE_SIZE, totalCount);
+			resource.load(options);
+			assertEquals(totalCount, resource.getContents().size());
+		}
+	}
+
+	@Test
+	void testLoadPaginationZeroDisablesPagination() throws Exception {
+		ClassDescriptor personDescriptor = serverSession.getDescriptorForAlias(personEClass.getName());
+		EStructuralFeature nameFeature = personEClass.getEStructuralFeature("stringDefault");
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			for (int i = 0; i < 5; i++) {
+				EObject person = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
+				person.eSet(nameFeature, "NoPaging_" + i);
+				em.persist(person);
+			}
+			em.getTransaction().commit();
+		}
+
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://person/Person"), emf)) {
+			Map<Object, Object> options = new HashMap<>();
+			options.put(Options.OPTION_PAGE_SIZE, 0);
+			resource.load(options);
+			assertEquals(5, resource.getContents().size());
+		}
+	}
+
+	@Test
+	void testSaveWithCacheNewObjectsFalse() throws Exception {
+		ClassDescriptor personDescriptor = serverSession.getDescriptorForAlias(personEClass.getName());
+		EStructuralFeature nameFeature = personEClass.getEStructuralFeature("stringDefault");
+
+		EObject person = (EObject) personDescriptor.getInstantiationPolicy().buildNewInstance();
+		person.eSet(nameFeature, "CacheOff");
+
+		try (JPAResourceImpl resource = new JPAResourceImpl(URI.createURI("jpa://person/Person"), emf)) {
+			resource.getContents().add(person);
+			Map<Object, Object> options = new HashMap<>();
+			options.put(Options.OPTION_CACHE_NEW_OBJECTS, Boolean.FALSE);
+			resource.save(options);
+		}
+
+		try (EntityManager em = emf.createEntityManager()) {
+			long count = em.createQuery(
+					"SELECT COUNT(e) FROM " + personDescriptor.getAlias() + " e", Long.class)
+					.getSingleResult();
+			assertEquals(1L, count, "Entity should still be persisted when cache-new-objects=false");
 		}
 	}
 

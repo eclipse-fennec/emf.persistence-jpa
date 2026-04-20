@@ -84,6 +84,16 @@ public class PersistenceUnitConfigurator extends AbstractPersistenceUnitConfigur
 
 		@AttributeDefinition(name = "Persistence unit name", description = "Only needed, if no persistence unit file is given")
 		String persistenceUnitName();
+
+		@AttributeDefinition(name = "JDBC batch writing mode",
+				description = "EclipseLink eclipselink.jdbc.batch-writing value (e.g. JDBC, BUFFERED, NONE). Empty = not set.",
+				required = false)
+		String batchWriting() default "";
+
+		@AttributeDefinition(name = "JDBC batch size",
+				description = "EclipseLink eclipselink.jdbc.batch-writing.size value. 0 = not set.",
+				required = false)
+		int batchSize() default 0;
 	}
 
 	@Activate
