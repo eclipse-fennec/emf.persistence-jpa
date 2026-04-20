@@ -26,12 +26,15 @@ import java.util.UUID;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
@@ -179,6 +182,55 @@ public abstract class NonOsgiPersistenceTestBase {
 	 */
 	protected void configureMapper(EntityMapper mapper) {
 		// no-op by default
+	}
+
+	/**
+	 * Builds a ResourceSet wired with the {@link JPAResourceFactory} for this test's EMF
+	 * and an XMI factory for file:-URIs. Lazy non-containment proxies resolve via this RS.
+	 */
+	protected ResourceSet newJpaResourceSet() {
+		ResourceSet resourceSet = new ResourceSetImpl();
+		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
+				.put("jpa", new JPAResourceFactory(emf));
+		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
+				.put("*", new XMIResourceFactoryImpl());
+		return resourceSet;
+	}
+
+	/**
+	 * Loads the {@code jpa://puName/entityName} resource and returns the first EObject
+	 * whose EMF id equals the string form of {@code id}. A fresh {@link ResourceSet} is
+	 * created per call — use {@link #findViaResource(ResourceSet, String, Object)} to
+	 * share a ResourceSet across lookups (needed for cross-resource identity).
+	 */
+	protected EObject findViaResource(String entityName, Object id) {
+		return findViaResource(newJpaResourceSet(), entityName, id);
+	}
+
+	/**
+	 * Loads the resource for {@code entityName} in the supplied {@link ResourceSet}
+	 * (or re-uses it if already loaded) and returns the EObject with the given id.
+	 */
+	protected EObject findViaResource(ResourceSet resourceSet, String entityName, Object id) {
+		URI uri = URI.createURI("jpa://" + persistenceUnitName + "/" + entityName);
+		Resource resource = resourceSet.getResource(uri, false);
+		if (resource == null) {
+			resource = resourceSet.createResource(uri);
+		}
+		if (!resource.isLoaded()) {
+			try {
+				resource.load(null);
+			} catch (Exception e) {
+				throw new IllegalStateException("Failed to load resource for " + entityName, e);
+			}
+		}
+		String expected = String.valueOf(id);
+		for (EObject eo : resource.getContents()) {
+			if (expected.equals(EcoreUtil.getID(eo))) {
+				return eo;
+			}
+		}
+		return null;
 	}
 
 	@AfterEach

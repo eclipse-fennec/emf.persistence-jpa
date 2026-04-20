@@ -17,7 +17,6 @@ import static java.util.Objects.isNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -25,19 +24,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EReference;
-import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.engine.PersistenceEngine;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
-import org.eclipse.persistence.exceptions.DescriptorException;
 import org.eclipse.persistence.jpa.JpaHelper;
 import org.eclipse.persistence.sessions.UnitOfWork;
 import org.eclipse.persistence.sessions.server.Server;
@@ -108,118 +102,6 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				addToContents(query.getResultList());
 			}
 		}
-		proxifyNonContainmentRefs();
-	}
-
-	/**
-	 * Replaces every non-containment reference value on loaded entities with an
-	 * EclipseLink-managed dynamic proxy whose {@code eProxyURI} points at the target's
-	 * JPA resource. Access via {@code eGet} then routes through
-	 * {@code ResourceSet.getEObject} → {@code JPAResourceImpl.getEObject} → {@code em.find}.
-	 * Only applies to entities loaded through this Resource — {@code em.find} consumers
-	 * still get fully resolved objects.
-	 */
-	private void proxifyNonContainmentRefs() {
-		Server server = getServer();
-		if (server == null) {
-			return;
-		}
-		URI puBaseURI = puBaseURI();
-		if (puBaseURI == null) {
-			return;
-		}
-		for (EObject eo : getContents()) {
-			proxifyRefs(eo, server, puBaseURI);
-		}
-	}
-
-	private URI puBaseURI() {
-		URI uri = getURI();
-		if (uri == null || uri.segmentCount() == 0) {
-			return null;
-		}
-		// jpa://puName/EntityName → jpa://puName/ (strip last segment, keep trailing slash)
-		return uri.trimSegments(1).appendSegment("");
-	}
-
-	private void proxifyRefs(EObject eo, Server server, URI puBaseURI) {
-		for (EReference ref : eo.eClass().getEAllReferences()) {
-			if (ref.isContainment() || ref.isDerived() || ref.isTransient() || !ref.isChangeable()) {
-				continue;
-			}
-			Object value = eo.eGet(ref, false);
-			if (value == null) {
-				continue;
-			}
-			if (ref.isMany()) {
-				@SuppressWarnings("unchecked")
-				List<Object> list = (List<Object>) value;
-				if (list.isEmpty()) {
-					continue;
-				}
-				List<EObject> proxies = new ArrayList<>(list.size());
-				boolean changed = false;
-				for (Object item : list) {
-					if (item instanceof EObject target && !target.eIsProxy()) {
-						EObject proxy = createProxy(target, ref, server, puBaseURI);
-						if (proxy != null) {
-							proxies.add(proxy);
-							changed = true;
-							continue;
-						}
-					}
-					proxies.add((EObject) item);
-				}
-				if (changed) {
-					eo.eSet(ref, proxies);
-				}
-			} else if (value instanceof EObject target && !target.eIsProxy()) {
-				EObject proxy = createProxy(target, ref, server, puBaseURI);
-				if (proxy != null) {
-					eo.eSet(ref, proxy);
-				}
-			}
-		}
-	}
-
-	private EObject createProxy(EObject target, EReference ref, Server server, URI puBaseURI) {
-		String targetEClassName = target.eClass().getName();
-		EAttribute idAttr = target.eClass().getEIDAttribute();
-		String id = EcoreUtil.getID(target);
-		if (idAttr == null || id == null) {
-			return null;
-		}
-		ClassDescriptor targetDescriptor = server.getDescriptorForAlias(targetEClassName);
-		if (targetDescriptor == null) {
-			return null;
-		}
-		Object instance;
-		try {
-			instance = targetDescriptor.getInstantiationPolicy().buildNewInstance();
-		} catch (DescriptorException e) {
-			LOG.log(Level.FINE, "Unable to build proxy instance for " + targetEClassName, e);
-			return null;
-		}
-		if (!(instance instanceof EObject proxy)) {
-			return null;
-		}
-		// Preserve id + attribute content so proxy-less consumers can still read
-		// scalar attributes without triggering resolution.
-		proxy.eSet(idAttr, target.eGet(idAttr));
-		for (EAttribute attr : target.eClass().getEAllAttributes()) {
-			if (attr == idAttr || !attr.isChangeable() || attr.isDerived() || attr.isTransient()) {
-				continue;
-			}
-			Object attrValue = target.eGet(attr);
-			if (attrValue != null) {
-				proxy.eSet(attr, attrValue);
-			}
-		}
-		URI proxyURI = puBaseURI
-				.appendSegment(targetEClassName)
-				.appendFragment("//" + ref.getName() + "/" + idAttr.getName() + "/" + id);
-		((InternalEObject) proxy).eSetProxyURI(proxyURI);
-		return proxy;
 	}
 
 	private void loadPaginated(TypedQuery<?> query, int pageSize) {

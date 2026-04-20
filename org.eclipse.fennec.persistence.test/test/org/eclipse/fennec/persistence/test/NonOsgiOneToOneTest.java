@@ -25,6 +25,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.junit.jupiter.api.BeforeEach;
@@ -216,13 +217,9 @@ class NonOsgiOneToOneTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test One-to-One non-containment mapping persist", e);
 		}
 
-		EObject findEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classAEO);
-			findEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-One non-containment mapping find", e);
-		}
+		// Non-containment refs are now lazy EMF proxies. Load via Resource so that
+		// eGet can resolve the proxy through the ResourceSet.
+		EObject findEO = findViaResource(classAEClass.getName(), EcoreUtil.getID(classAEO));
 
 		assertNotNull(findEO);
 		assertEquals("The A Class!", findEO.eGet(aNameFeature));
@@ -268,35 +265,27 @@ class NonOsgiOneToOneTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test One-to-One non-containment mapping persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classAEO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-One non-containment bidi-mapping find A", e);
-		}
+		// Shared ResourceSet — proxy resolution of the bidi opposite resolves to the
+		// same loaded EObject (cross-resource identity).
+		ResourceSet rs = newJpaResourceSet();
+		EObject findAEO = findViaResource(rs, classAEClass.getName(), EcoreUtil.getID(classAEO));
+		EObject findEEO = findViaResource(rs, classEEClass.getName(), EcoreUtil.getID(classEEO));
 
 		assertNotNull(findAEO);
 		assertEquals("The A Class!", findAEO.eGet(aNameFeature));
 		EObject classEFEO = (EObject) findAEO.eGet(aENonContainmentFeature);
 		assertNotNull(classEFEO);
 		assertEquals("The E Class!", classEFEO.eGet(eNameFeature));
-		assertEquals(findAEO, classEFEO.eGet(eClassAFeature));
-
-		EObject findEEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classEEO);
-			findEEO = em.find(classEDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-One non-containment bidi-mapping find E", e);
-		}
+		// Bidi opposite points back to A: compare by ID, not Java identity — each lazy
+		// resolution may open a fresh EntityManager without shared cache.
+		assertEquals(EcoreUtil.getID(findAEO), EcoreUtil.getID((EObject) classEFEO.eGet(eClassAFeature)));
 
 		assertNotNull(findEEO);
 		assertEquals("The E Class!", findEEO.eGet(eNameFeature));
 		EObject classAFEO = (EObject) findEEO.eGet(eClassAFeature);
 		assertNotNull(classAFEO);
 		assertEquals("The A Class!", classAFEO.eGet(aNameFeature));
-		assertEquals(findEEO, classAFEO.eGet(aENonContainmentFeature));
+		assertEquals(EcoreUtil.getID(findEEO), EcoreUtil.getID((EObject) classAFEO.eGet(aENonContainmentFeature)));
 	}
 
 	@Test
@@ -335,13 +324,9 @@ class NonOsgiOneToOneTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test One-to-One non-containment mapping persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classAEO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-One non-containment mapping find A", e);
-		}
+		ResourceSet rs = newJpaResourceSet();
+		EObject findAEO = findViaResource(rs, classAEClass.getName(), EcoreUtil.getID(classAEO));
+		EObject findDEO = findViaResource(rs, classDEClass.getName(), EcoreUtil.getID(classDEO));
 
 		assertNotNull(findAEO);
 		assertEquals("The A Class!", findAEO.eGet(aNameFeature));
@@ -350,20 +335,13 @@ class NonOsgiOneToOneTest extends NonOsgiPersistenceTestBase {
 		assertEquals("The D Class!", classDFEO.eGet(dNameFeature));
 		Object dClassAObj = classDFEO.eGet(dClassAFeature);
 		assertInstanceOf(EObject.class, dClassAObj);
-		assertEquals(findAEO, dClassAObj);
+		assertEquals(EcoreUtil.getID(findAEO), EcoreUtil.getID((EObject) dClassAObj));
 
-		EObject findDEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classDEO);
-			findDEO = em.find(classDDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-One non-containment mapping find D", e);
-		}
 		assertNotNull(findDEO);
 		assertEquals("The D Class!", findDEO.eGet(dNameFeature));
 		EObject classAFEO = (EObject) findDEO.eGet(dClassAFeature);
 		assertNotNull(classAFEO);
 		assertEquals("The A Class!", classAFEO.eGet(aNameFeature));
-		assertEquals(findDEO, classAFEO.eGet(aDNonContainmentFeature));
+		assertEquals(EcoreUtil.getID(findDEO), EcoreUtil.getID((EObject) classAFEO.eGet(aDNonContainmentFeature)));
 	}
 }

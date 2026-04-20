@@ -30,6 +30,10 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.queries.ReadAllQuery;
+import org.eclipse.persistence.queries.ReadObjectQuery;
+import org.eclipse.persistence.sessions.SessionEvent;
+import org.eclipse.persistence.sessions.SessionEventAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -326,6 +330,71 @@ class NonOsgiCrossResourceRefTest extends NonOsgiPersistenceTestBase {
 		assertThat(resolved.eIsProxy()).as("proxy should be resolved after access").isFalse();
 		assertThat(resolved.eClass()).isEqualTo(classAEClass);
 		assertThat(resolved.eGet(classAEClass.getEStructuralFeature("name"))).isEqualTo("A-in-JPA");
+	}
+
+	@Test
+	void testLazyNonContainmentDefersTargetQuery() throws Exception {
+		ClassDescriptor aDescriptor = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor dDescriptor = serverSession.getDescriptorForAlias(classDEClass.getName());
+
+		EObject a = (EObject) aDescriptor.getInstantiationPolicy().buildNewInstance();
+		EObject d = (EObject) dDescriptor.getInstantiationPolicy().buildNewInstance();
+		a.eSet(classAEClass.getEStructuralFeature("name"), "A-lazy");
+		d.eSet(classDEClass.getEStructuralFeature("name"), "D-lazy");
+		a.eSet(classAEClass.getEStructuralFeature("dNonContainment"), d);
+
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			em.persist(d);
+			em.persist(a);
+			em.getTransaction().commit();
+		}
+		String aId = EcoreUtil.getID(a);
+		emf.getCache().evictAll();
+
+		// Count EclipseLink ReadObject/ReadAll queries. The lazy proxy mechanism must
+		// defer the target-side SELECT until eGet triggers resolution.
+		int[] queryCount = { 0 };
+		SessionEventAdapter counter = new SessionEventAdapter() {
+			@Override
+			public void postExecuteQuery(SessionEvent event) {
+				if (event.getQuery() instanceof ReadObjectQuery
+						|| event.getQuery() instanceof ReadAllQuery) {
+					queryCount[0]++;
+				}
+			}
+		};
+		serverSession.getEventManager().addListener(counter);
+		try {
+			ResourceSet rs = newMixedResourceSet();
+			Resource aResource = rs.createResource(URI.createURI("jpa://xref/ClassAO2O"));
+			rs.createResource(URI.createURI("jpa://xref/ClassDO2O"));
+
+			aResource.load(null);
+			int afterLoad = queryCount[0];
+			assertThat(afterLoad).as("only the ClassAO2O query should have run during load").isEqualTo(1);
+
+			EObject aLoaded = findById(aResource, aId);
+			assertThat(aLoaded).isNotNull();
+
+			EStructuralFeature dNonContainmentFeature = classAEClass.getEStructuralFeature("dNonContainment");
+			EObject resolved = (EObject) aLoaded.eGet(dNonContainmentFeature);
+			assertThat(resolved).isNotNull();
+			assertThat(resolved.eIsProxy()).isFalse();
+			assertThat(resolved.eGet(classDEClass.getEStructuralFeature("name"))).isEqualTo("D-lazy");
+
+			int afterResolve = queryCount[0];
+			assertThat(afterResolve - afterLoad)
+					.as("target query fires only after eGet (lazy), not during load")
+					.isGreaterThanOrEqualTo(1);
+
+			// Second access must NOT issue another query — proxy is resolved.
+			aLoaded.eGet(dNonContainmentFeature);
+			assertThat(queryCount[0]).as("second eGet reuses the resolved object")
+					.isEqualTo(afterResolve);
+		} finally {
+			serverSession.getEventManager().removeListener(counter);
+		}
 	}
 
 	/**

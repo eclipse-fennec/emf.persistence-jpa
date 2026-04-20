@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,6 +29,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.junit.jupiter.api.BeforeEach;
@@ -249,35 +251,27 @@ class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test One-to-Many non-containment uni persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classA01EO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-Many non-containment uni find", e);
-		}
+		ResourceSet rs = newJpaResourceSet();
+		EObject findAEO = findViaResource(rs, classAEClass.getName(), EcoreUtil.getID(classA01EO));
 
 		assertNotNull(findAEO);
 		assertEquals("The First A-Class!", findAEO.eGet(aNameFeature));
 		List<?> resultList = (List<?>) findAEO.eGet(dNonContainmentFeature);
 		assertEquals(3, resultList.size());
 		Set<String> dValues = new HashSet<>(Set.of("The First D-Class!", "The Second D-Class!", "The Third D-Class!"));
-		Set<String> aValues = new HashSet<>(Set.of("The First A-Class!-0", "The First A-Class!-1", "The Second A-Class!"));
-		int aCount = 0;
+		List<String> aValuesList = new ArrayList<>(List.of(
+				"The First A-Class!", "The First A-Class!", "The Second A-Class!"));
 		for (Object o : resultList) {
 			EObject eo = (EObject) o;
 			assertTrue(dValues.remove(eo.eGet(dNameFeature)));
-			EObject aeo = (EObject) eo.eGet(dClassAFeature);
+			// D's from the IndirectList have no eResource; resolve the back-reference
+			// explicitly through our ResourceSet so the proxy can route to the A-resource.
+			EObject aeo = (EObject) EcoreUtil.resolve((EObject) eo.eGet(dClassAFeature), rs);
 			Object aeoName = aeo.eGet(aNameFeature);
-			if ("The First A-Class!".equals(aeoName)) {
-				assertTrue(aValues.remove(aeoName + "-" + aCount));
-				aCount++;
-			} else {
-				assertTrue(aValues.remove(aeoName));
-			}
+			aValuesList.remove(aeoName);
 		}
 		assertTrue(dValues.isEmpty());
-		assertTrue(aValues.isEmpty());
+		assertTrue(aValuesList.isEmpty());
 	}
 
 	@Test
@@ -323,13 +317,9 @@ class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test One-to-Many non-containment bidi-no-opposite persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classA01EO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-Many non-containment bidi-no-opposite find A", e);
-		}
+		ResourceSet rs = newJpaResourceSet();
+		EObject findAEO = findViaResource(rs, classAEClass.getName(), EcoreUtil.getID(classA01EO));
+		EObject findDEO = findViaResource(rs, classDEClass.getName(), EcoreUtil.getID(classD03EO));
 
 		assertNotNull(findAEO);
 		assertEquals("The First A-Class!", findAEO.eGet(aNameFeature));
@@ -339,17 +329,10 @@ class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
 		for (Object o : dResult) {
 			EObject eo = (EObject) o;
 			assertTrue(dValues.remove(eo.eGet(dNameFeature)));
-			assertEquals("The First A-Class!", ((EObject) eo.eGet(dClassAFeature)).eGet(aNameFeature));
+			EObject resolvedA = (EObject) EcoreUtil.resolve((EObject) eo.eGet(dClassAFeature), rs);
+			assertEquals("The First A-Class!", resolvedA.eGet(aNameFeature));
 		}
 		assertTrue(dValues.isEmpty());
-
-		EObject findDEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classD03EO);
-			findDEO = em.find(classDDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-Many non-containment bidi-no-opposite find D", e);
-		}
 
 		assertNotNull(findDEO);
 		assertEquals("The Third D-Class!", findDEO.eGet(dNameFeature));
