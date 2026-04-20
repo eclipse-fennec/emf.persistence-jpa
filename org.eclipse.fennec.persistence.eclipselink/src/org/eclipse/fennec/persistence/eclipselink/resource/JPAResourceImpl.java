@@ -26,16 +26,19 @@ import java.util.logging.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
+import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.engine.PersistenceEngine;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
+import org.eclipse.persistence.sessions.UnitOfWork;
 import org.eclipse.persistence.sessions.server.Server;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.TypedQuery;
 
 /**
  * EMF Resource backed by JPA/EntityManager.
@@ -89,14 +92,32 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (!getContents().isEmpty()) {
 			getContents().clear();
 		}
+		int pageSize = Options.getPageSize(options);
 		try (EntityManager em = emf.createEntityManager()) {
-			List<?> results = em.createQuery(
-					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass())
-					.getResultList();
-			for (Object obj : results) {
-				if (obj instanceof EObject eo) {
-					getContents().add(eo);
-				}
+			TypedQuery<?> query = em.createQuery(
+					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass());
+			if (pageSize > 0) {
+				loadPaginated(query, pageSize);
+			} else {
+				addToContents(query.getResultList());
+			}
+		}
+	}
+
+	private void loadPaginated(TypedQuery<?> query, int pageSize) {
+		int offset = 0;
+		List<?> page;
+		do {
+			page = query.setFirstResult(offset).setMaxResults(pageSize).getResultList();
+			addToContents(page);
+			offset += page.size();
+		} while (page.size() == pageSize);
+	}
+
+	private void addToContents(List<?> results) {
+		for (Object obj : results) {
+			if (obj instanceof EObject eo) {
+				getContents().add(eo);
 			}
 		}
 	}
@@ -118,6 +139,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				: null;
 		try (EntityManager em = emf.createEntityManager()) {
 			em.getTransaction().begin();
+			applyCacheNewObjectsOption(em, options);
 			try {
 				for (EObject eo : getContents()) {
 					EObject managed = server != null ? toManagedEntity(eo, server, entityFactory) : eo;
@@ -130,6 +152,21 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
+		}
+	}
+
+	private void applyCacheNewObjectsOption(EntityManager em, Map<?, ?> options) {
+		Boolean cacheNew = Options.getCacheNewObjects(options);
+		if (cacheNew == null) {
+			return;
+		}
+		try {
+			UnitOfWork uow = em.unwrap(UnitOfWork.class);
+			if (uow != null) {
+				uow.setShouldNewObjectsBeCached(cacheNew);
+			}
+		} catch (RuntimeException e) {
+			LOG.log(Level.FINE, "Unable to unwrap UnitOfWork to apply cache-new-objects option", e);
 		}
 	}
 
