@@ -12,9 +12,12 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.isNull;
+
 import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Date;
 
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
@@ -38,7 +41,7 @@ public class ZonedDateTimeConverter implements TypeConverter {
 
     @Override
     public Object convertValueToEMF(EClassifier eDataType, Object value) {
-        if (value == null) {
+        if (isNull(value)) {
             return null;
         }
         
@@ -47,7 +50,7 @@ public class ZonedDateTimeConverter implements TypeConverter {
             return timestamp.toInstant().atZone(ZoneId.systemDefault());
         }
         
-        if (value instanceof java.util.Date utilDate) {
+        if (value instanceof Date utilDate) {
             return utilDate.toInstant().atZone(ZoneId.systemDefault());
         }
         
@@ -60,7 +63,7 @@ public class ZonedDateTimeConverter implements TypeConverter {
 
     @Override
     public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-        if (emfValue == null) {
+        if (isNull(emfValue)) {
             return null;
         }
         

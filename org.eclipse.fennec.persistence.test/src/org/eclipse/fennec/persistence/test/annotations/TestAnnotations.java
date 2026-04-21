@@ -25,7 +25,7 @@ import org.osgi.test.common.annotation.config.WithFactoryConfiguration;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 20.12.2024
  */
 public class TestAnnotations {

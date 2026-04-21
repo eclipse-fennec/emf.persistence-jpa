@@ -12,6 +12,9 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 import java.lang.reflect.Array;
 import java.util.logging.Logger;
 
@@ -38,13 +41,13 @@ public class PrimitiveArrayConverter implements TypeConverter {
 
     @Override
     public Object convertValueToEMF(EClassifier eDataType, Object databaseValue) {
-        if (databaseValue == null) {
+        if (isNull(databaseValue)) {
             return null;
         }
         
         if (databaseValue instanceof Object[] objArray) {
             String className = eDataType.getInstanceClassName();
-            if (className == null) {
+            if (isNull(className)) {
                 logger.warning("EDataType has null instance class name. Cannot convert to primitive array.");
                 return databaseValue;
             }
@@ -57,7 +60,7 @@ public class PrimitiveArrayConverter implements TypeConverter {
 
     @Override
     public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-        if (emfValue == null) {
+        if (isNull(emfValue)) {
             return null;
         }
         
@@ -72,7 +75,7 @@ public class PrimitiveArrayConverter implements TypeConverter {
     public boolean isConverterForType(EClassifier eDataType) {
         if (eDataType instanceof EDataType dataType) {
             String className = dataType.getInstanceClassName();
-            return className != null && isPrimitiveArrayType(className);
+            return nonNull(className) && isPrimitiveArrayType(className);
         }
         return false;
     }

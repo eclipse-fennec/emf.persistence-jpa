@@ -12,6 +12,9 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +22,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -27,8 +32,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -98,7 +104,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     @Override
     public Object convertValueToEMF(EClassifier eDataType, Object value) {
         InternalConverter converter = findConverter(eDataType);
-        if (converter != null) {
+        if (nonNull(converter)) {
             return converter.convertValueToEMF(eDataType, value);
         }
         return value;
@@ -107,7 +113,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     @Override
     public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
         InternalConverter converter = findConverter(eDataType);
-        if (converter != null) {
+        if (nonNull(converter)) {
             return converter.convertEMFToValue(eDataType, emfValue);
         }
         return emfValue;
@@ -115,7 +121,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
     @Override
     public boolean isConverterForType(EClassifier eDataType) {
-        return findConverter(eDataType) != null;
+        return nonNull(findConverter(eDataType));
     }
 
     private InternalConverter findConverter(EClassifier eDataType) {
@@ -124,12 +130,12 @@ public class ComprehensiveTypeConverter implements TypeConverter {
             
             // Direct lookup
             InternalConverter converter = converters.get(instanceTypeName);
-            if (converter != null) {
+            if (nonNull(converter)) {
                 return converter;
             }
             
             // Array type patterns
-            if (instanceTypeName != null) {
+            if (nonNull(instanceTypeName)) {
                 if (instanceTypeName.endsWith("[]")) {
                     if (isPrimitiveArrayType(instanceTypeName)) {
                         return converters.get("primitiveArray");
@@ -169,7 +175,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class LocalDateInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof Date sqlDate) return sqlDate.toLocalDate();
             if (value instanceof java.util.Date utilDate) return new Date(utilDate.getTime()).toLocalDate();
             if (value instanceof String dateStr) return LocalDate.parse(dateStr);
@@ -178,7 +184,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof LocalDate localDate) return Date.valueOf(localDate);
             return emfValue;
         }
@@ -187,7 +193,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class LocalDateTimeInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof Timestamp timestamp) return timestamp.toLocalDateTime();
             if (value instanceof java.util.Date utilDate) return new Timestamp(utilDate.getTime()).toLocalDateTime();
             if (value instanceof String dateTimeStr) return LocalDateTime.parse(dateTimeStr);
@@ -196,7 +202,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof LocalDateTime localDateTime) return Timestamp.valueOf(localDateTime);
             return emfValue;
         }
@@ -205,7 +211,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class LocalTimeInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof Time sqlTime) return sqlTime.toLocalTime();
             if (value instanceof java.util.Date utilDate) return new Time(utilDate.getTime()).toLocalTime();
             if (value instanceof String timeStr) return LocalTime.parse(timeStr);
@@ -214,7 +220,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof LocalTime localTime) return Time.valueOf(localTime);
             return emfValue;
         }
@@ -223,7 +229,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class InstantInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof Timestamp timestamp) return timestamp.toInstant();
             if (value instanceof java.util.Date utilDate) return utilDate.toInstant();
             if (value instanceof Date sqlDate) return sqlDate.toInstant();
@@ -234,7 +240,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof Instant instant) return Timestamp.from(instant);
             return emfValue;
         }
@@ -243,7 +249,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class ZonedDateTimeInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             // ISO-8601 string preserves timezone information (preferred path)
             if (value instanceof String dateTimeStr) return ZonedDateTime.parse(dateTimeStr);
             // Timestamp/Date have no timezone — use UTC as convention
@@ -254,7 +260,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             // Store as ISO-8601 string to preserve timezone information
             if (emfValue instanceof ZonedDateTime zonedDateTime) return zonedDateTime.toString();
             return emfValue;
@@ -264,7 +270,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class DurationInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof Long millis) return Duration.ofMillis(millis);
             if (value instanceof Integer millis) return Duration.ofMillis(millis.longValue());
             if (value instanceof String durationStr) return Duration.parse(durationStr);
@@ -273,7 +279,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof Duration duration) return duration.toMillis();
             return emfValue;
         }
@@ -282,7 +288,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class UUIDInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof String uuidStr) return UUID.fromString(uuidStr);
             if (value instanceof UUID) return value;
             return value;
@@ -290,7 +296,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof UUID uuid) return uuid.toString();
             return emfValue;
         }
@@ -299,7 +305,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class BigDecimalInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof BigDecimal) return value;
             if (value instanceof Number number) return new BigDecimal(number.toString());
             if (value instanceof String numberStr) return new BigDecimal(numberStr);
@@ -308,7 +314,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             // Pass BigDecimal through natively — JDBC drivers support BigDecimal directly
             if (emfValue instanceof BigDecimal) return emfValue;
             return emfValue;
@@ -318,7 +324,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class BigIntegerInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof BigInteger) return value;
             if (value instanceof Number number) return BigInteger.valueOf(number.longValue());
             if (value instanceof String numberStr) return new BigInteger(numberStr);
@@ -327,7 +333,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             // Pass BigInteger through natively — avoid truncation via intValue()
             if (emfValue instanceof BigInteger) return emfValue;
             return emfValue;
@@ -337,16 +343,16 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class OffsetDateTimeInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof String dateTimeStr) return OffsetDateTime.parse(dateTimeStr);
-            if (value instanceof Timestamp timestamp) return timestamp.toInstant().atOffset(java.time.ZoneOffset.UTC);
-            if (value instanceof java.util.Date utilDate) return utilDate.toInstant().atOffset(java.time.ZoneOffset.UTC);
+            if (value instanceof Timestamp timestamp) return timestamp.toInstant().atOffset(ZoneOffset.UTC);
+            if (value instanceof java.util.Date utilDate) return utilDate.toInstant().atOffset(ZoneOffset.UTC);
             return value;
         }
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof OffsetDateTime offsetDateTime) return offsetDateTime.toString();
             return emfValue;
         }
@@ -355,14 +361,14 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class URIInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof String uriStr) return java.net.URI.create(uriStr);
             return value;
         }
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             if (emfValue instanceof java.net.URI uri) return uri.toString();
             return emfValue;
         }
@@ -371,11 +377,11 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class URLInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             if (value instanceof String urlStr) {
                 try {
-                    return new java.net.URL(urlStr);
-                } catch (java.net.MalformedURLException e) {
+                    return new URL(urlStr);
+                } catch (MalformedURLException e) {
                     logger.log(Level.WARNING, "Malformed URL: " + urlStr, e);
                     return null;
                 }
@@ -385,8 +391,8 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
-            if (emfValue instanceof java.net.URL url) return url.toString();
+            if (isNull(emfValue)) return null;
+            if (emfValue instanceof URL url) return url.toString();
             return emfValue;
         }
     }
@@ -416,7 +422,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
             if (value instanceof Object[] objArray) {
                 String instanceClassName = eDataType.getInstanceClassName();
-                if (instanceClassName == null) {
+                if (isNull(instanceClassName)) {
                     logger.warning("EDataType has null instance class name. Not supported by array converter!");
                     return null;
                 }
@@ -478,9 +484,9 @@ public class ComprehensiveTypeConverter implements TypeConverter {
     private static class PrimitiveArrayInternalConverter implements InternalConverter {
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
-            if (value == null) return null;
+            if (isNull(value)) return null;
             String className = eDataType.getInstanceClassName();
-            if (className == null) {
+            if (isNull(className)) {
                 logger.warning("EDataType has null instance class name. Not supported by primitive array converter!");
                 return value;
             }
@@ -497,7 +503,7 @@ public class ComprehensiveTypeConverter implements TypeConverter {
 
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-            if (emfValue == null) return null;
+            if (isNull(emfValue)) return null;
             // Serialize primitive arrays to byte[] for BLOB storage
             if (emfValue.getClass().isArray() && emfValue.getClass().getComponentType().isPrimitive()) {
                 return serializeArray(emfValue);

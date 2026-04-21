@@ -18,8 +18,6 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
-
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,7 +46,7 @@ import org.eclipse.persistence.queries.ReadQuery;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 12.01.2025
  */
 public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
@@ -92,7 +90,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 			return super.valueFromQuery(query, row, sourceObject, session);
 		}
 		EObject proxy = buildLazyProxy(refMapping, row);
-		if (proxy == null) {
+		if (isNull(proxy)) {
 			return super.valueFromQuery(query, row, sourceObject, session);
 		}
 		return proxy;
@@ -104,7 +102,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 			return super.valueFromQuery(query, row, session);
 		}
 		EObject proxy = buildLazyProxy(refMapping, row);
-		if (proxy == null) {
+		if (isNull(proxy)) {
 			return super.valueFromQuery(query, row, session);
 		}
 		return proxy;
@@ -117,16 +115,16 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	 */
 	private EObject buildLazyProxy(ObjectReferenceMapping refMapping, AbstractRecord row) {
 		Object targetPk = refMapping.extractPrimaryKeysForReferenceObjectFromRow(row);
-		if (targetPk == null) {
+		if (isNull(targetPk)) {
 			return null;
 		}
 		// Extract the primitive id value from a CacheId composite, if present.
 		Object idValue = unwrapSinglePk(targetPk);
-		if (idValue == null) {
+		if (isNull(idValue)) {
 			return null;
 		}
 		ClassDescriptor targetDescriptor = refMapping.getReferenceDescriptor();
-		if (targetDescriptor == null) {
+		if (isNull(targetDescriptor)) {
 			return null;
 		}
 		Object instance;
@@ -140,12 +138,12 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 			return null;
 		}
 		EAttribute idAttr = reference.getEReferenceType().getEIDAttribute();
-		if (idAttr == null) {
+		if (isNull(idAttr)) {
 			return null;
 		}
 		proxy.eSet(idAttr, idValue);
 		URI baseURI = type.getContext().getBaseURI();
-		if (baseURI == null) {
+		if (isNull(baseURI)) {
 			return null;
 		}
 		URI proxyURI = baseURI
@@ -252,9 +250,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 			return new ValueHolder<EObject>(eo);
 		}
 		if (attributeValue instanceof Collection attrCollection) {
-			List<?> valueList = new LinkedList<>();
-			valueList.addAll(attrCollection);
-			return new ValueHolder<>(valueList);
+			return new ValueHolder<>(new LinkedList<>(attrCollection));
 		}
 		return super.validateAttributeOfInstantiatedObject(attributeValue);
 	}
@@ -312,11 +308,15 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#setRealAttributeValueInObject(java.lang.Object, java.lang.Object)
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public void setRealAttributeValueInObject(Object target, Object attributeValue) {
 		if (!usesIndirection()) {
-			if (!MappingHelper.areInContainmentRelation((EObject)target, (EObject)attributeValue, reference)) {
+			// Pattern-matching instanceof guards both casts: a non-EObject owner
+			// or a null attribute value makes containment-check impossible, so skip.
+			if (target instanceof EObject targetEO
+					&& (isNull(attributeValue) || attributeValue instanceof EObject)
+					&& !MappingHelper.areInContainmentRelation(targetEO, (EObject) attributeValue, reference)) {
 				mapping.setAttributeValueInObject(target, attributeValue);
 			}
 		} else {
@@ -327,7 +327,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 				attrValue = new ValueHolder<>(attributeValue);
 			}
 			mapping.setAttributeValueInObject(target, attrValue);
-		} 
+		}
 	}
 	
 	/*

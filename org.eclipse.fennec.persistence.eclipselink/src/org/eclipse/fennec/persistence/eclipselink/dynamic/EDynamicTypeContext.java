@@ -131,7 +131,7 @@ public class EDynamicTypeContext implements ProcessingContext {
 	 */
 	public EDynamicTypeBuilder remove(Entity key) {
 		EDynamicTypeBuilder r = builders.remove(key);
-		if (key.getClass_() != null) {
+		if (nonNull(key.getClass_())) {
 			entityMap.remove(key.getClass_());
 		}
 		return r;

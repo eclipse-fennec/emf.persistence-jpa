@@ -20,9 +20,9 @@ import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.eclipselink.classloader.OSGiDynamicClassloader;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopyPolicy;
 import org.eclipse.fennec.persistence.eorm.Entity;
-import org.eclipse.persistence.dynamic.DynamicClassLoader;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.persistence.descriptors.RelationalDescriptor;
+import org.eclipse.persistence.dynamic.DynamicClassLoader;
 
 /**
  * EMF {@link RelationalDescriptor}. Here we customize e.g. EMF proxy handling

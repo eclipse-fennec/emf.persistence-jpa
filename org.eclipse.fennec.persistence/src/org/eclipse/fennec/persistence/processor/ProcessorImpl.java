@@ -15,19 +15,16 @@ package org.eclipse.fennec.persistence.processor;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Very basic processor implementation
+ * Base processor that wires a source object, a context and a target together,
+ * enforces the single-process contract (a processor runs at most once) and
+ * provides hooks for subclasses to create the target instance and execute the
+ * transformation logic.
+ *
  * @param <C> the context type
  * @param <T> the target type
  * @param <S> the source type
  * @author Mark Hoffmann
  * @since 29.12.2024
- */
-/**
- * @param <C>
- * @param <T>
- * @param <S>
- * @author mark
- * @since 09.01.2025
  */
 public abstract class ProcessorImpl<C extends ProcessingContext, T, S> implements Processor<T, S> {
 

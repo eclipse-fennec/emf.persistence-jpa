@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence;
 
+import static java.util.Objects.isNull;
+
 import java.util.Map;
 
 import org.eclipse.emf.ecore.EClass;
@@ -83,7 +85,7 @@ public interface Options {
 	 * Returns the cache-new-objects setting from the options, or {@code null} if unset.
 	 */
 	static Boolean getCacheNewObjects(Map<?, ?> options) {
-		if (options == null) {
+		if (isNull(options)) {
 			return null;
 		}
 		Object value = options.get(OPTION_CACHE_NEW_OBJECTS);
@@ -100,7 +102,7 @@ public interface Options {
 	 * Returns the page size from the options, or {@code 0} if unset/invalid.
 	 */
 	static int getPageSize(Map<?, ?> options) {
-		if (options == null) {
+		if (isNull(options)) {
 			return 0;
 		}
 		Object value = options.get(OPTION_PAGE_SIZE);
@@ -127,11 +129,11 @@ public interface Options {
 	 * @throws IllegalStateException if the value is not an {@link EClass}
 	 */
 	static EClass getFilterEClass(Map<?, ?> options) {
-		if (options == null) {
+		if (isNull(options)) {
 			return null;
 		}
 		Object result = options.getOrDefault(READ_FILTER_ECLASS, null);
-		if (result == null) {
+		if (isNull(result)) {
 			return null;
 		}
 		if (result instanceof EClass eClass) {
@@ -146,7 +148,7 @@ public interface Options {
 	 * Returns the table {@link EClass} from the options, or {@code null}.
 	 */
 	static EClass getTableEClass(Map<?, ?> options) {
-		if (options == null) {
+		if (isNull(options)) {
 			return null;
 		}
 		Object alias = getTableObject(options);
@@ -160,7 +162,7 @@ public interface Options {
 	 * Returns the raw table option value (may be {@link EClass} or {@link String}).
 	 */
 	static Object getTableObject(Map<?, ?> options) {
-		if (options == null) {
+		if (isNull(options)) {
 			return null;
 		}
 		return options.getOrDefault(Options.OPTION_TABLE_NAME, null);
@@ -171,13 +173,13 @@ public interface Options {
 	 * If the value is an {@link EClass}, its name is returned.
 	 */
 	static String getTableName(Map<?, ?> options) {
-		if (options == null) {
+		if (isNull(options)) {
 			return null;
 		}
 		Object alias = getTableObject(options);
 		if (alias instanceof EClass eClass) {
 			return eClass.getName();
 		}
-		return alias == null ? null : alias.toString();
+		return isNull(alias) ? null : alias.toString();
 	}
 }

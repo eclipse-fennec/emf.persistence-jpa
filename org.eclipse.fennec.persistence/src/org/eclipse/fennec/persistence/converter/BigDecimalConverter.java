@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.nonNull;
+
 import java.math.BigDecimal;
 
 import org.eclipse.emf.ecore.EClassifier;
@@ -34,7 +36,7 @@ public class BigDecimalConverter implements TypeConverter {
 	public boolean isConverterForType(EClassifier eDataType) {
 		if (eDataType instanceof EDataType) {
 			Class<?> instanceClass = eDataType.getInstanceClass();
-			if (instanceClass != null && instanceClass.equals(BigDecimal.class)) {
+			if (nonNull(instanceClass) && instanceClass.equals(BigDecimal.class)) {
 				return true;
 			}
 		}

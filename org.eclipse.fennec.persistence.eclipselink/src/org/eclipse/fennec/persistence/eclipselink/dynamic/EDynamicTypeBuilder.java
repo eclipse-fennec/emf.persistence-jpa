@@ -28,6 +28,7 @@ import org.eclipse.fennec.persistence.eorm.Attributes;
 import org.eclipse.fennec.persistence.eorm.DiscriminatorColumn;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.Inheritance;
+import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.SecondaryTable;
 import org.eclipse.fennec.persistence.eorm.Table;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
@@ -130,7 +131,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 		if (nonNull(inheritance)) {
 			// Root entity of a hierarchy
 			ClassDescriptor descriptor = getType().getDescriptor();
-			if (inheritance.getStrategy() == org.eclipse.fennec.persistence.eorm.InheritanceType.TABLEPERCLASS) {
+			if (inheritance.getStrategy() == InheritanceType.TABLEPERCLASS) {
 				descriptor.setTablePerClassPolicy(new TablePerClassPolicy(descriptor));
 			} else {
 				InheritancePolicy ip = descriptor.getInheritancePolicy();
@@ -155,10 +156,10 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 		} else if (nonNull(discriminatorValue)) {
 			// Child entity — attach to parent via the strategy chosen on the root
 			EClass eClass = (EClass) entity.getClass_();
-			if (eClass.getESuperTypes().isEmpty()) {
+			EClass parentEClass = eClass.getESuperTypes().stream().findFirst().orElse(null);
+			if (isNull(parentEClass)) {
 				return;
 			}
-			EClass parentEClass = eClass.getESuperTypes().get(0);
 			EDynamicTypeBuilder parentBuilder = context.getETypeBuilder(parentEClass);
 			if (isNull(parentBuilder)) {
 				return;
@@ -244,10 +245,11 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 	private EDynamicTypeBuilder findInheritanceRoot(EDynamicTypeBuilder builder) {
 		while (isNull(builder.getType().getEntity().getInheritance())) {
 			EClass ec = (EClass) builder.getType().getEntity().getClass_();
-			if (ec.getESuperTypes().isEmpty()) {
+			EClass superType = ec.getESuperTypes().stream().findFirst().orElse(null);
+			if (isNull(superType)) {
 				break;
 			}
-			EDynamicTypeBuilder parent = context.getETypeBuilder(ec.getESuperTypes().get(0));
+			EDynamicTypeBuilder parent = context.getETypeBuilder(superType);
 			if (isNull(parent)) {
 				break;
 			}

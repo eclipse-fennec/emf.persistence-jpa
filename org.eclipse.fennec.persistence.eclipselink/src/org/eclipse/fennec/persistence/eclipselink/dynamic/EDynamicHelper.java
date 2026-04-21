@@ -13,6 +13,7 @@
 package org.eclipse.fennec.persistence.eclipselink.dynamic;
 
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
@@ -96,7 +97,7 @@ public class EDynamicHelper extends JPADynamicHelper {
 	public DynamicClassLoader getDynamicClassLoader() {
 		ConversionManager cm = null;
 
-        if (session == null) {
+        if (isNull(session)) {
             cm = ConversionManager.getDefaultManager();
         } else {
             cm = session.getPlatform().getConversionManager();
@@ -109,7 +110,7 @@ public class EDynamicHelper extends JPADynamicHelper {
         DynamicClassLoader _dcl = isNull(this.dcl) ? new DynamicClassLoader(getClass().getClassLoader()) : this.dcl;
         cm.setLoader(_dcl);
 
-        if (session == null) {
+        if (isNull(session)) {
             ConversionManager.setDefaultLoader(_dcl);
         }
 
@@ -135,7 +136,7 @@ public class EDynamicHelper extends JPADynamicHelper {
         }
         session.addDescriptors(descriptors);
         for (ClassDescriptor desc : descriptors) {
-            if (desc.getJavaClassName() != null) {
+            if (nonNull(desc.getJavaClassName())) {
                 fqClassnameToDescriptor.put(desc.getJavaClassName(), desc);
             }
         }

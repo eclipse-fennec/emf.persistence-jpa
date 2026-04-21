@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.engine;
 
+import static java.util.Objects.nonNull;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,7 +82,7 @@ public abstract class BasicPersistenceEngine implements PersistenceEngine {
 	protected void normalizeOptions(Map<Object, Object> options) {
 		mergedOptions.putAll(options);
 		EClass collectionEClass = Options.getTableEClass(options);
-		if (collectionEClass != null && !options.containsKey(Options.READ_FILTER_ECLASS)) {
+		if (nonNull(collectionEClass) && !options.containsKey(Options.READ_FILTER_ECLASS)) {
 			mergedOptions.put(Options.READ_FILTER_ECLASS, collectionEClass);
 		}
 	}

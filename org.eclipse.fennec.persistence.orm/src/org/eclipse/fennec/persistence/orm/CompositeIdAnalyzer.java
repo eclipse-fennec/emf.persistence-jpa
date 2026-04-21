@@ -13,6 +13,7 @@
 package org.eclipse.fennec.persistence.orm;
 
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -61,7 +62,7 @@ public class CompositeIdAnalyzer {
         
         // Step 1: Check for reference-based ID class (highest priority)
         EReference idClassReference = findIdClassReference(eClass);
-        if (idClassReference != null) {
+        if (nonNull(idClassReference)) {
             return IdConfiguration.createIdClass(idClassReference);
         }
         
@@ -106,7 +107,7 @@ public class CompositeIdAnalyzer {
     public EReference findIdClassReference(EClass eClass) {
         // Check class-level annotations first
         EAnnotation extendedMetadata = eClass.getEAnnotation(EXTENDED_METADATA_URI);
-        if (extendedMetadata != null && isIdAnnotation(extendedMetadata)) {
+        if (nonNull(extendedMetadata) && isIdAnnotation(extendedMetadata)) {
             // Look for a containment reference that could serve as ID class
             return eClass.getEAllReferences().stream()
                 .filter(EReference::isContainment)
@@ -117,7 +118,7 @@ public class CompositeIdAnalyzer {
         // Check reference-level annotations
         for (EReference reference : eClass.getEAllReferences()) {
             EAnnotation refAnnotation = reference.getEAnnotation(EXTENDED_METADATA_URI);
-            if (refAnnotation != null && isIdAnnotation(refAnnotation)) {
+            if (nonNull(refAnnotation) && isIdAnnotation(refAnnotation)) {
                 return reference;
             }
         }
@@ -180,7 +181,7 @@ public class CompositeIdAnalyzer {
         
         // ID class reference
         EReference idClassRef = findIdClassReference(eClass);
-        if (idClassRef != null) {
+        if (nonNull(idClassRef)) {
             analysis.append("  ID class reference: ").append(idClassRef.getName()).append("\n");
             analysis.append("    Target type: ").append(idClassRef.getEReferenceType().getName()).append("\n");
             analysis.append("    eKeys: ").append(idClassRef.getEKeys().size()).append("\n");

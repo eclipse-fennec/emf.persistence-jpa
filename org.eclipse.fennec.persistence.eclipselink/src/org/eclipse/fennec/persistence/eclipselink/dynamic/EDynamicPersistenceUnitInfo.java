@@ -36,6 +36,7 @@ import jakarta.persistence.SharedCacheMode;
 import jakarta.persistence.ValidationMode;
 import jakarta.persistence.spi.ClassTransformer;
 import jakarta.persistence.spi.PersistenceUnitInfo;
+import jakarta.persistence.spi.PersistenceUnitTransactionType;
 
 /**
  * {@link PersistenceUnitInfo} implementation with dynamic support
@@ -93,8 +94,8 @@ public class EDynamicPersistenceUnitInfo implements PersistenceUnitInfo {
 
     @SuppressWarnings({ "deprecation", "removal" })
 	@Override
-    public jakarta.persistence.spi.PersistenceUnitTransactionType getTransactionType() {
-        return jakarta.persistence.spi.PersistenceUnitTransactionType.valueOf(unitModel.getTransactionType().name());
+    public PersistenceUnitTransactionType getTransactionType() {
+        return PersistenceUnitTransactionType.valueOf(unitModel.getTransactionType().name());
     }
 
     @Override

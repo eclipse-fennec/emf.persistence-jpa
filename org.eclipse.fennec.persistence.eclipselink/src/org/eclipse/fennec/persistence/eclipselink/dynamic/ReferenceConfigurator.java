@@ -213,7 +213,10 @@ class ReferenceConfigurator {
 			}
 
 			if (isNull(pkColumnName) || pkColumnName.trim().isEmpty()) {
-				DatabaseField primaryKeyField = ops.getType().getDescriptor().getPrimaryKeyFields().get(0);
+				DatabaseField primaryKeyField = ops.getType().getDescriptor().getPrimaryKeyFields().stream()
+						.findFirst()
+						.orElseThrow(() -> new IllegalStateException(
+								"No primary key field on descriptor " + ops.getType().getName()));
 				pkColumnName = primaryKeyField.getName();
 			}
 
@@ -245,8 +248,10 @@ class ReferenceConfigurator {
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
 		ForeignKey fk = manyToOne.getForeignKey();
 		if (nonNull(fk)) {
-			List<DatabaseField> pkFields = refTypeBuilder.getType().getDescriptor().getPrimaryKeyFields();
-			DatabaseField pkField = pkFields.get(0);
+			DatabaseField pkField = refTypeBuilder.getType().getDescriptor().getPrimaryKeyFields().stream()
+					.findFirst()
+					.orElseThrow(() -> new IllegalStateException(
+							"ManyToOne target " + refType.getName() + " has no primary key"));
 			DatabaseTable pkTable = refTypeBuilder.getType().getDescriptor().getDefaultTable();
 			pkField.setTableName(pkTable.getName());
 			DatabaseField fkField = new DatabaseField(fk.getName());

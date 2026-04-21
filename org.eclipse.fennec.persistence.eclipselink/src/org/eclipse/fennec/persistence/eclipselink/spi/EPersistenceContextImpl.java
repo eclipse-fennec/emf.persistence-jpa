@@ -31,7 +31,7 @@ import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 12.12.2024
  */
 public class EPersistenceContextImpl implements EPersistenceContext {

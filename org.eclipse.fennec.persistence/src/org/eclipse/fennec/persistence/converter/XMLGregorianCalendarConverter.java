@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.nonNull;
+
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.logging.Level;
@@ -41,7 +43,7 @@ public class XMLGregorianCalendarConverter implements TypeConverter {
 	@Override
 	public Object convertValueToEMF(EClassifier eDataType, Object databaseValue) {
 		Class<?> instanceClass = eDataType.getInstanceClass();
-		if (instanceClass != null && instanceClass.equals(XMLGregorianCalendar.class)) {
+		if (nonNull(instanceClass) && instanceClass.equals(XMLGregorianCalendar.class)) {
 			Date date;
 			if (databaseValue instanceof Long) {
 				date = new Date((long) databaseValue);
@@ -71,7 +73,7 @@ public class XMLGregorianCalendarConverter implements TypeConverter {
 	@Override
 	public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
 		Class<?> instanceClass = eDataType.getInstanceClass();
-		if (instanceClass != null && instanceClass.equals(XMLGregorianCalendar.class)) {
+		if (nonNull(instanceClass) && instanceClass.equals(XMLGregorianCalendar.class)) {
 			XMLGregorianCalendar c = (XMLGregorianCalendar) emfValue;
 			return c.toGregorianCalendar().getTime();
 		}
@@ -86,7 +88,7 @@ public class XMLGregorianCalendarConverter implements TypeConverter {
 	public boolean isConverterForType(EClassifier eDataType) {
 		if (eDataType instanceof EDataType) {
 			Class<?> instanceClass = eDataType.getInstanceClass();
-			if (instanceClass != null && instanceClass.equals(XMLGregorianCalendar.class)) {
+			if (nonNull(instanceClass) && instanceClass.equals(XMLGregorianCalendar.class)) {
 				return true;
 			}
 		}

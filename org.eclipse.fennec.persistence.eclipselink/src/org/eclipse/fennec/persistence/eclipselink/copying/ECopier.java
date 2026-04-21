@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.copying;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
@@ -131,7 +133,10 @@ public class ECopier extends Copier {
 		EObject result = copier.copy(source);
 		copier.copyReferences();
 
-		@SuppressWarnings("unchecked")T t = (T)result;
+		// EcoreUtil.Copier preserves the runtime EClass of the source, which was
+		// bound to T at the call site — the cast is safe within that contract.
+		@SuppressWarnings("unchecked")
+		T t = (T) result;
 		return t;
 	}
 
@@ -388,9 +393,9 @@ public class ECopier extends Copier {
 	@Override
 	public EObject get(Object key) {
 		// Check shared mapping first if available
-		if (sharedMapping != null) {
+		if (nonNull(sharedMapping)) {
 			EObject sharedResult = sharedMapping.get(key);
-			if (sharedResult != null) {
+			if (nonNull(sharedResult)) {
 				return sharedResult;
 			}
 		}
@@ -409,7 +414,7 @@ public class ECopier extends Copier {
 	 * @return the created EclipseLink entity, or null if context cannot create it
 	 */
 	protected EObject createContextCopy(EObject eObject) {
-		if (context != null) {
+		if (nonNull(context)) {
 			EClass eClass = getTarget(eObject);
 			return createFromContext(eClass);
 		}
@@ -427,7 +432,7 @@ public class ECopier extends Copier {
 	 * @return the created object using factory function, or null if no factory function available
 	 */
 	protected EObject createRepositoryCopy(EObject eObject) {
-		if (factoryFunction != null) {
+		if (nonNull(factoryFunction)) {
 			return factoryFunction.apply(eObject);
 		}
 		return null;
@@ -493,22 +498,22 @@ public class ECopier extends Copier {
 		EClass eClass = getTarget(eObject);
 		
 		// Fast path: Return source if it matches the target class (existing behavior)
-		if (source != null && source.eClass().equals(eClass)) {
+		if (nonNull(source) && source.eClass().equals(eClass)) {
 			return source;
 		}
 		
 		// Optimized priority chain for object creation
 		// Priority 1: EDynamicTypeContext (EclipseLink internal scenarios)
-		if (context != null) {
+		if (nonNull(context)) {
 			EObject contextResult = createFromContext(eClass);
-			if (contextResult != null) {
+			if (nonNull(contextResult)) {
 				return contextResult;
 			}
 			// Fall through to factory function if context returns null
 		}
 		
 		// Priority 2: Factory Function (JPARepository scenarios)  
-		if (factoryFunction != null) {
+		if (nonNull(factoryFunction)) {
 			return factoryFunction.apply(eObject);
 		}
 		
@@ -569,13 +574,14 @@ public class ECopier extends Copier {
 		if (eObject.eIsSet(eReference))
 	      {
 	        EStructuralFeature.Setting targetSetting = getTarget(eReference, eObject, copyEObject);
-	        if (targetSetting != null)
+	        if (nonNull(targetSetting))
 	        {
 	          Object sourceValue = eObject.eGet(eReference);
 	          Object targetValue = copyEObject.eGet(eReference);
 	          
 	          if (eReference.isMany())
 	          {
+	            // Many-valued EReference contract guarantees List<EObject>.
 	            @SuppressWarnings("unchecked")
 	            List<EObject> sourceList = (List<EObject>)sourceValue;
 	            @SuppressWarnings("unchecked")
@@ -587,12 +593,12 @@ public class ECopier extends Copier {
 	            
 	            for (EObject obj : sourceList) {
 	              String id = EcoreUtil.getID(obj);
-	              if (id != null) sourceById.put(id, obj);
+	              if (nonNull(id)) sourceById.put(id, obj);
 	            }
 	            
 	            for (EObject obj : targetList) {
 	              String id = EcoreUtil.getID(obj);
-	              if (id != null) targetById.put(id, obj);
+	              if (nonNull(id)) targetById.put(id, obj);
 	            }
 	            
 	            // Clear the target list and rebuild it
@@ -603,7 +609,7 @@ public class ECopier extends Copier {
 	              String id = EcoreUtil.getID(sourceObj);
 	              EObject targetObj = targetById.get(id);
 	              
-	              if (targetObj != null) {
+	              if (nonNull(targetObj)) {
 	                // Existing element - copy attributes from source to existing managed target
 	                copyInto(sourceObj, targetObj);
 	                targetList.add(targetObj);
@@ -619,16 +625,16 @@ public class ECopier extends Copier {
 	          else
 	          {
 	            // Single-valued reference
-	            if (sourceValue == null) {
+	            if (isNull(sourceValue)) {
 	              targetSetting.set(null);
 	            } else {
 	              EObject sourceObj = (EObject)sourceValue;
 	              EObject targetObj = (EObject)targetValue;
 	              
 	              String sourceId = EcoreUtil.getID(sourceObj);
-	              String targetId = targetObj != null ? EcoreUtil.getID(targetObj) : null;
+	              String targetId = nonNull(targetObj) ? EcoreUtil.getID(targetObj) : null;
 	              
-	              if (targetObj != null && Objects.equals(sourceId, targetId)) {
+	              if (nonNull(targetObj) && Objects.equals(sourceId, targetId)) {
 	                // Same object - copy attributes from source to existing managed target
 	                copyInto(sourceObj, targetObj);
 	              } else {
@@ -646,10 +652,11 @@ public class ECopier extends Copier {
 	      {
 	        // Source is not set - clear the target
 	        EStructuralFeature.Setting targetSetting = getTarget(eReference, eObject, copyEObject);
-	        if (targetSetting != null)
+	        if (nonNull(targetSetting))
 	        {
 	          if (eReference.isMany())
 	          {
+	            // Many-valued EReference contract guarantees List<EObject>.
 	            @SuppressWarnings("unchecked")
 	            List<EObject> targetList = (List<EObject>)copyEObject.eGet(eReference);
 	            targetList.clear();
@@ -676,26 +683,29 @@ public class ECopier extends Copier {
 		if (eObject.eIsSet(eReference))
 		{
 			EStructuralFeature.Setting setting = getTarget(eReference, eObject, copyEObject);
-			if (setting != null)
+			if (nonNull(setting))
 			{
 				Object value = eObject.eGet(eReference, resolveProxies);
 				if (eReference.isMany())
 				{
-					@SuppressWarnings("unchecked") InternalEList<EObject> source = (InternalEList<EObject>)value;
-					@SuppressWarnings("unchecked") InternalEList<EObject> target = (InternalEList<EObject>)setting;
+					// Many-valued EReference storage is an InternalEList<EObject> by EMF contract.
+					@SuppressWarnings("unchecked")
+					InternalEList<EObject> source = (InternalEList<EObject>)value;
+					@SuppressWarnings("unchecked")
+					InternalEList<EObject> target = (InternalEList<EObject>)setting;
 					if (source.isEmpty())
 					{
 						target.clear();
 					}
 					else
 					{
-						boolean isBidirectional = eReference.getEOpposite() != null;
+						boolean isBidirectional = nonNull(eReference.getEOpposite());
 						int index = 0;
 						for (Iterator<EObject> k = resolveProxies ? source.iterator() : source.basicIterator(); k.hasNext();)
 						{
 							EObject referencedEObject = k.next();
 							EObject copyReferencedEObject = get(referencedEObject);
-							if (copyReferencedEObject == null)
+							if (isNull(copyReferencedEObject))
 							{
 								if (useOriginalReferences && !isBidirectional)
 								{
@@ -731,16 +741,16 @@ public class ECopier extends Copier {
 				}
 				else
 				{
-					if (value == null)
+					if (isNull(value))
 					{
 						setting.set(null);
 					}
 					else
 					{
 						Object copyReferencedEObject = get(value);
-						if (copyReferencedEObject == null)
+						if (isNull(copyReferencedEObject))
 						{
-							if (useOriginalReferences && eReference.getEOpposite() == null)
+							if (useOriginalReferences && isNull(eReference.getEOpposite()))
 							{
 								setting.set(value);
 							}

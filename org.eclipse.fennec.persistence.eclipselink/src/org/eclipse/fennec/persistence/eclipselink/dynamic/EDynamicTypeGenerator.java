@@ -23,10 +23,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.api.ConverterService;
-import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;

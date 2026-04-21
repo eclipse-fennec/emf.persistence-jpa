@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.isNull;
+
 import java.time.Duration;
 
 import org.eclipse.emf.ecore.EClassifier;
@@ -35,7 +37,7 @@ public class DurationConverter implements TypeConverter {
 
     @Override
     public Object convertValueToEMF(EClassifier eDataType, Object value) {
-        if (value == null) {
+        if (isNull(value)) {
             return null;
         }
         
@@ -56,7 +58,7 @@ public class DurationConverter implements TypeConverter {
 
     @Override
     public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-        if (emfValue == null) {
+        if (isNull(emfValue)) {
             return null;
         }
         

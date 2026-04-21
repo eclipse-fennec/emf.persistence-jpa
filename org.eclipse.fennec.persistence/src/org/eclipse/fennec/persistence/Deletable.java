@@ -14,6 +14,8 @@ package org.eclipse.fennec.persistence;
 
 import java.util.Map;
 
+import org.eclipse.fennec.persistence.engine.PersistenceEngine;
+
 /**
  * An interface that is optionally implemented by the {@link PersistenceEngine} to delete resources 
  * @author Mark Hoffmann
