@@ -27,13 +27,22 @@ import org.eclipse.fennec.persistence.api.TypeConverter;
  * Handles conversion between EObject references and their string URI representations
  * for persistence in relational databases.
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 14.01.2025
  */
 public class NonContainmentConverter implements TypeConverter {
-	
+
+	/** Target EObject to be reshaped into a proxy during DB→EMF conversion. */
 	private EObject toEObject;
 
+	/**
+	 * Registers the EObject that should receive the {@code eProxyURI} when the
+	 * next {@link #convertValueToEMF(EClassifier, Object)} call parses a URI
+	 * string. Callers typically pass a freshly instantiated target EObject just
+	 * before feeding it the persisted URI value.
+	 *
+	 * @param toEObject the target EObject to be turned into a proxy
+	 */
 	public void setToEMFEObject(EObject toEObject) {
 		this.toEObject = toEObject;
 	}

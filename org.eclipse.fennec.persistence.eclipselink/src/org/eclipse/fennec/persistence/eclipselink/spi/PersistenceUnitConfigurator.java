@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.emf.osgi.constants.EMFNamespaces;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
 import org.eclipse.fennec.persistence.eorm.EORMPackage;
@@ -31,7 +32,6 @@ import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.epersistence.EPersistencePackage;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
 import org.eclipse.fennec.persistence.orm.helper.EORMModelHelper;
-import org.eclipse.fennec.emf.osgi.constants.EMFNamespaces;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.component.annotations.Activate;

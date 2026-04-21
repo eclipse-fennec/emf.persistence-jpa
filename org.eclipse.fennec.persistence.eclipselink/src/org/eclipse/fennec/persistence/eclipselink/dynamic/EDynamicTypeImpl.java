@@ -24,7 +24,7 @@ import org.eclipse.persistence.internal.dynamic.DynamicTypeImpl;
 
 /**
  * EMF Implementation of a {@link DynamicType}
- * @author mark
+ * @author Mark Hoffmann
  * @since 16.12.2024
  */
 class EDynamicTypeImpl extends DynamicTypeImpl implements EDynamicType {

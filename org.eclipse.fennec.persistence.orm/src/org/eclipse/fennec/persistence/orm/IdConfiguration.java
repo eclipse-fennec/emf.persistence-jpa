@@ -12,6 +12,9 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -70,7 +73,7 @@ public class IdConfiguration {
      * Creates configuration for composite embedded ID.
      */
     public static IdConfiguration createEmbeddedId(List<EAttribute> idAttributes) {
-        if (idAttributes == null || idAttributes.size() <= 1) {
+        if (isNull(idAttributes) || idAttributes.size() <= 1) {
             throw new IllegalArgumentException("EmbeddedId requires multiple ID attributes");
         }
         return new IdConfiguration(IdStrategy.EMBEDDED_ID, List.copyOf(idAttributes), null, null);
@@ -97,7 +100,7 @@ public class IdConfiguration {
     }
     
     public List<EAttribute> getIdAttributes() {
-        return idAttributes != null ? idAttributes : List.of();
+        return nonNull(idAttributes) ? idAttributes : List.of();
     }
     
     public EReference getIdClassReference() {
@@ -131,7 +134,7 @@ public class IdConfiguration {
     }
     
     public int getIdAttributeCount() {
-        return idAttributes != null ? idAttributes.size() : 0;
+        return nonNull(idAttributes) ? idAttributes.size() : 0;
     }
     
     @Override
@@ -161,7 +164,7 @@ public class IdConfiguration {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
+        if (isNull(obj) || getClass() != obj.getClass()) return false;
         
         IdConfiguration that = (IdConfiguration) obj;
         return strategy == that.strategy &&

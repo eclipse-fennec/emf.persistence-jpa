@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.nonNull;
+
 import java.math.BigInteger;
 
 import org.eclipse.emf.ecore.EClassifier;
@@ -33,7 +35,7 @@ public class BigIntegerConverter implements TypeConverter {
 	public boolean isConverterForType(EClassifier eDataType) {
 		if (eDataType instanceof EDataType) {
 			Class<?> instanceClass = eDataType.getInstanceClass();
-			if (instanceClass != null && instanceClass.equals(BigInteger.class)) {
+			if (nonNull(instanceClass) && instanceClass.equals(BigInteger.class)) {
 				return true;
 			}
 		}

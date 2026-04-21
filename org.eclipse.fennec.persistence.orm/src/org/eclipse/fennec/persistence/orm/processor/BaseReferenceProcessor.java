@@ -26,7 +26,7 @@ import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 29.12.2024
  */
 public abstract class BaseReferenceProcessor<T extends BaseRef> extends NamedBaseProcessor<T, EReference> {

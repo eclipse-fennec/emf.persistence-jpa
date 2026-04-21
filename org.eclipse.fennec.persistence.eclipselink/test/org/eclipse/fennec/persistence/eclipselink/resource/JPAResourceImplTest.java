@@ -219,11 +219,14 @@ class JPAResourceImplTest {
 				}
 			}) {
 				assertThatThrownBy(() -> testResource.load(null))
-						.isInstanceOf(PersistenceException.class);
+						.isInstanceOf(IOException.class)
+						.hasCauseInstanceOf(PersistenceException.class);
 
 				// isLoaded must NOT be true after failed load
 				assertThat(testResource.isLoaded()).isFalse();
 				assertThat(testResource.getContents()).isEmpty();
+				// Failure is surfaced via EMF diagnostics
+				assertThat(testResource.getErrors()).isNotEmpty();
 
 				// A subsequent load attempt must be possible (not stuck)
 				doReturn(List.of(createEObject())).when(query).getResultList();
@@ -716,6 +719,167 @@ class JPAResourceImplTest {
 			resource.updateDefaultOptions(opts); // no ActionType args
 			// Nothing should change
 			assertThat(opts).isEmpty();
+		}
+	}
+
+	@Nested
+	@DisplayName("error diagnostics")
+	class DiagnosticsTests {
+
+		@Test
+		@DisplayName("Missing entity in URI surfaces as warning diagnostic")
+		void testMissingEntitySurfacesWarning() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(URI.createURI(""), emf)) {
+				testResource.load(null);
+				assertThat(testResource.getErrors()).isEmpty();
+				assertThat(testResource.getWarnings()).hasSize(1);
+				assertThat(testResource.getWarnings().get(0).getMessage())
+						.contains("no entity segment");
+			}
+		}
+
+		@Test
+		@DisplayName("Missing descriptor surfaces as warning diagnostic on load")
+		void testMissingDescriptorSurfacesWarningOnLoad() throws Exception {
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Unknown"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return null;
+				}
+			}) {
+				testResource.load(null);
+				assertThat(testResource.getWarnings()).hasSize(1);
+				assertThat(testResource.getWarnings().get(0).getMessage())
+						.contains("No descriptor found for entity 'Unknown'");
+			}
+		}
+
+		@Test
+		@DisplayName("Save failure wraps RuntimeException as IOException and populates errors")
+		void testSaveFailurePopulatesErrors() {
+			EObject eo = createEObject();
+			resource.getContents().add(eo);
+			when(em.merge(any())).thenThrow(new PersistenceException("boom"));
+			when(tx.isActive()).thenReturn(true);
+
+			assertThatThrownBy(() -> resource.save(null))
+					.isInstanceOf(IOException.class)
+					.hasCauseInstanceOf(PersistenceException.class);
+
+			assertThat(resource.getErrors()).hasSize(1);
+			assertThat(resource.getErrors().get(0).getMessage()).contains("Failed to save");
+			assertThat(resource.getErrors().get(0).getLocation())
+					.isEqualTo(resource.getURI().toString());
+		}
+
+		@Test
+		@DisplayName("count failure wraps RuntimeException and populates errors")
+		void testCountFailurePopulatesErrors() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<Long> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(Long.class))).thenReturn(query);
+			when(query.getSingleResult()).thenThrow(new PersistenceException("boom"));
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				assertThatThrownBy(() -> testResource.count())
+						.isInstanceOf(IOException.class)
+						.hasCauseInstanceOf(PersistenceException.class);
+
+				assertThat(testResource.getErrors()).hasSize(1);
+			}
+		}
+
+		@Test
+		@DisplayName("getEObject failure during find is captured, not thrown")
+		void testGetEObjectFindFailureCaptured() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			DatabaseField pkField = new DatabaseField("id");
+			pkField.setType(String.class);
+			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of(pkField));
+			when(em.find(eq(EObject.class), eq("42")))
+					.thenThrow(new PersistenceException("find failed"));
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				EObject result = testResource.getEObject("//ref/id/42");
+
+				assertThat(result).isNull();
+				assertThat(testResource.getErrors()).hasSize(1);
+				assertThat(testResource.getErrors().get(0).getMessage())
+						.contains("Failed to resolve fragment");
+			}
+		}
+
+		@Test
+		@DisplayName("getEObject bad id surfaces warning, not error")
+		void testGetEObjectBadIdSurfacesWarning() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			DatabaseField pkField = new DatabaseField("id");
+			pkField.setType(Integer.class);
+			when(descriptor.getPrimaryKeyFields()).thenReturn(List.of(pkField));
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				EObject result = testResource.getEObject("//ref/id/not-a-number");
+
+				assertThat(result).isNull();
+				assertThat(testResource.getWarnings()).hasSize(1);
+				assertThat(testResource.getWarnings().get(0).getMessage())
+						.contains("Cannot convert id 'not-a-number'");
+				assertThat(testResource.getErrors()).isEmpty();
+			}
+		}
+
+		@Test
+		@DisplayName("Diagnostics are cleared at the start of doLoad")
+		void testDiagnosticsClearedOnLoad() throws Exception {
+			ClassDescriptor descriptor = mock(ClassDescriptor.class);
+			doReturn(EObject.class).when(descriptor).getJavaClass();
+			when(descriptor.getAlias()).thenReturn("Person");
+
+			@SuppressWarnings("unchecked")
+			TypedQuery<EObject> query = mock(TypedQuery.class);
+			when(em.createQuery(any(String.class), eq(EObject.class))).thenReturn(query);
+			when(query.getResultList()).thenReturn(List.of());
+
+			try (JPAResourceImpl testResource = new JPAResourceImpl(
+					URI.createURI("jpa://test/Person"), emf) {
+				@Override
+				ClassDescriptor getDescriptor(String entityName) {
+					return descriptor;
+				}
+			}) {
+				// Seed stale diagnostics
+				testResource.getErrors().add(new JPADiagnostic("stale error", null));
+				testResource.getWarnings().add(new JPADiagnostic("stale warning", null));
+
+				testResource.load(null);
+
+				assertThat(testResource.getErrors()).isEmpty();
+				assertThat(testResource.getWarnings()).isEmpty();
+			}
 		}
 	}
 }

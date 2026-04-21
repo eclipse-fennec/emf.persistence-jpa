@@ -42,7 +42,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 25.09.2025
  */
 @RequireConfigurationAdmin

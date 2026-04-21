@@ -36,7 +36,7 @@ import org.eclipse.persistence.internal.cache.Processor;
 
 /**
  * An basic implementation for the mapping processor
- * @author mark
+ * @author Mark Hoffmann
  * @since 29.12.2024
  */
 public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStructuralFeature> extends ProcessorImpl<MappingContext, T, F> implements EFeatureProcessor<T, F> {

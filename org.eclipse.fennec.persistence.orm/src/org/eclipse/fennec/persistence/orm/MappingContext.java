@@ -284,6 +284,11 @@ public class MappingContext implements ProcessingContext {
 		return refMappingMap.containsKey(reference);
 	}
 	
+	/**
+	 * Safe because callers request the concrete {@link BaseRef} subtype that
+	 * was previously stored under the same {@link EReference} key — the cast
+	 * cannot succeed for a key that was registered with a different type.
+	 */
 	@SuppressWarnings("unchecked")
 	public <T extends BaseRef> T getMapping(EReference reference) {
 		return (T) refMappingMap.get(reference);

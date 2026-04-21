@@ -34,7 +34,7 @@ import aQute.bnd.annotation.service.ServiceCapability;
 
 /**
  * Converter whiteboard to register the {@link ConverterService}. The service properties are updated, if a new converter is registered or removed
- * @author Mmark Hoffmann
+ * @author Mark Hoffmann
  * @since 14.01.2025
  */
 @Component(immediate = true)
@@ -65,22 +65,18 @@ public class ConverterWhiteboard extends DefaultConverterService {
 	 */
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	public void addConverter(TypeConverter converter) {
-		synchronized (converters) {
-			converters.add(converter);
-		}
+		converters.add(converter);
 		updateServiceProperties();
 	}
 
 	/**
 	 * Removes the converter and the converter will no longer be considered during serialization and de-serialization of an object.
-	 * 
+	 *
 	 * @param converter the converter to remove
 	 */
 	public void removeConverter(TypeConverter converter) {
-		synchronized (converters) {
-			if (converters.remove(converter)) {
-				updateServiceProperties();
-			}
+		if (converters.remove(converter)) {
+			updateServiceProperties();
 		}
 	}
 
@@ -99,13 +95,10 @@ public class ConverterWhiteboard extends DefaultConverterService {
 	 */
 	private Dictionary<String, Object> getServiceProperties() {
 		Dictionary<String, Object> props = new Hashtable<>();
-		List<String> names;
-		synchronized (converters) {
-			names = converters.stream().
-					map(TypeConverter::getName).
-					filter(Objects::nonNull).
-					toList();
-		}
+		List<String> names = converters.stream()
+				.map(TypeConverter::getName)
+				.filter(Objects::nonNull)
+				.toList();
 		props.put(PROP_CONVERTER_NAME, names);
 		return props;
 	}

@@ -56,14 +56,14 @@ public interface PersistenceResource extends Resource, AutoCloseable {
 	long count(Map<?, ?> options) throws IOException;
 	
 	/**
-	 * Checks weather the resource content exists 
+	 * Checks whether the resource content exists 
 	 * @return <code>true</code>, if the resource content exists
 	 * @throws IOException
 	 */
 	boolean exist() throws IOException;
 	
 	/**
-	 * Checks weather the resource content exists 
+	 * Checks whether the resource content exists 
 	 * @param options the exist options map
 	 * @return <code>true</code>, if the resource content exists
 	 * @throws IOException

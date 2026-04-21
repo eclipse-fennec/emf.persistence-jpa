@@ -12,6 +12,9 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClassifier;
@@ -46,7 +49,7 @@ public class ArrayConverter implements TypeConverter {
 		if(databaseValue instanceof Object[]) {
 			Object[] objArray = (Object[]) databaseValue;
 			String instanceClassName = eDataType.getInstanceClassName();
-			if (instanceClassName == null) {
+			if (isNull(instanceClassName)) {
 				logger.severe("EDataType has null instance class name. Not supported by this converter!");
 				return null;
 			}
@@ -80,7 +83,7 @@ public class ArrayConverter implements TypeConverter {
 	public boolean isConverterForType(EClassifier eDataType) {
 		if (eDataType instanceof EDataType) {
 			String instanceClassName = eDataType.getInstanceClassName();
-			if (instanceClassName != null && instanceClassName.endsWith("[]")) {
+			if (nonNull(instanceClassName) && instanceClassName.endsWith("[]")) {
 				return true;
 			}
 		}
@@ -88,25 +91,29 @@ public class ArrayConverter implements TypeConverter {
 	}
 	
 	/**
-	 * @param objArray
-	 * @param arrayDim
-	 * @return
+	 * Public entry point that forwards to {@link #doCreateArray}. Exists to keep
+	 * the recursive descent in a single internal method.
+	 *
+	 * @param objArray the raw source array (may contain nested {@code Object[]})
+	 * @param arrayDim the remaining dimensions to materialise
+	 * @param className the target element class name (e.g. {@code java.lang.Double})
+	 * @return the typed array instance
 	 */
 	private Object createArray(Object[] objArray, int arrayDim, String className) {
 		Object[] array = null;
 		array = doCreateArray(objArray, arrayDim, className);
 		return array;
 	}
-	
+
 	/**
-	 * From the Object[] it creates the array of the right type. 
-	 * If the elements of the array are arrays, then the createArray method is called
-	 * recursively till a primitive type is found
-	 * 
-	 * @param objArray
-	 * @param arrayDim
-	 * @param className
-	 * @return
+	 * From the Object[] it creates the array of the right type. If the elements
+	 * of the array are arrays themselves, this method recurses until the
+	 * innermost dimension is reached.
+	 *
+	 * @param objArray the raw source array
+	 * @param arrayDim the remaining dimensions to materialise
+	 * @param className the target element class name
+	 * @return the typed array instance
 	 */
 	private Object[] doCreateArray(Object[] objArray, int arrayDim, String className) {
 		Object[] array = getStartingArray(arrayDim, objArray.length, className);
@@ -122,12 +129,13 @@ public class ArrayConverter implements TypeConverter {
 	}
 
 	/**
-	 * Depending on the type and the array dimension creates the right instance for the array
-	 * 
-	 * @param arrayDim
-	 * @param firstDimSize
-	 * @param type
-	 * @return
+	 * Depending on the element type and the array dimension, creates the right
+	 * concrete array instance for the outermost dimension.
+	 *
+	 * @param arrayDim the array dimension (1 for a flat array, >1 for nested)
+	 * @param firstDimSize the size of the outermost dimension
+	 * @param type the fully qualified element class name
+	 * @return a freshly allocated typed array; callers populate the slots
 	 */
 	private Object[] getStartingArray(int arrayDim, int firstDimSize, String type) {
 		switch(arrayDim) {

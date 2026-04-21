@@ -42,8 +42,8 @@ public interface PersistenceEngine {
 	public Map<Object, Object> getMergedOptions();
 	
 	/**
-	 * returns the response optins map
-	 * @return the response optins map
+	 * returns the response options map
+	 * @return the response options map
 	 */
 	public Map<Object, Object> getResponse();
 	

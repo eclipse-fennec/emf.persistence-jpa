@@ -155,7 +155,7 @@ public class DefaultConverterServiceTest {
 		@Test
 		void testComprehensiveConverterIsFirst() {
 			// The first converter should be ComprehensiveTypeConverter
-			assertThat(service.converters.getFirst()).isInstanceOf(ComprehensiveTypeConverter.class);
+			assertThat(service.converters.get(0)).isInstanceOf(ComprehensiveTypeConverter.class);
 		}
 
 		@Test
@@ -194,24 +194,19 @@ public class DefaultConverterServiceTest {
 				public boolean isConverterForType(EClassifier eDataType) { return false; }
 			};
 
-			synchronized (service.converters) {
-				service.converters.add(custom);
-			}
+			service.converters.add(custom);
 
 			assertThat(service.converters).hasSize(before + 1);
 		}
 
 		@Test
 		void testRemoveConverterDecreasesCount() {
-			TypeConverter last;
-			synchronized (service.converters) {
-				last = service.converters.getLast();
-				int before = service.converters.size();
-				service.converters.remove(last);
-				assertThat(service.converters).hasSize(before - 1);
-				// restore
-				service.converters.add(last);
-			}
+			TypeConverter last = service.converters.get(service.converters.size() - 1);
+			int before = service.converters.size();
+			service.converters.remove(last);
+			assertThat(service.converters).hasSize(before - 1);
+			// restore
+			service.converters.add(last);
 		}
 
 		@Test

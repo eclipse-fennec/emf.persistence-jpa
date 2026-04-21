@@ -13,17 +13,17 @@
 package org.eclipse.fennec.persistence.eclipselink.resource;
 
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import java.util.Objects;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
@@ -83,13 +83,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	@Override
 	protected void doLoad(InputStream inputStream, Map<?, ?> options) throws IOException {
+		getErrors().clear();
+		getWarnings().clear();
 		String entityName = getEntityName();
 		if (isNull(entityName)) {
+			getWarnings().add(new JPADiagnostic(
+					"Resource URI has no entity segment — nothing to load", getURI()));
 			return;
 		}
 		ClassDescriptor descriptor = getDescriptor(entityName);
 		if (isNull(descriptor)) {
-			LOG.log(Level.WARNING, "No descriptor found for entity ''{0}''", entityName);
+			getWarnings().add(new JPADiagnostic(
+					"No descriptor found for entity '" + entityName + "'", getURI()));
 			return;
 		}
 		// Use the validated alias from the descriptor to prevent JPQL injection
@@ -106,6 +111,10 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			} else {
 				addToContents(query.getResultList());
 			}
+		} catch (RuntimeException e) {
+			getErrors().add(new JPADiagnostic(
+					"Failed to load entity '" + entityName + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to load resource: " + getURI(), e);
 		}
 	}
 
@@ -134,12 +143,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	@Override
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
+		getErrors().clear();
+		getWarnings().clear();
 		Server server = getServer();
 		// Pre-build the entity factory function once for all objects (avoids lambda allocation per object)
-		Function<EObject, EObject> entityFactory = server != null
+		Function<EObject, EObject> entityFactory = nonNull(server)
 				? src -> {
 					ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
-					return desc != null ? EDynamicHelper.createInstance(desc) : null;
+					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
 				}
 				: null;
 		try (EntityManager em = emf.createEntityManager()) {
@@ -147,14 +158,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			applyCacheNewObjectsOption(em, options);
 			try {
 				for (EObject eo : getContents()) {
-					EObject source = server != null ? toManagedEntity(eo, server, entityFactory) : eo;
+					EObject source = nonNull(server) ? toManagedEntity(eo, server, entityFactory) : eo;
 					upsert(em, source, server);
 				}
 				em.getTransaction().commit();
-			} catch (Exception e) {
+			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
+				getErrors().add(new JPADiagnostic(
+						"Failed to save resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
 		}
@@ -172,16 +185,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * the existing row's FK already points where the proxy points.
 	 */
 	private void upsert(EntityManager em, EObject source, Server server) {
-		ClassDescriptor descriptor = server != null
+		ClassDescriptor descriptor = nonNull(server)
 				? server.getDescriptorForAlias(source.eClass().getName())
 				: null;
-		if (descriptor == null) {
+		if (isNull(descriptor)) {
 			em.merge(source);
 			return;
 		}
 		EAttribute idAttr = source.eClass().getEIDAttribute();
-		Object id = idAttr != null ? source.eGet(idAttr) : null;
-		if (id == null || isDefaultIdValue(id)) {
+		Object id = nonNull(idAttr) ? source.eGet(idAttr) : null;
+		if (isNull(id) || isDefaultIdValue(id)) {
 			em.persist(source);
 			return;
 		}
@@ -246,22 +259,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	private static void copyNonContainmentRef(EObject target, EReference ref, Object srcValue,
 			Server server, EntityManager em) {
 		EAttribute refIdAttr = ref.getEReferenceType().getEIDAttribute();
-		if (refIdAttr == null) {
+		if (isNull(refIdAttr)) {
 			target.eSet(ref, srcValue);
 			return;
 		}
 		Object srcRefId = srcValue instanceof EObject eo ? eo.eGet(refIdAttr) : null;
-		if (srcRefId == null) {
+		if (isNull(srcRefId)) {
 			target.eSet(ref, null);
 			return;
 		}
 		// Always route through em.getReference so the attribute slot holds a
 		// JPA-managed reference — never a detached or lazy-proxy EObject that
 		// commit's cascade-register-new scan would mistake for a new entity.
-		ClassDescriptor refDesc = server != null
+		ClassDescriptor refDesc = nonNull(server)
 				? server.getDescriptorForAlias(ref.getEReferenceType().getName())
 				: null;
-		if (refDesc == null) {
+		if (isNull(refDesc)) {
 			target.eSet(ref, srcValue instanceof EObject eo ? eo : null);
 			return;
 		}
@@ -277,12 +290,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	private void applyCacheNewObjectsOption(EntityManager em, Map<?, ?> options) {
 		Boolean cacheNew = Options.getCacheNewObjects(options);
-		if (cacheNew == null) {
+		if (isNull(cacheNew)) {
 			return;
 		}
 		try {
 			UnitOfWork uow = em.unwrap(UnitOfWork.class);
-			if (uow != null) {
+			if (nonNull(uow)) {
 				uow.setShouldNewObjectsBeCached(cacheNew);
 			}
 		} catch (RuntimeException e) {
@@ -292,6 +305,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	@Override
 	public void delete(Map<?, ?> options) throws IOException {
+		getErrors().clear();
+		getWarnings().clear();
 		try (EntityManager em = emf.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
@@ -301,10 +316,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				em.getTransaction().commit();
 				getContents().clear();
-			} catch (Exception e) {
+			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
+				getErrors().add(new JPADiagnostic(
+						"Failed to delete resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to delete resource: " + getURI(), e);
 			}
 		}
@@ -330,21 +347,37 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		String entityName = getEntityName();
 		ClassDescriptor descriptor = getDescriptor(entityName);
 		if (isNull(descriptor)) {
+			getWarnings().add(new JPADiagnostic(
+					"No descriptor for entity '" + entityName + "' — cannot resolve fragment "
+					+ uriFragment, getURI()));
 			return null;
 		}
 		try (EntityManager em = emf.createEntityManager()) {
-			Object typedId = convertId(idValue, descriptor);
+			Object typedId;
+			try {
+				typedId = convertId(idValue, descriptor);
+			} catch (NumberFormatException e) {
+				getWarnings().add(new JPADiagnostic(
+						"Cannot convert id '" + idValue + "' for fragment " + uriFragment
+						+ ": " + e.getMessage(), getURI(), e));
+				return null;
+			}
 			Object result = em.find(descriptor.getJavaClass(), typedId);
 			if (result instanceof EObject resolved) {
 				// Add the resolved object to this resource's contents so it has
 				// an eResource() and can be found on subsequent accesses without
 				// hitting the database again. This is the standard EMF pattern
 				// for proxy resolution via ResourceSet → Resource → getEObject.
-				if (resolved.eResource() == null && !getContents().contains(resolved)) {
+				if (isNull(resolved.eResource()) && !getContents().contains(resolved)) {
 					getContents().add(resolved);
 				}
 				return resolved;
 			}
+			return null;
+		} catch (RuntimeException e) {
+			getErrors().add(new JPADiagnostic(
+					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(),
+					getURI(), e));
 			return null;
 		}
 	}
@@ -358,10 +391,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	public long count(Map<?, ?> options) throws IOException {
 		String entityName = getEntityName();
 		if (isNull(entityName)) {
+			getWarnings().add(new JPADiagnostic(
+					"Resource URI has no entity segment — count is 0", getURI()));
 			return 0;
 		}
 		ClassDescriptor descriptor = getDescriptor(entityName);
 		if (isNull(descriptor)) {
+			getWarnings().add(new JPADiagnostic(
+					"No descriptor for entity '" + entityName + "' — count is 0", getURI()));
 			return 0;
 		}
 		// Use the validated alias from the descriptor to prevent JPQL injection
@@ -369,6 +406,10 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try (EntityManager em = emf.createEntityManager()) {
 			return em.createQuery("SELECT COUNT(e) FROM " + validatedAlias + " e", Long.class)
 					.getSingleResult();
+		} catch (RuntimeException e) {
+			getErrors().add(new JPADiagnostic(
+					"Failed to count entity '" + entityName + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to count entity '" + entityName + "' in " + getURI(), e);
 		}
 	}
 
@@ -382,9 +423,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		return count(options) > 0;
 	}
 
+	/**
+	 * @return never returns — always throws
+	 * @throws UnsupportedOperationException always: this Resource is backed directly
+	 *         by the JPA {@code EntityManagerFactory} and has no separate
+	 *         {@link PersistenceEngine}. The {@link PersistenceResource#getEngine()}
+	 *         contract is preserved only for API compatibility.
+	 */
 	@Override
 	public PersistenceEngine getEngine() {
-		throw new UnsupportedOperationException("JPAResourceImpl does not use a PersistenceEngine — persistence is managed directly via EntityManagerFactory");
+		throw new UnsupportedOperationException(
+				"JPAResourceImpl does not use a PersistenceEngine — persistence is managed directly via EntityManagerFactory");
 	}
 
 	@Override
@@ -428,7 +477,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return null;
 		}
 		Server server = getServer();
-		return server != null ? server.getDescriptorForAlias(entityName) : null;
+		return nonNull(server) ? server.getDescriptorForAlias(entityName) : null;
 	}
 
 	/**
@@ -443,13 +492,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			Function<EObject, EObject> entityFactory) {
 		// Fast path: EclipseLink already knows this object's class
 		ClassDescriptor descriptor = server.getDescriptor(source.getClass());
-		if (descriptor != null) {
+		if (nonNull(descriptor)) {
 			return source;
 		}
 		// Slow path: look up by EClass alias and convert
 		descriptor = server.getDescriptorForAlias(source.eClass().getName());
-		if (descriptor == null) {
-			LOG.log(Level.WARNING, "No descriptor found for EClass ''{0}'' — passing object as-is", source.eClass().getName());
+		if (isNull(descriptor)) {
+			String msg = "No descriptor found for EClass '" + source.eClass().getName()
+					+ "' — passing object as-is";
+			LOG.log(Level.WARNING, msg);
+			getWarnings().add(new JPADiagnostic(msg, getURI()));
 			return source;
 		}
 		EObject target = EDynamicHelper.createInstance(descriptor);
@@ -466,16 +518,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * Uses the descriptor's primary key field type to determine the correct conversion.
 	 */
 	private Object convertId(String idValue, ClassDescriptor descriptor) {
-		if (!descriptor.getPrimaryKeyFields().isEmpty()) {
-			Class<?> pkType = descriptor.getPrimaryKeyFields().get(0).getType();
-			if (pkType != null) {
-				if (Integer.class.isAssignableFrom(pkType) || int.class.equals(pkType)) {
-					return Integer.valueOf(idValue);
-				}
-				if (Long.class.isAssignableFrom(pkType) || long.class.equals(pkType)) {
-					return Long.valueOf(idValue);
-				}
-			}
+		Class<?> pkType = descriptor.getPrimaryKeyFields().stream()
+				.findFirst()
+				.map(field -> field.getType())
+				.orElse(null);
+		if (isNull(pkType)) {
+			return idValue;
+		}
+		if (Integer.class.isAssignableFrom(pkType) || int.class.equals(pkType)) {
+			return Integer.valueOf(idValue);
+		}
+		if (Long.class.isAssignableFrom(pkType) || long.class.equals(pkType)) {
+			return Long.valueOf(idValue);
 		}
 		// Default: return as String (UUID, etc.)
 		return idValue;

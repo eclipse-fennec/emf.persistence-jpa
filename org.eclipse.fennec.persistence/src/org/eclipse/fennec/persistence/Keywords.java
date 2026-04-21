@@ -38,7 +38,7 @@ public interface Keywords {
 	 */
 	public static final String ECLASS_SUPER_TYPES_KEY = "_eSuperTypes";
 	/**
-	 * Extrensic ID field identifier. Not intended to be used by clients.
+	 * Extrinsic ID field identifier. Not intended to be used by clients.
 	 */
 	public static final String EXTRINSIC_ID_KEY = "_eId";
 	/**
@@ -54,10 +54,21 @@ public interface Keywords {
 	 */
 	public static final String PERSISTENCE_ANNOTATION_NAME = "name";
 
+	/**
+	 * OSGi capability namespace for the core persistence service family.
+	 */
 	public static final String CAPABILITY_NAMESPACE = "org.eclipse.fennec.persistence";
-	
+
+	/**
+	 * OSGi capability namespace for persistence extensions (converters, engines,
+	 * accessors) that plug into the core services.
+	 */
 	public static final String CAPABILITY_EXTENSION_NAMESPACE = "org.eclipse.fennec.persistence.extension";
 
+	/**
+	 * Version advertised by the persistence capability — used as the
+	 * {@code version:Version} attribute on {@code Provide-Capability} declarations.
+	 */
 	public static final String CAPABILITY_VERSION = "1.0";
 
 }

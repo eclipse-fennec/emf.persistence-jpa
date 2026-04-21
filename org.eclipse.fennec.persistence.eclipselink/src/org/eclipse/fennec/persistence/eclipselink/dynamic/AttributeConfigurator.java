@@ -17,6 +17,8 @@ import static java.util.Objects.nonNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -134,17 +136,17 @@ class AttributeConfigurator {
 				LOG.log(Level.FINER, "[processBasic] {0} is enum, mapping as String (EnumType.STRING)", ea.getName());
 			}
 			// Map array types as byte[] (BLOB) — arrays have no standard SQL column type
-			else if (typeClass != null && typeClass.isArray()) {
+			else if (nonNull(typeClass) && typeClass.isArray()) {
 				typeClass = byte[].class;
 				LOG.log(Level.FINER, "[processBasic] {0} is array type, mapping as byte[] (BLOB)", ea.getName());
 			}
 			// Map non-standard types to their DB-friendly equivalent
-			else if (typeClass != null && !isStandardDatabaseType(typeClass)) {
+			else if (nonNull(typeClass) && !isStandardDatabaseType(typeClass)) {
 				typeClass = mapToDbFriendlyType(typeClass);
 				LOG.log(Level.FINER, "[processBasic] {0} mapped to DB-friendly type: {1}", new Object[]{ea.getName(), typeClass});
 			}
 			// Fallback to String for custom types that don't have instance classes
-			if (typeClass == null) {
+			if (isNull(typeClass)) {
 				typeClass = String.class;
 				LOG.log(Level.FINER, "[processBasic] {0} has null typeClass, setting to String.class", ea.getName());
 			}
@@ -173,12 +175,12 @@ class AttributeConfigurator {
 		// If no explicit converter, try automatic detection for non-standard database types
 		else if (feature instanceof EAttribute ea) {
 			Class<?> originalTypeClass = ea.getEAttributeType().getInstanceClass();
-			if (originalTypeClass != null && !isStandardDatabaseType(originalTypeClass)) {
+			if (nonNull(originalTypeClass) && !isStandardDatabaseType(originalTypeClass)) {
 				try {
 					LOG.log(Level.FINER, "Trying to find converter for {0} (instanceClass: {1})",
 						new Object[]{ea.getEAttributeType().getName(), originalTypeClass});
 					converter = context.getConverter(ea.getEAttributeType());
-					if (converter != null) {
+					if (nonNull(converter)) {
 						LOG.log(Level.FINER, "Found converter: {0} for {1}",
 							new Object[]{converter.getName(), ea.getEAttributeType().getName()});
 					} else {
@@ -198,14 +200,14 @@ class AttributeConfigurator {
 	 * Check if the given class is a standard database type that doesn't need conversion.
 	 */
 	boolean isStandardDatabaseType(Class<?> clazz) {
-		if (clazz == null) {
+		if (isNull(clazz)) {
 			return true;
 		}
 		if (clazz.isPrimitive() ||
 			clazz == String.class ||
 			clazz == Integer.class || clazz == Long.class || clazz == Double.class || clazz == Float.class ||
 			clazz == Short.class || clazz == Byte.class || clazz == Character.class || clazz == Boolean.class ||
-			clazz == java.sql.Date.class || clazz == java.sql.Time.class || clazz == java.sql.Timestamp.class ||
+			clazz == java.sql.Date.class || clazz == Time.class || clazz == Timestamp.class ||
 			clazz == java.util.Date.class ||
 			clazz == byte[].class) {
 			return true;
@@ -221,7 +223,7 @@ class AttributeConfigurator {
 			clazz == LocalDateTime.class ||
 			clazz == LocalDate.class ||
 			clazz == LocalTime.class) {
-			return java.sql.Timestamp.class;
+			return Timestamp.class;
 		}
 		if (clazz == ZonedDateTime.class || clazz == OffsetDateTime.class) {
 			return String.class;

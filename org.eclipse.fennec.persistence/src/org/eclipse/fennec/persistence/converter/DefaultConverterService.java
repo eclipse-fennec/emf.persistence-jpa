@@ -14,23 +14,28 @@ package org.eclipse.fennec.persistence.converter;
 
 import static java.util.Objects.requireNonNull;
 
-import java.util.LinkedList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 
 /**
- * Abstract class for converter handling
- * @author mark
+ * Abstract base for {@link ConverterService} implementations. Holds the list of
+ * registered {@link TypeConverter}s in a {@link CopyOnWriteArrayList} — reads
+ * (the hot path: resolving a converter for a datatype or name) are lock-free,
+ * and the rare writes (subclasses add or remove converters at runtime) pay the
+ * array-copy cost without blocking readers.
+ *
+ * @author Mark Hoffmann
  * @since 14.01.2025
  */
 public abstract class DefaultConverterService implements ConverterService {
-	
-	protected LinkedList<TypeConverter> converters;
-	
+
+	protected final CopyOnWriteArrayList<TypeConverter> converters;
+
 	public DefaultConverterService() {
-		this.converters = new LinkedList<>();
+		this.converters = new CopyOnWriteArrayList<>();
 		// Add comprehensive converter first for priority handling of modern types
 		converters.add(new ComprehensiveTypeConverter());
 		// Keep existing converters for backwards compatibility and specialized cases
@@ -42,36 +47,32 @@ public abstract class DefaultConverterService implements ConverterService {
 		converters.add(new NonContainmentConverter());
 	}
 
-	/* 
+	/*
 	 * (non-Javadoc)
-	 * @see org.eclipse.fennec.persistence.old.old.ConverterService#getConverter(org.eclipse.emf.ecore.EDataType)
+	 * @see org.eclipse.fennec.persistence.api.ConverterService#getConverter(org.eclipse.emf.ecore.EClassifier)
 	 */
 	@Override
 	public TypeConverter getConverter(EClassifier eDataType) {
 		requireNonNull(eDataType);
-		synchronized (converters) {
-			return converters.
-					stream().
-					filter((c)->c.isConverterForType(eDataType)).
-					findFirst().
-					orElseThrow(()->new IllegalStateException("The default converter was not found - this should never happen"));
-		}
+		return converters.stream()
+				.filter(c -> c.isConverterForType(eDataType))
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException(
+						"The default converter was not found - this should never happen"));
 	}
-	
-	/* 
+
+	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.fennec.persistence.api.ConverterService#getConverter(java.lang.String)
 	 */
 	@Override
 	public TypeConverter getConverter(String name) {
 		requireNonNull(name);
-		synchronized (converters) {
-			return converters.
-					stream().
-					filter((c)->name.equals(c.getName())).
-					findFirst().
-					orElseThrow(()->new IllegalStateException("The default converter was not found - this should never happen"));
-		}
+		return converters.stream()
+				.filter(c -> name.equals(c.getName()))
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException(
+						"The default converter was not found - this should never happen"));
 	}
 
 }

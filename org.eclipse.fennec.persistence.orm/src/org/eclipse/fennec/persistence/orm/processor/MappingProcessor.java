@@ -49,7 +49,7 @@ import org.eclipse.fennec.persistence.processor.ProcessorImpl;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 30.12.2024
  */
 public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappings, List<EClass>> {
@@ -125,8 +125,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		if (source.isEmpty()) {
 			return;
 		}
-		@SuppressWarnings("unchecked")
-		List<EClass> eClasses = (List<EClass>)(List<?>) new ArrayList<>(source);
+		// Defensive copy to avoid mutating the caller's list during staged processing.
+		List<EClass> eClasses = new ArrayList<>(source);
 		context.setAllEClasses(eClasses);
 		Collection<EPackage> ePackages = EORMHelper.getEPackages(eClasses);
 		if (ePackages.size() == 1) {

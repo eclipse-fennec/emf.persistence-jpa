@@ -23,7 +23,7 @@ import org.osgi.framework.BundleContext;
 
 /**
  * 
- * @author mark
+ * @author Mark Hoffmann
  * @since 11.12.2024
  */
 public class OSGiDynamicClassloader extends DynamicClassLoader {

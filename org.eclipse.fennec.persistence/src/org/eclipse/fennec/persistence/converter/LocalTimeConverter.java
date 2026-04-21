@@ -12,8 +12,11 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.converter;
 
+import static java.util.Objects.isNull;
+
 import java.sql.Time;
 import java.time.LocalTime;
+import java.util.Date;
 
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
@@ -36,7 +39,7 @@ public class LocalTimeConverter implements TypeConverter {
 
     @Override
     public Object convertValueToEMF(EClassifier eDataType, Object value) {
-        if (value == null) {
+        if (isNull(value)) {
             return null;
         }
         
@@ -44,7 +47,7 @@ public class LocalTimeConverter implements TypeConverter {
             return sqlTime.toLocalTime();
         }
         
-        if (value instanceof java.util.Date utilDate) {
+        if (value instanceof Date utilDate) {
             return new Time(utilDate.getTime()).toLocalTime();
         }
         
@@ -57,7 +60,7 @@ public class LocalTimeConverter implements TypeConverter {
 
     @Override
     public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
-        if (emfValue == null) {
+        if (isNull(emfValue)) {
             return null;
         }
         
