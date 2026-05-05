@@ -1,14 +1,14 @@
 -library: enableOSGi-Test
 
 -runrequires: \
-	bnd.identity;id='org.eclipse.daanse.jdbc.db.core',\
 	bnd.identity;id='org.eclipse.daanse.jdbc.datasource.h2',\
 	bnd.identity;id='com.h2database',\
 	bnd.identity;id='org.eclipse.fennec.persistence.test',\
 	bnd.identity;id='org.eclipse.fennec.persistence.eclipselink',\
 	bnd.identity;id='org.eclipse.fennec.persistence.ecore',\
 	bnd.identity;id='org.eclipse.persistence.asm',\
-	bnd.identity;id='org.eclipse.persistence.jpa.jpql'
+	bnd.identity;id='org.eclipse.persistence.jpa.jpql',\
+	bnd.identity;id='org.eclipse.daanse.jdbc.db.impl'
 	
 -runbundles.test: \
 	org.eclipse.fennec.persistence.test;version=snapshot
@@ -31,7 +31,6 @@
 	org.apache.felix.configurator;version='[1.0.18,1.0.19)',\
 	org.apache.felix.scr;version='[2.2.12,2.2.13)',\
 	org.eclipse.daanse.jdbc.db.api;version='[0.0.1,0.0.2)',\
-	org.eclipse.daanse.jdbc.db.core;version='[0.0.1,0.0.2)',\
 	org.eclipse.daanse.jdbc.db.record;version='[0.0.1,0.0.2)',\
 	org.eclipse.fennec.persistence;version=snapshot,\
 	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
@@ -76,4 +75,5 @@
 	org.objectweb.asm.commons;version='[9.9.1,9.9.2)',\
 	org.objectweb.asm.tree;version='[9.9.1,9.9.2)',\
 	org.objectweb.asm.tree.analysis;version='[9.9.1,9.9.2)',\
-	org.objectweb.asm.util;version='[9.9.1,9.9.2)'
+	org.objectweb.asm.util;version='[9.9.1,9.9.2)',\
+	org.eclipse.daanse.jdbc.db.impl;version='[0.0.1,0.0.2)'
