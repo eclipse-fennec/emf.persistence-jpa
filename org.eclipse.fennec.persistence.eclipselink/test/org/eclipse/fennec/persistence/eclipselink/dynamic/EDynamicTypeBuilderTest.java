@@ -38,6 +38,7 @@ import org.eclipse.fennec.persistence.eorm.JoinTable;
 import org.eclipse.fennec.persistence.eorm.ManyToMany;
 import org.eclipse.fennec.persistence.eorm.ManyToOne;
 import org.eclipse.fennec.persistence.eorm.OneToOne;
+import org.eclipse.fennec.persistence.eorm.SecondaryTable;
 import org.eclipse.fennec.persistence.eorm.SequenceGenerator;
 import org.eclipse.fennec.persistence.eorm.Table;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
@@ -308,6 +309,68 @@ class EDynamicTypeBuilderTest {
 		}
 	}
 
+	@Nested
+	class DatabaseConfigurationTests {
+
+		@Test
+		void testPrimaryTableSchemaQualifierAppearsInTablesList() {
+			Entity entity = createEntityWithSchemaTable("Person", "PERSON", "myschema");
+			EDynamicTypeBuilder builder = createBuilder(entity);
+
+			// The fix ensures tables[0] (used by SQL generation) carries the schema,
+			// not just the defaultTable field.
+			assertThat(builder.getType().getDescriptor().getTables().get(0).getTableQualifier())
+					.isEqualTo("myschema");
+		}
+
+		@Test
+		void testPrimaryTableSchemaQualifierAppearsInDefaultTable() {
+			Entity entity = createEntityWithSchemaTable("Person", "PERSON", "myschema");
+			EDynamicTypeBuilder builder = createBuilder(entity);
+
+			assertThat(builder.getType().getDescriptor().getDefaultTable().getTableQualifier())
+					.isEqualTo("myschema");
+		}
+
+		@Test
+		void testNoDuplicateTablesAfterConfigureDatabase() {
+			Entity entity = createEntityWithSchemaTable("Person", "PERSON", "myschema");
+			EDynamicTypeBuilder builder = createBuilder(entity);
+
+			// configure() adds one table, configureDatabase() replaces it (not appends).
+			assertThat(builder.getType().getDescriptor().getTables()).hasSize(1);
+		}
+
+		@Test
+		void testPrimaryTableAddedWhenDescriptorHasNoTables() {
+			Entity entity = createEntityWithSchemaTable("Person", "PERSON", "myschema");
+			EDynamicTypeBuilder builder = createBuilder(entity);
+			builder.getType().getDescriptor().getTables().clear();
+
+			builder.configureDatabase(builder.getType());
+
+			assertThat(builder.getType().getDescriptor().getTables()).hasSize(1);
+			assertThat(builder.getType().getDescriptor().getTables().get(0).getTableQualifier())
+					.isEqualTo("myschema");
+		}
+
+		@Test
+		void testSecondaryTableWithSchemaIsAdded() {
+			Entity entity = createEntityWithSchemaTable("Person", "PERSON", "myschema");
+			SecondaryTable secondary = EORMFactory.eINSTANCE.createSecondaryTable();
+			secondary.setName("PERSON_EXT");
+			secondary.setSchema("myschema");
+			entity.getSecondaryTable().add(secondary);
+			EDynamicTypeBuilder builder = createBuilder(entity);
+
+			assertThat(builder.getType().getDescriptor().getTables()).hasSize(2);
+			assertThat(builder.getType().getDescriptor().getTables().get(1).getName())
+					.isEqualTo("PERSON_EXT");
+			assertThat(builder.getType().getDescriptor().getTables().get(1).getTableQualifier())
+					.isEqualTo("myschema");
+		}
+	}
+
 	// ===== Helper Methods =====
 
 	private EDynamicTypeContext createContext() {
@@ -452,5 +515,14 @@ class EDynamicTypeBuilderTest {
 		fk.setName("FK_" + ref.getName().toUpperCase());
 		m2o.setForeignKey(fk);
 		return m2o;
+	}
+
+	private Entity createEntityWithSchemaTable(String name, String tableName, String schema) {
+		Entity entity = createEntityWithId(name, "id", EcorePackage.Literals.ESTRING);
+		Table table = EORMFactory.eINSTANCE.createTable();
+		table.setName(tableName);
+		table.setSchema(schema);
+		entity.setTable(table);
+		return entity;
 	}
 }
