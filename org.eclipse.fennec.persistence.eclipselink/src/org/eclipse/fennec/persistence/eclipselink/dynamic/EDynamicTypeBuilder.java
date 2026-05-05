@@ -227,6 +227,16 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 				}
 			}
 		}
+		// setDefaultTable() in EclipseLink 4.x only updates the defaultTable field;
+		// it does NOT replace tables[0], which is what SQL generation uses.
+		// Explicitly replace the first entry in the tables list so the schema
+		// qualifier is visible to the query engine.
+		List<DatabaseTable> existingTables = classDescriptor.getTables();
+		if (existingTables.isEmpty()) {
+			classDescriptor.addTable(primaryDatabaseTable);
+		} else {
+			existingTables.set(0, primaryDatabaseTable);
+		}
 		classDescriptor.setDefaultTable(primaryDatabaseTable);
 		secondaryDatabaseTables.forEach(classDescriptor::addTable);
 	}
