@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
@@ -28,6 +29,7 @@ import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPoli
 import org.eclipse.fennec.persistence.eclipselink.exception.EDescriptorException;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicClassLoader;
+import org.eclipse.persistence.internal.helper.DatabaseTable;
 import org.eclipse.persistence.internal.descriptors.InstantiationPolicy;
 import org.eclipse.persistence.internal.helper.ConversionManager;
 import org.eclipse.persistence.internal.sessions.AbstractSession;
@@ -43,6 +45,8 @@ import jakarta.persistence.EntityManagerFactory;
  * @since 13.01.2023
  */
 public class EDynamicHelper extends JPADynamicHelper {
+
+	private static final Logger LOG = Logger.getLogger(EDynamicHelper.class.getName());
 
 	/**
 	 * Creates a {@link EObject} instance from an {@link EClassDescriptor} 
@@ -145,8 +149,26 @@ public class EDynamicHelper extends JPADynamicHelper {
             if (!getSession().isConnected()) {
                 getSession().login();
             }
+            createMissingSchemas(descriptors);
             new DynamicSchemaManager(session).createTables(generateFKConstraints);
         }
+    }
+
+    private void createMissingSchemas(Collection<ClassDescriptor> descriptors) {
+        descriptors.stream()
+            .flatMap(d -> d.getTables().stream())
+            .map(DatabaseTable::getTableQualifier)
+            .filter(s -> s != null && !s.isBlank())
+            .distinct()
+            .forEach(schema -> {
+                try {
+                    session.executeNonSelectingSQL(
+                            "CREATE SCHEMA IF NOT EXISTS " + schema);
+                    System.out.println(String.format("Created missing schema %s", schema));
+                } catch (Exception e) {
+                    LOG.warning("Could not create schema '" + schema + "': " + e.getMessage());
+                }
+            });
     }
 
 }
