@@ -41,6 +41,7 @@ public class EDynamicTypeContext implements ProcessingContext {
 	private URI baseURI;
 	private Session session;
 	private ClassLoader classloader;
+	private boolean useDelimitedIdentifiers;
 
 	/**
 	 * Sets the session.
@@ -208,6 +209,18 @@ public class EDynamicTypeContext implements ProcessingContext {
 	 */
 	void setClassloader(ClassLoader classloader) {
 		this.classloader = classloader;
+	}
+
+	/**
+	 * @return {@code true} if identifier quoting was requested via
+	 *         {@code persistence-unit-metadata/persistence-unit-defaults/delimited-identifiers}.
+	 */
+	public boolean isUseDelimitedIdentifiers() {
+		return useDelimitedIdentifiers;
+	}
+
+	void setUseDelimitedIdentifiers(boolean useDelimitedIdentifiers) {
+		this.useDelimitedIdentifiers = useDelimitedIdentifiers;
 	}
 
 }

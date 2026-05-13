@@ -13,6 +13,7 @@
 package org.eclipse.fennec.persistence.eclipselink.dynamic;
 
 import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
@@ -29,6 +30,8 @@ import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
+import org.eclipse.fennec.persistence.eorm.PersistenceUnitDefaults;
+import org.eclipse.fennec.persistence.eorm.PersistenceUnitMetadata;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicClassLoader;
@@ -91,10 +94,26 @@ public class EDynamicTypeGenerator {
 		if (isNull(mappings) || mappings.isEmpty()) {
 			return Collections.emptyList();
 		}
+		if (mappings.stream().anyMatch(EDynamicTypeGenerator::hasDelimitedIdentifiers)) {
+			context.setUseDelimitedIdentifiers(true);
+		}
 		return mappings.stream().
 				map(this::createFromMapping).
 				flatMap(List::stream).
 				collect(Collectors.toList());
+	}
+
+	/**
+	 * @return {@code true} if {@code mapping} declares
+	 *         {@code persistenceUnitMetadata/persistenceUnitDefaults/delimitedIdentifiers}.
+	 */
+	private static boolean hasDelimitedIdentifiers(EntityMappings mapping) {
+		PersistenceUnitMetadata pum = mapping.getPersistenceUnitMetadata();
+		if (isNull(pum)) {
+			return false;
+		}
+		PersistenceUnitDefaults pud = pum.getPersistenceUnitDefaults();
+		return nonNull(pud) && nonNull(pud.getDelimitedIdentifiers());
 	}
 
 	/**
