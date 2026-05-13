@@ -32,8 +32,11 @@ import org.eclipse.persistence.dynamic.DynamicClassLoader;
 import org.eclipse.persistence.internal.helper.DatabaseTable;
 import org.eclipse.persistence.internal.descriptors.InstantiationPolicy;
 import org.eclipse.persistence.internal.helper.ConversionManager;
+import org.eclipse.persistence.internal.helper.DatabaseField;
+import org.eclipse.persistence.internal.helper.DatabaseTable;
 import org.eclipse.persistence.internal.sessions.AbstractSession;
 import org.eclipse.persistence.jpa.dynamic.JPADynamicHelper;
+import org.eclipse.persistence.mappings.DatabaseMapping;
 import org.eclipse.persistence.tools.schemaframework.DynamicSchemaManager;
 
 import jakarta.persistence.EntityManager;
@@ -155,6 +158,10 @@ public class EDynamicHelper extends JPADynamicHelper {
             }
         }
 
+        if (eTypes.stream().anyMatch(t -> nonNull(t.getContext()) && t.getContext().isUseDelimitedIdentifiers())) {
+            applyDelimitedIdentifiers(eTypes);
+        }
+
         if (action == null || action == DdlAction.NONE) {
             return;
         }
@@ -196,4 +203,44 @@ public class EDynamicHelper extends JPADynamicHelper {
             });
     }
 
+    /**
+     * Enables identifier quoting on every {@link DatabaseTable} and {@link DatabaseField}
+     * reachable from the supplied dynamic types' descriptors. Mirrors the effect of JPA
+     * {@code <delimited-identifiers/>} in {@code persistence-unit-metadata}. Must be invoked
+     * after descriptor initialization (i.e. after {@code session.addDescriptors(...)}), so
+     * lazy mapping fields are populated and reachable through {@code mapping.getFields()}
+     * and {@code descriptor.getAllFields()}.
+     */
+    private static void applyDelimitedIdentifiers(List<EDynamicType> eTypes) {
+        for (EDynamicType type : eTypes) {
+            ClassDescriptor descriptor = type.getDescriptor();
+            for (DatabaseTable table : descriptor.getTables()) {
+                table.setUseDelimiters(true);
+            }
+            for (DatabaseField pk : descriptor.getPrimaryKeyFields()) {
+                pk.setUseDelimiters(true);
+            }
+            List<DatabaseField> allFields = descriptor.getAllFields();
+            if (nonNull(allFields)) {
+                for (DatabaseField f : allFields) {
+                    f.setUseDelimiters(true);
+                }
+            }
+            List<DatabaseField> fields = descriptor.getFields();
+            if (nonNull(fields)) {
+                for (DatabaseField f : fields) {
+                    f.setUseDelimiters(true);
+                }
+            }
+            for (DatabaseMapping m : descriptor.getMappings()) {
+                List<DatabaseField> mFields = m.getFields();
+                if (isNull(mFields)) {
+                    continue;
+                }
+                for (DatabaseField f : mFields) {
+                    f.setUseDelimiters(true);
+                }
+            }
+        }
+    }
 }
