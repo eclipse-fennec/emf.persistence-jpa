@@ -23,11 +23,16 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -45,17 +50,22 @@ import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
 import jakarta.persistence.EntityManagerFactory;
 
 /**
- * Demonstrates that {@link EntityManagerFactoryConfigurator#configure()} currently
- * generates tables via {@code EDynamicHelper.addETypes} even when the user requests
- * {@code eclipselink.ddl-generation=none}. See GitHub issue #6.
+ * Verifies that {@link EntityManagerFactoryConfigurator#configure()} honors the
+ * {@code eclipselink.ddl-generation} property when delegating to
+ * {@code EDynamicHelper.addETypes}. See GitHub issue #6.
  */
+@SuppressWarnings("restriction")
 class EntityManagerFactoryConfiguratorDdlTest {
+
+	private static final String TABLE_NAME = "THING";
 
 	private EntityManagerFactory emf;
 
@@ -64,15 +74,62 @@ class EntityManagerFactoryConfiguratorDdlTest {
 		if (emf != null && emf.isOpen()) {
 			emf.close();
 		}
+		emf = null;
 	}
 
-	@SuppressWarnings("restriction")
 	@Test
 	@DisplayName("ddl-generation=none must not create tables via EDynamicHelper")
 	void ddlGenerationNone_doesNotCreateTables() throws Exception {
+		assertThat(bootstrapAndCheckTable(PersistenceUnitProperties.NONE))
+				.as("With eclipselink.ddl-generation=none, the %s table must not be created", TABLE_NAME)
+				.isFalse();
+	}
+
+	@Test
+	@DisplayName("missing ddl-generation falls back to NONE — no tables")
+	void ddlGenerationMissing_doesNotCreateTables() throws Exception {
+		assertThat(bootstrapAndCheckTable(null))
+				.as("Without eclipselink.ddl-generation, the %s table must not be created", TABLE_NAME)
+				.isFalse();
+	}
+
+	@ParameterizedTest(name = "ddl-generation={0} creates tables")
+	@ValueSource(strings = {
+			PersistenceUnitProperties.CREATE_ONLY,
+			PersistenceUnitProperties.DROP_AND_CREATE,
+			PersistenceUnitProperties.CREATE_OR_EXTEND })
+	void ddlGenerationCreateModes_createTables(String mode) throws Exception {
+		assertThat(bootstrapAndCheckTable(mode))
+				.as("With eclipselink.ddl-generation=%s, the %s table must be created", mode, TABLE_NAME)
+				.isTrue();
+	}
+
+	@Test
+	@DisplayName("unknown ddl-generation value logs a warning and falls back to NONE")
+	void unknownDdlGeneration_logsWarningAndSkipsDdl() throws Exception {
+		Logger configuratorLog = Logger.getLogger(EntityManagerFactoryConfigurator.class.getName());
+		CapturingLogHandler handler = new CapturingLogHandler();
+		configuratorLog.addHandler(handler);
+		try {
+			boolean tableExists = bootstrapAndCheckTable("bogus-mode");
+			assertThat(tableExists)
+					.as("Unknown ddl-generation value must not create the %s table", TABLE_NAME)
+					.isFalse();
+			assertThat(handler.records)
+					.as("A WARNING about the unknown ddl-generation value must be logged")
+					.anySatisfy(r -> {
+						assertThat(r.getLevel()).isEqualTo(Level.WARNING);
+						assertThat(r.getParameters()).contains("bogus-mode");
+					});
+		} finally {
+			configuratorLog.removeHandler(handler);
+		}
+	}
+
+	private boolean bootstrapAndCheckTable(String ddlGenerationValue) throws Exception {
 		EPackage pkg = EcoreFactory.eINSTANCE.createEPackage();
 		pkg.setName("ddltest");
-		pkg.setNsURI("http://test/ddltest");
+		pkg.setNsURI("http://test/ddltest/" + UUID.randomUUID());
 		pkg.setNsPrefix("ddl");
 		EClass thing = EcoreFactory.eINSTANCE.createEClass();
 		thing.setName("Thing");
@@ -90,7 +147,8 @@ class EntityManagerFactoryConfiguratorDdlTest {
 		EntityMapper mapper = new EntityMapper();
 		EntityMappings mappings = mapper.createMappings(List.<EClassifier>of(thing));
 
-		EPersistenceContextImpl pctx = new EPersistenceContextImpl("ddl_none_pu", List.of(mappings));
+		EPersistenceContextImpl pctx = new EPersistenceContextImpl("ddl_pu_" + UUID.randomUUID(),
+				List.of(mappings));
 		URL metadataUrl = getClass().getProtectionDomain().getCodeSource().getLocation();
 		pctx.setMetadataURL(metadataUrl);
 
@@ -104,9 +162,11 @@ class EntityManagerFactoryConfiguratorDdlTest {
 		ResourceSet rs = new ResourceSetImpl();
 		rs.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
 
-		String jdbcUrl = "jdbc:h2:mem:ddl_none_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
+		String jdbcUrl = "jdbc:h2:mem:ddl_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1";
 		Map<String, Object> props = new HashMap<>();
-		props.put(PersistenceUnitProperties.DDL_GENERATION, PersistenceUnitProperties.NONE);
+		if (ddlGenerationValue != null) {
+			props.put(PersistenceUnitProperties.DDL_GENERATION, ddlGenerationValue);
+		}
 		props.put(PersistenceUnitProperties.JDBC_DRIVER, "org.h2.Driver");
 		props.put(PersistenceUnitProperties.JDBC_URL, jdbcUrl);
 		props.put(PersistenceUnitProperties.JDBC_USER, "sa");
@@ -127,11 +187,24 @@ class EntityManagerFactoryConfiguratorDdlTest {
 
 		try (Connection conn = DriverManager.getConnection(jdbcUrl, "sa", "")) {
 			DatabaseMetaData md = conn.getMetaData();
-			try (ResultSet tables = md.getTables(null, null, "THING", new String[] { "TABLE" })) {
-				assertThat(tables.next())
-						.as("With eclipselink.ddl-generation=none, the THING table must not be created by EDynamicHelper")
-						.isFalse();
+			try (ResultSet tables = md.getTables(null, null, TABLE_NAME, new String[] { "TABLE" })) {
+				return tables.next();
 			}
 		}
+	}
+
+	private static final class CapturingLogHandler extends Handler {
+		final List<LogRecord> records = new ArrayList<>();
+
+		@Override
+		public void publish(LogRecord record) {
+			records.add(record);
+		}
+
+		@Override
+		public void flush() { /* no-op */ }
+
+		@Override
+		public void close() { /* no-op */ }
 	}
 }
