@@ -123,10 +123,20 @@ public class EDynamicHelper extends JPADynamicHelper {
 	
     /**
      * Add a {@link List} {@link EDynamicType} instances to a session and optionally generate
-     * needed tables with or without FK constraints.
-     *
+     * needed tables with or without FK constraints. Equivalent to
+     * {@link #addETypes(DdlAction, boolean, List)} with {@link DdlAction#CREATE_TABLES} or
+     * {@link DdlAction#NONE} depending on {@code createMissingTables}.
      */
     public void addETypes(boolean createMissingTables, boolean generateFKConstraints, List<EDynamicType> eTypes) {
+        addETypes(createMissingTables ? DdlAction.CREATE_TABLES : DdlAction.NONE,
+                generateFKConstraints, eTypes);
+    }
+
+    /**
+     * Add a {@link List} of {@link EDynamicType} instances to a session and perform the
+     * requested schema-generation {@code action} for their tables.
+     */
+    public void addETypes(DdlAction action, boolean generateFKConstraints, List<EDynamicType> eTypes) {
         if (Objects.isNull(eTypes) || eTypes.isEmpty()) {
             throw new IllegalArgumentException("No types provided");
         }
@@ -145,12 +155,28 @@ public class EDynamicHelper extends JPADynamicHelper {
             }
         }
 
-        if (createMissingTables) {
-            if (!getSession().isConnected()) {
-                getSession().login();
-            }
-            createMissingSchemas(descriptors);
-            new DynamicSchemaManager(session).createTables(generateFKConstraints);
+        if (action == null || action == DdlAction.NONE) {
+            return;
+        }
+        if (!getSession().isConnected()) {
+            getSession().login();
+        }
+        DynamicSchemaManager mgr = new DynamicSchemaManager(session);
+        switch (action) {
+            case CREATE_TABLES:
+            	createMissingSchemas(descriptors);
+                mgr.createTables(generateFKConstraints);
+                break;
+            case DROP_AND_CREATE_TABLES:
+            	createMissingSchemas(descriptors);
+                mgr.replaceDefaultTables(false, generateFKConstraints);
+                break;
+            case CREATE_OR_EXTEND_TABLES:
+            	createMissingSchemas(descriptors);
+                mgr.extendDefaultTables(generateFKConstraints);
+                break;
+            default:
+                break;
         }
     }
 
@@ -164,7 +190,6 @@ public class EDynamicHelper extends JPADynamicHelper {
                 try {
                     session.executeNonSelectingSQL(
                             "CREATE SCHEMA IF NOT EXISTS " + schema);
-                    System.out.println(String.format("Created missing schema %s", schema));
                 } catch (Exception e) {
                     LOG.warning("Could not create schema '" + schema + "': " + e.getMessage());
                 }

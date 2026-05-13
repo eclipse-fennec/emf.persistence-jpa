@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
@@ -29,6 +31,7 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eclipselink.classloader.OSGiDynamicClassloader;
+import org.eclipse.fennec.persistence.eclipselink.dynamic.DdlAction;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicPersistenceUnitInfo;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
@@ -52,6 +55,8 @@ import jakarta.persistence.EntityManagerFactory;
  * @since 10.12.2024
  */
 public class EntityManagerFactoryConfigurator {
+
+	private static final Logger LOG = Logger.getLogger(EntityManagerFactoryConfigurator.class.getName());
 
 	private final BundleContext ctx;
 	private final DynamicClassLoader dcl;
@@ -184,7 +189,16 @@ public class EntityManagerFactoryConfigurator {
          * Now we add our configuration to it. We add our dynamic types for the EMF stuff!
          */
         EDynamicHelper helper = new EDynamicHelper(emf, dcl);
-        helper.addETypes(true, true, eTypes);
+        Object ddlGeneration = properties.get(PersistenceUnitProperties.DDL_GENERATION);
+        String ddlValue = nonNull(ddlGeneration) ? ddlGeneration.toString() : null;
+        DdlAction action = DdlAction.fromEclipseLinkValue(ddlValue).orElseGet(() -> {
+            LOG.log(Level.WARNING,
+                    "Unknown {0} value ''{1}'' — falling back to {2}.",
+                    new Object[] { PersistenceUnitProperties.DDL_GENERATION, ddlValue, DdlAction.NONE });
+            return DdlAction.NONE;
+        });
+        boolean generateFKConstraints = action != DdlAction.NONE;
+        helper.addETypes(action, generateFKConstraints, eTypes);
         return emf;
 
     }
