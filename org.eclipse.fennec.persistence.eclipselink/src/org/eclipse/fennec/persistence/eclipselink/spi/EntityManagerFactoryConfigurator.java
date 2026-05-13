@@ -184,7 +184,10 @@ public class EntityManagerFactoryConfigurator {
          * Now we add our configuration to it. We add our dynamic types for the EMF stuff!
          */
         EDynamicHelper helper = new EDynamicHelper(emf, dcl);
-        helper.addETypes(true, true, eTypes);
+        Object ddlGeneration = properties.get(PersistenceUnitProperties.DDL_GENERATION);
+        boolean createMissingTables = nonNull(ddlGeneration)
+                && !PersistenceUnitProperties.NONE.equals(ddlGeneration);
+        helper.addETypes(createMissingTables, createMissingTables, eTypes);
         return emf;
 
     }
