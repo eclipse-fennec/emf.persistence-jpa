@@ -202,6 +202,7 @@ public class EDynamicHelper extends JPADynamicHelper {
             });
     }
     
+
     /**
      * Enables identifier quoting on every {@link DatabaseTable} and {@link DatabaseField}
      * reachable from the supplied dynamic types' descriptors. Mirrors the effect of JPA
