@@ -26,6 +26,17 @@ It maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities throug
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` -- reverse-engineers Ecore models from database schemas |
 | `org.eclipse.fennec.persistence.test` | OSGi integration tests (JUnit 5, H2 database) |
 
+## Branches & releases
+
+* `snapshot` is the active development branch. PRs land here first; every
+  push publishes `-SNAPSHOT` artifacts to
+  [Sonatype Central snapshots](https://central.sonatype.com/repository/maven-snapshots/org/eclipse/fennec/persistence/jpa/).
+* `main` always holds the latest released version. Released artifacts are
+  available on [Maven Central](https://repo1.maven.org/maven2/org/eclipse/fennec/persistence/jpa/)
+  under `org.eclipse.fennec.persistence.jpa:*`.
+
+See [docs/ci.md](docs/ci.md) for the full CI / publishing pipeline.
+
 ## Quick Start
 
 ### Prerequisites

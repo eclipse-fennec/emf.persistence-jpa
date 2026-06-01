@@ -1,77 +1,103 @@
 # Initial Setup
 
+A one-off checklist for bringing a fresh Eclipse Fennec repository online.
+The steps below describe how **this** repository
+([`eclipse-fennec/emf.persistence-jpa`](https://github.com/eclipse-fennec/emf.persistence-jpa))
+was set up; reuse the pattern when creating a new Fennec component.
+
 ## Basics
 
-The Maven group-id is defaulted to **org.gecko.codec** in *cnf/build.bnd* using the bnd **-groupid** instruction.
+The Maven group-id is set to **`org.eclipse.fennec.persistence.jpa`** in
+[`cnf/build.bnd`](build.bnd) via the bnd **`-groupid`** instruction. For a
+new Fennec repo, replace this with `org.eclipse.fennec.<your-component>`
+following the convention used by the other repositories
+(`org.eclipse.fennec.emf`, `org.eclipse.fennec.codec`, etc.).
 
-## Github - Create Project
-- Create a empty [GitHub repository](https://github.com/organizations/geckoprojects-org/repositories/new)
-  - Name: `org.gecko.codec`
-  - DO NOT!!! use any DEFAULTS like README or license
-  
-## Sonarcloud
-  - Add Project
-  - do the [Sonar Configuration](https://sonarcloud.io/organizations/geckoprojects-org/projects)
-  - press `+`_(upper right)_
-  - Analyze new project
-  - check `org.gecko.codec` and `SetUp`
-  - Select `with a GitHub Action`
-  - Copy the `SONAR_TOKEN` to notepad
-  - NOT!!!! follow the description .about `github/workflows/build.yml`. _this still [exists](../blob/main/.github/workflows/sonar.yml) in this template._
-  - GitHub -> Project-Settings -> Secrets -> [New Repository Secrets](Link: https://github.com/geckoprojects-org/org.gecko.codec/settings/secrets/actions/new)
-    - add `SONAR_TOKEN`
+## GitHub — create project
+
+* Create an empty repository under the
+  [`eclipse-fennec` organisation](https://github.com/organizations/eclipse-fennec/repositories/new).
+  * Name: use the canonical lower-case form (e.g. `emf.persistence-jpa`).
+  * Do **not** initialise with a default README / `.gitignore` / licence —
+    the workspace template provides all three.
+
+## Branch protection
+
+* Project → Settings → Branches → *Add rule*.
+  * Branch name pattern: `[ms][an][ia][np]*` (covers `main*` and `snapshot*`).
+  * Require pull request reviews before merging (1 reviewer).
+  * Dismiss stale approvals when new commits are pushed.
+  * Require status checks to pass — at minimum `CI Build` and `license`.
+  * Require branches to be up to date before merging.
+  * Require linear history.
+  * Include administrators.
+  * **Do not** allow force pushes.
+  * **Do not** allow branch deletion.
+
+## Repository secrets (for publishing)
+
+Project → Settings → Secrets and variables → Actions → *New repository secret*.
+Add the same set used by every Fennec publishing pipeline:
+
+| Secret name                          | Purpose                                  |
+|--------------------------------------|------------------------------------------|
+| `CENTRAL_SONATYPE_TOKEN_USERNAME`    | Sonatype Central user token              |
+| `CENTRAL_SONATYPE_TOKEN_PASSWORD`    | Sonatype Central token password          |
+| `GPG_PRIVATE_KEY`                    | ASCII-armored GPG private key            |
+| `GPG_PASSPHRASE`                     | Passphrase for the private key           |
+| `GPG_KEY_ID`                         | Long-form key id used by the build       |
+
+See [`docs/ci.md`](../docs/ci.md) for what each workflow does with them.
 
 ## Gradle init
 
-On Linux - make *gradlew* executable:
-```
+On Linux make `gradlew` executable, then verify:
+
+```bash
 chmod +x gradlew
 ./gradlew --version
 ```
 
 ## Git init and push
-- execute this in your local folder
 
-```
+Run from the project root:
+
+```bash
 git init
 git add .
-git commit -m "initial commit"
+git commit -s -m "initial commit"
 git branch -M main
-git remote add origin git@github.com:geckoprojects-org/org.gecko.codec.git
+git remote add origin git@github.com:eclipse-fennec/<repo-name>.git
 git push -u origin main
 git checkout -b snapshot
 git push --set-upstream origin snapshot
-git checkout -b "initial"
 ```
 
-## GitHub Branch-Protection
-- Project -> Settings  -> Branches [add rule](https://github.com/geckoprojects-org/org.gecko.codec/settings/branch_protection_rules/new)
-  - Branch name pattern: `[ms][an][ia][np]*` *(ugly but works, protects 'main*' and 'snap*' by charachter )*
-  - Require pull request reviews before merging
-    - 1 reviewer
-    - Dismiss stale pull request approvals when new commits are pushed
-    - Require status checks to pass before merging
-      - Require branches to be up to date before merging
-    - Require linear history
-    - Include administrators
-    - NOT!!! Allow force pushes
-    - NOT!!! Allow deletion
+> `-s` adds the DCO `Signed-off-by:` trailer required for every commit. See
+> [`CONTRIBUTING.md`](../CONTRIBUTING.md#sign-your-work).
 
-## Jenkins
-- wait up to 15 minutes for the auto-import
-- [Jenkins Mainpage](https://devel.data-in-motion.biz/jenkins/)
-- [Jenkins GitHub-Group](https://devel.data-in-motion.biz/jenkins/job/GH/) should show `org.gecko.codec`
-- [Jenkins org.gecko.codec branches](https://devel.data-in-motion.biz/jenkins/job/GH/job/org.gecko.codec/)
+## Branch model
 
-## License check
+This repository follows the Eclipse Fennec convention:
 
-To execute the license check in you local build folder just run:
+* **`snapshot`** — active development. PRs target this branch; every push
+  publishes a `-SNAPSHOT` artifact.
+* **`main`** — latest release. Code here matches what is on Maven Central.
 
-`docker run -it --rm -v $(pwd):/github/workspace ghcr.io/apache/skywalking-eyes/license-eye header check`
+See [`docs/ci.md`](../docs/ci.md) for the full pipeline.
 
-It will give you the check result
+## License header check
 
-The license check also runs as GitHub action for branches **main** and **snapshot**. 
+The license-header workflow runs on every push and pull request via
+[apache/skywalking-eyes](https://github.com/apache/skywalking-eyes). It is
+driven by [`.licenserc.yaml`](../.licenserc.yaml) at the repository root.
 
-To exclude or include files, use the `.licenserc.yaml` file in the build folder. To customize the build action use the *.github/workflows/license.yml*
+To run it locally:
 
+```bash
+docker run --rm -v $(pwd):/github/workspace \
+  ghcr.io/apache/skywalking-eyes/license-eye header check
+```
+
+To exclude or include files, edit `.licenserc.yaml`. To customise the
+GitHub Action itself, edit `.github/workflows/license.yml`.
