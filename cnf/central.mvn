@@ -183,3 +183,8 @@ org.eclipse.persistence:org.eclipse.persistence.asm:9.9.0
 org.eclipse.persistence:org.eclipse.persistence.core:4.0.9
 org.eclipse.persistence:org.eclipse.persistence.json:4.0.9
 org.eclipse.persistence:org.eclipse.persistence.moxy:4.0.9
+
+#Warehouse EORM model
+org.eclipse.daanse:org.eclipse.daanse.cwm.model.cwm:0.0.1-SNAPSHOT
+org.eclipse.daanse:org.eclipse.daanse.cwm.model.cwmx.eorm:0.0.1-SNAPSHOT
+

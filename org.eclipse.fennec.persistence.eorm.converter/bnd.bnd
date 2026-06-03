@@ -1,0 +1,9 @@
+-library: enableEMF
+-buildpath: \
+	org.eclipse.fennec.persistence.orm;version=snapshot,\
+	org.eclipse.daanse.cwm.model.cwmx.eorm
+
+-testpath: \
+	assertj-core,\
+	org.eclipse.daanse.cwm.model.cwmx.eorm,\
+	org.eclipse.daanse.cwm.model.cwm
