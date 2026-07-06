@@ -29,12 +29,13 @@ import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPoli
 import org.eclipse.fennec.persistence.eclipselink.exception.EDescriptorException;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicClassLoader;
-import org.eclipse.persistence.internal.helper.DatabaseTable;
 import org.eclipse.persistence.internal.descriptors.InstantiationPolicy;
 import org.eclipse.persistence.internal.helper.ConversionManager;
 import org.eclipse.persistence.internal.helper.DatabaseField;
 import org.eclipse.persistence.internal.helper.DatabaseTable;
+import org.eclipse.persistence.internal.jpa.metamodel.MetamodelImpl;
 import org.eclipse.persistence.internal.sessions.AbstractSession;
+import org.eclipse.persistence.jpa.JpaEntityManagerFactory;
 import org.eclipse.persistence.jpa.dynamic.JPADynamicHelper;
 import org.eclipse.persistence.mappings.DatabaseMapping;
 import org.eclipse.persistence.tools.schemaframework.DynamicSchemaManager;
@@ -77,6 +78,8 @@ public class EDynamicHelper extends JPADynamicHelper {
 	}
 	
 	final DynamicClassLoader dcl;
+	/** Kept for the JPA metamodel refresh after descriptors were added dynamically. */
+	private final EntityManagerFactory emf;
 
 	/**
 	 * Creates a new instance.
@@ -85,8 +88,9 @@ public class EDynamicHelper extends JPADynamicHelper {
 	public EDynamicHelper(EntityManagerFactory emf, DynamicClassLoader dcl) {
 		super(emf);
 		this.dcl = dcl;
+		this.emf = emf;
 	}
-	
+
 	/**
 	 * Creates a new instance.
 	 * @param em {@link EntityManager}
@@ -94,6 +98,7 @@ public class EDynamicHelper extends JPADynamicHelper {
 	public EDynamicHelper(EntityManager em, DynamicClassLoader dcl) {
 		super(em);
 		this.dcl = dcl;
+		this.emf = em.getEntityManagerFactory();
 	}
 	
 	/* 
@@ -162,6 +167,8 @@ public class EDynamicHelper extends JPADynamicHelper {
             applyDelimitedIdentifiers(eTypes);
         }
 
+        refreshJpaMetamodel();
+
         if (action == null || action == DdlAction.NONE) {
             return;
         }
@@ -185,6 +192,22 @@ public class EDynamicHelper extends JPADynamicHelper {
             default:
                 break;
         }
+    }
+
+    /**
+     * The JPA {@link jakarta.persistence.metamodel.Metamodel} is created and initialized
+     * during persistence-unit deployment — BEFORE any dynamic descriptor exists — and then
+     * cached. Re-initializing it from the session here makes the freshly added types visible
+     * to every metamodel consumer, most importantly the Jakarta Criteria API
+     * ({@code CriteriaQuery.from(...)} rejects types the metamodel does not know).
+     */
+    private void refreshJpaMetamodel() {
+        if (!(emf instanceof JpaEntityManagerFactory jpaEmf)) {
+            return;
+        }
+        MetamodelImpl refreshed = new MetamodelImpl((AbstractSession) session);
+        refreshed.initialize(getDynamicClassLoader());
+        jpaEmf.unwrap().setMetamodel(refreshed);
     }
 
     private void createMissingSchemas(Collection<ClassDescriptor> descriptors) {

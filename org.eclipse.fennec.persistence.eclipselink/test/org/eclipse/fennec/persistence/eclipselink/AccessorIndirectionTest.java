@@ -30,6 +30,7 @@ import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.InternalEObject;
@@ -37,6 +38,8 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 import org.eclipse.fennec.persistence.eclipselink.mappings.EFeatureAccessor;
 import org.eclipse.persistence.mappings.AttributeAccessor;
+import org.eclipse.persistence.mappings.DatabaseMapping;
+import org.eclipse.persistence.mappings.DirectToFieldMapping;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -80,15 +83,15 @@ class AccessorIndirectionTest {
 		@Test
 		void testCreateReturnsNewInstancePerCall() {
 			// No shared cache — each create() returns a fresh, immutable instance
-			AttributeAccessor a1 = EFeatureAccessor.create(nameAttr);
-			AttributeAccessor a2 = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor a1 = featureAccessor(nameAttr);
+			AttributeAccessor a2 = featureAccessor(nameAttr);
 			assertThat(a1).isNotSameAs(a2);
 		}
 
 		@Test
 		void testCreateReturnsDifferentInstanceForDifferentFeature() {
-			AttributeAccessor a1 = EFeatureAccessor.create(nameAttr);
-			AttributeAccessor a2 = EFeatureAccessor.create(ageAttr);
+			AttributeAccessor a1 = featureAccessor(nameAttr);
+			AttributeAccessor a2 = featureAccessor(ageAttr);
 			assertThat(a1).isNotSameAs(a2);
 		}
 
@@ -97,7 +100,7 @@ class AccessorIndirectionTest {
 			EObject person = EcoreUtil.create(personClass);
 			person.eSet(nameAttr, "Alice");
 
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			Object value = accessor.getAttributeValueFromObject(person);
 			assertThat(value).isEqualTo("Alice");
 		}
@@ -107,7 +110,7 @@ class AccessorIndirectionTest {
 			EObject person = EcoreUtil.create(personClass);
 			person.eSet(ageAttr, 30);
 
-			AttributeAccessor accessor = EFeatureAccessor.create(ageAttr);
+			AttributeAccessor accessor = featureAccessor(ageAttr);
 			Object value = accessor.getAttributeValueFromObject(person);
 			assertThat(value).isEqualTo(30);
 		}
@@ -116,7 +119,7 @@ class AccessorIndirectionTest {
 		void testSetStringAttribute() {
 			EObject person = EcoreUtil.create(personClass);
 
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			accessor.setAttributeValueInObject(person, "Bob");
 			assertThat(person.eGet(nameAttr)).isEqualTo("Bob");
 		}
@@ -125,7 +128,7 @@ class AccessorIndirectionTest {
 		void testSetIntegerFromString() {
 			EObject person = EcoreUtil.create(personClass);
 
-			AttributeAccessor accessor = EFeatureAccessor.create(ageAttr);
+			AttributeAccessor accessor = featureAccessor(ageAttr);
 			// When DB returns a String for a non-String type, dataTypeConvert converts it
 			accessor.setAttributeValueInObject(person, "25");
 			assertThat(person.eGet(ageAttr)).isEqualTo(25);
@@ -133,7 +136,7 @@ class AccessorIndirectionTest {
 
 		@Test
 		void testGetNonEObjectReturnsUnchanged() {
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			Object value = accessor.getAttributeValueFromObject("not an EObject");
 			assertThat(value).isEqualTo("not an EObject");
 		}
@@ -142,7 +145,7 @@ class AccessorIndirectionTest {
 		void testGetNullFeatureReturnsObject() {
 			EObject person = EcoreUtil.create(personClass);
 			// Accessor with a null feature path — should handle gracefully
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			Object value = accessor.getAttributeValueFromObject(person);
 			// name not set → returns null (EMF default)
 			assertThat(value).isNull();
@@ -150,7 +153,7 @@ class AccessorIndirectionTest {
 
 		@Test
 		void testSetOnNonEObjectIsNoop() {
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			// Does not throw and does nothing — no EObject to set on
 			accessor.setAttributeValueInObject("not-an-eobject", "anything");
 		}
@@ -167,7 +170,7 @@ class AccessorIndirectionTest {
 			// Pre-set a different value
 			person.eSet(withDefault, "Alice");
 
-			AttributeAccessor accessor = EFeatureAccessor.create(withDefault);
+			AttributeAccessor accessor = featureAccessor(withDefault);
 			accessor.setAttributeValueInObject(person, "unknown");
 			// Default literal is skipped — pre-set value remains untouched
 			assertThat(person.eGet(withDefault)).isEqualTo("Alice");
@@ -182,7 +185,7 @@ class AccessorIndirectionTest {
 			personClass.getEStructuralFeatures().add(tags);
 
 			EObject person = EcoreUtil.create(personClass);
-			AttributeAccessor accessor = EFeatureAccessor.create(tags);
+			AttributeAccessor accessor = featureAccessor(tags);
 			accessor.setAttributeValueInObject(person, List.of("10", "20", "30"));
 
 			@SuppressWarnings("unchecked")
@@ -208,7 +211,7 @@ class AccessorIndirectionTest {
 			TypeConverter converter = mock(TypeConverter.class);
 			when(converter.convertEMFToValue(eq(targetClass), any())).thenReturn("serialized://target");
 
-			AttributeAccessor accessor = EFeatureAccessor.create(targetRef, converter);
+			AttributeAccessor accessor = featureAccessor(targetRef, converter);
 			Object value = accessor.getAttributeValueFromObject(person);
 
 			assertThat(value).isEqualTo("serialized://target");
@@ -233,7 +236,7 @@ class AccessorIndirectionTest {
 			when(converter.convertValueToEMF(eq(targetClass), eq("serialized://target")))
 					.thenReturn(expectedTarget);
 
-			AttributeAccessor accessor = EFeatureAccessor.create(targetRef, converter);
+			AttributeAccessor accessor = featureAccessor(targetRef, converter);
 			accessor.setAttributeValueInObject(person, "serialized://target");
 
 			assertThat(person.eGet(targetRef)).isSameAs(expectedTarget);
@@ -247,7 +250,7 @@ class AccessorIndirectionTest {
 					.thenReturn(100);
 
 			EObject person = EcoreUtil.create(personClass);
-			AttributeAccessor ageAccessor = EFeatureAccessor.create(ageAttr, converter);
+			AttributeAccessor ageAccessor = featureAccessor(ageAttr, converter);
 			ageAccessor.setAttributeValueInObject(person, 42);
 
 			assertThat(person.eGet(ageAttr)).isEqualTo(100);
@@ -260,7 +263,7 @@ class AccessorIndirectionTest {
 			when(converter.isConverterForType(any())).thenReturn(false);
 
 			EObject person = EcoreUtil.create(personClass);
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr, converter);
+			AttributeAccessor accessor = featureAccessor(nameAttr, converter);
 			accessor.setAttributeValueInObject(person, "Alice");
 
 			// Fast path: String + ESTRING dataType → not converted, set as-is
@@ -275,7 +278,7 @@ class AccessorIndirectionTest {
 			person.eSet(nameAttr, "Alice");
 
 			// Accessor constructed WITHOUT converter — converter must never be called
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			accessor.getAttributeValueFromObject(person);
 
 			verify(converter, never()).convertEMFToValue(any(), any());
@@ -322,7 +325,7 @@ class AccessorIndirectionTest {
 			EObject task = EcoreUtil.create(taskClass);
 			task.eSet(statusAttr, statusEnum.getEEnumLiteral("ACTIVE").getInstance());
 
-			AttributeAccessor accessor = EFeatureAccessor.create(statusAttr);
+			AttributeAccessor accessor = featureAccessor(statusAttr);
 			Object value = accessor.getAttributeValueFromObject(task);
 			// EEnum should return the literal string, not the Enumerator object
 			assertThat(value).isEqualTo("active");
@@ -332,7 +335,7 @@ class AccessorIndirectionTest {
 		void testSetEnumFromString() {
 			EObject task = EcoreUtil.create(taskClass);
 
-			AttributeAccessor accessor = EFeatureAccessor.create(statusAttr);
+			AttributeAccessor accessor = featureAccessor(statusAttr);
 			accessor.setAttributeValueInObject(task, "inactive");
 
 			Object stored = task.eGet(statusAttr);
@@ -348,7 +351,7 @@ class AccessorIndirectionTest {
 			EObject task = EcoreUtil.create(taskClass);
 			task.eSet(statusAttr, statusEnum.getEEnumLiteral("ACTIVE").getInstance());
 
-			AttributeAccessor accessor = EFeatureAccessor.create(statusAttr);
+			AttributeAccessor accessor = featureAccessor(statusAttr);
 			Object value = accessor.getAttributeValueFromObject(task);
 			assertThat(value).isInstanceOf(String.class);
 		}
@@ -358,7 +361,7 @@ class AccessorIndirectionTest {
 			EObject person = EcoreUtil.create(personClass);
 			person.eSet(nameAttr, "Alice");
 
-			AttributeAccessor accessor = EFeatureAccessor.create(nameAttr);
+			AttributeAccessor accessor = featureAccessor(nameAttr);
 			Object value = accessor.getAttributeValueFromObject(person);
 			// String attribute returns the actual String, not a literal extraction
 			assertThat(value).isEqualTo("Alice");
@@ -589,5 +592,27 @@ class AccessorIndirectionTest {
 			assertThat(cachedTarget.eIsProxy()).isFalse();
 			assertThat(EcoreUtil.getID(cachedTarget)).isEqualTo("target-42");
 		}
+	}
+
+	// --- helpers ---
+
+	/**
+	 * {@link EFeatureAccessor} requires the owning mapping since it extends EclipseLink's
+	 * {@code ValuesAccessor} (JPA metamodel marker); these tests exercise the accessor
+	 * standalone, so a minimal mapping carrying the attribute name suffices.
+	 */
+	private static AttributeAccessor featureAccessor(EStructuralFeature feature) {
+		return EFeatureAccessor.create(dummyMapping(feature), feature);
+	}
+
+	private static AttributeAccessor featureAccessor(EStructuralFeature feature,
+			TypeConverter converter) {
+		return EFeatureAccessor.create(dummyMapping(feature), feature, converter);
+	}
+
+	private static DatabaseMapping dummyMapping(EStructuralFeature feature) {
+		DirectToFieldMapping mapping = new DirectToFieldMapping();
+		mapping.setAttributeName(feature.getName());
+		return mapping;
 	}
 }

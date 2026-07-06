@@ -327,7 +327,7 @@ class ReferenceConfigurator {
 		// EMF-Proxy ins Attribut, damit nur FK gelesen wird und Target-Load erst on demand
 		// via ResourceSet.getEObject → JPAResourceImpl.getEObject läuft.
 		mapping.setIsLazy(!reference.isContainment());
-		mapping.setAttributeAccessor(EReferenceAccessor.create(reference, context));
+		mapping.setAttributeAccessor(EReferenceAccessor.create(mapping, reference, context));
 	}
 
 	void setIndirection(ForeignReferenceMapping mapping, EReference reference) {

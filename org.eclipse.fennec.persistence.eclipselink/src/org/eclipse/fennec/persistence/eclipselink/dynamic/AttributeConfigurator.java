@@ -109,7 +109,7 @@ class AttributeConfigurator {
 			// Replace it with EFeatureAccessor that uses EObject.eGet()/eSet().
 			DatabaseMapping lockMapping = descriptor.getMappingForAttributeName(version.getName());
 			if (nonNull(lockMapping) && nonNull(feature)) {
-				lockMapping.setAttributeAccessor(EFeatureAccessor.create(feature));
+				lockMapping.setAttributeAccessor(EFeatureAccessor.create(lockMapping, feature));
 				LOG.log(Level.FINE, "Patched version lock mapping accessor for {0} to EFeatureAccessor", version.getName());
 			}
 		}
@@ -192,7 +192,7 @@ class AttributeConfigurator {
 			}
 		}
 
-		EFeatureAccessor efa = EFeatureAccessor.create(feature, converter);
+		EFeatureAccessor efa = EFeatureAccessor.create(mapping, feature, converter);
 		mapping.setAttributeAccessor(efa);
 	}
 
