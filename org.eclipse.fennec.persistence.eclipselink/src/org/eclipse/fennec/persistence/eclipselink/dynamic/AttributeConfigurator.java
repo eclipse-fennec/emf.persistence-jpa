@@ -59,6 +59,15 @@ class AttributeConfigurator {
 
 	private static final Logger LOG = Logger.getLogger(AttributeConfigurator.class.getName());
 
+	/**
+	 * DDL defaults for {@code BigDecimal} columns without explicit EORM facets: 38 total
+	 * digits (the common NUMERIC maximum), 19 of them fraction digits — a symmetric split
+	 * that keeps typical monetary/measurement values lossless. Override per attribute via
+	 * an EORM {@code Column} with precision/scale.
+	 */
+	static final int DEFAULT_DECIMAL_PRECISION = 38;
+	static final int DEFAULT_DECIMAL_SCALE = 19;
+
 	private final BuilderOperations ops;
 	private final EDynamicTypeContext context;
 
@@ -160,6 +169,16 @@ class AttributeConfigurator {
 		mapping.setIsOptional(basic.isOptional());
 		if (nonNull(c)) {
 			mapping.setIsMutable(c.isSetUpdatable());
+		}
+		if (typeClass == BigDecimal.class) {
+			// Without an explicit precision/scale the generated DDL falls back to the DB
+			// default for NUMERIC — scale 0 on H2 and most databases — silently rounding
+			// fraction digits away on insert. Explicit EORM column facets win; otherwise a
+			// documented default keeps decimals lossless for typical value ranges.
+			mapping.getField().setPrecision(
+					nonNull(c) && c.isSetPrecision() ? c.getPrecision() : DEFAULT_DECIMAL_PRECISION);
+			mapping.getField().setScale(
+					nonNull(c) && c.isSetScale() ? c.getScale() : DEFAULT_DECIMAL_SCALE);
 		}
 		/**
 		 * Converter handling - both explicit and automatic
