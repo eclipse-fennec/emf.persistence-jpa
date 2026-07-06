@@ -28,14 +28,22 @@ import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 import org.eclipse.persistence.exceptions.DescriptorException;
-import org.eclipse.persistence.mappings.AttributeAccessor;
+import org.eclipse.persistence.internal.dynamic.ValuesAccessor;
+import org.eclipse.persistence.mappings.DatabaseMapping;
 
 /**
- * Handles getting and setting data from and to an {@link EObject} for a given feature
+ * Handles getting and setting data from and to an {@link EObject} for a given feature.
+ *
+ * <p>Extends {@link ValuesAccessor} (EclipseLink's dynamic-entity accessor) instead of the
+ * plain {@code AttributeAccessor}: EclipseLink identifies dynamic types by
+ * {@code instanceof ValuesAccessor} — most importantly the JPA metamodel initialization
+ * ({@code ManagedTypeImpl.initialize}), which otherwise produces null attribute members for
+ * collection mappings and breaks the Jakarta Criteria API. The value access itself is fully
+ * overridden with EMF {@code eGet}/{@code eSet} semantics.
  * @author Mark Hoffmann
  * @since 09.12.2024
  */
-public class EFeatureAccessor extends AttributeAccessor {
+public class EFeatureAccessor extends ValuesAccessor {
 
 	/** serialVersionUID */
 	private static final long serialVersionUID = 1L;
@@ -44,28 +52,42 @@ public class EFeatureAccessor extends AttributeAccessor {
 
 	/**
 	 * Creates a new accessor for the given feature without a converter.
+	 * @param mapping the mapping the accessor will be set on
 	 * @param feature the structural feature
 	 * @return a new accessor instance
 	 */
-	public static EFeatureAccessor create(EStructuralFeature feature) {
-		return new EFeatureAccessor(feature, null);
+	public static EFeatureAccessor create(DatabaseMapping mapping, EStructuralFeature feature) {
+		return new EFeatureAccessor(mapping, feature, null);
 	}
 
 	/**
 	 * Creates a new accessor for the given feature with a converter.
+	 * @param mapping the mapping the accessor will be set on
 	 * @param feature the structural feature
 	 * @param converter the type converter, may be {@code null}
 	 * @return a new accessor instance
 	 */
-	public static EFeatureAccessor create(EStructuralFeature feature, TypeConverter converter) {
-		return new EFeatureAccessor(feature, converter);
+	public static EFeatureAccessor create(DatabaseMapping mapping, EStructuralFeature feature,
+			TypeConverter converter) {
+		return new EFeatureAccessor(mapping, feature, converter);
 	}
 
-	private EFeatureAccessor(EStructuralFeature feature, TypeConverter converter) {
+	private EFeatureAccessor(DatabaseMapping mapping, EStructuralFeature feature, TypeConverter converter) {
+		super(mapping);
 		this.feature = feature;
 		this.converter = converter;
 	}
-	
+
+	/**
+	 * Preserves the pre-{@link ValuesAccessor} behavior ({@code AttributeAccessor} returned
+	 * {@code Object.class}): the mapping-classification-based refinement the superclass offers
+	 * is a deliberate follow-up, not part of the metamodel-marker change.
+	 */
+	@Override
+	public Class<?> getAttributeClass() {
+		return Object.class;
+	}
+
 
 	/* 
 	 * (non-Javadoc)

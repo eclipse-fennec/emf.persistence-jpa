@@ -28,8 +28,10 @@ import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 import org.eclipse.persistence.exceptions.DescriptorException;
 import org.eclipse.persistence.indirection.ValueHolder;
 import org.eclipse.persistence.indirection.ValueHolderInterface;
+import org.eclipse.persistence.internal.dynamic.ValuesAccessor;
 import org.eclipse.persistence.internal.indirection.UnitOfWorkValueHolder;
 import org.eclipse.persistence.mappings.AttributeAccessor;
+import org.eclipse.persistence.mappings.DatabaseMapping;
 
 /**
  * Handles getting and setting data from and to an {@link EObject} for a given reference.
@@ -43,18 +45,32 @@ import org.eclipse.persistence.mappings.AttributeAccessor;
  * @author Mark Hoffmann
  * @since 09.12.2024
  */
-public class EReferenceAccessor extends AttributeAccessor {
+public class EReferenceAccessor extends ValuesAccessor {
 
 	/** serialVersionUID */
 	private static final long serialVersionUID = 1L;
 	private final EReference reference;
 
-	public static AttributeAccessor create(EReference feature, EDynamicTypeContext cache) {
-		return new EReferenceAccessor(feature, cache);
+	/**
+	 * @param mapping the mapping the accessor will be set on — required because the accessor
+	 *                extends {@link ValuesAccessor}, EclipseLink's dynamic-entity marker (the
+	 *                JPA metamodel initialization branches on it; value access itself is fully
+	 *                overridden with EMF semantics)
+	 */
+	public static AttributeAccessor create(DatabaseMapping mapping, EReference feature,
+			EDynamicTypeContext cache) {
+		return new EReferenceAccessor(mapping, feature, cache);
 	}
 
-	private EReferenceAccessor(EReference feature, EDynamicTypeContext cache) {
+	private EReferenceAccessor(DatabaseMapping mapping, EReference feature, EDynamicTypeContext cache) {
+		super(mapping);
 		this.reference = feature;
+	}
+
+	/** Preserves the pre-{@link ValuesAccessor} behavior ({@code Object.class}). */
+	@Override
+	public Class<?> getAttributeClass() {
+		return Object.class;
 	}
 
 	/* 

@@ -112,7 +112,7 @@ class CollectionConfigurator {
 				LOG.log(Level.WARNING, e, () -> "[ElementCollection] Exception finding converter for " + attrType.getName());
 			}
 		}
-		EFeatureAccessor efa = EFeatureAccessor.create(ea, converter);
+		EFeatureAccessor efa = EFeatureAccessor.create(mapping, ea, converter);
 		mapping.setAttributeAccessor(efa);
 	}
 
