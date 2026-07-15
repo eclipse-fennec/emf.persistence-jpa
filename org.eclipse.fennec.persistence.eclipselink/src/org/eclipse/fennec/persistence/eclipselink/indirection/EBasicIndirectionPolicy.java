@@ -120,10 +120,20 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 		}
 		// Extract the primitive id value from a CacheId composite, if present.
 		Object idValue = unwrapSinglePk(targetPk);
+		return buildTargetProxy(idValue);
+	}
+
+	/**
+	 * Materialises a minimal EMF proxy (id attribute + {@code eProxyURI}) for the target
+	 * of this policy's reference, identified by the given id value. Returns {@code null}
+	 * if the target descriptor, id attribute or base URI required for a resolvable proxy
+	 * is unavailable — callers must then fall back to full materialisation.
+	 */
+	protected EObject buildTargetProxy(Object idValue) {
 		if (isNull(idValue)) {
 			return null;
 		}
-		ClassDescriptor targetDescriptor = refMapping.getReferenceDescriptor();
+		ClassDescriptor targetDescriptor = getForeignReferenceMapping().getReferenceDescriptor();
 		if (isNull(targetDescriptor)) {
 			return null;
 		}
@@ -151,6 +161,36 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 				.appendFragment("//" + reference.getName() + "/" + idAttr.getName() + "/" + idValue);
 		((InternalEObject) proxy).eSetProxyURI(proxyURI);
 		return proxy;
+	}
+
+	/**
+	 * Builds a fresh lightweight proxy for the given materialised target object using
+	 * its EMF id attribute value. Returns {@code null} when the object carries no usable
+	 * id — callers should then keep the original value.
+	 */
+	protected EObject proxify(EObject target) {
+		EAttribute idAttr = target.eClass().getEIDAttribute();
+		if (isNull(idAttr)) {
+			return null;
+		}
+		Object idValue = target.eGet(idAttr);
+		return buildTargetProxy(idValue);
+	}
+
+	/**
+	 * Returns the {@link EReference} this policy handles.
+	 * @return the reference
+	 */
+	protected EReference getReference() {
+		return reference;
+	}
+
+	/**
+	 * Returns the owning dynamic type.
+	 * @return the type
+	 */
+	protected EDynamicType getDynamicType() {
+		return type;
 	}
 
 	/**
@@ -350,13 +390,35 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	        return this.getMapping().buildCloneForPartObject(attributeValue, original, cacheKey, clone, cloningSession, refreshCascade, isExisting, isExisting);// only assume from shared cache if it is existing
 		}
 		// Lazy non-containment: valueFromQuery already returned an EMF proxy; the UoW
-		// clone slot should hold the same proxy (lightweight — just ID + eProxyURI).
+		// clone slot should hold a proxy (lightweight — just ID + eProxyURI).
 		// Resolution happens on first eGet, not during cloning.
-		if (attributeValue instanceof EObject) {
-			return attributeValue;
+		if (attributeValue instanceof EObject eo) {
+			return proxyForClone(eo);
+		}
+		// The indirection normalisation wraps materialised values in a plain ValueHolder
+		// before cloning — unwrap, proxify and re-wrap so the clone still sees a holder.
+		if (attributeValue instanceof ValueHolderInterface<?> vh
+				&& vh.isInstantiated()
+				&& vh.getValue() instanceof EObject eo) {
+			return new ValueHolder<>(proxyForClone(eo));
 		}
 		return super.cloneAttribute(attributeValue, original, cacheKey, clone, refreshCascade, cloningSession,
 				buildDirectlyFromRow);
+	}
+
+	/**
+	 * Returns the value a UnitOfWork clone slot should hold for the given non-containment
+	 * target: proxies pass through, materialised values (e.g. the shared-cache original)
+	 * are replaced by a fresh lightweight proxy. Sharing the materialised instance would
+	 * hand out an object without {@code eResource} (nested proxies could never resolve)
+	 * and let EMF opposite maintenance link clones into the shared cache.
+	 */
+	private EObject proxyForClone(EObject eo) {
+		if (eo.eIsProxy()) {
+			return eo;
+		}
+		EObject proxy = proxify(eo);
+		return nonNull(proxy) ? proxy : eo;
 	}
 
 	/*

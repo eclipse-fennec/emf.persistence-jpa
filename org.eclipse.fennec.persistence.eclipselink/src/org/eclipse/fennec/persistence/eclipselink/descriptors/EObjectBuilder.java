@@ -16,6 +16,7 @@ import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
+import org.eclipse.fennec.persistence.eclipselink.indirection.ETransparentIndirectionPolicy;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.descriptors.DescriptorEvent;
 import org.eclipse.persistence.descriptors.DescriptorEventManager;
@@ -26,6 +27,7 @@ import org.eclipse.persistence.internal.sessions.MergeManager;
 import org.eclipse.persistence.internal.sessions.ObjectChangeSet;
 import org.eclipse.persistence.internal.sessions.UnitOfWorkImpl;
 import org.eclipse.persistence.mappings.DatabaseMapping;
+import org.eclipse.persistence.mappings.ForeignReferenceMapping;
 
 /**
  * Object builder for handling {@link EObject}
@@ -56,13 +58,20 @@ public class EObjectBuilder extends ObjectBuilder {
 			EClassDescriptor descriptor = (EClassDescriptor) this.descriptor;
 			EObject backup = (EObject) descriptor.getCopyPolicy().buildClone(clone, unitOfWork);
 			new ECopier(backup, null).copy(eClone);
-			// PERF: Avoid synchronized enumerator as is concurrency bottleneck.
-//			List<DatabaseMapping> mappings = getRelationshipMappings();
-//			int size = mappings.size();
-//			for (int index = 0; index < size; index++) {
-//				DatabaseMapping mapping = mappings.get(index);
-//				mapping.buildBackupClone(clone, backup, unitOfWork);
-//			}
+			// ECopier.copy only covers attributes and containments — cross references
+			// stay empty in the backup. For relation-table collections (AP-47) an empty
+			// backup makes commit's change comparison treat every element as newly
+			// added, re-INSERTing existing join rows. Snapshot those collections into
+			// the backup via the mapping so an untouched list compares as unchanged.
+			List<DatabaseMapping> mappings = getRelationshipMappings();
+			int size = mappings.size();
+			for (int index = 0; index < size; index++) {
+				DatabaseMapping mapping = mappings.get(index);
+				if (mapping instanceof ForeignReferenceMapping frm
+						&& frm.getIndirectionPolicy() instanceof ETransparentIndirectionPolicy) {
+					mapping.buildBackupClone(clone, backup, unitOfWork);
+				}
+			}
 			return backup;
 		}
 		return super.buildBackupClone(clone, unitOfWork);

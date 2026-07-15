@@ -25,8 +25,12 @@ import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
-import org.eclipse.fennec.persistence.eclipselink.indirection.EBasicIndirectionPolicy;
-import org.eclipse.fennec.persistence.eclipselink.mappings.EReferenceAccessor;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EMFConfigurableMapping;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EManyToManyMapping;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EManyToOneMapping;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EOneToManyMapping;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EOneToOneMapping;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EUnidirectionalOneToManyMapping;
 import org.eclipse.fennec.persistence.eorm.Attributes;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.CascadeType;
@@ -117,7 +121,7 @@ class ReferenceConfigurator {
 		OneToOneMapping mapping = null;
 		ForeignKey fk = oneToOne.getForeignKey();
 		if (nonNull(mappedBy)) {
-			mapping = new OneToOneMapping();
+			mapping = new EOneToOneMapping();
 			mapping.setIsOneToOneRelationship(true);
 			ops.addMapping(mapping);
 			DatabaseMapping owningMapping = refTypeBuilder.getType().getDescriptor().getMappingForAttributeName(mappedBy);
@@ -138,8 +142,7 @@ class ReferenceConfigurator {
 		}
 		setOptional(mapping, oneToOne);
 		setCascade(mapping, reference, oneToOne.getCascade());
-		setIndirection(mapping, reference);
-		setMappingDefaults(mapping, reference);
+		configureEMF(mapping, reference);
 	}
 
 	private void processOneToMany(OneToMany oneToMany) {
@@ -159,7 +162,7 @@ class ReferenceConfigurator {
 		List<JoinColumn> joinColumns = oneToMany.getJoinColumn();
 
 		if (nonNull(mappedBy)) {
-			mapping = new OneToManyMapping();
+			mapping = new EOneToManyMapping();
 			ops.addMapping(mapping);
 			DatabaseMapping owningMapping = refTypeBuilder.getType().getDescriptor().getMappingForAttributeName(mappedBy);
 			mapping.setAttributeName(name);
@@ -174,7 +177,7 @@ class ReferenceConfigurator {
 			mapping.setMappedBy(mappedBy);
 		} else {
 			if (nonNull(jt)) {
-				ManyToManyMapping m2mMapping = new ManyToManyMapping();
+				ManyToManyMapping m2mMapping = new EManyToManyMapping();
 				m2mMapping.setAttributeName(name);
 				ops.addMapping(m2mMapping);
 				m2mMapping.setDefinedAsOneToManyMapping(true);
@@ -184,7 +187,7 @@ class ReferenceConfigurator {
 			} else if (nonNull(fk)) {
 				mapping = ops.addOneToManyMapping(name, refTypeBuilder.getType(), fk.getName());
 			} else {
-				mapping = new OneToManyMapping();
+				mapping = new EOneToManyMapping();
 				mapping.setAttributeName(name);
 				ops.addMapping(mapping);
 			}
@@ -195,12 +198,11 @@ class ReferenceConfigurator {
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
 		setOptional(mapping, oneToMany);
 		setCascade(mapping, reference, oneToMany.getCascade());
-		setIndirection(mapping, reference);
-		setMappingDefaults(mapping, reference);
+		configureEMF(mapping, reference);
 	}
 
 	private OneToManyMapping createOneToManyWithJoinColumns(String attributeName, EDynamicType targetType, List<JoinColumn> joinColumns) {
-		UnidirectionalOneToManyMapping mapping = new UnidirectionalOneToManyMapping();
+		UnidirectionalOneToManyMapping mapping = new EUnidirectionalOneToManyMapping();
 		mapping.setAttributeName(attributeName);
 		ops.addMapping(mapping);
 
@@ -242,7 +244,7 @@ class ReferenceConfigurator {
 			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
 			return;
 		}
-		ManyToOneMapping mapping = new ManyToOneMapping();
+		ManyToOneMapping mapping = new EManyToOneMapping();
 		ops.addMapping(mapping);
 		mapping.setAttributeName(name);
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
@@ -261,8 +263,7 @@ class ReferenceConfigurator {
 			mapping.addForeignKeyField(fkField, pkField);
 			mapping.setIsReadOnly(false);
 		}
-		setMappingDefaults(mapping, reference);
-		setIndirection(mapping, reference);
+		configureEMF(mapping, reference);
 	}
 
 	private void processManyToMany(ManyToMany manyToMany) {
@@ -276,7 +277,7 @@ class ReferenceConfigurator {
 			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
 			return;
 		}
-		ManyToManyMapping mapping = new ManyToManyMapping();
+		ManyToManyMapping mapping = new EManyToManyMapping();
 		ops.addMapping(mapping);
 		mapping.setAttributeName(name);
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
@@ -295,9 +296,8 @@ class ReferenceConfigurator {
 			createM2MJoinTable(mapping, jt, refTypeBuilder.getType());
 		}
 		setOptional(mapping, manyToMany);
-		setMappingDefaults(mapping, reference);
 		setCascade(mapping, reference, manyToMany.getCascade());
-		setIndirection(mapping, reference);
+		configureEMF(mapping, reference);
 	}
 
 	ManyToManyMapping createM2MJoinTable(ManyToManyMapping mapping, JoinTable joinTable, EDynamicType refType) {
@@ -316,27 +316,19 @@ class ReferenceConfigurator {
 		return mapping;
 	}
 
-	void setMappingDefaults(ForeignReferenceMapping mapping, EReference reference) {
-		mapping.setJoinFetch(ForeignReferenceMapping.NONE);
-		mapping.setIsCascadeOnDeleteSetOnDatabase(false);
-		mapping.setDerivesId(false);
-		mapping.setIsPrivateOwned(false);
-		mapping.setIsCacheable(true);
-		// Containment: eager — EMF-Komposition erfordert, dass das Ziel mit dem Besitzer
-		// materialisiert wird. Non-Containment: lazy — EBasicIndirectionPolicy stellt einen
-		// EMF-Proxy ins Attribut, damit nur FK gelesen wird und Target-Load erst on demand
-		// via ResourceSet.getEObject → JPAResourceImpl.getEObject läuft.
-		mapping.setIsLazy(!reference.isContainment());
-		mapping.setAttributeAccessor(EReferenceAccessor.create(mapping, reference, context));
-	}
-
-	void setIndirection(ForeignReferenceMapping mapping, EReference reference) {
+	/**
+	 * Delegates the EMF semantics (accessor, indirection policy, mapping defaults) to
+	 * the mapping itself — every relationship mapping created here is an EMF-aware
+	 * {@link EMFConfigurableMapping} variant that owns this concern.
+	 */
+	void configureEMF(ForeignReferenceMapping mapping, EReference reference) {
 		requireNonNull(reference);
 		requireNonNull(mapping);
-		if (reference.isContainment()) {
-			mapping.dontUseIndirection();
+		if (mapping instanceof EMFConfigurableMapping emfMapping) {
+			emfMapping.configureEMF(reference, ops.getType(), context);
 		} else {
-			mapping.setIndirectionPolicy(new EBasicIndirectionPolicy(mapping, reference, ops.getType()));
+			LOG.log(Level.SEVERE, "Mapping for reference ''{0}'' is not EMF-configurable: {1}",
+					new Object[] { reference.getName(), mapping.getClass().getName() });
 		}
 	}
 

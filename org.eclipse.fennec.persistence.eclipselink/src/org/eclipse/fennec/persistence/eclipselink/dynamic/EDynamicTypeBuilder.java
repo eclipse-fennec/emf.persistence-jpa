@@ -38,8 +38,11 @@ import org.eclipse.persistence.dynamic.DynamicType;
 import org.eclipse.persistence.dynamic.DynamicTypeBuilder;
 import org.eclipse.persistence.internal.helper.DatabaseTable;
 import org.eclipse.persistence.jpa.dynamic.JPADynamicTypeBuilder;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EOneToManyMapping;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EOneToOneMapping;
 import org.eclipse.persistence.mappings.CollectionMapping;
 import org.eclipse.persistence.mappings.DatabaseMapping;
+import org.eclipse.persistence.mappings.OneToManyMapping;
 import org.eclipse.persistence.mappings.DirectCollectionMapping;
 import org.eclipse.persistence.mappings.DirectToFieldMapping;
 import org.eclipse.persistence.mappings.OneToOneMapping;
@@ -301,14 +304,33 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 		return super.addMapping(mapping);
 	}
 
+	/**
+	 * Mirrors {@link DynamicTypeBuilder#addOneToOneMapping(String, DynamicType, String...)}
+	 * but constructs the EMF-aware {@link EOneToOneMapping} variant.
+	 */
 	@Override
 	public OneToOneMapping addOneToOneMapping(String name, DynamicType targetType, String fkName) {
-		return super.addOneToOneMapping(name, targetType, fkName);
+		OneToOneMapping mapping = new EOneToOneMapping();
+		mapping.setAttributeName(name);
+		mapping.setReferenceClass(targetType.getJavaClass());
+		String targetField = targetType.getDescriptor().getPrimaryKeyFields().get(0).getName();
+		mapping.addForeignKeyFieldName(fkName, targetField);
+		return (OneToOneMapping) addMapping(mapping);
 	}
 
+	/**
+	 * Mirrors {@link DynamicTypeBuilder#addOneToManyMapping(String, DynamicType, String...)}
+	 * but constructs the EMF-aware {@link EOneToManyMapping} variant.
+	 */
 	@Override
 	public CollectionMapping addOneToManyMapping(String name, DynamicType targetType, String fkName) {
-		return super.addOneToManyMapping(name, targetType, fkName);
+		OneToManyMapping mapping = new EOneToManyMapping();
+		mapping.setAttributeName(name);
+		mapping.setReferenceClass(targetType.getJavaClass());
+		String targetField = getType().getDescriptor().getPrimaryKeyFields().get(0).getName();
+		mapping.addTargetForeignKeyFieldName(fkName, targetField);
+		mapping.useTransparentList();
+		return (CollectionMapping) addMapping(mapping);
 	}
 
 	@Override
