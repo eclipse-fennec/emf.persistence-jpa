@@ -387,13 +387,11 @@ class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test One-to-Many non-containment bidi-opposite persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classAEO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test One-to-Many non-containment bidi-opposite find A", e);
-		}
+		// AP-47: many-valued non-containment lists hold lazy EMF proxies — read back
+		// through a ResourceSet so element access resolves them transparently.
+		ResourceSet resourceSet = newJpaResourceSet();
+		String aId = EcoreUtil.getID(classAEO);
+		EObject findAEO = findViaResource(resourceSet, classAEClass.getName(), aId);
 
 		assertNotNull(findAEO);
 		assertEquals("The A-Class!", findAEO.eGet(aNameFeature));
@@ -404,7 +402,9 @@ class NonOsgiOneToManyTest extends NonOsgiPersistenceTestBase {
 			EObject eo = (EObject) o;
 			assertEquals(classEEClass, eo.eClass());
 			assertTrue(values.remove(eo.eGet(eNameFeature)));
-			assertEquals(findAEO, eo.eGet(eClassAFeature));
+			// The back reference may resolve to a separate instance — compare by EMF id.
+			EObject back = (EObject) EcoreUtil.resolve((EObject) eo.eGet(eClassAFeature), resourceSet);
+			assertEquals(aId, EcoreUtil.getID(back));
 		}
 		assertTrue(values.isEmpty());
 

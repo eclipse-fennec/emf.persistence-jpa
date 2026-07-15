@@ -26,6 +26,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.junit.jupiter.api.BeforeEach;
@@ -103,13 +104,10 @@ class NonOsgiManyToManyTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test Many-to-Many uni persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classA01EO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test Many-to-Many uni find A", e);
-		}
+		// AP-47: many-valued non-containment lists hold lazy EMF proxies — read back
+		// through a ResourceSet so element access resolves them transparently.
+		ResourceSet resourceSet = newJpaResourceSet();
+		EObject findAEO = findViaResource(resourceSet, classAEClass.getName(), EcoreUtil.getID(classA01EO));
 		assertNotNull(findAEO);
 		assertEquals("Emil Tester", findAEO.eGet(aNameFeature));
 
@@ -122,13 +120,7 @@ class NonOsgiManyToManyTest extends NonOsgiPersistenceTestBase {
 		assertEquals(1, values.size());
 		assertTrue(values.contains("Third B"));
 
-		EObject findBEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classB03EO);
-			findBEO = em.find(classBDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test Many-to-Many uni find B", e);
-		}
+		EObject findBEO = findViaResource(resourceSet, classBEClass.getName(), EcoreUtil.getID(classB03EO));
 		assertNotNull(findBEO);
 		assertEquals("Third B", findBEO.eGet(bNameFeature));
 		List<?> aResultList = (List<?>) findBEO.eGet(bClassAFeature);
@@ -184,13 +176,9 @@ class NonOsgiManyToManyTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test Many-to-Many no-opposite persist", e);
 		}
 
-		EObject findBEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classB03EO);
-			findBEO = em.find(classBDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test Many-to-Many no-opposite find B", e);
-		}
+		// AP-47: read back via ResourceSet so the proxy elements resolve on access.
+		ResourceSet resourceSet = newJpaResourceSet();
+		EObject findBEO = findViaResource(resourceSet, classBEClass.getName(), EcoreUtil.getID(classB03EO));
 		assertNotNull(findBEO);
 		assertEquals("Third B", findBEO.eGet(bNameFeature));
 
@@ -250,13 +238,10 @@ class NonOsgiManyToManyTest extends NonOsgiPersistenceTestBase {
 			fail("Fail test Many-to-Many EOpposite persist", e);
 		}
 
-		EObject findAEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classA01EO);
-			findAEO = em.find(classADescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test Many-to-Many EOpposite find A", e);
-		}
+		// AP-47: read back via ResourceSet so the proxy elements resolve on access.
+		ResourceSet resourceSet = newJpaResourceSet();
+		String a01Id = EcoreUtil.getID(classA01EO);
+		EObject findAEO = findViaResource(resourceSet, classAEClass.getName(), a01Id);
 		assertNotNull(findAEO);
 		assertEquals("Emil Tester", findAEO.eGet(aNameFeature));
 
@@ -266,19 +251,15 @@ class NonOsgiManyToManyTest extends NonOsgiPersistenceTestBase {
 		for (Object o : cResultList) {
 			EObject ceo = (EObject) o;
 			assertTrue(values.remove(ceo.eGet(cNameFeature)));
+			// Inverse side must point back to A01 — resolution may materialise a
+			// separate instance, so compare by EMF id instead of object identity.
 			List<?> cToA = (List<?>) ceo.eGet(cClassAFeature);
-			assertTrue(cToA.contains(findAEO));
+			assertTrue(cToA.stream().anyMatch(a -> a01Id.equals(EcoreUtil.getID((EObject) a))));
 		}
 		assertEquals(1, values.size());
 		assertTrue(values.contains("Third C"));
 
-		EObject findCEO = null;
-		try (EntityManager em = emf.createEntityManager()) {
-			String id = EcoreUtil.getID(classC01EO);
-			findCEO = em.find(classCDescriptor.getJavaClass(), Integer.valueOf(id));
-		} catch (Exception e) {
-			fail("Fail test Many-to-Many EOpposite find C", e);
-		}
+		EObject findCEO = findViaResource(resourceSet, classCEClass.getName(), EcoreUtil.getID(classC01EO));
 		assertNotNull(findCEO);
 		assertEquals("First C", findCEO.eGet(cNameFeature));
 

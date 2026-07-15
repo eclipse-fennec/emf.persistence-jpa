@@ -19,10 +19,13 @@ import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isContainm
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isNonContainmentOppositeRelation;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.setValue;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicTypeContext;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 import org.eclipse.persistence.exceptions.DescriptorException;
@@ -95,8 +98,23 @@ public class EReferenceAccessor extends ValuesAccessor {
 				nonNull(reference)) {
 			value = unwrapValueHolder(value);
 			//			value = calculateReferenceValue(eObject, value);
-			if (nonNull(value) && 
-					value instanceof EObject eValue && 
+			if (nonNull(value) &&
+					value instanceof Collection<?> collection &&
+					reference.isMany() &&
+					!reference.isContainment()) {
+				/*
+				 * Collection writes accumulate here (EclipseLink writes the value back on
+				 * many read paths — indirection normalisation, merge, backup). EMF's
+				 * unique-add only filters identical instances, so an element arriving as a
+				 * different instance of an already-present entity (AP-47 proxy lists are
+				 * rebuilt per clone) must be filtered by EMF id — mirroring the relation
+				 * table's primary key, which cannot hold the pair twice either.
+				 */
+				addCollectionValueById(eObject, collection);
+				return;
+			}
+			if (nonNull(value) &&
+					value instanceof EObject eValue &&
 					isContainmentChild(reference)) {
 				/*
 				 * If we are on the child side, our eValue is the parent
@@ -117,6 +135,49 @@ public class EReferenceAccessor extends ValuesAccessor {
 				setValue(eObject, value, reference);
 			}
 		}
+	}
+
+	/**
+	 * Adds the incoming elements to the many-valued reference, skipping elements whose
+	 * EMF id is already present in the list; elements without a usable id are added
+	 * as-is (duplicate instances are filtered by EMF's unique-add).
+	 * <p>
+	 * Elements are added via {@link InternalEList#basicAdd} — without EMF opposite
+	 * maintenance. This is a framework-internal fill: the other side of a bidirectional
+	 * reference loads its own state from its own row, and inverse handling on shared
+	 * lightweight proxies would steal elements between clone, backup and cache copies
+	 * (a single-valued opposite may only point to one owner). User-level modifications
+	 * through the EMF API keep the full opposite semantics.
+	 */
+	private void addCollectionValueById(EObject eObject, Collection<?> newContent) {
+		@SuppressWarnings("unchecked")
+		InternalEList<Object> current = (InternalEList<Object>) eObject.eGet(reference);
+		if (current == newContent) {
+			return;
+		}
+		for (Object element : newContent) {
+			if (element instanceof EObject eo) {
+				String id = EcoreUtil.getID(eo);
+				if (nonNull(id) && containsId(current.basicList(), eo, id)) {
+					continue;
+				}
+				if (!current.basicList().contains(element)) {
+					current.basicAdd(element, null);
+				}
+				continue;
+			}
+			current.add(element);
+		}
+	}
+
+	/** Non-resolving containment check by EMF id, ignoring the incoming instance itself. */
+	private static boolean containsId(List<?> list, Object incoming, String id) {
+		for (Object element : list) {
+			if (element != incoming && element instanceof EObject eo && id.equals(EcoreUtil.getID(eo))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

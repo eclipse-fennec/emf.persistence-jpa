@@ -562,6 +562,40 @@ The first time you call `book.eGet(author)`:
 
 Subsequent accesses are free — no further SQL runs.
 
+### Many-valued references: proxy elements from an ID-only query
+
+Many-valued non-containment references follow the same proxy contract, for
+both storage layouts. Loading the owner issues one lightweight ID-only query:
+
+- **Relation (join) table** (`ManyToMany`, unidirectional `OneToMany` with a
+  join table): `SELECT target_id FROM join_table WHERE source_id = ?` — the
+  target table is never touched.
+- **Foreign key in the target table** (bidirectional `OneToMany`): `SELECT
+  target_pk FROM target_table WHERE fk = ?` — only the primary-key column is
+  read, **no target object is materialised**.
+
+The list is filled with EMF proxies, one per id, each carrying the id
+attribute and an `eProxyURI`:
+
+```java
+List<EObject> tags = (List<EObject>) book.eGet(bookCls.getEStructuralFeature("tags"));
+tags.size();                    // relation-table ids only — no Tag row was read
+EObject first = tags.get(0);    // iteration/access resolves each element on demand
+```
+
+Element access resolves each proxy individually through the `ResourceSet`
+(one `em.find` per element on first touch). This is standard EMF behaviour:
+non-containment references hold proxies until accessed — exactly like
+cross-document references in XMI.
+
+Two consequences worth knowing:
+
+- Reading only the list size or the target ids (`EcoreUtil.getID(element)`)
+  never materialises a target row.
+- Writing an owner back (`resource.save()`) with an untouched proxy list
+  leaves the targets and the relation table alone — a proxy always represents
+  an existing row and is never re-persisted.
+
 ### Important: resolution requires a ResourceSet
 
 Entities fetched directly with `em.find(Book.class, id)` are **not** loaded
