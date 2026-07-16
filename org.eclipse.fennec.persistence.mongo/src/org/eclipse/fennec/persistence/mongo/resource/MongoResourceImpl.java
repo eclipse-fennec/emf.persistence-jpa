@@ -20,12 +20,17 @@ import static java.util.Objects.requireNonNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -46,14 +51,17 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
+import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.eclipse.fennec.codec.bson.BsonFormatDelegate;
 import org.eclipse.fennec.codec.bson.BsonFormatReaderDelegate;
+import org.eclipse.fennec.codec.config.ConfigProperty;
 import org.eclipse.fennec.codec.config.ConfigurationResolver;
 import org.eclipse.fennec.codec.context.ContextHelper;
 import org.eclipse.fennec.codec.deser.DeserializationState.UnresolvedReference;
 import org.eclipse.fennec.codec.diagnostic.DiagnosticCollector;
 import org.eclipse.fennec.codec.format.impl.FormatDelegateGenerator;
 import org.eclipse.fennec.codec.format.impl.FormatDelegateParser;
+import org.eclipse.fennec.codec.module.CodecModule;
 import org.eclipse.fennec.codec.resource.CodecResource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.model.metadata.api.MetadataService;
@@ -77,8 +85,11 @@ import tools.jackson.core.StreamWriteConstraints;
 import tools.jackson.core.io.ContentReference;
 import tools.jackson.core.io.IOContext;
 import tools.jackson.core.util.BufferRecycler;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * EMF Resource backed by MongoDB.
@@ -102,17 +113,55 @@ import tools.jackson.databind.ObjectWriter;
  * @author Mark Hoffmann
  * @since 16.07.2026
  */
-public class MongoResourceImpl extends CodecResource implements PersistenceResource {
+public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource {
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
 
 	private final MongoDatabase database;
+	private final CodecValueRegistry valueRegistry;
+	private volatile ObjectMapper mongoMapper;
 
 	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
 		super(uri, metadataService, ConfigurationResolver.defaults(), valueRegistry, null, null);
 		requireNonNull(database, "MongoDatabase is required");
 		this.database = database;
+		this.valueRegistry = valueRegistry;
+	}
+
+	/**
+	 * The Jackson mapper for the BsonDocument-direct paths. {@code CodecResource} builds
+	 * its mapper per save/load operation through private machinery; this mirrors that
+	 * construction with the public codec API ({@link CodecModule#builder()}) using the
+	 * resolver's global configuration. No explicit type-discriminator service is set —
+	 * every decode passes an {@code EXPECTED_TYPE} hint instead (the published
+	 * codec.metadata snapshot does not yet export the type-discriminator package).
+	 */
+	protected ObjectMapper mongoMapper() {
+		ObjectMapper mapper = mongoMapper;
+		if (nonNull(mapper)) {
+			return mapper;
+		}
+		synchronized (this) {
+			if (isNull(mongoMapper)) {
+				ConfigurationResolver resolver = getResolver();
+				CodecModule.Builder moduleBuilder = CodecModule.builder()
+						.resolver(resolver)
+						.metadataService(getMetadataService())
+						.globalIgnoreFeatures(resolver.getGlobalProperty(ConfigProperty.IGNORE_FEATURES))
+						.smartCompression(resolver.getGlobalProperty(ConfigProperty.SMART_COMPRESSION))
+						.useNamesFromExtendedMetaData(
+								resolver.getGlobalProperty(ConfigProperty.USE_NAMES_FROM_EXTENDED_METADATA))
+						.dateFormat(resolver.getGlobalProperty(ConfigProperty.DATE_FORMAT));
+				if (nonNull(valueRegistry)) {
+					moduleBuilder.valueRegistry(valueRegistry);
+				}
+				mongoMapper = JsonMapper.builder()
+						.addModule(moduleBuilder.build())
+						.build();
+			}
+			return mongoMapper;
+		}
 	}
 
 	// ------------------------------------------------------------------- load
@@ -287,6 +336,46 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 	}
 
+	// -------------------------------------------------------------- streaming
+
+	@Override
+	public Stream<EObject> stream() throws IOException {
+		return stream(null);
+	}
+
+	@Override
+	public Stream<EObject> stream(Map<?, ?> options) throws IOException {
+		String collectionName = getCollectionName(options);
+		if (isNull(collectionName)) {
+			return Stream.empty();
+		}
+		EClass eClass = resolveEClass(collectionName, options);
+		try {
+			FindIterable<BsonDocument> find = getCollection(collectionName).find();
+			int pageSize = Options.getPageSize(options);
+			if (pageSize > 0) {
+				find = find.batchSize(pageSize);
+			}
+			MongoCursor<BsonDocument> cursor = find.iterator();
+			Spliterator<BsonDocument> documents = Spliterators.spliteratorUnknownSize(
+					cursor, Spliterator.ORDERED | Spliterator.NONNULL);
+			return StreamSupport.stream(documents, false)
+					.map(document -> decodeUnchecked(document, eClass))
+					.filter(java.util.Objects::nonNull)
+					.onClose(cursor::close);
+		} catch (RuntimeException e) {
+			throw new IOException("Failed to open stream on collection '" + collectionName + "'", e);
+		}
+	}
+
+	private EObject decodeUnchecked(BsonDocument document, EClass eClass) {
+		try {
+			return decode(document, eClass);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
 	@Override
 	public void updateDefaultOptions(Map<Object, Object> options, ActionType... types) {
 		// No-op for the initial implementation (mirrors JPAResourceImpl)
@@ -313,6 +402,17 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * <li>{@code <idValue>} — a plain id (codec-created proxies use the document id)</li>
 	 * </ul>
 	 */
+	/**
+	 * The URI fragment of a contained object is its EMF id — this is what other
+	 * resources (and the codec) embed as the reference target, making written
+	 * references id-based ({@code mongodb://<db>/<collection>#<id>}).
+	 */
+	@Override
+	public String getURIFragment(EObject eObject) {
+		String id = EcoreUtil.getID(eObject);
+		return nonNull(id) ? id : super.getURIFragment(eObject);
+	}
+
 	@Override
 	public EObject getEObject(String uriFragment) {
 		if (isNull(uriFragment) || uriFragment.isEmpty()) {
@@ -364,7 +464,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		BsonFormatDelegate delegate = new BsonFormatDelegate(new BsonDocument());
 		try (FormatDelegateGenerator<BsonDocument> generator = FormatDelegateGenerator.create(
 				ObjectWriteContext.empty(), newIOContext(false), delegate)) {
-			ObjectWriter writer = getMapper().writerFor(EObject.class);
+			ObjectWriter writer = mongoMapper().writerFor(EObject.class);
 			writer.writeValue(generator, eObject);
 		} catch (RuntimeException e) {
 			throw new IOException("Failed to encode EObject of type "
@@ -381,10 +481,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	protected EObject decode(BsonDocument document, EClass eClassHint) throws IOException {
 		DiagnosticCollector diagnostics = new DiagnosticCollector();
 		List<UnresolvedReference> unresolved = new ArrayList<>();
-		ObjectReader reader = getMapper().readerFor(EObject.class)
+		ObjectReader reader = mongoMapper().readerFor(EObject.class)
 				.withAttribute(ContextHelper.UNRESOLVED_REFERENCES, unresolved)
 				.withAttribute(ContextHelper.DIAGNOSTIC_COLLECTOR, diagnostics)
-				.withAttribute(ContextHelper.RESOURCE, this);
+				.withAttribute(ContextHelper.RESOURCE, this)
+				.without(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 		if (nonNull(eClassHint)) {
 			reader = reader.withAttribute(ContextHelper.EXPECTED_TYPE, eClassHint);
 		}
@@ -452,11 +553,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		try {
 			EObject proxy = EcoreUtil.create(eClass);
-			URI targetUri = URI.createURI(unresolvedRef.getTargetUri());
-			if (targetUri.isRelative() && nonNull(getURI())) {
-				targetUri = targetUri.resolve(getURI());
-			}
-			((InternalEObject) proxy).eSetProxyURI(targetUri);
+			((InternalEObject) proxy).eSetProxyURI(toProxyUri(unresolvedRef.getTargetUri(), eClass));
 			return proxy;
 		} catch (RuntimeException e) {
 			diagnostics.addWarning("Error creating proxy for "
@@ -464,6 +561,24 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					MongoResourceImpl.class.getSimpleName());
 			return null;
 		}
+	}
+
+	/**
+	 * Builds the proxy URI for an unresolved reference. The codec serialises
+	 * cross-document references as the bare target id; the target collection comes from
+	 * the reference's effective type: {@code mongodb://<db>/<TargetType>#<id>}. Absolute
+	 * or path-carrying target URIs are resolved against this resource's URI as-is.
+	 */
+	private URI toProxyUri(String targetUri, EClass targetType) {
+		URI raw = URI.createURI(targetUri);
+		if (nonNull(raw.scheme()) || targetUri.contains("/") || isNull(getURI())) {
+			return raw.isRelative() && nonNull(getURI()) ? raw.resolve(getURI()) : raw;
+		}
+		URI base = getURI();
+		return base.trimFragment()
+				.trimSegments(base.segmentCount())
+				.appendSegment(targetType.getName())
+				.appendFragment(targetUri);
 	}
 
 	private IOContext newIOContext(boolean forReading) {
