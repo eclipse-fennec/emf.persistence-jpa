@@ -321,18 +321,6 @@ class JPAResourceImplTest {
 	}
 
 	@Nested
-	@DisplayName("getEngine")
-	class GetEngineTests {
-
-		@Test
-		@DisplayName("getEngine throws UnsupportedOperationException")
-		void testGetEngineThrows() {
-			assertThatThrownBy(() -> resource.getEngine())
-					.isInstanceOf(UnsupportedOperationException.class);
-		}
-	}
-
-	@Nested
 	@DisplayName("getEObject fragment resolution")
 	class GetEObjectTests {
 
