@@ -1,0 +1,16 @@
+Bundle-Name: Eclipse Fennec Persistence PushStreams
+Bundle-Description: OSGi PushStream support for EMF persistence resources
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.util.function;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot
+
+-testpath: \
+	assertj-core
