@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.fennec.persistence.engine.PersistenceEngine;
 
 /**
  * Resource extension for the persistence context
@@ -69,11 +68,5 @@ public interface PersistenceResource extends Resource, AutoCloseable {
 	 * @throws IOException
 	 */
 	boolean exist(Map<?, ?> options) throws IOException;
-	
-	/**
-	 * Returns the persistence engine. Must not return <code>null</code>
-	 * @return the persistence engine
-	 */
-	PersistenceEngine getEngine();
-	
+
 }
