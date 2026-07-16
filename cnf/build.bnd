@@ -7,7 +7,8 @@
 	fennecTest,\
 	fennecJacoco,\
 	fennecEMF,\
-	fennecEMFModels
+	fennecEMFModels,\
+	fennecCodec
 
 # Needed because we enabled library 'fennec'
 # Activate baselining

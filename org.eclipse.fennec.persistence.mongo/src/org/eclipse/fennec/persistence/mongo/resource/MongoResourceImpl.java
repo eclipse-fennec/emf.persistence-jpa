@@ -1,0 +1,625 @@
+/********************************************************************
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Data In Motion Consulting - initial implementation
+ ********************************************************************/
+package org.eclipse.fennec.persistence.mongo.resource;
+
+import static com.mongodb.client.model.Filters.eq;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonString;
+import org.bson.BsonValue;
+import org.bson.types.ObjectId;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EAttribute;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
+import org.eclipse.fennec.persistence.resource.PersistenceResource;
+import org.eclipse.fennec.codec.bson.BsonFormatDelegate;
+import org.eclipse.fennec.codec.bson.BsonFormatReaderDelegate;
+import org.eclipse.fennec.codec.config.ConfigurationResolver;
+import org.eclipse.fennec.codec.context.ContextHelper;
+import org.eclipse.fennec.codec.deser.DeserializationState.UnresolvedReference;
+import org.eclipse.fennec.codec.diagnostic.DiagnosticCollector;
+import org.eclipse.fennec.codec.format.impl.FormatDelegateGenerator;
+import org.eclipse.fennec.codec.format.impl.FormatDelegateParser;
+import org.eclipse.fennec.codec.resource.CodecResource;
+import org.eclipse.fennec.codec.value.CodecValueRegistry;
+import org.eclipse.fennec.model.metadata.api.MetadataService;
+
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.CountOptions;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.WriteModel;
+
+import tools.jackson.core.ErrorReportConfiguration;
+import tools.jackson.core.JsonEncoding;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.ObjectWriteContext;
+import tools.jackson.core.StreamReadConstraints;
+import tools.jackson.core.StreamWriteConstraints;
+import tools.jackson.core.io.ContentReference;
+import tools.jackson.core.io.IOContext;
+import tools.jackson.core.util.BufferRecycler;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.ObjectWriter;
+
+/**
+ * EMF Resource backed by MongoDB.
+ * <p>
+ * URI scheme: {@code mongodb://<db>/<collection>[/<id>]} — the URI carries addressing
+ * only; the connection ({@link MongoDatabase}) is injected by the factory.
+ * <p>
+ * Serialization is <b>BsonDocument-direct</b>: EObjects are written into / read from
+ * {@link BsonDocument}s through the codec's {@link BsonFormatDelegate} /
+ * {@link BsonFormatReaderDelegate} bridged via {@link FormatDelegateGenerator} /
+ * {@link FormatDelegateParser} — no byte stream is involved.
+ * <p>
+ * Identity: the EMF ID attribute ({@code eClass().getEIDAttribute()}) maps to the Mongo
+ * {@code _id}. When the attribute is unset on save and String-typed, a new
+ * {@link ObjectId} hex string is generated and <b>written back</b> into the EObject.
+ * <p>
+ * Cross-document references follow the framework-wide proxy contract: unresolved
+ * references decoded by the codec become EMF proxies whose URIs resolve through the
+ * {@link ResourceSet} back to {@link #getEObject(String)}.
+ *
+ * @author Mark Hoffmann
+ * @since 16.07.2026
+ */
+public class MongoResourceImpl extends CodecResource implements PersistenceResource {
+
+	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
+
+	private final MongoDatabase database;
+
+	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry) {
+		super(uri, metadataService, ConfigurationResolver.defaults(), valueRegistry, null, null);
+		requireNonNull(database, "MongoDatabase is required");
+		this.database = database;
+	}
+
+	// ------------------------------------------------------------------- load
+
+	@Override
+	public void load(Map<?, ?> options) throws IOException {
+		if (isLoaded) {
+			return;
+		}
+		doLoad((InputStream) null, options);
+		isLoaded = true;
+	}
+
+	@Override
+	protected void doLoad(InputStream inputStream, Map<?, ?> options) throws IOException {
+		getErrors().clear();
+		getWarnings().clear();
+		String collectionName = getCollectionName(options);
+		if (isNull(collectionName)) {
+			getWarnings().add(new MongoDiagnostic(
+					"Resource URI has no collection segment — nothing to load", getURI()));
+			return;
+		}
+		if (!getContents().isEmpty()) {
+			getContents().clear();
+		}
+		try {
+			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			FindIterable<BsonDocument> find = collection.find();
+			String id = getIdSegment();
+			EClass eClass = resolveEClass(collectionName, options);
+			if (nonNull(id)) {
+				find = collection.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(id, eClass)));
+			}
+			int pageSize = Options.getPageSize(options);
+			if (pageSize > 0) {
+				loadPaginated(collection, find, eClass, pageSize);
+			} else {
+				decodeInto(find, eClass, getContents());
+			}
+		} catch (RuntimeException e) {
+			getErrors().add(new MongoDiagnostic(
+					"Failed to load resource: " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to load resource: " + getURI(), e);
+		}
+	}
+
+	private void loadPaginated(MongoCollection<BsonDocument> collection, FindIterable<BsonDocument> find,
+			EClass eClass, int pageSize) throws IOException {
+		int offset = 0;
+		while (true) {
+			List<EObject> page = new ArrayList<>(pageSize);
+			decodeInto(find.skip(offset).limit(pageSize), eClass, page);
+			getContents().addAll(page);
+			if (page.size() < pageSize) {
+				return;
+			}
+			offset += page.size();
+		}
+	}
+
+	private void decodeInto(FindIterable<BsonDocument> find, EClass eClass, List<EObject> target)
+			throws IOException {
+		try (MongoCursor<BsonDocument> cursor = find.iterator()) {
+			while (cursor.hasNext()) {
+				EObject eObject = decode(cursor.next(), eClass);
+				if (nonNull(eObject)) {
+					target.add(eObject);
+				}
+			}
+		}
+	}
+
+	// ------------------------------------------------------------------- save
+
+	@Override
+	public void save(Map<?, ?> options) throws IOException {
+		doSave((OutputStream) null, options);
+	}
+
+	@Override
+	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
+		getErrors().clear();
+		getWarnings().clear();
+		String collectionName = getCollectionName(options);
+		if (isNull(collectionName)) {
+			getWarnings().add(new MongoDiagnostic(
+					"Resource URI has no collection segment — nothing to save", getURI()));
+			return;
+		}
+		try {
+			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			List<WriteModel<BsonDocument>> writes = new ArrayList<>(getContents().size());
+			ReplaceOptions upsert = new ReplaceOptions().upsert(true);
+			for (EObject eObject : getContents()) {
+				BsonValue id = ensureId(eObject);
+				BsonDocument document = encode(eObject);
+				document.put(MongoPersistenceConstants.ID_FIELD, id);
+				writes.add(new ReplaceOneModel<>(
+						eq(MongoPersistenceConstants.ID_FIELD, id), document, upsert));
+			}
+			if (!writes.isEmpty()) {
+				collection.bulkWrite(writes);
+			}
+		} catch (RuntimeException e) {
+			getErrors().add(new MongoDiagnostic(
+					"Failed to save resource: " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to save resource: " + getURI(), e);
+		}
+	}
+
+	// -------------------------------------------------- delete / count / exist
+
+	@Override
+	public void delete(Map<?, ?> options) throws IOException {
+		getErrors().clear();
+		getWarnings().clear();
+		String collectionName = getCollectionName(options);
+		if (isNull(collectionName)) {
+			return;
+		}
+		try {
+			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			for (EObject eObject : getContents()) {
+				BsonValue id = extractId(eObject);
+				if (nonNull(id)) {
+					collection.deleteOne(eq(MongoPersistenceConstants.ID_FIELD, id));
+				}
+			}
+			getContents().clear();
+		} catch (RuntimeException e) {
+			getErrors().add(new MongoDiagnostic(
+					"Failed to delete resource: " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to delete resource: " + getURI(), e);
+		}
+	}
+
+	@Override
+	public long count() throws IOException {
+		return count(null);
+	}
+
+	@Override
+	public long count(Map<?, ?> options) throws IOException {
+		String collectionName = getCollectionName(options);
+		if (isNull(collectionName)) {
+			return 0;
+		}
+		try {
+			return getCollection(collectionName).countDocuments();
+		} catch (RuntimeException e) {
+			throw new IOException("Failed to count collection '" + collectionName + "'", e);
+		}
+	}
+
+	@Override
+	public boolean exist() throws IOException {
+		return exist(null);
+	}
+
+	@Override
+	public boolean exist(Map<?, ?> options) throws IOException {
+		String collectionName = getCollectionName(options);
+		if (isNull(collectionName)) {
+			return false;
+		}
+		try {
+			return getCollection(collectionName)
+					.countDocuments(new BsonDocument(), new CountOptions().limit(1)) > 0;
+		} catch (RuntimeException e) {
+			throw new IOException("Failed to check existence of collection '" + collectionName + "'", e);
+		}
+	}
+
+	@Override
+	public void updateDefaultOptions(Map<Object, Object> options, ActionType... types) {
+		// No-op for the initial implementation (mirrors JPAResourceImpl)
+	}
+
+	@Override
+	public void close() throws Exception {
+		unload();
+	}
+
+	@Override
+	protected void doUnload() {
+		isLoaded = false;
+		getContents().clear();
+	}
+
+	// -------------------------------------------------------- proxy resolution
+
+	/**
+	 * Resolves proxy fragments. Two fragment shapes are supported:
+	 * <ul>
+	 * <li>{@code //refName/idAttr/idValue} — the persistence proxy format shared with
+	 *     the JPA backend</li>
+	 * <li>{@code <idValue>} — a plain id (codec-created proxies use the document id)</li>
+	 * </ul>
+	 */
+	@Override
+	public EObject getEObject(String uriFragment) {
+		if (isNull(uriFragment) || uriFragment.isEmpty()) {
+			return super.getEObject(uriFragment);
+		}
+		String idValue = uriFragment;
+		if (uriFragment.startsWith("//")) {
+			// Fragment format: //refName/idAttrName/idValue
+			String[] parts = uriFragment.substring(2).split("/");
+			if (parts.length < 3) {
+				return super.getEObject(uriFragment);
+			}
+			idValue = parts[2];
+		}
+		String collectionName = getCollectionName(null);
+		if (isNull(collectionName)) {
+			return null;
+		}
+		EClass eClass = resolveEClass(collectionName, null);
+		try {
+			BsonDocument document = getCollection(collectionName)
+					.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(idValue, eClass)))
+					.first();
+			if (isNull(document)) {
+				// Fall back to the EMF default (intrinsic id lookup in loaded contents)
+				return super.getEObject(uriFragment);
+			}
+			EObject resolved = decode(document, eClass);
+			if (nonNull(resolved) && isNull(resolved.eResource()) && !getContents().contains(resolved)) {
+				// Standard EMF pattern: attach the resolved object so it has an
+				// eResource() and subsequent accesses need no further round trip.
+				getContents().add(resolved);
+			}
+			return resolved;
+		} catch (RuntimeException | IOException e) {
+			getWarnings().add(new MongoDiagnostic(
+					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(), getURI(), e));
+			return null;
+		}
+	}
+
+	// ------------------------------------------------------------ codec bridge
+
+	/**
+	 * Encodes a single EObject into a {@link BsonDocument} — BsonDocument-direct via the
+	 * codec's format-delegate bridge (mirrors {@code CodecResource.doSaveWithFormat}).
+	 */
+	protected BsonDocument encode(EObject eObject) throws IOException {
+		BsonFormatDelegate delegate = new BsonFormatDelegate(new BsonDocument());
+		try (FormatDelegateGenerator<BsonDocument> generator = FormatDelegateGenerator.create(
+				ObjectWriteContext.empty(), newIOContext(false), delegate)) {
+			ObjectWriter writer = getMapper().writerFor(EObject.class);
+			writer.writeValue(generator, eObject);
+		} catch (RuntimeException e) {
+			throw new IOException("Failed to encode EObject of type "
+					+ eObject.eClass().getName(), e);
+		}
+		return delegate.getTarget();
+	}
+
+	/**
+	 * Decodes a single {@link BsonDocument} into an EObject (mirrors
+	 * {@code CodecResource.doLoadWithFormat}); unresolved references become EMF proxies
+	 * whose URIs are resolved against this resource's URI.
+	 */
+	protected EObject decode(BsonDocument document, EClass eClassHint) throws IOException {
+		DiagnosticCollector diagnostics = new DiagnosticCollector();
+		List<UnresolvedReference> unresolved = new ArrayList<>();
+		ObjectReader reader = getMapper().readerFor(EObject.class)
+				.withAttribute(ContextHelper.UNRESOLVED_REFERENCES, unresolved)
+				.withAttribute(ContextHelper.DIAGNOSTIC_COLLECTOR, diagnostics)
+				.withAttribute(ContextHelper.RESOURCE, this);
+		if (nonNull(eClassHint)) {
+			reader = reader.withAttribute(ContextHelper.EXPECTED_TYPE, eClassHint);
+		}
+		EObject result;
+		BsonFormatReaderDelegate delegate = new BsonFormatReaderDelegate(document);
+		try (FormatDelegateParser<BsonDocument> parser = FormatDelegateParser.create(
+				ObjectReadContext.empty(), newIOContext(true), delegate)) {
+			JsonToken firstToken = parser.nextToken();
+			if (firstToken != JsonToken.START_OBJECT) {
+				LOG.warning(() -> "Unexpected token at document root: " + firstToken);
+				return null;
+			}
+			result = reader.readValue(parser);
+		} catch (RuntimeException e) {
+			throw new IOException("Failed to decode document from collection '"
+					+ getCollectionName(null) + "'", e);
+		}
+		if (!unresolved.isEmpty()) {
+			resolveUnresolvedReferences(unresolved, diagnostics);
+		}
+		diagnostics.addToResource(this);
+		return result;
+	}
+
+	/**
+	 * Replicates {@code CodecResource.resolveReferences} (private there): unresolved
+	 * references are resolved within this resource where possible, otherwise turned
+	 * into EMF proxies carrying the target URI (relative URIs resolved against this
+	 * resource's URI).
+	 */
+	@SuppressWarnings("unchecked")
+	private void resolveUnresolvedReferences(List<UnresolvedReference> unresolvedReferences,
+			DiagnosticCollector diagnostics) {
+		Map<String, EObject> proxyCache = new HashMap<>();
+		for (UnresolvedReference unresolvedRef : unresolvedReferences) {
+			String targetUri = unresolvedRef.getTargetUri();
+			EObject target = proxyCache.computeIfAbsent(targetUri,
+					uri -> createProxyFor(unresolvedRef, diagnostics));
+			if (isNull(target)) {
+				diagnostics.addWarning("Could not create proxy for reference "
+						+ unresolvedRef.getReference().getName() + " -> " + targetUri,
+						MongoResourceImpl.class.getSimpleName());
+				continue;
+			}
+			EObject source = unresolvedRef.getSource();
+			EReference reference = unresolvedRef.getReference();
+			if (unresolvedRef.isMultiValued()) {
+				List<EObject> list = (List<EObject>) source.eGet(reference);
+				int index = unresolvedRef.getIndex();
+				if (index < list.size()) {
+					list.set(index, target);
+				} else {
+					list.add(target);
+				}
+			} else {
+				source.eSet(reference, target);
+			}
+		}
+	}
+
+	private EObject createProxyFor(UnresolvedReference unresolvedRef, DiagnosticCollector diagnostics) {
+		EClass eClass = unresolvedRef.getEffectiveType();
+		if (isNull(eClass) || eClass.isAbstract() || eClass.isInterface()) {
+			return null;
+		}
+		try {
+			EObject proxy = EcoreUtil.create(eClass);
+			URI targetUri = URI.createURI(unresolvedRef.getTargetUri());
+			if (targetUri.isRelative() && nonNull(getURI())) {
+				targetUri = targetUri.resolve(getURI());
+			}
+			((InternalEObject) proxy).eSetProxyURI(targetUri);
+			return proxy;
+		} catch (RuntimeException e) {
+			diagnostics.addWarning("Error creating proxy for "
+					+ unresolvedRef.getTargetUri() + ": " + e.getMessage(),
+					MongoResourceImpl.class.getSimpleName());
+			return null;
+		}
+	}
+
+	private IOContext newIOContext(boolean forReading) {
+		return new IOContext(
+				StreamReadConstraints.defaults(),
+				StreamWriteConstraints.defaults(),
+				ErrorReportConfiguration.defaults(),
+				new BufferRecycler(),
+				ContentReference.unknown(), forReading, JsonEncoding.UTF8);
+	}
+
+	// ------------------------------------------------------------- id handling
+
+	/**
+	 * Returns the {@code _id} value for the EObject, generating (and writing back) a new
+	 * {@link ObjectId} hex string when the String-typed EMF id attribute is unset.
+	 */
+	protected BsonValue ensureId(EObject eObject) throws IOException {
+		EAttribute idAttribute = eObject.eClass().getEIDAttribute();
+		if (isNull(idAttribute)) {
+			throw new IOException("EClass '" + eObject.eClass().getName()
+					+ "' has no ID attribute — cannot map to Mongo _id");
+		}
+		Object value = eObject.eGet(idAttribute);
+		if (isUnsetId(value)) {
+			Class<?> instanceClass = idAttribute.getEAttributeType().getInstanceClass();
+			if (instanceClass != String.class) {
+				throw new IOException("EObject of type '" + eObject.eClass().getName()
+						+ "' has no id value and the id attribute is not String-typed — "
+						+ "cannot generate an ObjectId");
+			}
+			String generated = new ObjectId().toHexString();
+			eObject.eSet(idAttribute, generated);
+			return new BsonString(generated);
+		}
+		return toBsonValue(value);
+	}
+
+	/** Returns the {@code _id} value of the EObject or {@code null} if unset. */
+	protected BsonValue extractId(EObject eObject) {
+		EAttribute idAttribute = eObject.eClass().getEIDAttribute();
+		if (isNull(idAttribute)) {
+			return null;
+		}
+		Object value = eObject.eGet(idAttribute);
+		return isUnsetId(value) ? null : toBsonValue(value);
+	}
+
+	private static boolean isUnsetId(Object value) {
+		if (isNull(value)) {
+			return true;
+		}
+		if (value instanceof String s) {
+			return s.isEmpty();
+		}
+		if (value instanceof Number n) {
+			return n.longValue() == 0L;
+		}
+		return false;
+	}
+
+	private static BsonValue toBsonValue(Object value) {
+		if (value instanceof Integer i) {
+			return new BsonInt32(i);
+		}
+		if (value instanceof Long l) {
+			return new BsonInt64(l);
+		}
+		return new BsonString(String.valueOf(value));
+	}
+
+	/** Converts a string id from a URI fragment to the typed {@code _id} representation. */
+	private BsonValue toBsonId(String idValue, EClass eClass) {
+		if (nonNull(eClass)) {
+			EAttribute idAttribute = eClass.getEIDAttribute();
+			if (nonNull(idAttribute)) {
+				Class<?> instanceClass = idAttribute.getEAttributeType().getInstanceClass();
+				try {
+					if (instanceClass == Integer.class || instanceClass == int.class) {
+						return new BsonInt32(Integer.parseInt(idValue));
+					}
+					if (instanceClass == Long.class || instanceClass == long.class) {
+						return new BsonInt64(Long.parseLong(idValue));
+					}
+				} catch (NumberFormatException e) {
+					LOG.log(Level.FINE, "Cannot convert id '" + idValue + "' to " + instanceClass, e);
+				}
+			}
+		}
+		return new BsonString(idValue);
+	}
+
+	// -------------------------------------------------------------- addressing
+
+	/**
+	 * Resolves the collection name: explicit table EClass option first, else the first
+	 * URI segment after the database authority ({@code mongodb://<db>/<collection>}).
+	 */
+	protected String getCollectionName(Map<?, ?> options) {
+		EClass tableEClass = nonNull(options) ? Options.getTableEClass(options) : null;
+		if (nonNull(tableEClass)) {
+			return tableEClass.getName();
+		}
+		URI uri = getURI();
+		if (isNull(uri) || uri.segmentCount() == 0) {
+			return null;
+		}
+		return uri.segment(0);
+	}
+
+	/** Returns the optional id segment ({@code mongodb://<db>/<collection>/<id>}). */
+	protected String getIdSegment() {
+		URI uri = getURI();
+		if (isNull(uri) || uri.segmentCount() < 2) {
+			return null;
+		}
+		return uri.segment(1);
+	}
+
+	/**
+	 * Resolves the EClass for the collection: explicit option first, then a lookup by
+	 * classifier name across the packages registered with the ResourceSet (and the
+	 * global package registry).
+	 */
+	protected EClass resolveEClass(String collectionName, Map<?, ?> options) {
+		EClass tableEClass = nonNull(options) ? Options.getTableEClass(options) : null;
+		if (nonNull(tableEClass)) {
+			return tableEClass;
+		}
+		ResourceSet resourceSet = getResourceSet();
+		if (nonNull(resourceSet)) {
+			EClass fromLocal = lookupEClass(resourceSet.getPackageRegistry(), collectionName);
+			if (nonNull(fromLocal)) {
+				return fromLocal;
+			}
+		}
+		return lookupEClass(EPackage.Registry.INSTANCE, collectionName);
+	}
+
+	private EClass lookupEClass(EPackage.Registry registry, String name) {
+		for (Object value : registry.values()) {
+			if (value instanceof EPackage ePackage) {
+				EClassifier classifier = ePackage.getEClassifier(name);
+				if (classifier instanceof EClass eClass) {
+					return eClass;
+				}
+			}
+		}
+		return null;
+	}
+
+	protected MongoCollection<BsonDocument> getCollection(String collectionName) {
+		return database.getCollection(collectionName, BsonDocument.class);
+	}
+
+	protected MongoDatabase getDatabase() {
+		return database;
+	}
+}
