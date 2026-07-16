@@ -51,6 +51,7 @@ header:
     - '**/*.sql'
     - '**/*.xmi'
     - '**/*.db'
+    - '**/.gitkeep'
     - '**/.classpath'
     - 'LICENSE'
     - 'Jenkinsfile'
