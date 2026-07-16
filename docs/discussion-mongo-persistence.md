@@ -317,8 +317,11 @@ Arbeitsform: Gap-Analyse mit Testfällen im `emf.codec`-Repo (Arbeitsplan Paket 
 braucht einen `CodecWriteContext` am Generator — der `FormatDelegateGenerator` (bson/xlsx/…)
 hat nur Jacksons `SimpleStreamWriteContext`, daher werden Cross-Resource-Referenzen als nackte
 Fragmente und Proxy-Ziele als Typ-URI geschrieben. Vorschlag: Writer-seitiger Fallback über ein
-`SerializationContext`-Attribut (`ContextHelper.RESOURCE`), wie es der Lesepfad bereits kennt.
-Bis dahin zieht `MongoResourceImpl.rewriteCrossResourceReferences` die URIs nach (idempotent).
+`SerializationContext`-Attribut (`ContextHelper.RESOURCE`), wie es der Lesepfad bereits kennt —
+gemeldet als https://github.com/eclipse-fennec/emf.codec/issues/50.
+Bis dahin zieht `MongoResourceImpl.rewriteCrossResourceReferences` die URIs nach (idempotent);
+der Workaround wird mit dem Fix entfernt. Achtung: er behandelt nur Referenzen des Wurzelobjekts,
+nicht die verschachtelter Containment-Kinder — ein Grund mehr für den Codec-Fix.
 Konsequenz bis zum nächsten Snapshot-Publish: der Gradle-Build des Mongo-Bundles ist grün
 (javac kennt keine Access-Rules), aber die IDE markiert die Imports und das Bundle würde in
 OSGi nicht resolven. Nach dem Publish: TypeDiscriminator-Service in

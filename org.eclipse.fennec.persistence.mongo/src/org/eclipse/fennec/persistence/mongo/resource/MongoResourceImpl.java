@@ -486,6 +486,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * ({@code EcoreUtil.getURI}/{@code eProxyURI}) so they resolve across resources and
 	 * backends. Same-resource targets keep their id fragment; the rewrite is idempotent
 	 * and becomes a no-op once the codec writes absolute URIs itself.
+	 * <p>
+	 * Interim workaround for
+	 * <a href="https://github.com/eclipse-fennec/emf.codec/issues/50">emf.codec#50</a> —
+	 * remove when the codec supports a writer-side {@code ContextHelper.RESOURCE}
+	 * fallback. Limitation: only the root object's references are rewritten, not those
+	 * of nested containment children.
 	 */
 	private void rewriteCrossResourceReferences(EObject source, BsonDocument document) {
 		for (EReference reference : source.eClass().getEAllReferences()) {
