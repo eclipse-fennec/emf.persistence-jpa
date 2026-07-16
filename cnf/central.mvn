@@ -183,3 +183,10 @@ org.eclipse.persistence:org.eclipse.persistence.asm:9.9.0
 org.eclipse.persistence:org.eclipse.persistence.core:4.0.9
 org.eclipse.persistence:org.eclipse.persistence.json:4.0.9
 org.eclipse.persistence:org.eclipse.persistence.moxy:4.0.9
+
+# MongoDB backend
+org.mongodb:mongodb-driver-sync:5.6.3
+org.mongodb:mongodb-driver-core:5.6.3
+
+# Eclipse Fennec Codec (bnd library: fennecCodec)
+org.eclipse.fennec.codec:org.eclipse.fennec.codec.workspace.library:0.1.0-SNAPSHOT

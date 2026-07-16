@@ -1,0 +1,24 @@
+Bundle-Name: Eclipse Fennec MongoDB Persistence
+Bundle-Description: EMF Persistence with MongoDB
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.codec.api;version=latest,\
+	org.eclipse.fennec.codec;version=latest,\
+	org.eclipse.fennec.codec.bson;version=latest,\
+	org.eclipse.fennec.model.metadata;version=latest,\
+	tools.jackson.core.jackson-core;version=latest,\
+	tools.jackson.core.jackson-databind;version=latest,\
+	com.fasterxml.jackson.core.jackson-annotations;version=latest,\
+	org.mongodb.bson;version=latest,\
+	org.mongodb.driver-core;version=latest,\
+	org.mongodb.driver-sync;version=latest
+
+-testpath: \
+	assertj-core
