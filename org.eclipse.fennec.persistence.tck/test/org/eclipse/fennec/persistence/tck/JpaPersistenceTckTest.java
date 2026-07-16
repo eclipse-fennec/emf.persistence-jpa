@@ -60,12 +60,14 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 
 	@Override
 	protected void setUpBackend(EPackage tckPackage) {
-		// Order matters for eOpposite pairs in the eorm mapper: the many side of a
-		// bidirectional pair must be processed before the owning single side.
+		// Deliberately pass the owning single side (Person.employer) BEFORE the many
+		// side (Company.employees): this order used to break the eorm mapper's
+		// opposite wiring — kept as regression coverage for the stage-5 normalization
+		// in MappingProcessor.createOppositeMapping.
 		List<EClassifier> eClasses = new ArrayList<>();
-		eClasses.add(tckPackage.getEClassifier("Company"));
-		eClasses.add(tckPackage.getEClassifier("Address"));
 		eClasses.add(tckPackage.getEClassifier("Person"));
+		eClasses.add(tckPackage.getEClassifier("Address"));
+		eClasses.add(tckPackage.getEClassifier("Company"));
 		EntityMapper mapper = new EntityMapper();
 		EntityMappings mappings = mapper.createMappings(eClasses);
 

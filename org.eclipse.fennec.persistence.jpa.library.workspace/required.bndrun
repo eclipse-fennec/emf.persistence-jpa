@@ -12,7 +12,8 @@
 	bnd.identity;id='org.eclipse.persistence.moxy',\
 	bnd.identity;id='org.eclipse.fennec.persistence.eclipselink',\
 	bnd.identity;id='org.eclipse.fennec.persistence.orm',\
-	bnd.identity;id='org.eclipse.fennec.persistence.test'
+	bnd.identity;id='org.eclipse.fennec.persistence.pushstreams',\
+	bnd.identity;id='org.eclipse.fennec.persistence.mongo'
 -runbundles: \
 	com.h2database;version='[2.3.232,2.3.233)',\
 	jakarta.persistence-api;version='[3.2.0,3.2.1)',\

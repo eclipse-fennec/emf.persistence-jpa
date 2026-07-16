@@ -17,6 +17,9 @@ import static java.util.Objects.nonNull;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
 
 import org.eclipse.emf.ecore.EClass;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
@@ -47,6 +50,8 @@ import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
  * @since 29.12.2024
  */
 public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
+
+	private static final Logger LOG = Logger.getLogger(OneToManyProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.
@@ -82,8 +87,8 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 		if (isOppositeMapping()) {
 			EReference opposite = source.getEOpposite();
 			BaseRef mapping = context.getMapping(opposite);
-			if (mapping instanceof MappedByRef mbRef) {
-				MappedBy mappedBy = context.getMappedBy(source);
+			MappedBy mappedBy = context.getMappedBy(source);
+			if (mapping instanceof MappedByRef mbRef && nonNull(mappedBy)) {
 				mbRef.setMappedBy(mappedBy.mappedByName);
 				// Clean up redundant owning-side info — inverse only needs mappedBy
 				if (mapping instanceof OneToMany o2m) {
@@ -91,8 +96,15 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 				}
 				mapping.setForeignKey(null);
 				mapping.setJoinTable(null);
-				setDelegate(true);
+			} else {
+				LOG.log(Level.SEVERE,
+						"Cannot wire bidirectional pair {0} <-> {1}: opposite mapping is {2}",
+						new Object[] { source.getName(), opposite.getName(),
+								isNull(mapping) ? "missing" : mapping.eClass().getName() });
 			}
+			// Always delegate in the opposite pass — this processor must never emit an
+			// own (blank) mapping; the owning mapping was created in stage 4.
+			setDelegate(true);
 		} else if (source.isContainment()) {
 			// CONTAINMENT: Use JoinColumn (FK in target table)
 			// OrphanRemoval=true: children are deleted when removed from parent collection

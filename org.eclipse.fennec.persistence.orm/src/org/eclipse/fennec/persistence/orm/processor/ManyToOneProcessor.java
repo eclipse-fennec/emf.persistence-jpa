@@ -12,8 +12,12 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm.processor;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
@@ -31,6 +35,8 @@ import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
  * @since 29.12.2024
  */
 public class ManyToOneProcessor extends BaseReferenceProcessor<ManyToOne> {
+
+	private static final Logger LOG = Logger.getLogger(ManyToOneProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.
@@ -78,17 +84,22 @@ public class ManyToOneProcessor extends BaseReferenceProcessor<ManyToOne> {
 		if (isOppositeMapping()) {
 			EReference opposite = source.getEOpposite();
 			BaseRef mapping = context.getMapping(opposite);
-			if (mapping instanceof OneToMany mbRef) {
+			if (mapping instanceof OneToMany mbRef && nonNull(context.getMappedBy(source))) {
 				MappedBy mappedBy = context.getMappedBy(source);
-				if (nonNull(mappedBy)) {
-					mbRef.setMappedBy(mappedBy.mappedByName);
-					// Clean up redundant owning-side info — inverse only needs mappedBy
-					mbRef.getJoinColumn().clear();
-					mapping.setForeignKey(null);
-					mapping.setJoinTable(null);
-					setDelegate(true);
-				}
+				mbRef.setMappedBy(mappedBy.mappedByName);
+				// Clean up redundant owning-side info — inverse only needs mappedBy
+				mbRef.getJoinColumn().clear();
+				mapping.setForeignKey(null);
+				mapping.setJoinTable(null);
+			} else {
+				LOG.log(Level.SEVERE,
+						"Cannot wire bidirectional pair {0} <-> {1}: opposite mapping is {2}",
+						new Object[] { source.getName(), opposite.getName(),
+								isNull(mapping) ? "missing" : mapping.eClass().getName() });
 			}
+			// Always delegate in the opposite pass — this processor must never emit an
+			// own (blank) mapping; the owning mapping was created in stage 4.
+			setDelegate(true);
 		} else {
 			JoinColumn jc = createJoinColumn(source.getEReferenceType());
 			if (nonNull(jc)) {

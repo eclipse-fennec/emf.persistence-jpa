@@ -345,7 +345,15 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 				if (opposite.isMany()) {
 					return createM2MProcessor(reference).withOppositeMapping().process().getMapping();
 				} else {
-					return createO2MProcessor(reference).withOppositeMapping().process().getMapping();
+					/*
+					 * Mixed single<->many pair reached via the MANY side: this happens when
+					 * the single (owning) side's entity was processed first in stage 4 —
+					 * the pair registration is first-come-first-win, so the stage-5 input
+					 * depends on the EClass order. Normalize to the single side: the
+					 * ManyToOne opposite-path converts the many side's OneToMany into a
+					 * mappedBy mapping, keeping the result order-independent.
+					 */
+					return createM2OProcessor(opposite).withOppositeMapping().process().getMapping();
 				}
 			} else {
 				if (opposite.isMany()) {

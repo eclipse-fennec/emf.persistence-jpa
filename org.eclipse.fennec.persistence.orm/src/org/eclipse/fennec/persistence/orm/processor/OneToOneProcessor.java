@@ -12,8 +12,12 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm.processor;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
@@ -30,6 +34,8 @@ import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
  * @since 29.12.2024
  */
 public class OneToOneProcessor extends BaseReferenceProcessor<OneToOne> {
+
+	private static final Logger LOG = Logger.getLogger(OneToOneProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.
@@ -77,15 +83,22 @@ public class OneToOneProcessor extends BaseReferenceProcessor<OneToOne> {
 		if (isOppositeMapping()) {
 			EReference opposite = source.getEOpposite();
 			BaseRef mapping = context.getMapping(source);
-			if (mapping instanceof OneToOne mbRef) {
-				MappedBy mappedBy = context.getMappedBy(opposite);
+			MappedBy mappedBy = context.getMappedBy(opposite);
+			if (mapping instanceof OneToOne mbRef && nonNull(mappedBy)) {
 				mbRef.setMappedBy(mappedBy.mappedByName);
 				// Clean up redundant owning-side info — inverse only needs mappedBy
 				mbRef.getJoinColumn().clear();
 				mbRef.setForeignKey(null);
 				mbRef.setJoinTable(null);
-				setDelegate(true);
+			} else {
+				LOG.log(Level.SEVERE,
+						"Cannot wire bidirectional pair {0} <-> {1}: own mapping is {2}",
+						new Object[] { source.getName(), opposite.getName(),
+								isNull(mapping) ? "missing" : mapping.eClass().getName() });
 			}
+			// Always delegate in the opposite pass — this processor must never emit an
+			// own (blank) mapping; the owning mapping was created in stage 4.
+			setDelegate(true);
 		} else {
 			JoinColumn jc = createJoinColumn(source.getEReferenceType());
 			if (nonNull(jc)) {
