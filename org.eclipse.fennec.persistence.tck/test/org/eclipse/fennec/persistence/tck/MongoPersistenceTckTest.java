@@ -13,17 +13,22 @@
 package org.eclipse.fennec.persistence.tck;
 
 import static java.util.Objects.nonNull;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.io.IOException;
 import java.util.UUID;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.model.metadata.service.MetadataServiceImpl;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
+import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -82,5 +87,27 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	@Override
 	protected URI uriFor(String typeName) {
 		return URI.createURI("mongodb://" + databaseName + "/" + typeName);
+	}
+
+	/**
+	 * Documented backend contract for the int-id model: Mongo can only generate ids for
+	 * String-typed id attributes (ObjectId hex) — for numeric ids the save fails with a
+	 * clear error instead of inventing values. The String-id binding
+	 * ({@link MongoStringIdPersistenceTckTest}) inherits the regular generation test.
+	 */
+	@Override
+	@Test
+	public void idGenerationOnSaveAssignsAndWritesBackId() throws Exception {
+		if (personClass.getEIDAttribute().getEAttributeType().getInstanceClass() != String.class) {
+			EObject person = newPersonWithoutId("Generated", 33);
+			ResourceSet writeSet = createBackendResourceSet();
+			Resource resource = writeSet.createResource(uriFor("Person"));
+			resource.getContents().add(person);
+			assertThatThrownBy(() -> resource.save(null))
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("cannot generate an ObjectId");
+			return;
+		}
+		super.idGenerationOnSaveAssignsAndWritesBackId();
 	}
 }

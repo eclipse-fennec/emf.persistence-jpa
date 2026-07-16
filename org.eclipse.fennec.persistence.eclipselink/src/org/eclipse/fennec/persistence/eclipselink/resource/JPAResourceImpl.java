@@ -18,6 +18,7 @@ import static java.util.Objects.nonNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -166,11 +167,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			em.getTransaction().begin();
 			applyCacheNewObjectsOption(em, options);
 			try {
+				List<EObject[]> managedPairs = new ArrayList<>();
 				for (EObject eo : getContents()) {
 					EObject source = nonNull(server) ? toManagedEntity(eo, server, entityFactory) : eo;
 					upsert(em, source, eo, server);
+					if (source != eo) {
+						managedPairs.add(new EObject[] { eo, source });
+					}
 				}
 				em.getTransaction().commit();
+				writeBackGeneratedIds(managedPairs);
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
@@ -288,6 +294,29 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			LOG.log(Level.FINE, "em.getReference failed while sanitizing reference to "
 					+ value.eClass().getName(), e);
 			return null;
+		}
+	}
+
+	/**
+	 * Mirrors generated ids back onto the caller's EObjects: when a plain EMF object was
+	 * converted to a managed entity for saving ({@code toManagedEntity}), a sequence-
+	 * generated id lands only on the managed copy — the resource contract (parity with
+	 * the Mongo backend) is that the saved EObject carries its id after {@code save}.
+	 */
+	private static void writeBackGeneratedIds(List<EObject[]> managedPairs) {
+		for (EObject[] pair : managedPairs) {
+			EObject original = pair[0];
+			EObject managed = pair[1];
+			EAttribute idAttr = original.eClass().getEIDAttribute();
+			if (isNull(idAttr)) {
+				continue;
+			}
+			Object originalId = original.eGet(idAttr);
+			Object managedId = managed.eGet(idAttr);
+			if ((isNull(originalId) || isDefaultIdValue(originalId))
+					&& nonNull(managedId) && !isDefaultIdValue(managedId)) {
+				original.eSet(idAttr, managedId);
+			}
 		}
 	}
 

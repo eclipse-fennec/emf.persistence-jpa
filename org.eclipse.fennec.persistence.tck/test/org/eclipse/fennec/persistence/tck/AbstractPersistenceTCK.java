@@ -111,12 +111,20 @@ public abstract class AbstractPersistenceTCK {
 		tearDownBackend();
 	}
 
+	/**
+	 * The TCK model to run against. The default model uses int-typed EMF ids; the
+	 * String-id bindings override this with {@code data/tck-string.ecore}.
+	 */
+	protected String tckModelPath() {
+		return "data/tck.ecore";
+	}
+
 	protected EPackage loadTckModel() throws IOException {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put("*", new XMIResourceFactoryImpl());
-		File ecoreFile = new File("data/tck.ecore");
+		File ecoreFile = new File(tckModelPath());
 		assertThat(ecoreFile).as("TCK ecore must exist").exists();
 		Resource resource = resourceSet.createResource(URI.createFileURI(ecoreFile.getAbsolutePath()));
 		resource.load(null);
@@ -129,7 +137,15 @@ public abstract class AbstractPersistenceTCK {
 
 	protected EObject newPerson(int id, String name, int age) {
 		EObject person = EcoreUtil.create(personClass);
-		person.eSet(personClass.getEStructuralFeature("pid"), id);
+		person.eSet(personClass.getEStructuralFeature("pid"), idValue(personClass, id));
+		person.eSet(personName, name);
+		person.eSet(personAge, age);
+		return person;
+	}
+
+	/** Creates a person WITHOUT an id — for the id-generation contract test. */
+	protected EObject newPersonWithoutId(String name, int age) {
+		EObject person = EcoreUtil.create(personClass);
 		person.eSet(personName, name);
 		person.eSet(personAge, age);
 		return person;
@@ -137,7 +153,7 @@ public abstract class AbstractPersistenceTCK {
 
 	protected EObject newAddress(int id, String street, String city) {
 		EObject address = EcoreUtil.create(addressClass);
-		address.eSet(addressClass.getEStructuralFeature("aid"), id);
+		address.eSet(addressClass.getEStructuralFeature("aid"), idValue(addressClass, id));
 		address.eSet(addressStreet, street);
 		address.eSet(addressClass.getEStructuralFeature("city"), city);
 		return address;
@@ -145,9 +161,19 @@ public abstract class AbstractPersistenceTCK {
 
 	protected EObject newCompany(int id, String name) {
 		EObject company = EcoreUtil.create(companyClass);
-		company.eSet(companyClass.getEStructuralFeature("cid"), id);
+		company.eSet(companyClass.getEStructuralFeature("cid"), idValue(companyClass, id));
 		company.eSet(companyName, name);
 		return company;
+	}
+
+	/**
+	 * Converts the numeric test id to the model's id attribute type — the same test
+	 * bodies run against the int-id and the String-id TCK model
+	 * ({@code EcoreUtil.getID} yields the identical string form for both).
+	 */
+	private Object idValue(EClass eClass, int id) {
+		Class<?> instanceClass = eClass.getEIDAttribute().getEAttributeType().getInstanceClass();
+		return instanceClass == String.class ? String.valueOf(id) : id;
 	}
 
 	/** Saves the given objects as contents of the type's backend resource. */
@@ -328,6 +354,30 @@ public abstract class AbstractPersistenceTCK {
 		assertThat(persistence.count()).isEqualTo(1);
 		persistence.delete(null);
 		assertThat(persistence.count()).isZero();
+	}
+
+	@Test
+	public void idGenerationOnSaveAssignsAndWritesBackId() throws Exception {
+		EObject person = newPersonWithoutId("Generated", 33);
+
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Person", person);
+
+		// Contract: after save the backend has assigned an id AND written it back
+		// into the saved EObject (Mongo: generated ObjectId hex; JPA: sequence value).
+		String generatedId = EcoreUtil.getID(person);
+		assertThat(generatedId)
+				.as("save must write the generated id back into the EObject")
+				.isNotNull()
+				.isNotEmpty()
+				.isNotEqualTo("0");
+
+		ResourceSet readSet = createBackendResourceSet();
+		Resource resource = loadAll(readSet, "Person");
+		assertThat(resource.getContents()).hasSize(1);
+		EObject loaded = findById(resource, generatedId);
+		assertThat(loaded).as("object must be loadable under the generated id").isNotNull();
+		assertThat(loaded.eGet(personName)).isEqualTo("Generated");
 	}
 
 	@Test
