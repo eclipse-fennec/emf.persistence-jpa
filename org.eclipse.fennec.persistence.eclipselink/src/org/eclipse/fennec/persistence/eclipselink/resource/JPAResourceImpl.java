@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
@@ -447,17 +448,46 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		getContents().clear();
 	}
 
+	/**
+	 * The URI fragment of a contained object is its EMF id — this is what other
+	 * resources (XMI hrefs, codec-based backends like Mongo) embed as the reference
+	 * target, making written cross-backend references id-based
+	 * ({@code jpa://<pu>/<Entity>#<id>}).
+	 */
+	@Override
+	public String getURIFragment(EObject eObject) {
+		String id = EcoreUtil.getID(eObject);
+		return nonNull(id) ? id : super.getURIFragment(eObject);
+	}
+
+	/**
+	 * Resolves proxy fragments. Two fragment shapes are supported:
+	 * <ul>
+	 * <li>{@code //refName/idAttr/idValue} — the persistence proxy format</li>
+	 * <li>{@code <idValue>} — a plain id (written by {@link #getURIFragment}, e.g. in
+	 *     cross-backend references from Mongo or XMI documents)</li>
+	 * </ul>
+	 * Path fragments ({@code /0}, …) are delegated to the EMF default.
+	 */
 	@Override
 	public EObject getEObject(String uriFragment) {
-		if (isNull(uriFragment) || !uriFragment.startsWith("//")) {
+		if (isNull(uriFragment) || uriFragment.isEmpty()) {
 			return super.getEObject(uriFragment);
 		}
-		// Fragment format: //refName/idAttrName/idValue
-		String[] parts = uriFragment.substring(2).split("/");
-		if (parts.length < 3) {
+		String idValue;
+		if (uriFragment.startsWith("//")) {
+			// Fragment format: //refName/idAttrName/idValue
+			String[] parts = uriFragment.substring(2).split("/");
+			if (parts.length < 3) {
+				return super.getEObject(uriFragment);
+			}
+			idValue = parts[2];
+		} else if (uriFragment.startsWith("/")) {
+			// Path-based fragment — EMF default semantics
 			return super.getEObject(uriFragment);
+		} else {
+			idValue = uriFragment;
 		}
-		String idValue = parts[2];
 		String entityName = getEntityName();
 		ClassDescriptor descriptor = getDescriptor(entityName);
 		if (isNull(descriptor)) {

@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
@@ -46,8 +47,10 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -470,7 +473,81 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			throw new IOException("Failed to encode EObject of type "
 					+ eObject.eClass().getName(), e);
 		}
-		return delegate.getTarget();
+		BsonDocument document = delegate.getTarget();
+		rewriteCrossResourceReferences(eObject, document);
+		return document;
+	}
+
+	/**
+	 * The codec's format-delegate path cannot detect cross-document references (the
+	 * generator carries no {@code CodecWriteContext}), so targets living in other
+	 * resources are serialised as bare fragments and unresolved proxies as their type
+	 * URI. Rewrite such reference values to absolute EMF URIs
+	 * ({@code EcoreUtil.getURI}/{@code eProxyURI}) so they resolve across resources and
+	 * backends. Same-resource targets keep their id fragment; the rewrite is idempotent
+	 * and becomes a no-op once the codec writes absolute URIs itself.
+	 */
+	private void rewriteCrossResourceReferences(EObject source, BsonDocument document) {
+		for (EReference reference : source.eClass().getEAllReferences()) {
+			if (reference.isContainment() || reference.isTransient() || reference.isDerived()
+					|| !source.eIsSet(reference)) {
+				continue;
+			}
+			BsonValue field = document.get(reference.getName());
+			if (isNull(field)) {
+				continue;
+			}
+			if (reference.isMany()) {
+				@SuppressWarnings("unchecked")
+				List<EObject> targets = ((InternalEList<EObject>)
+						source.eGet(reference)).basicList();
+				if (field.isArray()) {
+					BsonArray array = field.asArray();
+					for (int i = 0; i < array.size() && i < targets.size(); i++) {
+						BsonValue rewritten = rewriteReferenceValue(array.get(i), targets.get(i));
+						if (nonNull(rewritten)) {
+							array.set(i, rewritten);
+						}
+					}
+				}
+			} else {
+				Object value = ((InternalEObject) source).eGet(reference, false);
+				if (value instanceof EObject target) {
+					BsonValue rewritten = rewriteReferenceValue(field, target);
+					if (nonNull(rewritten)) {
+						document.put(reference.getName(), rewritten);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Returns the replacement value for a serialised reference, or {@code null} when the
+	 * stored value stays as it is (same-resource target) or was mutated in place.
+	 */
+	private BsonValue rewriteReferenceValue(BsonValue current, EObject target) {
+		String absolute;
+		if (target.eIsProxy()) {
+			absolute = ((InternalEObject) target).eProxyURI().toString();
+		} else {
+			Resource targetResource = target.eResource();
+			if (isNull(targetResource) || targetResource == this) {
+				return null;
+			}
+			absolute = EcoreUtil.getURI(target).toString();
+		}
+		if (current.isString()) {
+			return new BsonString(absolute);
+		}
+		if (current.isDocument()) {
+			BsonDocument refDocument = current.asDocument();
+			if (refDocument.containsKey("$ref")) {
+				refDocument.put("$ref", new BsonString(absolute));
+			}
+			return null;
+		}
+		return null;
 	}
 
 	/**
