@@ -1,0 +1,40 @@
+Bundle-Name: Eclipse Fennec Persistence TCK
+Bundle-Description: Backend-agnostic compatibility tests for EMF persistence backends
+
+-workingset: persistence
+
+-library: enableEMF
+
+-includeresource: \
+	data=data
+
+-buildpath: \
+	biz.aQute.bnd.annotation;version=latest
+
+-testpath: \
+	assertj-core,\
+	com.h2database,\
+	jakarta.persistence-api;version=latest,\
+	org.eclipse.persistence.asm;version=latest,\
+	org.eclipse.persistence.jpa;version=latest,\
+	org.eclipse.persistence.jpa.jpql;version=latest,\
+	org.eclipse.persistence.core;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.orm;version=snapshot,\
+	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
+	org.eclipse.fennec.persistence.mongo;version=snapshot,\
+	org.eclipse.fennec.persistence.pushstreams;version=snapshot,\
+	org.eclipse.fennec.codec.api;version=latest,\
+	org.eclipse.fennec.codec;version=latest,\
+	org.eclipse.fennec.codec.bson;version=latest,\
+	org.eclipse.fennec.codec.metadata;version=latest,\
+	org.eclipse.fennec.model.metadata;version=latest,\
+	tools.jackson.core.jackson-core;version=latest,\
+	tools.jackson.core.jackson-databind;version=latest,\
+	com.fasterxml.jackson.core.jackson-annotations;version=latest,\
+	org.mongodb.bson;version=latest,\
+	org.mongodb.driver-core;version=latest,\
+	org.mongodb.driver-sync;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest

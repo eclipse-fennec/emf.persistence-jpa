@@ -18,12 +18,17 @@ import static java.util.Objects.nonNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
@@ -35,8 +40,13 @@ import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
+import org.eclipse.fennec.persistence.resource.StreamingResource;
+import org.eclipse.persistence.config.HintValues;
+import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
+import org.eclipse.persistence.jpa.JpaQuery;
+import org.eclipse.persistence.queries.ScrollableCursor;
 import org.eclipse.persistence.sessions.UnitOfWork;
 import org.eclipse.persistence.sessions.server.Server;
 
@@ -60,7 +70,7 @@ import jakarta.persistence.TypedQuery;
  * @author Mark Hoffmann
  * @since 13.04.2026
  */
-public class JPAResourceImpl extends ResourceImpl implements PersistenceResource {
+public class JPAResourceImpl extends ResourceImpl implements PersistenceResource, StreamingResource {
 
 	private static final Logger LOG = Logger.getLogger(JPAResourceImpl.class.getName());
 
@@ -158,7 +168,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			try {
 				for (EObject eo : getContents()) {
 					EObject source = nonNull(server) ? toManagedEntity(eo, server, entityFactory) : eo;
-					upsert(em, source, server);
+					upsert(em, source, eo, server);
 				}
 				em.getTransaction().commit();
 			} catch (RuntimeException e) {
@@ -183,7 +193,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * value is still an {@link EObject#eIsProxy() unresolved proxy} are left alone —
 	 * the existing row's FK already points where the proxy points.
 	 */
-	private void upsert(EntityManager em, EObject source, Server server) {
+	private void upsert(EntityManager em, EObject source, EObject original, Server server) {
 		ClassDescriptor descriptor = nonNull(server)
 				? server.getDescriptorForAlias(source.eClass().getName())
 				: null;
@@ -194,6 +204,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		EAttribute idAttr = source.eClass().getEIDAttribute();
 		Object id = nonNull(idAttr) ? source.eGet(idAttr) : null;
 		if (isNull(id) || isDefaultIdValue(id)) {
+			sanitizeNonContainmentReferences(source, original, server, em);
 			em.persist(source);
 			return;
 		}
@@ -201,7 +212,82 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (existing instanceof EObject existingEO) {
 			copyStateInto(source, existingEO, server, em);
 		} else {
+			sanitizeNonContainmentReferences(source, original, server, em);
 			em.persist(source);
+		}
+	}
+
+	/**
+	 * Replaces non-containment reference values that are plain (unmanaged) EObjects with
+	 * JPA-managed handles via {@code em.getReference} before persisting. Without this,
+	 * commit's cascade-persist scan encounters unmanaged {@code DynamicEObjectImpl}s
+	 * ("not a known Entity type") and foreign keys of new entities are not written.
+	 * <p>
+	 * Single-valued bidirectional references are additionally recovered from the
+	 * {@code original} object: the standard EMF copier ({@code toManagedEntity}) omits
+	 * bidirectional references whose target is not part of the copied tree.
+	 * Values without a usable id are left alone.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void sanitizeNonContainmentReferences(EObject source, EObject original, Server server,
+			EntityManager em) {
+		if (isNull(server)) {
+			return;
+		}
+		for (EReference ref : source.eClass().getEAllReferences()) {
+			if (!ref.isChangeable() || ref.isDerived() || ref.isTransient() || ref.isContainment()) {
+				continue;
+			}
+			ClassDescriptor refDescriptor = server.getDescriptorForAlias(ref.getEReferenceType().getName());
+			if (isNull(refDescriptor)) {
+				continue;
+			}
+			if (ref.isMany()) {
+				List<EObject> values = (List<EObject>) source.eGet(ref);
+				for (int i = 0; i < values.size(); i++) {
+					EObject managed = managedHandle(values.get(i), refDescriptor, server, em);
+					if (nonNull(managed)) {
+						values.set(i, managed);
+					}
+				}
+			} else {
+				Object value = ((InternalEObject) source).eGet(ref, false);
+				if (isNull(value) && nonNull(ref.getEOpposite()) && nonNull(original) && original != source
+						&& original.eClass() == source.eClass()) {
+					// Recover the value the EMF copier dropped for bidirectional refs.
+					value = ((InternalEObject) original).eGet(ref, false);
+				}
+				if (value instanceof EObject eo) {
+					EObject managed = managedHandle(eo, refDescriptor, server, em);
+					if (nonNull(managed)) {
+						source.eSet(ref, managed);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Returns a JPA-managed handle for a plain (unmanaged) EObject with a persisted id,
+	 * or {@code null} when the value is already managed or carries no usable id.
+	 */
+	private static EObject managedHandle(EObject value, ClassDescriptor refDescriptor, Server server,
+			EntityManager em) {
+		if (isNull(value) || value.eIsProxy() || nonNull(server.getDescriptor(value.getClass()))) {
+			return null;
+		}
+		EAttribute idAttr = value.eClass().getEIDAttribute();
+		Object id = nonNull(idAttr) ? value.eGet(idAttr) : null;
+		if (isNull(id) || isDefaultIdValue(id)) {
+			return null;
+		}
+		try {
+			Object managed = em.getReference(refDescriptor.getJavaClass(), id);
+			return managed instanceof EObject managedEO ? managedEO : null;
+		} catch (RuntimeException e) {
+			LOG.log(Level.FINE, "em.getReference failed while sanitizing reference to "
+					+ value.eClass().getName(), e);
+			return null;
 		}
 	}
 
@@ -378,6 +464,66 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(),
 					getURI(), e));
 			return null;
+		}
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.fennec.persistence.resource.StreamingResource#stream()
+	 */
+	@Override
+	public Stream<EObject> stream() throws IOException {
+		return stream(null);
+	}
+
+	/**
+	 * Streams all entities of this resource's type through an EclipseLink
+	 * {@link ScrollableCursor} — rows are materialised one by one from an open JDBC
+	 * result set instead of loading the full result list. The underlying cursor and
+	 * {@link EntityManager} stay open until the returned stream is closed.
+	 */
+	@Override
+	public Stream<EObject> stream(Map<?, ?> options) throws IOException {
+		String entityName = getEntityName();
+		if (isNull(entityName)) {
+			return Stream.empty();
+		}
+		ClassDescriptor descriptor = getDescriptor(entityName);
+		if (isNull(descriptor)) {
+			return Stream.empty();
+		}
+		String validatedAlias = descriptor.getAlias();
+		EntityManager em = emf.createEntityManager();
+		try {
+			TypedQuery<?> query = em.createQuery(
+					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass());
+			query.setHint(QueryHints.SCROLLABLE_CURSOR, HintValues.TRUE);
+			int pageSize = Options.getPageSize(options);
+			if (pageSize > 0) {
+				query.setHint(QueryHints.JDBC_FETCH_SIZE, pageSize);
+			}
+			ScrollableCursor cursor = (ScrollableCursor) query.unwrap(JpaQuery.class).getResultCursor();
+			Spliterator<Object> rows = Spliterators.spliteratorUnknownSize(new Iterator<Object>() {
+				@Override
+				public boolean hasNext() {
+					return cursor.hasNext();
+				}
+
+				@Override
+				public Object next() {
+					return cursor.next();
+				}
+			}, Spliterator.ORDERED | Spliterator.NONNULL);
+			return StreamSupport.stream(rows, false)
+					.filter(EObject.class::isInstance)
+					.map(EObject.class::cast)
+					.onClose(() -> {
+						cursor.close();
+						em.close();
+					});
+		} catch (RuntimeException e) {
+			em.close();
+			throw new IOException("Failed to open stream on entity '" + entityName + "'", e);
 		}
 	}
 
