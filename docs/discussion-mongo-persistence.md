@@ -307,8 +307,15 @@ Zu verifizieren / ggf. nachzurüsten (Stärken des alten Mongo-Codecs):
 - FeatureMap-/EMap-Abdeckung,
 - Default-Werte-Serialisierung (an/aus).
 
-Arbeitsform: Gap-Analyse mit Testfällen im `emf.codec`-Repo, **bevor** die Mongo-Resource gebaut
-wird (Arbeitsplan Paket 1).
+Arbeitsform: Gap-Analyse mit Testfällen im `emf.codec`-Repo (Arbeitsplan Paket 1).
+
+**Bereits gefundene Export-Lücken (behoben im emf.codec-Branch `exports`, Publish ausstehend):**
+`org.eclipse.fennec.codec.deser`, `…codec.ser`, `…codec.module` (Core) und
+`…codec.metadata.type` (metadata-Bundle) waren im publizierten Snapshot nicht exportiert.
+Konsequenz bis zum nächsten Snapshot-Publish: der Gradle-Build des Mongo-Bundles ist grün
+(javac kennt keine Access-Rules), aber die IDE markiert die Imports und das Bundle würde in
+OSGi nicht resolven. Nach dem Publish: TypeDiscriminator-Service in
+`MongoResourceImpl.mongoMapper()` wieder aktivieren (metadata.type ist dann sichtbar).
 
 ## 9. PostgreSQL-BSON-Store — Architektur-Leitplanke
 
