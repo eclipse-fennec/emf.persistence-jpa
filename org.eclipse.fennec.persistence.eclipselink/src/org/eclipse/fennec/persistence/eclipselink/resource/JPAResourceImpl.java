@@ -34,7 +34,6 @@ import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
-import org.eclipse.fennec.persistence.engine.PersistenceEngine;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaHelper;
@@ -421,19 +420,6 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	@Override
 	public boolean exist(Map<?, ?> options) throws IOException {
 		return count(options) > 0;
-	}
-
-	/**
-	 * @return never returns — always throws
-	 * @throws UnsupportedOperationException always: this Resource is backed directly
-	 *         by the JPA {@code EntityManagerFactory} and has no separate
-	 *         {@link PersistenceEngine}. The {@link PersistenceResource#getEngine()}
-	 *         contract is preserved only for API compatibility.
-	 */
-	@Override
-	public PersistenceEngine getEngine() {
-		throw new UnsupportedOperationException(
-				"JPAResourceImpl does not use a PersistenceEngine — persistence is managed directly via EntityManagerFactory");
 	}
 
 	@Override
