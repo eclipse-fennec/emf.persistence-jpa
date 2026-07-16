@@ -25,7 +25,7 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 
 | Module | Role |
 |--------|------|
-| `org.eclipse.fennec.persistence` | Core persistence API: `PersistenceEngine` interface, `ConverterService`, type converters (UUID, BigDecimal, Instant, etc.), `EMFHelper` |
+| `org.eclipse.fennec.persistence` | Core persistence API: `PersistenceResource` interface, `Options`, `ConverterService`, type converters (UUID, BigDecimal, Instant, etc.), `EMFHelper` |
 | `org.eclipse.fennec.persistence.orm` | Ecore-based ORM metadata model (`eorm.ecore`, `epersistence.ecore`) + processors that transform EClass→Entity, EAttribute→Basic, EReference→relationships |
 | `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: `EPersistenceContext`, `EMFEntityManagerProvider`, EclipseLink descriptors (`EClassDescriptor`), object builders, OSGi classloader |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — reverse-engineers Ecore models from database schemas via JDBC metadata |

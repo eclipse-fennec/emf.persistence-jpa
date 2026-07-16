@@ -54,7 +54,7 @@ Eclipse Fennec Persistence JPA ist ein OSGi-basiertes Persistence-Framework, das
 
 | Modul | Verantwortung |
 |-------|---------------|
-| `org.eclipse.fennec.persistence` | Core API: `PersistenceEngine`, `ConverterService`, Type-Converter (UUID, BigDecimal, Instant, etc.), `EMFHelper`, Processor-Interfaces |
+| `org.eclipse.fennec.persistence` | Core API: `PersistenceResource`, `Options`, `ConverterService`, Type-Converter (UUID, BigDecimal, Instant, etc.), `EMFHelper`, Processor-Interfaces |
 | `org.eclipse.fennec.persistence.orm` | ECore-basiertes ORM-Metadatenmodell (`eorm.ecore`, `epersistence.ecore`) + Processor-Pipeline für EClass→Entity Transformation |
 | `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA Provider: `EPersistenceContext`, Descriptors (`EClassDescriptor`), Dynamic Type Builder, Object Builder, OSGi Classloader |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — Reverse-Engineering von ECore-Modellen aus Datenbank-Schemata via JDBC |
