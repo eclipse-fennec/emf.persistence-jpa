@@ -18,6 +18,8 @@ import static java.util.Objects.nonNull;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -25,6 +27,8 @@ import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicTypeContext;
 import org.eclipse.fennec.persistence.eclipselink.indirection.EBasicIndirectionPolicy;
 import org.eclipse.fennec.persistence.eclipselink.indirection.ETransparentIndirectionPolicy;
+import org.eclipse.fennec.persistence.eorm.BaseRef;
+import org.eclipse.fennec.persistence.eorm.FetchType;
 import org.eclipse.persistence.expressions.Expression;
 import org.eclipse.persistence.expressions.ExpressionBuilder;
 import org.eclipse.persistence.internal.expressions.SQLSelectStatement;
@@ -50,29 +54,71 @@ import org.eclipse.persistence.queries.DirectReadQuery;
  */
 final class EMappingSupport {
 
+	private static final Logger LOG = Logger.getLogger(EMappingSupport.class.getName());
+
 	private EMappingSupport() {
 	}
 
 	/**
-	 * Applies the EMF defaults every relationship mapping shares: no join fetching, EMF
-	 * value access through {@link EReferenceAccessor}, lazy loading for non-containment,
-	 * and the reference-kind-specific indirection policy — {@link EBasicIndirectionPolicy}
-	 * for single-valued references, {@link ETransparentIndirectionPolicy} for collections.
-	 * Containment references stay eager without indirection (EMF composition semantics).
+	 * Applies the EMF configuration driven by the eorm {@code fetch}/{@code batch} contract
+	 * (the eorm is the source of truth). Every mapping gets no join fetching and EMF value
+	 * access through {@link EReferenceAccessor}; the fetch mode then decides indirection:
+	 * <ul>
+	 * <li><b>containment</b> — EMF composition, always eager, no indirection. A containment
+	 *     declared {@code LAZY} is inconsistent: a diagnostic warning is logged and it is
+	 *     kept eager.</li>
+	 * <li><b>non-containment {@code EAGER}</b> — materialised at owner read via EclipseLink's
+	 *     native eager loading, no EMF proxies.</li>
+	 * <li><b>non-containment {@code LAZY} + {@code batch}</b> (collections) — deferred; on
+	 *     first access all elements are resolved in one {@code IN} query
+	 *     ({@link ETransparentIndirectionPolicy} in batch mode).</li>
+	 * <li><b>non-containment {@code LAZY}</b> — element-level lazy proxies
+	 *     ({@link ETransparentIndirectionPolicy} for collections, {@link EBasicIndirectionPolicy}
+	 *     for single-valued).</li>
+	 * </ul>
+	 *
+	 * @param baseRef the eorm reference carrying {@code fetch}/{@code batch}; may be
+	 *                {@code null}, in which case the structural default applies (containment
+	 *                eager, non-containment lazy)
 	 */
-	static void configureEMF(ForeignReferenceMapping mapping, EReference reference, EDynamicType type,
-			EDynamicTypeContext context) {
+	static void configureEMF(ForeignReferenceMapping mapping, EReference reference, BaseRef baseRef,
+			EDynamicType type, EDynamicTypeContext context) {
 		mapping.setJoinFetch(ForeignReferenceMapping.NONE);
 		mapping.setIsCascadeOnDeleteSetOnDatabase(false);
 		mapping.setDerivesId(false);
 		mapping.setIsPrivateOwned(false);
 		mapping.setIsCacheable(true);
-		mapping.setIsLazy(!reference.isContainment());
 		mapping.setAttributeAccessor(EReferenceAccessor.create(mapping, reference, context));
+
+		FetchType fetch = nonNull(baseRef) && nonNull(baseRef.getFetch())
+				? baseRef.getFetch()
+				: (reference.isContainment() ? FetchType.EAGER : FetchType.LAZY);
+		boolean batch = nonNull(baseRef) && baseRef.isBatch();
+
 		if (reference.isContainment()) {
+			if (fetch == FetchType.LAZY) {
+				LOG.log(Level.WARNING,
+						"Setting a containment to LAZY doesn''t make sense, we keep it eager (reference ''{0}'')",
+						reference.getName());
+			}
+			mapping.setIsLazy(false);
 			mapping.dontUseIndirection();
-		} else if (mapping instanceof CollectionMapping) {
-			mapping.setIndirectionPolicy(new ETransparentIndirectionPolicy(mapping, reference, type));
+			return;
+		}
+
+		if (fetch == FetchType.EAGER) {
+			// Materialise the target(s) at owner read — EclipseLink native eager, no proxies.
+			mapping.setIsLazy(false);
+			mapping.dontUseIndirection();
+			return;
+		}
+
+		// LAZY non-containment
+		mapping.setIsLazy(true);
+		if (mapping instanceof CollectionMapping) {
+			ETransparentIndirectionPolicy policy = new ETransparentIndirectionPolicy(mapping, reference, type);
+			policy.setBatch(batch);
+			mapping.setIndirectionPolicy(policy);
 		} else {
 			mapping.setIndirectionPolicy(new EBasicIndirectionPolicy(mapping, reference, type));
 		}

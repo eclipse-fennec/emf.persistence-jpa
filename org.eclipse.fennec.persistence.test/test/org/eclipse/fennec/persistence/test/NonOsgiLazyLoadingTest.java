@@ -91,12 +91,19 @@ class NonOsgiLazyLoadingTest extends NonOsgiPersistenceTestBase {
 
 	private static final class QueryCounter extends SessionEventAdapter {
 		int count;
+		/** Full-table {@code SELECT e FROM Entity e} executions (the #17 over-fetch shape). */
+		int readAll;
+		/** Keyed {@code SELECT ... WHERE id = ?} executions. */
+		int readObject;
 
 		@Override
 		public void postExecuteQuery(SessionEvent event) {
-			if (event.getQuery() instanceof ReadObjectQuery
-					|| event.getQuery() instanceof ReadAllQuery) {
+			if (event.getQuery() instanceof ReadObjectQuery) {
 				count++;
+				readObject++;
+			} else if (event.getQuery() instanceof ReadAllQuery) {
+				count++;
+				readAll++;
 			}
 		}
 	}
@@ -137,6 +144,65 @@ class NonOsgiLazyLoadingTest extends NonOsgiPersistenceTestBase {
 			assertThat(aResource.getContents()).hasSize(total);
 			assertThat(counter.count)
 					.as("loading all A's must NOT eager-fetch their D targets")
+					.isEqualTo(1);
+		} finally {
+			detach(counter);
+		}
+	}
+
+	@Test
+	void testSingleProxyResolutionIsKeyedNotFullTable() throws Exception {
+		// 20 A's, each pointing to its own distinct D. Resolving a single A's
+		// dNonContainment proxy must issue a keyed SELECT ... WHERE id = ? for that one
+		// D — never a full "SELECT e FROM ClassDO2O e" over the whole target table.
+		// This is the core of issue #17: EMF proxy resolution goes through
+		// getResource(trimFragment, true) → load(); with the lazy resource that step
+		// runs no query, so the keyed em.find in getEObject(fragment) is the only read.
+		ClassDescriptor aDesc = serverSession.getDescriptorForAlias(classAEClass.getName());
+		ClassDescriptor dDesc = serverSession.getDescriptorForAlias(classDEClass.getName());
+		EStructuralFeature aName = classAEClass.getEStructuralFeature("name");
+		EStructuralFeature aRef = classAEClass.getEStructuralFeature("dNonContainment");
+		EStructuralFeature dName = classDEClass.getEStructuralFeature("name");
+
+		int total = 20;
+		try (EntityManager em = emf.createEntityManager()) {
+			em.getTransaction().begin();
+			for (int i = 0; i < total; i++) {
+				EObject d = (EObject) dDesc.getInstantiationPolicy().buildNewInstance();
+				d.eSet(dName, "D-" + i);
+				em.persist(d);
+				EObject a = (EObject) aDesc.getInstantiationPolicy().buildNewInstance();
+				a.eSet(aName, "A-" + i);
+				a.eSet(aRef, d);
+				em.persist(a);
+			}
+			em.getTransaction().commit();
+		}
+		emf.getCache().evictAll();
+
+		ResourceSet rs = newJpaResourceSet();
+		Resource aResource = rs.createResource(URI.createURI("jpa://lazy/ClassAO2O"));
+		aResource.load(null);
+		// Iterating contents materialises the A's (one ReadAll for A); their D refs
+		// stay unresolved proxies. Grab one A before attaching the resolution counter.
+		EObject aLoaded = aResource.getContents().get(0);
+		EObject rawRef = (EObject) ((InternalEObject) aLoaded).eGet(aRef, false);
+		assertThat(rawRef.eIsProxy())
+				.as("D reference must still be an unresolved proxy before access")
+				.isTrue();
+
+		QueryCounter counter = attachCounter();
+		try {
+			EObject resolved = (EObject) aLoaded.eGet(aRef);
+			assertThat(resolved).isNotNull();
+			assertThat(resolved.eIsProxy()).isFalse();
+			assertThat(resolved.eClass()).isEqualTo(classDEClass);
+			assertThat(resolved.eGet(dName)).asString().startsWith("D-");
+			assertThat(counter.readAll)
+					.as("resolving one proxy must NOT run a full-table SELECT on the target (#17)")
+					.isZero();
+			assertThat(counter.readObject)
+					.as("resolving one proxy issues exactly one keyed SELECT ... WHERE id = ?")
 					.isEqualTo(1);
 		} finally {
 			detach(counter);

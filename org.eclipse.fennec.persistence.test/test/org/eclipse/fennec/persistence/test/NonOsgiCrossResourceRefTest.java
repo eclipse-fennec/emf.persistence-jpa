@@ -352,8 +352,11 @@ class NonOsgiCrossResourceRefTest extends NonOsgiPersistenceTestBase {
 		String aId = EcoreUtil.getID(a);
 		emf.getCache().evictAll();
 
-		// Count EclipseLink ReadObject/ReadAll queries. The lazy proxy mechanism must
-		// defer the target-side SELECT until eGet triggers resolution.
+		// Count EclipseLink ReadObject/ReadAll queries. Two deferrals are asserted:
+		// (1) the resource itself is lazy — load() runs no query; the ClassAO2O ReadAll
+		//     fires only when the contents are first iterated (issue #17), and
+		// (2) the target-side (ClassDO2O) SELECT is deferred until eGet triggers proxy
+		//     resolution.
 		int[] queryCount = { 0 };
 		SessionEventAdapter counter = new SessionEventAdapter() {
 			@Override
@@ -371,11 +374,16 @@ class NonOsgiCrossResourceRefTest extends NonOsgiPersistenceTestBase {
 			rs.createResource(URI.createURI("jpa://xref/ClassDO2O"));
 
 			aResource.load(null);
-			int afterLoad = queryCount[0];
-			assertThat(afterLoad).as("only the ClassAO2O query should have run during load").isEqualTo(1);
+			assertThat(queryCount[0])
+					.as("lazy resource: load() runs no query until contents are iterated (#17)")
+					.isZero();
 
 			EObject aLoaded = findById(aResource, aId);
 			assertThat(aLoaded).isNotNull();
+			int afterLoad = queryCount[0];
+			assertThat(afterLoad)
+					.as("iterating contents runs only the ClassAO2O query, no target query")
+					.isEqualTo(1);
 
 			EStructuralFeature dNonContainmentFeature = classAEClass.getEStructuralFeature("dNonContainment");
 			EObject resolved = (EObject) aLoaded.eGet(dNonContainmentFeature);

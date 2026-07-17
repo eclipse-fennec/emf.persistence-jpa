@@ -224,7 +224,7 @@
         iD="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="versionNum" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
-      <eAnnotations source="http://eclipse.org/fennec/jpa-persistence/1.0.0">
+      <eAnnotations source="https://eclipse.org/fennec/persistence">
         <details key="version" value="true"/>
       </eAnnotations>
     </eStructuralFeatures>
@@ -242,7 +242,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cc" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="VehicleJ" abstract="true">
-    <eAnnotations source="http://eclipse.org/fennec/jpa-persistence/1.0.0">
+    <eAnnotations source="https://eclipse.org/fennec/persistence">
       <details key="inheritance" value="JOINED"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="vehicleId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
@@ -257,7 +257,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cc" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="VehicleTpc" abstract="true">
-    <eAnnotations source="http://eclipse.org/fennec/jpa-persistence/1.0.0">
+    <eAnnotations source="https://eclipse.org/fennec/persistence">
       <details key="inheritance" value="TABLE_PER_CLASS"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="vehicleId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
@@ -272,7 +272,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cc" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="VehicleMs" abstract="true">
-    <eAnnotations source="http://eclipse.org/fennec/jpa-persistence/1.0.0">
+    <eAnnotations source="https://eclipse.org/fennec/persistence">
       <details key="mappedSuperclass" value="true"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="vehicleId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"

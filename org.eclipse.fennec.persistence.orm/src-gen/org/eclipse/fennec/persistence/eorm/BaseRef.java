@@ -28,6 +28,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.persistence.eorm.BaseRef#getForeignKey <em>Foreign Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.persistence.eorm.BaseRef#getJoinTable <em>Join Table</em>}</li>
  *   <li>{@link org.eclipse.fennec.persistence.eorm.BaseRef#isOptional <em>Optional</em>}</li>
+ *   <li>{@link org.eclipse.fennec.persistence.eorm.BaseRef#isBatch <em>Batch</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.persistence.eorm.EORMPackage#getBaseRef()
@@ -208,5 +209,31 @@ public interface BaseRef extends ENamedBase {
 	 * @generated
 	 */
 	boolean isSetOptional();
+
+	/**
+	 * Returns the value of the '<em><b>Batch</b></em>' attribute.
+	 * The default value is <code>"false"</code>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Enables batch fetching for multi-value references when they have the fetch-type LAZY
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Batch</em>' attribute.
+	 * @see #setBatch(boolean)
+	 * @see org.eclipse.fennec.persistence.eorm.EORMPackage#getBaseRef_Batch()
+	 * @model default="false"
+	 * @generated
+	 */
+	boolean isBatch();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.persistence.eorm.BaseRef#isBatch <em>Batch</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Batch</em>' attribute.
+	 * @see #isBatch()
+	 * @generated
+	 */
+	void setBatch(boolean value);
 
 } // BaseRef

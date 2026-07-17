@@ -26,6 +26,8 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.eclipselink.mappings.ETargetIdQuerySupport;
+import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.expressions.ExpressionBuilder;
 import org.eclipse.persistence.indirection.ValueHolder;
 import org.eclipse.persistence.indirection.ValueHolderInterface;
 import org.eclipse.persistence.internal.identitymaps.CacheKey;
@@ -35,6 +37,7 @@ import org.eclipse.persistence.internal.sessions.AbstractSession;
 import org.eclipse.persistence.internal.sessions.UnitOfWorkImpl;
 import org.eclipse.persistence.mappings.DatabaseMapping;
 import org.eclipse.persistence.queries.DirectReadQuery;
+import org.eclipse.persistence.queries.ReadAllQuery;
 import org.eclipse.persistence.queries.ReadQuery;
 
 /**
@@ -72,10 +75,37 @@ public class ETransparentIndirectionPolicy extends EBasicIndirectionPolicy {
 	private transient volatile DirectReadQuery targetIdQuery;
 
 	/**
+	 * When {@code true} the whole collection is resolved in one {@code IN} query on first
+	 * access (eorm {@code batch=true}); when {@code false} elements stay lightweight proxies
+	 * resolved individually on navigation.
+	 */
+	private boolean batch;
+
+	/**
 	 * Creates a new instance.
 	 */
 	public ETransparentIndirectionPolicy(DatabaseMapping mapping, EReference reference, EDynamicType type) {
 		super(mapping, reference, type);
+	}
+
+	/**
+	 * Enables batch resolution: on first access all element ids are resolved in a single
+	 * {@code SELECT ... WHERE idAttr IN (:ids)} and the collection is filled with the
+	 * materialised targets instead of lightweight proxies. Driven by the eorm {@code batch}
+	 * flag for lazy many-valued references.
+	 *
+	 * @param batch {@code true} to batch-resolve on first access
+	 */
+	public void setBatch(boolean batch) {
+		this.batch = batch;
+	}
+
+	/**
+	 * Returns whether batch resolution is enabled.
+	 * @return the batch flag
+	 */
+	public boolean isBatch() {
+		return batch;
 	}
 
 	/*
@@ -248,16 +278,49 @@ public class ETransparentIndirectionPolicy extends EBasicIndirectionPolicy {
 		@Override
 		protected Object instantiate(AbstractSession session) {
 			Object result = super.instantiate(session);
+			if (!(result instanceof Collection<?> ids) || ids.isEmpty()) {
+				return new ArrayList<>();
+			}
+			if (batch) {
+				List<Object> materialised = batchResolve(new ArrayList<>(ids), session);
+				if (nonNull(materialised)) {
+					return materialised;
+				}
+				// Fall through to per-element proxies when the batch query cannot be served.
+			}
 			List<EObject> proxies = new ArrayList<>();
-			if (result instanceof Collection<?> ids) {
-				for (Object id : ids) {
-					EObject proxy = buildTargetProxy(id);
-					if (nonNull(proxy)) {
-						proxies.add(proxy);
-					}
+			for (Object id : ids) {
+				EObject proxy = buildTargetProxy(id);
+				if (nonNull(proxy)) {
+					proxies.add(proxy);
 				}
 			}
 			return proxies;
+		}
+	}
+
+	/**
+	 * Resolves all element ids in a single {@code SELECT ... WHERE idAttr IN (:ids)} and
+	 * returns the materialised targets. Returns {@code null} when the configuration cannot
+	 * be served (missing descriptor/EID attribute) or the query fails — the caller then
+	 * falls back to per-element lightweight proxies.
+	 */
+	private List<Object> batchResolve(List<Object> ids, AbstractSession session) {
+		ClassDescriptor targetDescriptor = getForeignReferenceMapping().getReferenceDescriptor();
+		EAttribute idAttr = getReference().getEReferenceType().getEIDAttribute();
+		if (isNull(targetDescriptor) || isNull(idAttr)) {
+			return null;
+		}
+		try {
+			ReadAllQuery query = new ReadAllQuery(targetDescriptor.getJavaClass());
+			ExpressionBuilder builder = query.getExpressionBuilder();
+			query.setSelectionCriteria(builder.get(idAttr.getName()).in(ids));
+			Object result = session.executeQuery(query);
+			return result instanceof List<?> list ? new ArrayList<>(list) : null;
+		} catch (RuntimeException e) {
+			LOG.log(Level.WARNING, e, () -> "Batch IN resolution failed for reference "
+					+ getReference().getName() + " — falling back to per-element proxies");
+			return null;
 		}
 	}
 }

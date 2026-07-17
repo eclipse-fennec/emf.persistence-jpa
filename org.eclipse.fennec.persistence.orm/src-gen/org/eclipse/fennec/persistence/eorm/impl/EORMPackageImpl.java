@@ -2978,6 +2978,16 @@ public class EORMPackageImpl extends EPackageImpl implements EORMPackage {
 	 * @generated
 	 */
 	@Override
+	public EAttribute getBaseRef_Batch() {
+        return (EAttribute)getBaseRef().getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getId() {
 		if (idEClass == null) {
 			idEClass = (EClass)EPackage.Registry.INSTANCE.getEPackage(EORMPackage.eNS_URI).getEClassifiers().get(44);

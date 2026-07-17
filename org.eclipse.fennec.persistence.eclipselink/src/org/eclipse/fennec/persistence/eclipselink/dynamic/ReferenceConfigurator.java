@@ -142,7 +142,7 @@ class ReferenceConfigurator {
 		}
 		setOptional(mapping, oneToOne);
 		setCascade(mapping, reference, oneToOne.getCascade());
-		configureEMF(mapping, reference);
+		configureEMF(mapping, reference, oneToOne);
 	}
 
 	private void processOneToMany(OneToMany oneToMany) {
@@ -198,7 +198,7 @@ class ReferenceConfigurator {
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
 		setOptional(mapping, oneToMany);
 		setCascade(mapping, reference, oneToMany.getCascade());
-		configureEMF(mapping, reference);
+		configureEMF(mapping, reference, oneToMany);
 	}
 
 	private OneToManyMapping createOneToManyWithJoinColumns(String attributeName, EDynamicType targetType, List<JoinColumn> joinColumns) {
@@ -263,7 +263,7 @@ class ReferenceConfigurator {
 			mapping.addForeignKeyField(fkField, pkField);
 			mapping.setIsReadOnly(false);
 		}
-		configureEMF(mapping, reference);
+		configureEMF(mapping, reference, manyToOne);
 	}
 
 	private void processManyToMany(ManyToMany manyToMany) {
@@ -297,7 +297,7 @@ class ReferenceConfigurator {
 		}
 		setOptional(mapping, manyToMany);
 		setCascade(mapping, reference, manyToMany.getCascade());
-		configureEMF(mapping, reference);
+		configureEMF(mapping, reference, manyToMany);
 	}
 
 	ManyToManyMapping createM2MJoinTable(ManyToManyMapping mapping, JoinTable joinTable, EDynamicType refType) {
@@ -321,11 +321,11 @@ class ReferenceConfigurator {
 	 * the mapping itself — every relationship mapping created here is an EMF-aware
 	 * {@link EMFConfigurableMapping} variant that owns this concern.
 	 */
-	void configureEMF(ForeignReferenceMapping mapping, EReference reference) {
+	void configureEMF(ForeignReferenceMapping mapping, EReference reference, BaseRef baseRef) {
 		requireNonNull(reference);
 		requireNonNull(mapping);
 		if (mapping instanceof EMFConfigurableMapping emfMapping) {
-			emfMapping.configureEMF(reference, ops.getType(), context);
+			emfMapping.configureEMF(reference, baseRef, ops.getType(), context);
 		} else {
 			LOG.log(Level.SEVERE, "Mapping for reference ''{0}'' is not EMF-configurable: {1}",
 					new Object[] { reference.getName(), mapping.getClass().getName() });

@@ -40,6 +40,7 @@ import org.eclipse.fennec.persistence.eorm.JoinTable;
  *   <li>{@link org.eclipse.fennec.persistence.eorm.impl.BaseRefImpl#getForeignKey <em>Foreign Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.persistence.eorm.impl.BaseRefImpl#getJoinTable <em>Join Table</em>}</li>
  *   <li>{@link org.eclipse.fennec.persistence.eorm.impl.BaseRefImpl#isOptional <em>Optional</em>}</li>
+ *   <li>{@link org.eclipse.fennec.persistence.eorm.impl.BaseRefImpl#isBatch <em>Batch</em>}</li>
  * </ul>
  *
  * @generated
@@ -132,6 +133,26 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 	 * @ordered
 	 */
 	protected boolean optionalESet;
+
+	/**
+	 * The default value of the '{@link #isBatch() <em>Batch</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isBatch()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final boolean BATCH_EDEFAULT = false;
+
+	/**
+	 * The cached value of the '{@link #isBatch() <em>Batch</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isBatch()
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean batch = BATCH_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -393,6 +414,29 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 	 * @generated
 	 */
 	@Override
+	public boolean isBatch() {
+		return batch;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setBatch(boolean newBatch) {
+		boolean oldBatch = batch;
+		batch = newBatch;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, EORMPackage.BASE_REF__BATCH, oldBatch, batch));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case EORMPackage.BASE_REF__CASCADE:
@@ -423,6 +467,8 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 				return getJoinTable();
 			case EORMPackage.BASE_REF__OPTIONAL:
 				return isOptional();
+			case EORMPackage.BASE_REF__BATCH:
+				return isBatch();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -449,6 +495,9 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 				return;
 			case EORMPackage.BASE_REF__OPTIONAL:
 				setOptional((Boolean)newValue);
+				return;
+			case EORMPackage.BASE_REF__BATCH:
+				setBatch((Boolean)newValue);
 				return;
 		}
 		super.eSet(featureID, newValue);
@@ -477,6 +526,9 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 			case EORMPackage.BASE_REF__OPTIONAL:
 				unsetOptional();
 				return;
+			case EORMPackage.BASE_REF__BATCH:
+				setBatch(BATCH_EDEFAULT);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -499,6 +551,8 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 				return joinTable != null;
 			case EORMPackage.BASE_REF__OPTIONAL:
 				return isSetOptional();
+			case EORMPackage.BASE_REF__BATCH:
+				return batch != BATCH_EDEFAULT;
 		}
 		return super.eIsSet(featureID);
 	}
@@ -517,6 +571,8 @@ public class BaseRefImpl extends ENamedBaseImpl implements BaseRef {
 		if (fetchESet) result.append(fetch); else result.append("<unset>");
 		result.append(", optional: ");
 		if (optionalESet) result.append(optional); else result.append("<unset>");
+		result.append(", batch: ");
+		result.append(batch);
 		result.append(')');
 		return result.toString();
 	}

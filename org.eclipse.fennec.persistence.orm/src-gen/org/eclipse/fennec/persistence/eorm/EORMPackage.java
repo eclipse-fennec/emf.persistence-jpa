@@ -3107,13 +3107,22 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	int BASE_REF__OPTIONAL = ENAMED_BASE_FEATURE_COUNT + 4;
 
 	/**
+	 * The feature id for the '<em><b>Batch</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BASE_REF__BATCH = ENAMED_BASE_FEATURE_COUNT + 5;
+
+	/**
 	 * The number of structural features of the '<em>Base Ref</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int BASE_REF_FEATURE_COUNT = ENAMED_BASE_FEATURE_COUNT + 5;
+	int BASE_REF_FEATURE_COUNT = ENAMED_BASE_FEATURE_COUNT + 6;
 
 	/**
 	 * The number of operations of the '<em>Base Ref</em>' class.
@@ -3682,6 +3691,15 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	int MAPPED_BY_REF__OPTIONAL = BASE_REF__OPTIONAL;
 
 	/**
+	 * The feature id for the '<em><b>Batch</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAPPED_BY_REF__BATCH = BASE_REF__BATCH;
+
+	/**
 	 * The feature id for the '<em><b>Mapped By</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -3789,6 +3807,15 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @ordered
 	 */
 	int MANY_TO_MANY__OPTIONAL = MAPPED_BY_REF__OPTIONAL;
+
+	/**
+	 * The feature id for the '<em><b>Batch</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MANY_TO_MANY__BATCH = MAPPED_BY_REF__BATCH;
 
 	/**
 	 * The feature id for the '<em><b>Mapped By</b></em>' attribute.
@@ -4006,6 +4033,15 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @ordered
 	 */
 	int MANY_TO_ONE__OPTIONAL = BASE_REF__OPTIONAL;
+
+	/**
+	 * The feature id for the '<em><b>Batch</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MANY_TO_ONE__BATCH = BASE_REF__BATCH;
 
 	/**
 	 * The feature id for the '<em><b>Join Column</b></em>' containment reference list.
@@ -5037,6 +5073,15 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	int ONE_TO_MANY__OPTIONAL = MAPPED_BY_REF__OPTIONAL;
 
 	/**
+	 * The feature id for the '<em><b>Batch</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ONE_TO_MANY__BATCH = MAPPED_BY_REF__BATCH;
+
+	/**
 	 * The feature id for the '<em><b>Mapped By</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -5270,6 +5315,15 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @ordered
 	 */
 	int ONE_TO_ONE__OPTIONAL = MAPPED_BY_REF__OPTIONAL;
+
+	/**
+	 * The feature id for the '<em><b>Batch</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ONE_TO_ONE__BATCH = MAPPED_BY_REF__BATCH;
 
 	/**
 	 * The feature id for the '<em><b>Mapped By</b></em>' attribute.
@@ -9194,6 +9248,17 @@ public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getBaseRef_Optional();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.persistence.eorm.BaseRef#isBatch <em>Batch</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Batch</em>'.
+	 * @see org.eclipse.fennec.persistence.eorm.BaseRef#isBatch()
+	 * @see #getBaseRef()
+	 * @generated
+	 */
+	EAttribute getBaseRef_Batch();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.eorm.Id <em>Id</em>}'.

@@ -360,6 +360,7 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference eorm.ecore#//BaseRef/foreignKey"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference eorm.ecore#//BaseRef/joinTable"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute eorm.ecore#//BaseRef/optional"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute eorm.ecore#//BaseRef/batch"/>
     </genClasses>
     <genClasses ecoreClass="eorm.ecore#//Id">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference eorm.ecore#//Id/generatedValue"/>

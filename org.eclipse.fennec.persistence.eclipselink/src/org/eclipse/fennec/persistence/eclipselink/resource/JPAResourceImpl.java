@@ -19,10 +19,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Function;
@@ -31,7 +33,9 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.common.util.WrappedException;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -78,22 +82,90 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	private final EntityManagerFactory emf;
 
+	/** Options captured by {@link #load(Map)} for the deferred full population. */
+	private Map<?, ?> loadOptions;
+	/**
+	 * {@code true} once {@link #load(Map)} was called — the trigger for deferred population.
+	 * Deliberately distinct from EMF's {@code isLoaded}: adding a single keyed-resolved
+	 * object to the contents (see {@link #getEObject(String)}) flips {@code isLoaded} via
+	 * {@code ContentsEList.loaded()}, which must <em>not</em> cause the whole table to be
+	 * loaded on a later {@link #getContents()}.
+	 */
+	private boolean loadRequested;
+	/** {@code true} once the full {@code SELECT e FROM Entity e} population has run. */
+	private boolean contentsPopulated;
+	/** Re-entrancy guard so internal contents access during population does not recurse. */
+	private boolean populating;
+
 	public JPAResourceImpl(URI uri, EntityManagerFactory emf) {
 		super(uri);
 		this.emf = emf;
 	}
 
+	/**
+	 * Lazy load: marks the resource loaded and remembers the options, but does
+	 * <em>not</em> run the full {@code SELECT e FROM Entity e}. The full population is
+	 * deferred to the first {@link #getContents()} iteration.
+	 * <p>
+	 * This keeps demand-load-driven proxy resolution cheap: EMF resolves a proxy via
+	 * {@code ResourceSet.getEObject(uri, true)} → {@code getResource(trimFragment, true)}
+	 * → {@code demandLoad} → {@code load()}. With eager loading that step materialised the
+	 * whole target table before the fragment (which already carries the target id) was ever
+	 * looked at. Now {@code load()} is a no-op and the keyed {@code em.find} in
+	 * {@link #getEObject(String)} is the only DB round-trip. See issue #17.
+	 */
 	@Override
 	public void load(Map<?, ?> options) throws IOException {
 		if (isLoaded) {
 			return;
 		}
-		doLoad(null, options);
+		this.loadOptions = options;
+		this.loadRequested = true;
 		isLoaded = true;
 	}
 
+	/**
+	 * Returns the resource contents, running the deferred full population on first access
+	 * of a loaded (but not yet populated) resource. Internal callers that must not trigger
+	 * the full table load — {@link #getEObject(String)} caching, {@link #populateContents}
+	 * itself — use {@code super.getContents()} directly to bypass this hook.
+	 */
 	@Override
-	protected void doLoad(InputStream inputStream, Map<?, ?> options) throws IOException {
+	public EList<EObject> getContents() {
+		populateIfNeeded();
+		return super.getContents();
+	}
+
+	/**
+	 * Runs the deferred full population exactly once for a loaded resource. Guarded against
+	 * re-entrancy so that {@code super.getContents()} calls made from within
+	 * {@link #populateContents} do not recurse. A load failure surfaces as a
+	 * {@link WrappedException} because {@link #getContents()} cannot throw a checked
+	 * {@link IOException}; the failure is also recorded in {@link #getErrors()}.
+	 */
+	private void populateIfNeeded() {
+		if (!loadRequested || contentsPopulated || populating) {
+			return;
+		}
+		populating = true;
+		try {
+			populateContents(loadOptions);
+			contentsPopulated = true;
+		} catch (IOException e) {
+			throw new WrappedException(e);
+		} finally {
+			populating = false;
+		}
+	}
+
+	/**
+	 * Full population: {@code SELECT e FROM Entity e}, materialising every row of the
+	 * target table into this resource's contents. Objects already present (e.g. resolved
+	 * earlier by {@link #getEObject(String)}) are kept — incoming rows carrying an EMF id
+	 * that is already present are skipped so identity is preserved and no duplicates are
+	 * added.
+	 */
+	private void populateContents(Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
 		String entityName = getEntityName();
@@ -110,9 +182,6 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		// Use the validated alias from the descriptor to prevent JPQL injection
 		String validatedAlias = descriptor.getAlias();
-		if (!getContents().isEmpty()) {
-			getContents().clear();
-		}
 		int pageSize = Options.getPageSize(options);
 		try (EntityManager em = emf.createEntityManager()) {
 			TypedQuery<?> query = em.createQuery(
@@ -139,10 +208,27 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		} while (page.size() == pageSize);
 	}
 
+	/**
+	 * Appends query results to the raw contents list, skipping any object whose EMF id is
+	 * already present (added by an earlier keyed {@link #getEObject(String)} resolution).
+	 * Uses {@code super.getContents()} to avoid re-triggering {@link #populateIfNeeded()}.
+	 */
 	private void addToContents(List<?> results) {
+		EList<EObject> raw = super.getContents();
+		Set<String> existingIds = new HashSet<>();
+		for (EObject eo : raw) {
+			String id = EcoreUtil.getID(eo);
+			if (nonNull(id)) {
+				existingIds.add(id);
+			}
+		}
 		for (Object obj : results) {
 			if (obj instanceof EObject eo) {
-				getContents().add(eo);
+				String id = EcoreUtil.getID(eo);
+				if (nonNull(id) && !existingIds.add(id)) {
+					continue;
+				}
+				raw.add(eo);
 			}
 		}
 	}
@@ -445,7 +531,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	@Override
 	protected void doUnload() {
 		isLoaded = false;
-		getContents().clear();
+		loadRequested = false;
+		contentsPopulated = false;
+		loadOptions = null;
+		// Raw list access — a resource being unloaded must not first re-populate.
+		super.getContents().clear();
 	}
 
 	/**
@@ -512,8 +602,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				// an eResource() and can be found on subsequent accesses without
 				// hitting the database again. This is the standard EMF pattern
 				// for proxy resolution via ResourceSet → Resource → getEObject.
-				if (isNull(resolved.eResource()) && !getContents().contains(resolved)) {
-					getContents().add(resolved);
+				// Use the raw contents list (super.getContents()) so caching a
+				// single keyed resolution never triggers the deferred full-table
+				// population — that is the whole point of the lazy resource (#17).
+				EList<EObject> raw = super.getContents();
+				if (isNull(resolved.eResource()) && !raw.contains(resolved)) {
+					raw.add(resolved);
 				}
 				return resolved;
 			}
