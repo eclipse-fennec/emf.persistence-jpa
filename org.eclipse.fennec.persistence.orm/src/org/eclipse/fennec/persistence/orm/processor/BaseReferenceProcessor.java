@@ -12,15 +12,19 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm.processor;
 
+import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.Keywords;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.CascadeType;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.EmptyType;
+import org.eclipse.fennec.persistence.eorm.FetchType;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 
@@ -94,6 +98,7 @@ public abstract class BaseReferenceProcessor<T extends BaseRef> extends NamedBas
 		boolean ip = super.internalProcess();
 		createBaseRef();
 		calculateCascadeType();
+		calculateFetch();
 		return ip;
 	}
 	
@@ -159,6 +164,38 @@ public abstract class BaseReferenceProcessor<T extends BaseRef> extends NamedBas
 		    // Intentionally NO setCascadeRemove() for non-containment references
 		}
 		target.setCascade(cascade);
+	}
+
+	/**
+	 * Writes the {@code fetch} type and {@code batch} flag onto the eorm reference — the
+	 * eorm is the source of truth the type mapping later reads.
+	 * <p>
+	 * Structural default: a containment reference is EMF composition and therefore always
+	 * {@link FetchType#EAGER}; a non-containment reference defaults to {@link FetchType#LAZY}.
+	 * A persistence {@link EAnnotation} on the ecore reference
+	 * ({@link Keywords#PERSISTENCE_ANNOTATION_SOURCE}) may override both:
+	 * <ul>
+	 * <li>{@code fetch} = {@code EAGER} | {@code LAZY}</li>
+	 * <li>{@code batch} = {@code true} | {@code false} — batch-fetch a lazy many-valued
+	 *     reference in one {@code IN} query on first access</li>
+	 * </ul>
+	 * Inconsistent combinations (e.g. a containment marked {@code LAZY}) are recorded as
+	 * written here and validated/corrected with a diagnostic in the type mapping.
+	 */
+	void calculateFetch() {
+		requireNonNull(source);
+		FetchType fetch = source.isContainment() ? FetchType.EAGER : FetchType.LAZY;
+		boolean batch = false;
+		EAnnotation annotation = source.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE);
+		if (nonNull(annotation)) {
+			String fetchValue = annotation.getDetails().get("fetch");
+			if (nonNull(fetchValue)) {
+				fetch = "EAGER".equalsIgnoreCase(fetchValue) ? FetchType.EAGER : FetchType.LAZY;
+			}
+			batch = "true".equalsIgnoreCase(annotation.getDetails().get("batch"));
+		}
+		target.setFetch(fetch);
+		target.setBatch(batch);
 	}
 	
 	/* 

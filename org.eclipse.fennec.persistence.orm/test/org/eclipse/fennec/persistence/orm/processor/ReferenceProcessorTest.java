@@ -14,13 +14,16 @@ package org.eclipse.fennec.persistence.orm.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.Keywords;
 import org.eclipse.fennec.persistence.eorm.CascadeType;
+import org.eclipse.fennec.persistence.eorm.FetchType;
 import org.eclipse.fennec.persistence.eorm.ManyToMany;
 import org.eclipse.fennec.persistence.eorm.ManyToOne;
 import org.eclipse.fennec.persistence.eorm.OneToMany;
@@ -472,6 +475,95 @@ public class ReferenceProcessorTest {
 
 			CascadeType cascade = processor.getMapping().getCascade();
 			assertThat(cascade.getCascadeAll()).isNotNull();
+		}
+	}
+
+	@Nested
+	class FetchTests {
+
+		@Test
+		void testNonContainmentSingleDefaultsLazy() {
+			EClass a = createClassWithId("A");
+			EClass b = createClassWithId("B");
+			EReference ref = createReference("bRef", a, b, false, false);
+
+			OneToOneProcessor processor = new OneToOneProcessor(ref, context);
+			processor.process();
+
+			OneToOne result = processor.getMapping();
+			assertThat(result.getFetch()).isEqualTo(FetchType.LAZY);
+			assertThat(result.isBatch()).isFalse();
+		}
+
+		@Test
+		void testContainmentSingleIsEager() {
+			EClass parent = createClassWithId("Parent");
+			EClass child = createClassWithId("Child");
+			EReference ref = createReference("child", parent, child, false, true);
+
+			OneToOneProcessor processor = new OneToOneProcessor(ref, context);
+			processor.process();
+
+			assertThat(processor.getMapping().getFetch()).isEqualTo(FetchType.EAGER);
+		}
+
+		@Test
+		void testNonContainmentManyDefaultsLazy() {
+			EClass a = createClassWithId("A");
+			EClass b = createClassWithId("B");
+			EReference ref = createReference("items", a, b, true, false);
+
+			OneToManyProcessor processor = new OneToManyProcessor(ref, context);
+			processor.process();
+
+			assertThat(processor.getMapping().getFetch()).isEqualTo(FetchType.LAZY);
+		}
+
+		@Test
+		void testContainmentManyIsEager() {
+			EClass parent = createClassWithId("Parent");
+			EClass child = createClassWithId("Child");
+			EReference ref = createReference("children", parent, child, true, true);
+
+			OneToManyProcessor processor = new OneToManyProcessor(ref, context);
+			processor.process();
+
+			assertThat(processor.getMapping().getFetch()).isEqualTo(FetchType.EAGER);
+		}
+
+		@Test
+		void testAnnotationOverridesFetchToEager() {
+			EClass a = createClassWithId("A");
+			EClass b = createClassWithId("B");
+			EReference ref = createReference("bRef", a, b, false, false);
+			annotate(ref, "fetch", "EAGER");
+
+			OneToOneProcessor processor = new OneToOneProcessor(ref, context);
+			processor.process();
+
+			assertThat(processor.getMapping().getFetch()).isEqualTo(FetchType.EAGER);
+		}
+
+		@Test
+		void testAnnotationEnablesBatch() {
+			EClass a = createClassWithId("A");
+			EClass b = createClassWithId("B");
+			EReference ref = createReference("items", a, b, true, false);
+			annotate(ref, "batch", "true");
+
+			OneToManyProcessor processor = new OneToManyProcessor(ref, context);
+			processor.process();
+
+			OneToMany result = processor.getMapping();
+			assertThat(result.getFetch()).as("batch keeps the LAZY default").isEqualTo(FetchType.LAZY);
+			assertThat(result.isBatch()).isTrue();
+		}
+
+		private void annotate(EReference ref, String key, String value) {
+			EAnnotation annotation = EcoreFactory.eINSTANCE.createEAnnotation();
+			annotation.setSource(Keywords.PERSISTENCE_ANNOTATION_SOURCE);
+			annotation.getDetails().put(key, value);
+			ref.getEAnnotations().add(annotation);
 		}
 	}
 

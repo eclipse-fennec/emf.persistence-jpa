@@ -200,7 +200,7 @@ class JPAResourceImplTest {
 	class LoadTests {
 
 		@Test
-		@DisplayName("isLoaded is false after failed doLoad")
+		@DisplayName("Failed deferred population surfaces on getContents and is retryable")
 		void testIsLoadedFalseAfterFailure() throws Exception {
 			ClassDescriptor descriptor = mock(ClassDescriptor.class);
 			doReturn(EObject.class).when(descriptor).getJavaClass();
@@ -218,21 +218,21 @@ class JPAResourceImplTest {
 					return descriptor;
 				}
 			}) {
-				assertThatThrownBy(() -> testResource.load(null))
-						.isInstanceOf(IOException.class)
-						.hasCauseInstanceOf(PersistenceException.class);
+				// Lazy resource: load() defers the query, so the failure surfaces on the
+				// first getContents() access (wrapped, since getContents cannot throw checked).
+				testResource.load(null);
+				assertThatThrownBy(() -> testResource.getContents())
+						.isInstanceOf(RuntimeException.class)
+						.hasRootCauseInstanceOf(PersistenceException.class);
 
-				// isLoaded must NOT be true after failed load
-				assertThat(testResource.isLoaded()).isFalse();
-				assertThat(testResource.getContents()).isEmpty();
 				// Failure is surfaced via EMF diagnostics
 				assertThat(testResource.getErrors()).isNotEmpty();
 
-				// A subsequent load attempt must be possible (not stuck)
+				// The population is not stuck: once the backend recovers, a subsequent
+				// getContents() retries and succeeds (diagnostics cleared).
 				doReturn(List.of(createEObject())).when(query).getResultList();
-				testResource.load(null);
-				assertThat(testResource.isLoaded()).isTrue();
 				assertThat(testResource.getContents()).hasSize(1);
+				assertThat(testResource.getErrors()).isEmpty();
 			}
 		}
 
@@ -719,6 +719,9 @@ class JPAResourceImplTest {
 		void testMissingEntitySurfacesWarning() throws Exception {
 			try (JPAResourceImpl testResource = new JPAResourceImpl(URI.createURI(""), emf)) {
 				testResource.load(null);
+				// Lazy resource: the full population (and its diagnostics) runs on first
+				// getContents() access, not on load().
+				testResource.getContents();
 				assertThat(testResource.getErrors()).isEmpty();
 				assertThat(testResource.getWarnings()).hasSize(1);
 				assertThat(testResource.getWarnings().get(0).getMessage())
@@ -737,6 +740,8 @@ class JPAResourceImplTest {
 				}
 			}) {
 				testResource.load(null);
+				// Lazy resource: warning surfaces when the deferred population runs.
+				testResource.getContents();
 				assertThat(testResource.getWarnings()).hasSize(1);
 				assertThat(testResource.getWarnings().get(0).getMessage())
 						.contains("No descriptor found for entity 'Unknown'");
@@ -841,7 +846,7 @@ class JPAResourceImplTest {
 		}
 
 		@Test
-		@DisplayName("Diagnostics are cleared at the start of doLoad")
+		@DisplayName("Diagnostics are cleared at the start of the deferred population")
 		void testDiagnosticsClearedOnLoad() throws Exception {
 			ClassDescriptor descriptor = mock(ClassDescriptor.class);
 			doReturn(EObject.class).when(descriptor).getJavaClass();
@@ -864,6 +869,8 @@ class JPAResourceImplTest {
 				testResource.getWarnings().add(new JPADiagnostic("stale warning", null));
 
 				testResource.load(null);
+				// Lazy resource: the deferred population clears diagnostics at its start.
+				testResource.getContents();
 
 				assertThat(testResource.getErrors()).isEmpty();
 				assertThat(testResource.getWarnings()).isEmpty();

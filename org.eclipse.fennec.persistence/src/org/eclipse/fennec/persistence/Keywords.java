@@ -48,7 +48,7 @@ public interface Keywords {
 	/**
 	 * Source for persistence {@link EAnnotation}.
 	 */
-	public static final String PERSISTENCE_ANNOTATION_SOURCE = "http://eclipse.org/fennec/jpa-persistence/1.0.0";
+	public static final String PERSISTENCE_ANNOTATION_SOURCE = "https://eclipse.org/fennec/persistence";
 	/**
 	 * Name for persistence {@link EAnnotation} to define alias database, table or column name.
 	 */
