@@ -94,6 +94,14 @@ public class PersistenceUnitConfigurator extends AbstractPersistenceUnitConfigur
 				description = "EclipseLink eclipselink.jdbc.batch-writing.size value. 0 = not set.",
 				required = false)
 		int batchSize() default 0;
+
+		@AttributeDefinition(name = "Factory idle timeout (seconds)",
+				description = "The real EclipseLink factory is built lazily on first use and closed"
+						+ " again after this many seconds without any use (releasing caches and"
+						+ " connections); the next use rebuilds it. 0 = close immediately when the"
+						+ " last use ends, -1 = keep open until the configuration is deleted.",
+				required = false)
+		long emfIdleTimeout() default DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;
 	}
 
 	@Activate

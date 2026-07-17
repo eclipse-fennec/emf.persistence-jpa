@@ -348,7 +348,7 @@ public class EBasicIndirectionPolicy extends BasicIndirectionPolicy {
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.indirection.BasicIndirectionPolicy#setRealAttributeValueInObject(java.lang.Object, java.lang.Object)
 	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings("unchecked")
 	@Override
 	public void setRealAttributeValueInObject(Object target, Object attributeValue) {
 		if (!usesIndirection()) {

@@ -95,6 +95,7 @@ class NonOsgiManyToManyProxyTest extends NonOsgiPersistenceTestBase {
 	}
 
 	/** Persists an A with the given name and B targets on bNonContainment. */
+	@SuppressWarnings("unchecked")
 	private EObject persistAWithBs(String name, List<EObject> bs) {
 		EObject a = newInstance(classAEClass);
 		a.eSet(aName, name);
@@ -145,6 +146,7 @@ class NonOsgiManyToManyProxyTest extends NonOsgiPersistenceTestBase {
 
 	// -------------------------------------------------------------------- tests
 
+	@SuppressWarnings("restriction")
 	@Test
 	void testIndirectionPolicyInstalled() {
 		ClassDescriptor aDesc = serverSession.getDescriptorForAlias(classAEClass.getName());
@@ -184,6 +186,7 @@ class NonOsgiManyToManyProxyTest extends NonOsgiPersistenceTestBase {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	void testLoadDoesNotMaterializeTargets() throws Exception {
 		// 20 A's, each referencing 3 B's. Loading all A's must issue exactly one
@@ -249,6 +252,7 @@ class NonOsgiManyToManyProxyTest extends NonOsgiPersistenceTestBase {
 				.containsExactlyInAnyOrder("First B", "Second B");
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	void testBidirectionalProxiesResolveBothSides() throws Exception {
 		EObject c1 = newInstance(classCEClass);
@@ -269,14 +273,12 @@ class NonOsgiManyToManyProxyTest extends NonOsgiPersistenceTestBase {
 
 		ResourceSet resourceSet = newJpaResourceSet();
 		EObject aLoaded = findViaResource(resourceSet, "ClassAM2M", aId);
-		@SuppressWarnings("unchecked")
 		List<EObject> cList = (List<EObject>) aLoaded.eGet(aCNonContainmentBidi);
 		assertThat(cList).hasSize(1);
 		assertThat(cList.get(0).eGet(cName)).isEqualTo("First C");
 
 		ResourceSet resourceSet2 = newJpaResourceSet();
 		EObject cLoaded = findViaResource(resourceSet2, "ClassCM2M", cId);
-		@SuppressWarnings("unchecked")
 		List<EObject> aList = (List<EObject>) cLoaded.eGet(cClassA);
 		assertThat(aList).hasSize(1);
 		assertThat(aList.get(0).eGet(aName)).isEqualTo("Owner A");

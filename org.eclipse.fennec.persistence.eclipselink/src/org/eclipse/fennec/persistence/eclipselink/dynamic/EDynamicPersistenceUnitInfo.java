@@ -68,6 +68,18 @@ public class EDynamicPersistenceUnitInfo implements PersistenceUnitInfo {
         unitModel.getProperties().getProperty().forEach(p->{
         	properties.put(p.getName(), p.getValue());
         });
+        /*
+         * Route the model's transaction type through the property channel: EclipseLink
+         * gives PersistenceUnitProperties.TRANSACTION_TYPE precedence over
+         * PersistenceUnitInfo#getTransactionType() on every deploy path (EclipseLink
+         * bug 5867753 handling). This keeps the effective configuration off the
+         * jakarta.persistence.spi enum that is deprecated for removal since JPA 3.2 —
+         * only the SPI-mandated getter below still has to reference it.
+         */
+        if (Objects.nonNull(unitModel.getTransactionType())) {
+            properties.putIfAbsent(PersistenceUnitProperties.TRANSACTION_TYPE,
+                    unitModel.getTransactionType().name());
+        }
 
         if (props.containsKey(PersistenceUnitProperties.CLASSLOADER)) {
             setClassLoader((ClassLoader) props.get(PersistenceUnitProperties.CLASSLOADER));
@@ -92,7 +104,18 @@ public class EDynamicPersistenceUnitInfo implements PersistenceUnitInfo {
         return unitModel.getProvider();
     }
 
-    @SuppressWarnings({ "deprecation", "removal" })
+    /**
+     * SPI-mandated bridge: in Jakarta Persistence 3.2 this {@link PersistenceUnitInfo}
+     * method is still declared with the {@code jakarta.persistence.spi} enum that is
+     * deprecated for removal — the replacement {@code jakarta.persistence.PersistenceUnitTransactionType}
+     * only arrives in the SPI with JPA 4. Implementing the interface therefore forces the
+     * reference to the deprecated type; the import (and its IDE warning) is kept
+     * deliberately as the visible reminder to migrate this method when moving to JPA 4.
+     * EclipseLink itself prefers the {@code PersistenceUnitProperties.TRANSACTION_TYPE}
+     * property (set in the constructor) over this getter, so this value is a consistent
+     * fallback only.
+     */
+    @SuppressWarnings("removal")
 	@Override
     public PersistenceUnitTransactionType getTransactionType() {
         return PersistenceUnitTransactionType.valueOf(unitModel.getTransactionType().name());

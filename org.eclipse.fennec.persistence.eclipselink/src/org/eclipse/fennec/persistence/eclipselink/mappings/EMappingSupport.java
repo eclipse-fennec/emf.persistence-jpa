@@ -151,7 +151,7 @@ final class EMappingSupport {
 	 * the collection is not instantiated — the caller must then delegate to its default
 	 * implementation (deferred-changes handling).
 	 */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings("rawtypes")
 	static boolean cascadeDiscoverSkippingProxies(CollectionMapping mapping, Object object, Map newObjects,
 			Map unregisteredExistingObjects, Map visitedObjects, UnitOfWorkImpl uow, Set cascadeErrors) {
 		Object attributeValue = mapping.getAttributeValueFromObject(object);
@@ -185,7 +185,7 @@ final class EMappingSupport {
 	 * {@code false} when nothing needs to be done or the collection is not instantiated
 	 * and the owner is not new — mirroring the default guard conditions.
 	 */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings("rawtypes")
 	static boolean cascadeRegisterNewSkippingProxies(CollectionMapping mapping, Object object, UnitOfWorkImpl uow,
 			Map visitedObjects) {
 		if (!mapping.isCascadePersist()) {

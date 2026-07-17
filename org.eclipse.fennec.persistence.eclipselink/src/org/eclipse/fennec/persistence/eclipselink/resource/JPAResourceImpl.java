@@ -14,9 +14,9 @@ package org.eclipse.fennec.persistence.eclipselink.resource;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,12 +45,13 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
+import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
+import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.eclipse.persistence.config.HintValues;
 import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
-import org.eclipse.persistence.jpa.JpaHelper;
 import org.eclipse.persistence.jpa.JpaQuery;
 import org.eclipse.persistence.queries.ScrollableCursor;
 import org.eclipse.persistence.sessions.UnitOfWork;
@@ -80,7 +81,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	private static final Logger LOG = Logger.getLogger(JPAResourceImpl.class.getName());
 
-	private final EntityManagerFactory emf;
+	private final JPAUnit unit;
 
 	/** Options captured by {@link #load(Map)} for the deferred full population. */
 	private Map<?, ?> loadOptions;
@@ -97,9 +98,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	/** Re-entrancy guard so internal contents access during population does not recurse. */
 	private boolean populating;
 
-	public JPAResourceImpl(URI uri, EntityManagerFactory emf) {
+	/**
+	 * Creates a resource backed by a {@link JPAUnit} — the narrow capability that hands out
+	 * fresh {@link EntityManager}s and the EclipseLink server session while keeping the
+	 * heavyweight factory private and lazily managed (issue #20).
+	 */
+	public JPAResourceImpl(URI uri, JPAUnit unit) {
 		super(uri);
-		this.emf = emf;
+		this.unit = requireNonNull(unit, "JPAUnit is required");
+	}
+
+	/**
+	 * Convenience for the non-OSGi / test path: adapts a caller-owned
+	 * {@link EntityManagerFactory} as a {@link JPAUnit}.
+	 */
+	public JPAResourceImpl(URI uri, EntityManagerFactory emf) {
+		this(uri, JPAUnit.of(emf));
 	}
 
 	/**
@@ -174,27 +188,45 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					"Resource URI has no entity segment — nothing to load", getURI()));
 			return;
 		}
-		ClassDescriptor descriptor = getDescriptor(entityName);
-		if (isNull(descriptor)) {
-			getWarnings().add(new JPADiagnostic(
-					"No descriptor found for entity '" + entityName + "'", getURI()));
-			return;
-		}
-		// Use the validated alias from the descriptor to prevent JPQL injection
-		String validatedAlias = descriptor.getAlias();
-		int pageSize = Options.getPageSize(options);
-		try (EntityManager em = emf.createEntityManager()) {
-			TypedQuery<?> query = em.createQuery(
-					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass());
-			if (pageSize > 0) {
-				loadPaginated(query, pageSize);
-			} else {
-				addToContents(query.getResultList());
+		try (Lease lease = leaseChecked()) {
+			ClassDescriptor descriptor = getDescriptor(entityName);
+			if (isNull(descriptor)) {
+				getWarnings().add(new JPADiagnostic(
+						"No descriptor found for entity '" + entityName + "'", getURI()));
+				return;
 			}
+			// Use the validated alias from the descriptor to prevent JPQL injection
+			String validatedAlias = descriptor.getAlias();
+			int pageSize = Options.getPageSize(options);
+			try (EntityManager em = lease.createEntityManager()) {
+				TypedQuery<?> query = em.createQuery(
+						"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass());
+				if (pageSize > 0) {
+					loadPaginated(query, pageSize);
+				} else {
+					addToContents(query.getResultList());
+				}
+			} catch (RuntimeException e) {
+				getErrors().add(new JPADiagnostic(
+						"Failed to load entity '" + entityName + "': " + e.getMessage(), getURI(), e));
+				throw new IOException("Failed to load resource: " + getURI(), e);
+			}
+		}
+	}
+
+	/**
+	 * Opens the per-operation lease on the unit — the single point where an unavailable
+	 * persistence unit surfaces. Failures are recorded as an error diagnostic and rethrown
+	 * as {@link IOException}, so consumers always get a clear "unit not available" signal
+	 * instead of a bare runtime exception (no silent fallback — see issue #20).
+	 */
+	private Lease leaseChecked() throws IOException {
+		try {
+			return unit.lease();
 		} catch (RuntimeException e) {
 			getErrors().add(new JPADiagnostic(
-					"Failed to load entity '" + entityName + "': " + e.getMessage(), getURI(), e));
-			throw new IOException("Failed to load resource: " + getURI(), e);
+					"Persistence unit not available: " + e.getMessage(), getURI(), e));
+			throw new IOException("Persistence unit not available for " + getURI(), e);
 		}
 	}
 
@@ -242,7 +274,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
-		Server server = getServer();
+		try (Lease lease = leaseChecked()) {
+			saveWithLease(lease, options);
+		}
+	}
+
+	private void saveWithLease(Lease lease, Map<?, ?> options) throws IOException {
+		Server server = serverOf(lease);
 		// Pre-build the entity factory function once for all objects (avoids lambda allocation per object)
 		Function<EObject, EObject> entityFactory = nonNull(server)
 				? src -> {
@@ -250,7 +288,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
 				}
 				: null;
-		try (EntityManager em = emf.createEntityManager()) {
+		try (EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			applyCacheNewObjectsOption(em, options);
 			try {
@@ -508,7 +546,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	public void delete(Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
-		try (EntityManager em = emf.createEntityManager()) {
+		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
 				for (EObject eo : getContents()) {
@@ -579,14 +617,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			idValue = uriFragment;
 		}
 		String entityName = getEntityName();
-		ClassDescriptor descriptor = getDescriptor(entityName);
-		if (isNull(descriptor)) {
-			getWarnings().add(new JPADiagnostic(
-					"No descriptor for entity '" + entityName + "' — cannot resolve fragment "
-					+ uriFragment, getURI()));
-			return null;
-		}
-		try (EntityManager em = emf.createEntityManager()) {
+		try (Lease lease = unit.lease()) {
+			ClassDescriptor descriptor = getDescriptor(entityName);
+			if (isNull(descriptor)) {
+				getWarnings().add(new JPADiagnostic(
+						"No descriptor for entity '" + entityName + "' — cannot resolve fragment "
+						+ uriFragment, getURI()));
+				return null;
+			}
 			Object typedId;
 			try {
 				typedId = convertId(idValue, descriptor);
@@ -596,28 +634,42 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						+ ": " + e.getMessage(), getURI(), e));
 				return null;
 			}
-			Object result = em.find(descriptor.getJavaClass(), typedId);
-			if (result instanceof EObject resolved) {
-				// Add the resolved object to this resource's contents so it has
-				// an eResource() and can be found on subsequent accesses without
-				// hitting the database again. This is the standard EMF pattern
-				// for proxy resolution via ResourceSet → Resource → getEObject.
-				// Use the raw contents list (super.getContents()) so caching a
-				// single keyed resolution never triggers the deferred full-table
-				// population — that is the whole point of the lazy resource (#17).
-				EList<EObject> raw = super.getContents();
-				if (isNull(resolved.eResource()) && !raw.contains(resolved)) {
-					raw.add(resolved);
-				}
-				return resolved;
+			EntityManager em = lease.createEntityManager();
+			try {
+				return findAndCache(em, descriptor, typedId);
+			} finally {
+				em.close();
 			}
-			return null;
 		} catch (RuntimeException e) {
 			getErrors().add(new JPADiagnostic(
 					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(),
 					getURI(), e));
 			return null;
 		}
+	}
+
+	/**
+	 * Keyed {@code em.find} plus the standard EMF caching pattern: the resolved object is
+	 * attached to this resource's <em>raw</em> contents so it has an {@code eResource()}
+	 * and later accesses need no DB round-trip.
+	 */
+	private EObject findAndCache(EntityManager em, ClassDescriptor descriptor, Object typedId) {
+		Object result = em.find(descriptor.getJavaClass(), typedId);
+		if (result instanceof EObject resolved) {
+			// Add the resolved object to this resource's contents so it has
+			// an eResource() and can be found on subsequent accesses without
+			// hitting the database again. This is the standard EMF pattern
+			// for proxy resolution via ResourceSet → Resource → getEObject.
+			// Use the raw contents list (super.getContents()) so caching a
+			// single keyed resolution never triggers the deferred full-table
+			// population — that is the whole point of the lazy resource (#17).
+			EList<EObject> raw = super.getContents();
+			if (isNull(resolved.eResource()) && !raw.contains(resolved)) {
+				raw.add(resolved);
+			}
+			return resolved;
+		}
+		return null;
 	}
 
 	/*
@@ -641,12 +693,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isNull(entityName)) {
 			return Stream.empty();
 		}
-		ClassDescriptor descriptor = getDescriptor(entityName);
+		// The lease (and its EntityManager) stay open until the returned stream is closed;
+		// both are released in onClose / the failure paths.
+		Lease lease = leaseChecked();
+		ClassDescriptor descriptor;
+		try {
+			descriptor = getDescriptor(entityName);
+		} catch (RuntimeException e) {
+			lease.close();
+			throw new IOException("Failed to open stream on entity '" + entityName + "'", e);
+		}
 		if (isNull(descriptor)) {
+			lease.close();
 			return Stream.empty();
 		}
 		String validatedAlias = descriptor.getAlias();
-		EntityManager em = emf.createEntityManager();
+		EntityManager em = lease.createEntityManager();
 		try {
 			TypedQuery<?> query = em.createQuery(
 					"SELECT e FROM " + validatedAlias + " e", descriptor.getJavaClass());
@@ -673,9 +735,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					.onClose(() -> {
 						cursor.close();
 						em.close();
+						lease.close();
 					});
 		} catch (RuntimeException e) {
 			em.close();
+			lease.close();
 			throw new IOException("Failed to open stream on entity '" + entityName + "'", e);
 		}
 	}
@@ -693,21 +757,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					"Resource URI has no entity segment — count is 0", getURI()));
 			return 0;
 		}
-		ClassDescriptor descriptor = getDescriptor(entityName);
-		if (isNull(descriptor)) {
-			getWarnings().add(new JPADiagnostic(
-					"No descriptor for entity '" + entityName + "' — count is 0", getURI()));
-			return 0;
-		}
-		// Use the validated alias from the descriptor to prevent JPQL injection
-		String validatedAlias = descriptor.getAlias();
-		try (EntityManager em = emf.createEntityManager()) {
-			return em.createQuery("SELECT COUNT(e) FROM " + validatedAlias + " e", Long.class)
-					.getSingleResult();
-		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
-					"Failed to count entity '" + entityName + "': " + e.getMessage(), getURI(), e));
-			throw new IOException("Failed to count entity '" + entityName + "' in " + getURI(), e);
+		try (Lease lease = leaseChecked()) {
+			ClassDescriptor descriptor = getDescriptor(entityName);
+			if (isNull(descriptor)) {
+				getWarnings().add(new JPADiagnostic(
+						"No descriptor for entity '" + entityName + "' — count is 0", getURI()));
+				return 0;
+			}
+			// Use the validated alias from the descriptor to prevent JPQL injection
+			String validatedAlias = descriptor.getAlias();
+			try (EntityManager em = lease.createEntityManager()) {
+				return em.createQuery("SELECT COUNT(e) FROM " + validatedAlias + " e", Long.class)
+						.getSingleResult();
+			} catch (RuntimeException e) {
+				getErrors().add(new JPADiagnostic(
+						"Failed to count entity '" + entityName + "': " + e.getMessage(), getURI(), e));
+				throw new IOException("Failed to count entity '" + entityName + "' in " + getURI(), e);
+			}
 		}
 	}
 
@@ -744,11 +810,21 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
-	 * Returns the EclipseLink Server session, or null if the EMF is not EclipseLink-backed.
+	 * Returns the EclipseLink Server session, or null if the unit is not EclipseLink-backed.
+	 * A short lease keeps the factory alive for the lookup. Callers must already hold their
+	 * own operation lease (see {@link #leaseChecked()}) so an unavailable unit surfaces
+	 * there with a diagnostic, not here.
 	 */
 	private Server getServer() {
+		try (Lease lease = unit.lease()) {
+			return serverOf(lease);
+		}
+	}
+
+	/** Null-safe server-session lookup on an existing lease (non-EclipseLink → null). */
+	private static Server serverOf(Lease lease) {
 		try {
-			return JpaHelper.getServerSession(emf);
+			return lease.getServerSession();
 		} catch (IllegalArgumentException e) {
 			return null;
 		}

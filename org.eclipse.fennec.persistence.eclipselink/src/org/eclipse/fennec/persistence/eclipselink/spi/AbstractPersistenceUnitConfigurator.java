@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.spi;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
@@ -20,9 +21,7 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,18 +29,34 @@ import javax.sql.DataSource;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
+import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.config.TargetDatabase;
 import org.eclipse.persistence.jpa.PersistenceProvider;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceFactory;
 import org.osgi.framework.ServiceRegistration;
-import org.osgi.util.promise.PromiseFactory;
 
 import jakarta.persistence.EntityManagerFactory;
 
 /**
  * Base class for persistence unit configurators. Extracts the common lifecycle,
- * property handling and EMF registration logic shared by all configurator variants.
+ * property handling and service registration logic shared by all configurator variants.
+ * <p>
+ * One configuration (factory PID instance) yields one {@link JPAUnit} — the narrow,
+ * lazily-managed persistence-unit capability (issue #20). Activation is cheap: the
+ * expensive EclipseLink deploy is deferred until the unit is first used. Two services are
+ * registered, both carrying {@code osgi.unit.name}:
+ * <ul>
+ * <li>{@link JPAUnit} — the primary capability, consumed by the {@code jpa://} whiteboard
+ *     resource factory;</li>
+ * <li>{@link EntityManagerFactory} — interop registration via an OSGi
+ *     {@link ServiceFactory}: {@code getService} opens a lease on the unit and hands out
+ *     the <em>real</em> EclipseLink factory (so {@code JpaHelper} casts work),
+ *     {@code ungetService} closes the lease. While any consumer holds the service the
+ *     unit will not idle-close.</li>
+ * </ul>
  *
  * @author Mark Hoffmann
  * @since 14.04.2026
@@ -52,10 +67,14 @@ public abstract class AbstractPersistenceUnitConfigurator {
 	public static final String PROPERTY_PREFIX_EXT = PROPERTY_PREFIX + "ext.";
 	public static final String CONFIG_BATCH_WRITING = "batchWriting";
 	public static final String CONFIG_BATCH_SIZE = "batchSize";
+	/** Config key (unprefixed) for the idle timeout of the lazily-managed factory, in seconds. */
+	public static final String CONFIG_EMF_IDLE_TIMEOUT = "emfIdleTimeout";
+	/** Default idle timeout in seconds: close the real factory after 60s without any use. */
+	public static final long DEFAULT_EMF_IDLE_TIMEOUT_SECONDS = 60L;
 
+	private volatile ServiceRegistration<JPAUnit> unitRegistration;
 	private volatile ServiceRegistration<EntityManagerFactory> emfRegistration;
-	private volatile EntityManagerFactory emf;
-	private ExecutorService executor;
+	private volatile LazyJPAUnit unit;
 
 	/**
 	 * Returns the logger for the concrete subclass.
@@ -88,50 +107,122 @@ public abstract class AbstractPersistenceUnitConfigurator {
 	protected abstract String getPersistenceUnitName();
 
 	/**
-	 * Common activation logic: forwards properties, sets EMF defaults,
-	 * creates the EntityManagerFactory asynchronously and registers it as OSGi service.
+	 * Common activation logic: forwards properties, sets EMF defaults, creates the cheap
+	 * {@link LazyJPAUnit} and registers the {@link JPAUnit} and {@link EntityManagerFactory}
+	 * services. No EclipseLink deploy happens here — the real factory is built on first use
+	 * of the unit (issue #20).
 	 */
 	protected void doActivate(BundleContext bctx, Map<String, Object> properties) {
 		Map<String, Object> emfProperties = createForwardedProperties(properties);
 		setEMFProperties(emfProperties);
 
 		try {
-			Builder configBuilder = createConfigBuilder(bctx, emfProperties);
+			long idleTimeoutMillis = readIdleTimeoutMillis(properties);
+			// The supplier runs on every (re)build so a closed factory is replaced by a
+			// completely fresh EclipseLink deploy.
+			String unitName = getPersistenceUnitName();
+			unit = new LazyJPAUnit(unitName, () -> {
+				try {
+					return createConfigBuilder(bctx, emfProperties).build().configure();
+				} catch (Exception e) {
+					throw new IllegalStateException(
+							"Failed to create EntityManagerFactory for unit '" + unitName + "'", e);
+				}
+			}, idleTimeoutMillis);
 
-			executor = Executors.newSingleThreadExecutor();
-			PromiseFactory pf = new PromiseFactory(executor);
-			pf.submit(() -> {
-				emf = configBuilder.build().configure();
-				Dictionary<String, Object> serviceProps = new Hashtable<>();
-				serviceProps.put("osgi.unit.name", getPersistenceUnitName());
-				serviceProps.put("osgi.unit.version", bctx.getBundle().getVersion().toString());
-				serviceProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
-				emfRegistration = bctx.registerService(EntityManagerFactory.class, emf, serviceProps);
-				return emfRegistration;
-			}).onFailure(t -> getLogger().log(Level.SEVERE, "Failed to create EntityManagerFactory", t));
-
+			Dictionary<String, Object> serviceProps = new Hashtable<>();
+			serviceProps.put(JPAUnit.UNIT_NAME, getPersistenceUnitName());
+			serviceProps.put("osgi.unit.version", bctx.getBundle().getVersion().toString());
+			serviceProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
+			unitRegistration = bctx.registerService(JPAUnit.class, unit, serviceProps);
+			emfRegistration = bctx.registerService(EntityManagerFactory.class,
+					new LeasedEntityManagerFactoryFactory(unit, getLogger()), serviceProps);
 		} catch (Exception e) {
 			throw new IllegalStateException("Error configuring persistence unit", e);
 		}
 	}
 
 	/**
-	 * Common deactivation logic: shuts down executor, unregisters service, closes EMF.
+	 * Common deactivation logic: unregisters both services and disposes the unit (closing
+	 * the real factory if it is currently built).
 	 */
 	protected void doDeactivate() {
-		if (nonNull(executor)) {
-			executor.shutdownNow();
-			try {
-				executor.awaitTermination(5, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
-		}
 		if (nonNull(emfRegistration)) {
 			emfRegistration.unregister();
+			emfRegistration = null;
 		}
-		if (nonNull(emf) && emf.isOpen()) {
-			emf.close();
+		if (nonNull(unitRegistration)) {
+			unitRegistration.unregister();
+			unitRegistration = null;
+		}
+		if (nonNull(unit)) {
+			unit.dispose();
+			unit = null;
+		}
+	}
+
+	/**
+	 * Reads the idle timeout (seconds) from the configuration — prefixed
+	 * ({@code fennec.jpa.emfIdleTimeout}) or unprefixed key. Semantics: {@code > 0} close
+	 * the real factory after that many seconds without use, {@code 0} close immediately on
+	 * last release, {@code < 0} never auto-close. Defaults to
+	 * {@value #DEFAULT_EMF_IDLE_TIMEOUT_SECONDS}s.
+	 */
+	private static long readIdleTimeoutMillis(Map<String, Object> properties) {
+		Object value = properties.get(PROPERTY_PREFIX + CONFIG_EMF_IDLE_TIMEOUT);
+		if (isNull(value)) {
+			value = properties.get(CONFIG_EMF_IDLE_TIMEOUT);
+		}
+		long seconds = DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;
+		if (value instanceof Number n) {
+			seconds = n.longValue();
+		} else if (value instanceof String s && !s.isEmpty()) {
+			try {
+				seconds = Long.parseLong(s.trim());
+			} catch (NumberFormatException e) {
+				// keep default
+			}
+		}
+		return seconds < 0 ? -1L : seconds * 1000L;
+	}
+
+	/**
+	 * {@link ServiceFactory} backing the interop {@link EntityManagerFactory} registration.
+	 * Registration itself is cheap; the first {@code getService} of a consuming bundle
+	 * opens a lease (building the real factory if needed) and hands out the live
+	 * EclipseLink instance, {@code ungetService} closes that lease again. The framework
+	 * calls these per consuming bundle, so every holder keeps the unit from idle-closing.
+	 */
+	private static final class LeasedEntityManagerFactoryFactory implements ServiceFactory<EntityManagerFactory> {
+
+		private final JPAUnit unit;
+		private final Logger logger;
+		private final Map<Bundle, Lease> leases = new ConcurrentHashMap<>();
+
+		private LeasedEntityManagerFactoryFactory(JPAUnit unit, Logger logger) {
+			this.unit = unit;
+			this.logger = logger;
+		}
+
+		@Override
+		public EntityManagerFactory getService(Bundle bundle, ServiceRegistration<EntityManagerFactory> registration) {
+			try {
+				Lease lease = unit.lease();
+				leases.put(bundle, lease);
+				return lease.getEntityManagerFactory();
+			} catch (RuntimeException e) {
+				logger.log(Level.SEVERE, "Failed to create EntityManagerFactory", e);
+				return null;
+			}
+		}
+
+		@Override
+		public void ungetService(Bundle bundle, ServiceRegistration<EntityManagerFactory> registration,
+				EntityManagerFactory service) {
+			Lease lease = leases.remove(bundle);
+			if (nonNull(lease)) {
+				lease.close();
+			}
 		}
 	}
 

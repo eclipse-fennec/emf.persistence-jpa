@@ -35,7 +35,6 @@ import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.mappings.DatabaseMapping;
 import org.eclipse.persistence.mappings.ForeignReferenceMapping;
-import org.eclipse.persistence.queries.ReadAllQuery;
 import org.eclipse.persistence.queries.ReadObjectQuery;
 import org.eclipse.persistence.sessions.SessionEvent;
 import org.eclipse.persistence.sessions.SessionEventAdapter;
@@ -122,15 +121,12 @@ class NonOsgiFetchModeTest extends NonOsgiPersistenceTestBase {
 	}
 
 	private static final class QueryCounter extends SessionEventAdapter {
-		int readAll;
 		int readObject;
 
 		@Override
 		public void postExecuteQuery(SessionEvent event) {
 			if (event.getQuery() instanceof ReadObjectQuery) {
 				readObject++;
-			} else if (event.getQuery() instanceof ReadAllQuery) {
-				readAll++;
 			}
 		}
 	}
@@ -190,6 +186,7 @@ class NonOsgiFetchModeTest extends NonOsgiPersistenceTestBase {
 				.allSatisfy(e -> assertThat(e.eIsProxy()).isFalse());
 	}
 
+	@SuppressWarnings("restriction")
 	@Test
 	void testBatchManyResolvesInOneInQuery() {
 		annotate(classAO2M, "eNonContainmentBidi", "batch", "true");

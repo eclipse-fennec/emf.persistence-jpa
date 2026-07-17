@@ -21,6 +21,13 @@ Used as keys in the factory configuration for the two PIDs:
 | `mappingFile` | String | -- | `PersistenceUnitConfigurator` only: URI of an EntityMappings file (required when no `persistenceUnitFile`) |
 | `batchWriting` | String | -- | JDBC batch mode -- one of `JDBC`, `BUFFERED`, `OracleJDBC`, or `NONE`. Empty/unset disables explicit batch configuration |
 | `batchSize` | int | 0 | Statements per batch. `0` leaves EclipseLink's default |
+| `emfIdleTimeout` | long | 60 | Seconds without any use after which the lazily-built EclipseLink factory is closed (releasing caches and connections); the next use rebuilds it. `0` = close immediately after the last use, `-1` = keep open until the configuration is deleted. See [OSGi architecture](osgi-architecture.md) |
+
+Each configuration registers two services carrying `osgi.unit.name`: the narrow
+`JPAUnit` capability (used by the `jpa://` whiteboard resource factory) and the real
+`EntityManagerFactory` (via an OSGi `ServiceFactory` -- built lazily on first
+`getService`, released on `ungetService`). Details and lifecycle:
+[OSGi architecture](osgi-architecture.md).
 
 `batchWriting` and `batchSize` are forwarded to EclipseLink as
 `eclipselink.jdbc.batch-writing` and `eclipselink.jdbc.batch-writing.size`.
