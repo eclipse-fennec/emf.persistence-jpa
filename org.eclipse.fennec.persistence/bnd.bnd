@@ -6,5 +6,8 @@ Bundle-Description: EMF Persistence API
 -library: \
 	enableEMF
 	
--buildpath: biz.aQute.bnd.annotation
+-buildpath: \
+	biz.aQute.bnd.annotation,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.dto;version=latest
 -testpath: assertj-core
