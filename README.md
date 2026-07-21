@@ -115,13 +115,22 @@ The framework uses EclipseLink's Dynamic Entity API to create JPA entity types a
 
 ## Documentation
 
+The user documentation is published at
+<https://eclipse-fennec.github.io/emf.persistence-jpa/snapshot/> (built from `docs/`
+via the VitePress site in `docs-site/`).
+
 | Document | Purpose |
 |----------|---------|
+| [Overview](docs/overview.md) | What the framework does, modules, where to go next |
 | [Getting Started](docs/getting-started.md) | Full walkthrough: Ecore model, bootstrap (OSGi + Non-OSGi), CRUD via `jpa://` Resource, lazy-loading semantics |
-| [Configuration Reference](docs/configuration-reference.md) | Every `fennec.jpa.*` property, forwarded EclipseLink keys, load/save `Options` |
-| [OSGi Architecture](docs/osgi-architecture.md) | Persistence units as services, the `jpa://` whiteboard, lazy factory lifecycle (`emfIdleTimeout`), security-by-default table |
-| [Development Guide](docs/development-guide.md) | Architecture details, session continuity |
-| [Review](docs/REVIEW.md) | Structured review: criteria, findings, work packages |
+| [JPA User Guide](docs/jpa-user-guide.md) | Day-to-day work with `jpa://` resources, options, eorm mapping semantics, converters, unit lifecycle |
+| [MongoDB User Guide](docs/mongo-user-guide.md) | The MongoDB backend: configuration, `mongodb://` resources, codec-based BSON mapping |
+| [Configuration Reference](docs/configuration-reference.md) | Every `fennec.jpa.*` property, forwarded EclipseLink keys, liveness keys, load/save `Options` |
+| [JPA & OSGi Architecture](docs/osgi-architecture.md) | Persistence units as services, the `jpa://` whiteboard, lazy factory lifecycle (`emfIdleTimeout`) |
+| [MongoDB Backend Architecture](docs/mongo-architecture.md) | Mongo component chain, liveness gating, resource pipeline, BSON codec bridge |
+| [Connection Liveness](docs/concept-connection-liveness.md) | "Registered means working" — liveness-gated connection services |
+| [Development Guide](docs/development-guide.md) | Architecture details, session continuity (internal) |
+| [Review](docs/REVIEW.md) | Structured review: criteria, findings, work packages (internal) |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting, security considerations |
 
 ## License

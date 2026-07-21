@@ -1,6 +1,8 @@
-# Concept: Connection Liveness — "Registered means working"
+# Connection Liveness — "Registered means working"
 
-Status: **Draft for discussion** (2026-07-20)
+Status: **Implemented** (first iteration 2026-07-20, tracked in
+[issue #21](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/21)); the
+remaining open questions are listed at the end.
 
 ## 1. Problem
 
@@ -235,8 +237,9 @@ declarative liveness dependency without API coupling, runtime DTOs = diagnosis.*
 
 ## 6. Testing
 
-(There are currently **no Mongo OSGi integration tests at all** — the Mongo TCK tests are
-plain JUnit and bypass the DS components. This feature is the occasion to close that gap.)
+(Before this feature there were **no Mongo OSGi integration tests at all** — the Mongo
+TCK tests are plain JUnit and bypass the DS components. The `MongoLivenessTest` added
+here closed that gap.)
 
 1. **Unit tests for `LivenessGate`** (core module, plain JUnit + Mockito): scripted probe
    + deterministic scheduler. Cover: starts DOWN and registers after first success;
