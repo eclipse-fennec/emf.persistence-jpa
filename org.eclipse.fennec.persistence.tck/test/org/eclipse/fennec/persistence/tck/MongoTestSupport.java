@@ -22,8 +22,10 @@ import java.util.logging.Logger;
  * Provides a MongoDB instance for the TCK:
  * <ol>
  * <li>an externally supplied one via {@code -Dmongo.uri=...} / {@code MONGO_URI}, or</li>
- * <li>a container started through the local {@code docker} CLI (works with podman's
- *     docker emulation) — no client-library dependency needed.</li>
+ * <li>a container started through a local container CLI — no client-library dependency
+ *     needed. The CLI is resolved once: {@code -Dmongo.container.cli=<name>} wins,
+ *     otherwise {@code docker} is tried first and {@code podman} as fallback (relevant
+ *     on macOS/Windows, where podman ships without a docker shim).</li>
  * </ol>
  * When neither is available the Mongo TCK tests are skipped via JUnit assumptions.
  *
@@ -34,12 +36,33 @@ final class MongoTestSupport {
 
 	private static final Logger LOG = Logger.getLogger(MongoTestSupport.class.getName());
 	private static final String IMAGE = System.getProperty("mongo.test.image", "docker.io/library/mongo:7");
+	private static final String CLI_OVERRIDE = System.getProperty("mongo.container.cli");
 
 	private static volatile String uri;
 	private static volatile String containerId;
 	private static volatile boolean initialized;
+	private static volatile String cli;
 
 	private MongoTestSupport() {
+	}
+
+	private static String resolveCli() {
+		if (nonNull(cli)) {
+			return cli;
+		}
+		String[] candidates = nonNull(CLI_OVERRIDE) && !CLI_OVERRIDE.isBlank()
+				? new String[] { CLI_OVERRIDE.trim() }
+				: new String[] { "docker", "podman" };
+		for (String candidate : candidates) {
+			try {
+				exec(15, candidate, "version");
+				cli = candidate;
+				return cli;
+			} catch (Exception e) {
+				LOG.log(Level.FINE, () -> "Container CLI '" + candidate + "' not usable: " + e.getMessage());
+			}
+		}
+		throw new IllegalStateException("No container CLI (docker/podman) available");
 	}
 
 	/** Returns the connection string, starting a container on first use; {@code null} if unavailable. */
@@ -54,11 +77,11 @@ final class MongoTestSupport {
 			return uri;
 		}
 		try {
-			String id = exec(180, "docker", "run", "-d", "--rm",
+			String id = exec(180, resolveCli(), "run", "-d", "--rm",
 					"-p", "127.0.0.1::27017", IMAGE);
 			if (nonNull(id) && !id.isBlank()) {
 				containerId = id.trim();
-				String mapping = exec(20, "docker", "port", containerId, "27017/tcp");
+				String mapping = exec(20, resolveCli(), "port", containerId, "27017/tcp");
 				if (nonNull(mapping) && mapping.contains(":")) {
 					String port = mapping.trim().lines().findFirst().orElse("");
 					port = port.substring(port.lastIndexOf(':') + 1);
@@ -75,7 +98,7 @@ final class MongoTestSupport {
 	static synchronized void shutdown() {
 		if (nonNull(containerId)) {
 			try {
-				exec(30, "docker", "rm", "-f", containerId);
+				exec(30, resolveCli(), "rm", "-f", containerId);
 			} catch (Exception e) {
 				LOG.log(Level.FINE, "Failed to remove mongo container", e);
 			}

@@ -101,6 +101,41 @@ fennec.jpa.ext.eclipselink.logging.level=FINE
 fennec.jpa.ext.eclipselink.cache.shared.default=false
 ```
 
+## Connection liveness
+
+See `docs/concept-connection-liveness.md` for the concept. Connection services are only
+registered while a probe verifies the connection ("presence indicates functionality");
+while a gate is UP it additionally registers an `org.osgi.service.condition.Condition`
+with `osgi.condition.id=fennec.liveness.<ident>`, and the always-on
+`PersistenceLivenessRuntime` service exposes all gate states as DTOs.
+
+The `liveness.*` keys are understood by the Mongo client factory
+(`persistence.mongo.client`) and the gated-DataSource factory (`persistence.jdbc.gate`):
+
+| Key | Default | Purpose |
+|-----|---------|---------|
+| `liveness.enabled` | `true` | `false` registers the service immediately, without probing |
+| `liveness.checkInterval` | `30` | probe period in seconds while UP; `0` = no periodic re-check |
+| `liveness.checkTimeout` | `5` | timeout per probe in seconds |
+| `liveness.failureThreshold` | `3` | consecutive probe failures before the service is unregistered |
+| `liveness.retryMin` / `liveness.retryMax` | `1` / `30` | exponential retry backoff bounds in seconds while DOWN |
+
+The JDBC gate (factory PID `persistence.jdbc.gate`) re-registers an upstream
+`DataSource` with the marker property `fennec.liveness=checked`:
+
+```
+# .cfg file -- factory PID persistence.jdbc.gate
+name=mydb
+dataSource.target=(dataSourceName=mydb)
+liveness.checkInterval=10
+```
+
+A persistence unit opts in by targeting the marker:
+
+```
+fennec.jpa.dataSource.target=(&(fennec.liveness=checked)(name=mydb))
+```
+
 ## Resource load and save options
 
 Pass these through the `Map<?, ?> options` argument of
