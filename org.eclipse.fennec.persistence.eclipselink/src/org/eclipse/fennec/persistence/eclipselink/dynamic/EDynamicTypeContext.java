@@ -14,12 +14,16 @@ package org.eclipse.fennec.persistence.eclipselink.dynamic;
 
 import static java.util.Objects.nonNull;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.fennec.persistence.api.ConverterService;
@@ -35,13 +39,28 @@ import org.eclipse.persistence.sessions.Session;
  */
 public class EDynamicTypeContext implements ProcessingContext {
 
+	/**
+	 * Diagnostic {@code source} of the eorm-to-EclipseLink type mapping.
+	 */
+	public static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.eclipselink";
+
 	private final Map<Entity, EDynamicTypeBuilder> builders = new ConcurrentHashMap<>();
 	private final Map<EClassifier, Entity> entityMap = new ConcurrentHashMap<>();
+	private final List<Diagnostic> diagnostics = Collections.synchronizedList(new LinkedList<>());
 	private ConverterService converter;
 	private URI baseURI;
 	private Session session;
 	private ClassLoader classloader;
 	private boolean useDelimitedIdentifiers;
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.fennec.persistence.processor.ProcessingContext#getDiagnostics()
+	 */
+	@Override
+	public List<Diagnostic> getDiagnostics() {
+		return diagnostics;
+	}
 
 	/**
 	 * Sets the session.

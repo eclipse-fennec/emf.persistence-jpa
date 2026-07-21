@@ -91,10 +91,11 @@ public class OneToOneProcessor extends BaseReferenceProcessor<OneToOne> {
 				mbRef.setForeignKey(null);
 				mbRef.setJoinTable(null);
 			} else {
-				LOG.log(Level.SEVERE,
-						"Cannot wire bidirectional pair {0} <-> {1}: own mapping is {2}",
-						new Object[] { source.getName(), opposite.getName(),
-								isNull(mapping) ? "missing" : mapping.eClass().getName() });
+				context.error(MappingContext.DIAGNOSTIC_SOURCE,
+						String.format("Cannot wire bidirectional pair %s <-> %s: own mapping is %s",
+								source.getName(), opposite.getName(),
+								isNull(mapping) ? "missing" : mapping.eClass().getName()),
+						source);
 			}
 			// Always delegate in the opposite pass — this processor must never emit an
 			// own (blank) mapping; the owning mapping was created in stage 4.

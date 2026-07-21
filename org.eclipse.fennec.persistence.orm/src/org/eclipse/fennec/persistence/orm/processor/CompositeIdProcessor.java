@@ -69,8 +69,8 @@ public class CompositeIdProcessor {
         LOG.log(Level.FINE, "ID Analysis for {0}: {1}", new Object[]{eClass.getName(), config});
         
         return switch (config.getStrategy()) {
-            case SINGLE_ID -> List.of(createSingleId(config.getIdAttributes().get(0)));
-            case EMBEDDED_ID -> createEmbeddedIds(config.getIdAttributes());
+            case SINGLE_ID -> List.of(createSingleId(config.getIdAttributes().get(0), context));
+            case EMBEDDED_ID -> createEmbeddedIds(config.getIdAttributes(), context);
             case ID_CLASS -> createIdClassIds(config.getIdClassReference());
             case SYNTHETIC_ID -> List.of(createSyntheticId(eClass, config.getSyntheticIdName()));
         };
@@ -79,9 +79,9 @@ public class CompositeIdProcessor {
     /**
      * Creates a single ID mapping for standard single-attribute IDs.
      */
-    private Id createSingleId(EAttribute idAttribute) {
+    private Id createSingleId(EAttribute idAttribute, MappingContext context) {
         Id id = EORMFactory.eINSTANCE.createId();
-        MappingHelper.createBase(id, idAttribute, strict);
+        MappingHelper.createBase(id, idAttribute, strict, context);
         
         // Add generation strategy if not strict mode
         if (!strict) {
@@ -97,13 +97,13 @@ public class CompositeIdProcessor {
      * TODO: This needs EORM model support for @EmbeddedId
      * For now, we'll create individual @Id mappings as a temporary solution.
      */
-    private List<Id> createEmbeddedIds(List<EAttribute> idAttributes) {
+    private List<Id> createEmbeddedIds(List<EAttribute> idAttributes, MappingContext context) {
         LOG.log(Level.FINE, "Creating embedded IDs: processing {0} attributes", idAttributes.size());
-        
+
         return idAttributes.stream()
             .map(attr -> {
                 Id id = EORMFactory.eINSTANCE.createId();
-                MappingHelper.createBase(id, attr, strict);
+                MappingHelper.createBase(id, attr, strict, context);
                 
                 // Note: In a full implementation, these would be part of an @EmbeddedId
                 // but for now we create separate @Id mappings

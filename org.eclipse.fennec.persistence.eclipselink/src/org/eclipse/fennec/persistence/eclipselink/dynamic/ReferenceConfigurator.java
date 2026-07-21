@@ -115,7 +115,12 @@ class ReferenceConfigurator {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
+			// tolerated: units may map only a subset of a package — the reference is
+			// skipped, the rest of the type still works
+			context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					String.format("Skipping reference '%s': target EClass '%s' is not part of this persistence unit",
+							reference.getName(), refType.getName()),
+					reference);
 			return;
 		}
 		OneToOneMapping mapping = null;
@@ -153,7 +158,12 @@ class ReferenceConfigurator {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
+			// tolerated: units may map only a subset of a package — the reference is
+			// skipped, the rest of the type still works
+			context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					String.format("Skipping reference '%s': target EClass '%s' is not part of this persistence unit",
+							reference.getName(), refType.getName()),
+					reference);
 			return;
 		}
 		CollectionMapping mapping = null;
@@ -241,7 +251,12 @@ class ReferenceConfigurator {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
+			// tolerated: units may map only a subset of a package — the reference is
+			// skipped, the rest of the type still works
+			context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					String.format("Skipping reference '%s': target EClass '%s' is not part of this persistence unit",
+							reference.getName(), refType.getName()),
+					reference);
 			return;
 		}
 		ManyToOneMapping mapping = new EManyToOneMapping();
@@ -274,7 +289,12 @@ class ReferenceConfigurator {
 		EClass refType = reference.getEReferenceType();
 		EDynamicTypeBuilder refTypeBuilder = context.getETypeBuilder(refType);
 		if (isNull(refTypeBuilder)) {
-			LOG.log(Level.SEVERE, "No type builder available for EClass ''{0}''", refType.getName());
+			// tolerated: units may map only a subset of a package — the reference is
+			// skipped, the rest of the type still works
+			context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					String.format("Skipping reference '%s': target EClass '%s' is not part of this persistence unit",
+							reference.getName(), refType.getName()),
+					reference);
 			return;
 		}
 		ManyToManyMapping mapping = new EManyToManyMapping();
@@ -327,8 +347,10 @@ class ReferenceConfigurator {
 		if (mapping instanceof EMFConfigurableMapping emfMapping) {
 			emfMapping.configureEMF(reference, baseRef, ops.getType(), context);
 		} else {
-			LOG.log(Level.SEVERE, "Mapping for reference ''{0}'' is not EMF-configurable: {1}",
-					new Object[] { reference.getName(), mapping.getClass().getName() });
+			context.error(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					String.format("Mapping for reference '%s' is not EMF-configurable: %s",
+							reference.getName(), mapping.getClass().getName()),
+					reference);
 		}
 	}
 

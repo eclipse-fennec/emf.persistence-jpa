@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
@@ -95,6 +96,22 @@ public class MappingContext implements ProcessingContext {
 	 * (parent) EClass.
 	 */
 	private Entity currentEntity;
+
+	private final List<Diagnostic> diagnostics = Collections.synchronizedList(new LinkedList<>());
+
+	/**
+	 * Diagnostic {@code source} of the eorm generation pipeline.
+	 */
+	public static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.orm";
+
+	/*
+	 * (non-Javadoc)
+	 * @see org.eclipse.fennec.persistence.processor.ProcessingContext#getDiagnostics()
+	 */
+	@Override
+	public List<Diagnostic> getDiagnostics() {
+		return diagnostics;
+	}
 
 	public BasicProcessor createBasicAccessor(EAttribute attribute) {
 		return new BasicProcessor(attribute, this);

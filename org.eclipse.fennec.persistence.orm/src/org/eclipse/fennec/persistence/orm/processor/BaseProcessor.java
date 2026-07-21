@@ -66,7 +66,7 @@ public abstract class BaseProcessor<T extends SimpleBase> extends NamedBaseProce
 	 * @return the {@link Base} instance
 	 */
 	T createBase() {
-		return MappingHelper.createBase(target, source, isStrict());
+		return MappingHelper.createBase(target, source, isStrict(), context);
 	}
 	
 	/**

@@ -23,13 +23,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.persistence.PersistenceException;
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.diagnostic.Diagnostics;
 import org.eclipse.fennec.persistence.eclipselink.classloader.OSGiDynamicClassloader;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.DdlAction;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
@@ -148,7 +152,7 @@ public class EntityManagerFactoryConfigurator {
 	}
     
     protected EntityManagerFactory configure()
-            throws IOException {
+            throws IOException, PersistenceException {
     	
 
         PersistenceProvider persistenceProvider = new PersistenceProvider();
@@ -185,6 +189,23 @@ public class EntityManagerFactoryConfigurator {
     	if (nonNull(mappings)) {
     		eTypes.addAll(generator.createFromMappings(mappings));
     	}
+        /*
+         * Internal deploy boundary: nobody downstream sees the type-mapping diagnostics,
+         * so they are bridged to JUL here. An ERROR means the mapping would produce a
+         * broken unit — fail the deploy instead of registering it.
+         */
+        List<Diagnostic> diagnostics = generator.getDiagnostics();
+        Diagnostics.log(LOG, diagnostics);
+        List<Diagnostic> errors = diagnostics.stream()
+                .filter(diagnostic -> diagnostic.getSeverity() >= Diagnostic.ERROR)
+                .toList();
+        if (!errors.isEmpty()) {
+            emf.close();
+            throw new PersistenceException(String.format(
+                    "Type mapping for persistence unit '%s' reported %d error(s): %s",
+                    context.getPersistenceUnitName(), errors.size(),
+                    errors.stream().map(Diagnostic::getMessage).collect(Collectors.joining("; "))));
+        }
         /*
          * Now we add our configuration to it. We add our dynamic types for the EMF stuff!
          */

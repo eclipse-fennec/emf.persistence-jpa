@@ -38,6 +38,8 @@ import org.eclipse.fennec.persistence.eorm.EFeatureObject;
 import org.eclipse.fennec.persistence.eorm.ENamedBase;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
+import org.eclipse.fennec.persistence.orm.MappingContext;
+import org.eclipse.fennec.persistence.processor.ProcessingContext;
 
 /**
  * Helper class for the {@link EntityMapper}
@@ -93,14 +95,7 @@ public class MappingHelper {
 	 * @return the name, unchanged
 	 */
 	public static String checkReservedName(String name) {
-		if (isNull(name)) {
-			return null;
-		}
-		if (RESERVED_WORDS.contains(name.toLowerCase())) {
-			LOG.log(Level.WARNING, "Name ''{0}'' is a SQL reserved word and may cause issues with some databases. "
-				+ "Consider renaming or using an ExtendedMetaData annotation to set an explicit column/table name.", name);
-		}
-		return name;
+		return checkReservedName(name, "Column", null, null);
 	}
 
 	/**
@@ -111,13 +106,38 @@ public class MappingHelper {
 	 * @return the name, unchanged
 	 */
 	public static String checkReservedName(String name, String context) {
+		return checkReservedName(name, context, null, null);
+	}
+
+	/**
+	 * Checks if the given name is a SQL reserved word and reports a warning diagnostic
+	 * if so. The name is returned unchanged — the user is responsible for choosing a
+	 * non-conflicting name or providing an explicit column name via ExtendedMetaData
+	 * annotation.
+	 *
+	 * @param name the name to check
+	 * @param context additional context for the warning message (e.g. "Feature", "Entity")
+	 * @param diagnostics the diagnostic channel; {@code null} falls back to JUL
+	 * @param element the affected model element, may be {@code null}
+	 * @return the name, unchanged
+	 */
+	public static String checkReservedName(String name, String context, ProcessingContext diagnostics, Object element) {
 		if (isNull(name)) {
 			return null;
 		}
 		if (RESERVED_WORDS.contains(name.toLowerCase())) {
-			LOG.log(Level.WARNING, "{0} name ''{1}'' is a SQL reserved word and may cause issues with some databases. "
-				+ "Consider renaming or using an ExtendedMetaData annotation to set an explicit column/table name.",
-				new Object[]{context, name});
+			String message = String.format("%s name '%s' is a SQL reserved word and may cause issues with some databases. "
+					+ "Consider renaming or using an ExtendedMetaData annotation to set an explicit column/table name.",
+					context, name);
+			if (nonNull(diagnostics)) {
+				if (nonNull(element)) {
+					diagnostics.warning(MappingContext.DIAGNOSTIC_SOURCE, message, element);
+				} else {
+					diagnostics.warning(MappingContext.DIAGNOSTIC_SOURCE, message);
+				}
+			} else {
+				LOG.log(Level.WARNING, message);
+			}
 		}
 		return name;
 	}
@@ -142,7 +162,20 @@ public class MappingHelper {
 	 * @return the {@link ENamedBase} instance
 	 */
 	public static <T extends ENamedBase> T createNamedBase(T base, EStructuralFeature feature) {
-		String name = checkReservedName(getFeatureName(feature), "Feature");
+		return createNamedBase(base, feature, null);
+	}
+
+	/**
+	 * Creates a {@link ENamedBase} out of an {@link EStructuralFeature}, reporting
+	 * reserved-name findings to the given diagnostic channel.
+	 * @param <T> the base type
+	 * @param base the base instance
+	 * @param feature the {@link EStructuralFeature}
+	 * @param diagnostics the diagnostic channel; {@code null} falls back to JUL
+	 * @return the {@link ENamedBase} instance
+	 */
+	public static <T extends ENamedBase> T createNamedBase(T base, EStructuralFeature feature, ProcessingContext diagnostics) {
+		String name = checkReservedName(getFeatureName(feature), "Feature", diagnostics, feature);
 		base.setName(name);
 		EFeatureObject efa = EORMFactory.eINSTANCE.createEFeatureObject();
 		efa.setFeature(feature);
@@ -160,9 +193,23 @@ public class MappingHelper {
 	 * @return the {@link Base} instance
 	 */
 	public static <T extends Base> T createBase(T base, EStructuralFeature feature, boolean strict) {
-		base = createNamedBase(base, feature);
+		return createBase(base, feature, strict, null);
+	}
+
+	/**
+	 * Creates a {@link Base} out of an {@link EStructuralFeature}, reporting
+	 * reserved-name findings to the given diagnostic channel.
+	 * @param <T> the base type
+	 * @param base the base instance
+	 * @param feature the {@link EStructuralFeature}
+	 * @param strict {@code true} takes names as-is without reserved-word checks
+	 * @param diagnostics the diagnostic channel; {@code null} falls back to JUL
+	 * @return the {@link Base} instance
+	 */
+	public static <T extends Base> T createBase(T base, EStructuralFeature feature, boolean strict, ProcessingContext diagnostics) {
+		base = createNamedBase(base, feature, diagnostics);
 		Column column = EORMFactory.eINSTANCE.createColumn();
-		String name = strict ? getFeatureName(feature) : checkReservedName(getFeatureName(feature));
+		String name = strict ? getFeatureName(feature) : checkReservedName(getFeatureName(feature), "Column", diagnostics, feature);
 		column.setName(name);
 		column.setNullable(!feature.isRequired());
 		column.setUnique(feature.isUnique());

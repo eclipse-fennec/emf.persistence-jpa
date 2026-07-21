@@ -18,12 +18,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.BasicDiagnostic;
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.fennec.persistence.diagnostic.Diagnostics;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
@@ -43,6 +47,8 @@ import org.eclipse.fennec.persistence.orm.processor.OneToOneProcessor;
  * @since 13.12.2024
  */
 public class EntityMapper {
+
+	private static final Logger LOG = Logger.getLogger(EntityMapper.class.getName());
 
 	private final MappingContext context = new MappingContext();
 	private boolean strict = false;
@@ -130,15 +136,67 @@ public class EntityMapper {
 	 * @return the {@link EntityMappings}
 	 */
 	public EntityMappings createMappings(List<EClassifier> classifier) {
-		EntityMappings mapping = EORMFactory.eINSTANCE.createEntityMappings();
 		if (isNull(classifier) || classifier.isEmpty()) {
-			return mapping;
+			return EORMFactory.eINSTANCE.createEntityMappings();
 		}
-		Collection<EClass> eClasses = EORMHelper.filterEClasses(classifier);
-		MappingProcessor processor = isStrict() ? MappingProcessor.createStrict(new ArrayList<>(eClasses)) : MappingProcessor.create(new ArrayList<>(eClasses));
-		processor.process();
+		MappingProcessor processor = newMappingProcessor(classifier);
+		try {
+			processor.process();
+		} finally {
+			// legacy non-result API: the caller never sees the diagnostics, so this is
+			// the boundary where they are bridged to JUL; exceptions propagate unchanged
+			Diagnostics.log(LOG, processor.getDiagnostics());
+		}
 		return processor.getTarget();
 	}
+
+	/**
+	 * Like {@link #createMappings(List)}, but returns the collected diagnostics
+	 * alongside the mappings instead of logging them — every problem or silent
+	 * correction of the generation run is reported as an EMF {@link Diagnostic}.
+	 * Unlike the legacy API this method does not throw on model problems: an aborting
+	 * exception is reported as an {@link Diagnostic#ERROR} diagnostic carrying the
+	 * exception, and the (possibly partial) mappings are returned.
+	 *
+	 * @param classifier the {@link EClassifier} list
+	 * @return the mapping result, never {@code null}
+	 */
+	public MappingResult createMappingsWithDiagnostics(List<EClassifier> classifier) {
+		if (isNull(classifier) || classifier.isEmpty()) {
+			return new MappingResult(EORMFactory.eINSTANCE.createEntityMappings(), List.of());
+		}
+		MappingProcessor processor = newMappingProcessor(classifier);
+		try {
+			processor.process();
+			return new MappingResult(processor.getTarget(), processor.getDiagnostics());
+		} catch (RuntimeException e) {
+			List<Diagnostic> diagnostics = new ArrayList<>(processor.getDiagnostics());
+			diagnostics.add(new BasicDiagnostic(Diagnostic.ERROR, MappingContext.DIAGNOSTIC_SOURCE, 0,
+					String.format("eorm generation aborted: %s", e.getMessage()), new Object[] { e }));
+			return new MappingResult(processor.getTarget(), diagnostics);
+		}
+	}
+
+	private MappingProcessor newMappingProcessor(List<EClassifier> classifier) {
+		Collection<EClass> eClasses = EORMHelper.filterEClasses(classifier);
+		return isStrict() ? MappingProcessor.createStrict(new ArrayList<>(eClasses))
+				: MappingProcessor.create(new ArrayList<>(eClasses));
+	}
+
+	/**
+	 * Like {@link #createMappingsFromEPackage(EPackage)}, but returns the collected
+	 * diagnostics alongside the mappings instead of logging them.
+	 *
+	 * @param ePackage the {@link EPackage}
+	 * @return the mapping result, never {@code null}
+	 */
+	public MappingResult createMappingsFromEPackageWithDiagnostics(EPackage ePackage) {
+		if (isNull(ePackage)) {
+			return new MappingResult(EORMFactory.eINSTANCE.createEntityMappings(), List.of());
+		}
+		return createMappingsWithDiagnostics(ePackage.getEClassifiers());
+	}
+
 	
 	EntityProcessor createEntityProcessor(EClass eClass) {
 		return new EntityProcessor(eClass, context);

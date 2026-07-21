@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EDataType;
@@ -78,6 +79,14 @@ public class EDynamicTypeGenerator {
 	 * @param persistenceUnit the {@link PersistenceUnit}
 	 * @return the list of {@link EDynamicTypeOld}
 	 */
+	/**
+	 * Returns the diagnostics collected across the runs of this generator — every
+	 * problem or silent correction reported during type mapping, in report order.
+	 */
+	public List<Diagnostic> getDiagnostics() {
+		return context.getDiagnostics();
+	}
+
 	public List<EDynamicType> createFromPersistenceUnit(PersistenceUnit persistenceUnit) {
 		if (isNull(persistenceUnit)) {
 			return Collections.emptyList();

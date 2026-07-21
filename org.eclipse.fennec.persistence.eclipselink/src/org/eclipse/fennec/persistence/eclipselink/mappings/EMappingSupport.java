@@ -95,11 +95,19 @@ final class EMappingSupport {
 				: (reference.isContainment() ? FetchType.EAGER : FetchType.LAZY);
 		boolean batch = nonNull(baseRef) && baseRef.isBatch();
 
+		if (batch && (reference.isContainment() || fetch == FetchType.EAGER || !reference.isMany())) {
+			context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					String.format("batch=true has no effect on reference '%s' - batching only applies to LAZY many-valued references",
+							reference.getName()),
+					reference);
+		}
+
 		if (reference.isContainment()) {
 			if (fetch == FetchType.LAZY) {
-				LOG.log(Level.WARNING,
-						"Setting a containment to LAZY doesn''t make sense, we keep it eager (reference ''{0}'')",
-						reference.getName());
+				context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+						String.format("Setting a containment to LAZY doesn't make sense, we keep it eager (reference '%s')",
+								reference.getName()),
+						reference);
 			}
 			mapping.setIsLazy(false);
 			mapping.dontUseIndirection();

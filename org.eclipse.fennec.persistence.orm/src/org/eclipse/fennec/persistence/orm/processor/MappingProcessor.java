@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
@@ -75,6 +76,14 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		return new MappingProcessor(eClasses);
 	}
 	
+	/**
+	 * Returns the diagnostics collected during this processing run — every problem or
+	 * silent correction reported by the pipeline, in report order.
+	 */
+	public List<Diagnostic> getDiagnostics() {
+		return context.getDiagnostics();
+	}
+
 	public static MappingProcessor createStrict(List<EClass> eClasses) {
 		MappingProcessor processor =  new MappingProcessor(eClasses);
 		processor.setStrict(true);
@@ -327,7 +336,10 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		EReference opposite = reference.getEOpposite();
 		if (opposite.isContainment()) {
 			if (reference.isMany()) {
-				LOG.log(Level.SEVERE, "Cannot create opposite mapping: many-valued reference with containment opposite is not possible for {0}", reference.getName());
+				context.error(MappingContext.DIAGNOSTIC_SOURCE,
+						String.format("Cannot create opposite mapping: many-valued reference with containment opposite is not possible for %s",
+								reference.getName()),
+						reference);
 				return null;
 			}
 			// we are non containment and unary children

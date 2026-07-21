@@ -94,7 +94,7 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		target.setAccessibleObject(eco);
 		target.setClass(source);
 		target.setAccess(AccessType.FIELD);
-		String name = MappingHelper.checkReservedName(source.getName(), "Entity");
+		String name = MappingHelper.checkReservedName(source.getName(), "Entity", context, source);
 		target.setName(name);
 		String documentation = EcoreUtil.getAnnotation(source, "http://www.eclipse.org/emf/2002/GenModel", "documentation");
 		if (nonNull(documentation)) {
@@ -286,7 +286,7 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		}
 		Class<?> idType = eidAttribute.getEAttributeType().getInstanceClass();
 		Id id = EORMFactory.eINSTANCE.createId();
-		MappingHelper.createBase(id, eidAttribute, isStrict());
+		MappingHelper.createBase(id, eidAttribute, isStrict(), context);
 		if (!isStrict() && 
 				(Number.class.isAssignableFrom(idType) || 
 				Long.TYPE.isAssignableFrom(idType) || 

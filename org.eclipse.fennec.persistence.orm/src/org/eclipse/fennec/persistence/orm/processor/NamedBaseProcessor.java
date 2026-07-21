@@ -194,7 +194,7 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 	 * @return the {@link ENamedBase} instance
 	 */
 	T createNamedBase() {
-		return MappingHelper.createNamedBase(target, source);
+		return MappingHelper.createNamedBase(target, source, context);
 	}
 
 	String getSchema() {
@@ -285,7 +285,10 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 				doReProcess();
 			}
 		} catch (Exception e) {
-			LOG.log(Level.WARNING, e, () -> "Error re-processing feature ''" + source.getName() + "'', continuing with previous state");
+			context.warning(MappingContext.DIAGNOSTIC_SOURCE,
+					String.format("Error re-processing feature '%s', continuing with previous state: %s",
+							source.getName(), e.getMessage()),
+					source, e);
 		}
 	}
 
