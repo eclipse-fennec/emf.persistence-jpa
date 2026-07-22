@@ -22,6 +22,9 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.eclipse.fennec.emf.osgi.example.model.basic;version=latest,\
 	org.eclipse.fennec.persistence.orm;version=snapshot,\
 	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.model;version=snapshot,\
 	org.eclipse.fennec.persistence,\
 	org.osgi.service.condition;version=latest,\
 	org.osgi.dto;version=latest,\
