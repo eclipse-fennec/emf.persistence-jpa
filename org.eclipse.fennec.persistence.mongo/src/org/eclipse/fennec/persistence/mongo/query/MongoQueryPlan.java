@@ -12,6 +12,9 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.mongo.query;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import org.bson.conversions.Bson;
@@ -38,14 +41,26 @@ public final class MongoQueryPlan implements QueryPlan {
 	private final Bson sort;
 	private final int skip;
 	private final int limit;
+	private final List<Bson> pipeline;
+	private final List<String> rowKeys;
+	private final List<String> rowAliases;
 
 	MongoQueryPlan(Query source, QueryShape shape, Bson filter, Bson sort, int skip, int limit) {
+		this(source, shape, filter, sort, skip, limit, null, null, null);
+	}
+
+	MongoQueryPlan(Query source, QueryShape shape, Bson filter, Bson sort, int skip, int limit,
+			List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases) {
 		this.source = Objects.requireNonNull(source, "source must not be null");
 		this.shape = Objects.requireNonNull(shape, "shape must not be null");
 		this.filter = filter;
 		this.sort = sort;
 		this.skip = skip;
 		this.limit = limit;
+		this.pipeline = pipeline == null ? null : List.copyOf(pipeline);
+		this.rowKeys = rowKeys == null ? List.of() : List.copyOf(rowKeys);
+		this.rowAliases = rowAliases == null ? List.of()
+				: Collections.unmodifiableList(new ArrayList<>(rowAliases));
 	}
 
 	@Override
@@ -86,9 +101,44 @@ public final class MongoQueryPlan implements QueryPlan {
 		return limit;
 	}
 
+	/**
+	 * @return {@code true} if this plan executes as an aggregation pipeline
+	 *         ({@code collection.aggregate(pipeline())}) instead of a find
+	 */
+	public boolean aggregation() {
+		return pipeline != null;
+	}
+
+	/**
+	 * @return the aggregation pipeline stages; {@code null} for find-path plans
+	 */
+	public List<Bson> pipeline() {
+		return pipeline;
+	}
+
+	/**
+	 * The output document keys of a PROJECTION/AGGREGATION plan, in subject order —
+	 * used to map result documents to {@code QueryResultRow} cells.
+	 *
+	 * @return the row keys; empty for find-path plans
+	 */
+	public List<String> rowKeys() {
+		return rowKeys;
+	}
+
+	/**
+	 * The subject aliases in subject order; entries may be {@code null} for subjects
+	 * without an alias (ordinal access only).
+	 *
+	 * @return the row aliases; empty for find-path plans
+	 */
+	public List<String> rowAliases() {
+		return rowAliases;
+	}
+
 	@Override
 	public String toString() {
-		return "MongoQueryPlan[shape=" + shape + ", filter=" + filter + ", sort=" + sort + ", skip=" + skip
-				+ ", limit=" + limit + "]";
+		return "MongoQueryPlan[shape=" + shape + (aggregation() ? ", pipeline=" + pipeline : ", filter=" + filter)
+				+ ", sort=" + sort + ", skip=" + skip + ", limit=" + limit + "]";
 	}
 }
