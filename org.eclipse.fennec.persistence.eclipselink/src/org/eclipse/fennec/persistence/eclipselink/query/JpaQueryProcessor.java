@@ -12,14 +12,20 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.query;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.model.query.Average;
 import org.eclipse.fennec.model.query.Comparator;
 import org.eclipse.fennec.model.query.Contains;
+import org.eclipse.fennec.model.query.CountOperation;
 import org.eclipse.fennec.model.query.EndsWith;
 import org.eclipse.fennec.model.query.Eq;
 import org.eclipse.fennec.model.query.Gt;
@@ -34,8 +40,12 @@ import org.eclipse.fennec.model.query.IsLiteral;
 import org.eclipse.fennec.model.query.Like;
 import org.eclipse.fennec.model.query.Lt;
 import org.eclipse.fennec.model.query.Lte;
+import org.eclipse.fennec.model.query.Max;
+import org.eclipse.fennec.model.query.Min;
 import org.eclipse.fennec.model.query.Not;
 import org.eclipse.fennec.model.query.Or;
+import org.eclipse.fennec.model.query.Operation;
+import org.eclipse.fennec.model.query.QSubject;
 import org.eclipse.fennec.model.query.QWhere;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.SimpleValueComparator;
@@ -43,6 +53,7 @@ import org.eclipse.fennec.model.query.SortEntity;
 import org.eclipse.fennec.model.query.SortOrder;
 import org.eclipse.fennec.model.query.StartWith;
 import org.eclipse.fennec.model.query.StringOperation;
+import org.eclipse.fennec.model.query.Sum;
 import org.eclipse.fennec.model.query.ToLowerCase;
 import org.eclipse.fennec.model.query.ToUpperCase;
 import org.eclipse.fennec.model.utilities.FeaturePath;
@@ -80,8 +91,10 @@ import org.osgi.service.component.annotations.Component;
  * ({@code Contains}/{@code StartWith}/{@code EndsWith}) become {@code LIKE} with escaped
  * wildcard characters in the bound value ({@code ESCAPE '\'}).
  * <p>
- * OBJECTS/COUNT shapes are served here; PROJECTION/AGGREGATION shapes are added by the
- * aggregation stage (issue #43).
+ * PROJECTION queries select path expressions with {@code AS} result variables;
+ * AGGREGATION queries add {@code AVG/MIN/MAX/SUM/COUNT} and {@code GROUP BY}. Plain
+ * subjects in an aggregation must match a {@code groupBy} path (the JPQL grouping rule);
+ * sorting in these shapes addresses the result variables.
  *
  * @author Mark Hoffmann
  * @since 23.07.2026
@@ -102,7 +115,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.LOGICAL_NOT, QueryFeature.SORT, QueryFeature.LIMIT, QueryFeature.SKIP,
 					QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.TYPE_FILTER,
 					QueryFeature.TYPE_FILTER_STRICT, QueryFeature.PARAMETERS, QueryFeature.OP_TO_LOWER,
-					QueryFeature.OP_TO_UPPER, QueryFeature.FEATUREPATH_NESTED)
+					QueryFeature.OP_TO_UPPER, QueryFeature.FEATUREPATH_NESTED, QueryFeature.PROJECTION,
+					QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY, QueryFeature.AGG_AVG,
+					QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM, QueryFeature.AGG_COUNT)
 			.maxFeaturePathDepth(-1)
 			.build();
 
@@ -125,13 +140,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 	public QueryPlan translate(Query query, QueryContext context) throws QueryException {
 		QueryAnalysis analysis = QueryAnalyzer.analyze(query);
 		QueryShape shape = analysis.shape();
-		if (shape == QueryShape.PROJECTION || shape == QueryShape.AGGREGATION) {
-			throw new QueryException(
-					"PROJECTION/AGGREGATION queries are not yet served by the JPA processor (see issue #43)");
-		}
 		String entity = entityName(context.rootEClass());
 		Map<String, Object> parameters = new LinkedHashMap<>();
 		String where = buildWhere(query, context, parameters);
+		if (shape == QueryShape.PROJECTION || shape == QueryShape.AGGREGATION) {
+			return buildRowPlan(query, shape, entity, where, parameters);
+		}
 
 		StringBuilder jpql = new StringBuilder("SELECT ");
 		if (shape == QueryShape.COUNT) {
@@ -151,6 +165,113 @@ public class JpaQueryProcessor implements QueryProcessor {
 		}
 		return new JpaQueryPlan(query, shape, jpql.toString(), parameters, Math.max(0, query.getSkip()),
 				Math.max(0, query.getLimit()), null, null);
+	}
+
+	// -------------------------------------------------- projection / aggregation
+
+	private JpaQueryPlan buildRowPlan(Query query, QueryShape shape, String entity, String where,
+			Map<String, Object> parameters) throws QueryException {
+		// group keys: rendered path expressions of the groupBy paths
+		Set<String> groupPaths = new LinkedHashSet<>();
+		for (FeaturePath path : query.getGroupBy()) {
+			groupPaths.add(pathExpression(path));
+		}
+
+		List<String> rowKeys = new ArrayList<>();
+		List<String> rowAliases = new ArrayList<>();
+		StringBuilder select = new StringBuilder();
+		for (QSubject subject : query.getSubject()) {
+			String path = pathExpression(subject.getFeaturePath());
+			String key = outputKey(subject, path);
+			if (rowKeys.contains(key)) {
+				throw new QueryException("Duplicate result key '" + key + "' — use distinct aliases");
+			}
+			rowKeys.add(key);
+			rowAliases.add(subject.getAlias());
+			if (select.length() > 0) {
+				select.append(", ");
+			}
+			Operation operation = subject.getOperation();
+			String function = aggregateFunction(operation);
+			if (function != null) {
+				select.append(function).append('(').append(path).append(')');
+			} else if (operation instanceof ToLowerCase) {
+				select.append("LOWER(").append(path).append(')');
+			} else if (operation instanceof ToUpperCase) {
+				select.append("UPPER(").append(path).append(')');
+			} else {
+				if (shape == QueryShape.AGGREGATION && !groupPaths.contains(path)) {
+					throw new QueryException("Subject '" + path
+							+ "' in an aggregation query is neither aggregated nor part of groupBy");
+				}
+				select.append(path);
+			}
+			select.append(" AS ").append(key);
+		}
+
+		StringBuilder jpql = new StringBuilder("SELECT ");
+		if (query.isDistinct()) {
+			jpql.append("DISTINCT ");
+		}
+		jpql.append(select).append(" FROM ").append(entity).append(' ').append(ALIAS);
+		if (!where.isEmpty()) {
+			jpql.append(" WHERE ").append(where);
+		}
+		if (!groupPaths.isEmpty()) {
+			jpql.append(" GROUP BY ").append(String.join(", ", groupPaths));
+		}
+		appendRowOrderBy(jpql, query, rowKeys);
+		return new JpaQueryPlan(query, shape, jpql.toString(), parameters, Math.max(0, query.getSkip()),
+				Math.max(0, query.getLimit()), rowKeys, rowAliases);
+	}
+
+	private static String aggregateFunction(Operation operation) {
+		if (operation instanceof Average) {
+			return "AVG";
+		}
+		if (operation instanceof Min) {
+			return "MIN";
+		}
+		if (operation instanceof Max) {
+			return "MAX";
+		}
+		if (operation instanceof Sum) {
+			return "SUM";
+		}
+		if (operation instanceof CountOperation) {
+			return "COUNT";
+		}
+		return null;
+	}
+
+	private static String outputKey(QSubject subject, String path) {
+		if (subject.getAlias() != null && !subject.getAlias().isBlank()) {
+			return subject.getAlias();
+		}
+		// e.address.street -> address_street (a valid JPQL result variable)
+		return path.substring(ALIAS.length() + 1).replace('.', '_');
+	}
+
+	/** Sorting in row shapes addresses result variables, not entity paths. */
+	private static void appendRowOrderBy(StringBuilder jpql, Query query, List<String> rowKeys)
+			throws QueryException {
+		if (query.getSortBy().isEmpty()) {
+			return;
+		}
+		jpql.append(" ORDER BY ");
+		for (int i = 0; i < query.getSortBy().size(); i++) {
+			SortEntity sort = query.getSortBy().get(i);
+			String key = sort.getSortFeature().getName();
+			if (!rowKeys.contains(key)) {
+				throw new QueryException("Sort feature '" + key
+						+ "' does not address an output key of the projection/aggregation (keys: " + rowKeys
+						+ ") — alias the subject accordingly");
+			}
+			if (i > 0) {
+				jpql.append(", ");
+			}
+			jpql.append(key).append(sort.getSortOrder() == SortOrder.ASC ? " ASC" : " DESC");
+		}
 	}
 
 	private static String entityName(EClass rootEClass) throws QueryException {
