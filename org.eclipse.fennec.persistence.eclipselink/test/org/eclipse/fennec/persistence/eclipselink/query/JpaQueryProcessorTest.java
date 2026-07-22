@@ -205,10 +205,83 @@ class JpaQueryProcessorTest {
 	}
 
 	@Test
-	void aggregationShapesAreDeferred() {
-		Query projection = QueryBuilder.create().select(name).build();
-		assertThatThrownBy(() -> translate(projection)).isInstanceOf(QueryException.class)
-				.hasMessageContaining("#43");
+	void projectionSelectsPathsWithResultVariables() throws QueryException {
+		Query query = QueryBuilder.create()
+				.where(age).gte(18)
+				.selectAs("personName", name)
+				.select(address, street)
+				.build();
+		JpaQueryPlan plan = translate(query);
+
+		assertThat(plan.shape()).isEqualTo(QueryShape.PROJECTION);
+		assertThat(plan.jpql()).isEqualTo(
+				"SELECT e.name AS personName, e.address.street AS address_street FROM Person e WHERE e.age >= :p0");
+		assertThat(plan.rowKeys()).containsExactly("personName", "address_street");
+		assertThat(plan.rowAliases()).containsExactly("personName", null);
+	}
+
+	@Test
+	void distinctProjection() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.create().selectAs("n", name).distinct().build());
+		assertThat(plan.jpql()).isEqualTo("SELECT DISTINCT e.name AS n FROM Person e");
+	}
+
+	@Test
+	void groupedAggregation() throws QueryException {
+		Query query = QueryBuilder.create()
+				.select(name)
+				.avg("avgAge", age)
+				.countOf("cnt", age)
+				.groupBy(name)
+				.build();
+		JpaQueryPlan plan = translate(query);
+
+		assertThat(plan.shape()).isEqualTo(QueryShape.AGGREGATION);
+		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS name, AVG(e.age) AS avgAge, COUNT(e.age) AS cnt"
+				+ " FROM Person e GROUP BY e.name");
+	}
+
+	@Test
+	void ungroupedAggregateIsWholeSet() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.create().max("maxAge", age).build());
+		assertThat(plan.jpql()).isEqualTo("SELECT MAX(e.age) AS maxAge FROM Person e");
+	}
+
+	@Test
+	void rowSortingAddressesResultVariables() throws QueryException {
+		EAttribute avgAge = EcoreFactory.eINSTANCE.createEAttribute();
+		avgAge.setName("avgAge");
+		avgAge.setEType(EcorePackage.Literals.EDOUBLE);
+
+		Query query = QueryBuilder.create()
+				.select(name)
+				.avg("avgAge", age)
+				.groupBy(name)
+				.sortBy(avgAge, SortOrder.DESC)
+				.build();
+		assertThat(translate(query).jpql()).endsWith(" GROUP BY e.name ORDER BY avgAge DESC");
+
+		Query bad = QueryBuilder.create().avg("avgAge", age).sortBy(name, SortOrder.ASC).build();
+		assertThatThrownBy(() -> translate(bad)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("name");
+	}
+
+	@Test
+	void plainSubjectOutsideGroupByIsRefused() {
+		Query query = QueryBuilder.create()
+				.select(name)
+				.avg("avgAge", age)
+				.groupBy(age)
+				.build();
+		assertThatThrownBy(() -> translate(query)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("e.name");
+	}
+
+	@Test
+	void duplicateResultKeysAreRefused() {
+		Query query = QueryBuilder.create().selectAs("x", name).selectAs("x", age).build();
+		assertThatThrownBy(() -> translate(query)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("Duplicate result key");
 	}
 
 	@Test
