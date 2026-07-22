@@ -1,0 +1,594 @@
+[INFO] Running Eclipse Fennec EMF Codegen Version 0.1.2
+[INFO] Output configured: src-gen
+[INFO] Output result: /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen
+[INFO] genmodelLocation: null
+[INFO] Running for genmodel model/query-api.genmodel in /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query
+[INFO] Setting up ResourceUriHandler:
+[INFO]     bsn: org.eclipse.fennec.persistence.query
+[INFO]     base: /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query
+[INFO]     projectDirName: org.eclipse.fennec.persistence.query
+[INFO]     basePath: null
+[INFO]     buildPath:
+[INFO]       Container: /home/mark/.m2/repository/org/osgi/org.osgi.service.metatype.annotations/1.4.1/org.osgi.service.metatype.annotations-1.4.1.jar
+[INFO]       Container: /opt/git/emf.persistence-jpa/org.eclipse.fennec.model/generated/org.eclipse.fennec.model.jar
+[INFO]         |->: /model/collections.ecore - /model/collections.ecore
+[INFO]         |->: model/pushstream.genmodel - model/pushstream.genmodel
+[INFO]         |->: /model/collections.genmodel - /model/collections.genmodel
+[INFO]         |->: https://org.eclipse/fennec/collection/1.0 - /model/collections.ecore
+[INFO]         |->: org.eclipse.fennec.model/model/collections.genmodel - /model/collections.genmodel
+[INFO]         |->: model/collections.genmodel - model/collections.genmodel
+[INFO]         |->: model/utilities.genmodel - model/utilities.genmodel
+[INFO]       Container: /home/mark/.m2/repository/org/osgi/org.osgi.service.component.annotations/1.5.1/org.osgi.service.component.annotations-1.5.1.jar
+[INFO]       Container: /home/mark/.m2/repository/biz/aQute/bnd/biz.aQute.bnd.annotation/6.4.0/biz.aQute.bnd.annotation-6.4.0.jar
+[INFO]       Container: /home/mark/.m2/repository/org/osgi/org.osgi.annotation.versioning/1.1.2/org.osgi.annotation.versioning-1.1.2.jar
+[INFO]       Container: /home/mark/.m2/repository/org/eclipse/emf/org.eclipse.emf.ecore/2.41.0/org.eclipse.emf.ecore-2.41.0.jar
+[INFO]         |->: model/Ecore.genmodel - model/Ecore.genmodel
+[INFO]         |->: model/ExtendedMetaData.ecore - model/ExtendedMetaData.ecore
+[INFO]         |->: model/XMLNamespace.ecore - model/XMLNamespace.ecore
+[INFO]         |->: model/XMLType.ecore - model/XMLType.ecore
+[INFO]         |->: model/XMLType.genmodel - model/XMLType.genmodel
+[INFO]         |->: model/XMLNamespace.genmodel - model/XMLNamespace.genmodel
+[INFO]         |->: model/Ecore.ecore - model/Ecore.ecore
+[INFO]         |->: model/DateConversionDelegateAnnotation.ecore - model/DateConversionDelegateAnnotation.ecore
+[INFO]         |->: model/EcoreAnnotation.ecore - model/EcoreAnnotation.ecore
+[INFO]       Container: /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence/generated/org.eclipse.fennec.persistence.jar
+[INFO]       Container: /home/mark/.m2/repository/org/osgi/org.osgi.service.condition/1.0.0/org.osgi.service.condition-1.0.0.jar
+[INFO]       Container: /home/mark/.m2/repository/org/osgi/org.osgi.framework/1.10.0/org.osgi.framework-1.10.0.jar
+[INFO]       Container: /opt/git/emf.persistence-jpa/org.eclipse.fennec.query.model/generated/org.eclipse.fennec.query.model.jar
+[INFO]         |->: https://org.eclipse/fennec/query/1.0.0 - /model/query.ecore
+[INFO]         |->: /model/query.genmodel - /model/query.genmodel
+[INFO]         |->: /model/query.ecore - /model/query.ecore
+[INFO]         |->: org.eclipse.fennec.query.model/model/query.genmodel - /model/query.genmodel
+[INFO]         |->: model/query.genmodel - model/query.genmodel
+[INFO]       Container: /home/mark/.m2/repository/org/eclipse/emf/org.eclipse.emf.common/2.44.0/org.eclipse.emf.common-2.44.0.jar
+[INFO]       Container: /home/mark/.m2/repository/org/eclipse/emf/org.eclipse.emf.ecore.xmi/2.39.0/org.eclipse.emf.ecore.xmi-2.39.0.jar
+[INFO]       Container: /home/mark/.m2/repository/org/eclipse/fennec/emf/org.eclipse.fennec.emf.osgi.api/0.1.2/org.eclipse.fennec.emf.osgi.api-0.1.2.jar
+[INFO]       Container: /home/mark/.m2/repository/org/osgi/org.osgi.annotation.bundle/2.0.0/org.osgi.annotation.bundle-2.0.0.jar
+[INFO] Loading resource://org.eclipse.fennec.persistence.query/model/query-api.genmodel
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/model/query-api.genmodel
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/model/query-api.genmodel
+[INFO] Asked to open InputStream for resource://org.eclipse.fennec.persistence.query/model/query-api.genmodel
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/model/query-api.genmodel
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] Resolving all Models
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.query.model/model/query.genmodel
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.query.model/model/query.genmodel
+[INFO] Asked to open InputStream for resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.query.model/model/query.genmodel
+[INFO] sanatized uri resource://org.eclipse.fennec.query.model/model/query.genmodel
+[INFO] bsn according to URI org.eclipse.fennec.query.model
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.service.metatype.annotations
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.fennec.model
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.service.component.annotations
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() biz.aQute.bnd.annotation
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.annotation.versioning
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.emf.ecore
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.fennec.persistence
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.service.condition
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.framework
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.fennec.query.model
+[INFO] Match in /opt/git/emf.persistence-jpa/org.eclipse.fennec.query.model/generated/org.eclipse.fennec.query.model.jar
+[INFO] comparing URIs resource://org.eclipse.fennec.query.model/https://org.eclipse/fennec/query/1.0.0 with the requested resource://org.eclipse.fennec.query.model/model/query.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.query.model/model/query.genmodel with the requested resource://org.eclipse.fennec.query.model/model/query.genmodel
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.query.model/model/query.ecore
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.query.model/model/query.ecore
+[INFO] Asked to open InputStream for resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.query.model/model/query.ecore
+[INFO] sanatized uri resource://org.eclipse.fennec.query.model/model/query.ecore
+[INFO] bsn according to URI org.eclipse.fennec.query.model
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.service.metatype.annotations
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.fennec.model
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.service.component.annotations
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() biz.aQute.bnd.annotation
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.annotation.versioning
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.emf.ecore
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.fennec.persistence
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.service.condition
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.osgi.framework
+[INFO] Comparing org.eclipse.fennec.query.model with container using getBSN() org.eclipse.fennec.query.model
+[INFO] Match in /opt/git/emf.persistence-jpa/org.eclipse.fennec.query.model/generated/org.eclipse.fennec.query.model.jar
+[INFO] comparing URIs resource://org.eclipse.fennec.query.model/https://org.eclipse/fennec/query/1.0.0 with the requested resource://org.eclipse.fennec.query.model/model/query.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.query.model/model/query.genmodel with the requested resource://org.eclipse.fennec.query.model/model/query.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.query.model/model/query.ecore with the requested resource://org.eclipse.fennec.query.model/model/query.ecore
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] Asked to open InputStream for resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] sanatized uri resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] bsn according to URI org.eclipse.fennec.model
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.service.metatype.annotations
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.fennec.model
+[INFO] Match in /opt/git/emf.persistence-jpa/org.eclipse.fennec.model/generated/org.eclipse.fennec.model.jar
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/collections.ecore with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/pushstream.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/collections.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.model/https://org.eclipse/fennec/collection/1.0 with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.model/org.eclipse.fennec.model/model/collections.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/collections.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/utilities.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.genmodel
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.ecore
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.ecore
+[INFO] Asked to open InputStream for resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.ecore
+[INFO] sanatized uri resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] bsn according to URI org.eclipse.fennec.model
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.service.metatype.annotations
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.fennec.model
+[INFO] Match in /opt/git/emf.persistence-jpa/org.eclipse.fennec.model/generated/org.eclipse.fennec.model.jar
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/collections.ecore with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/pushstream.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/collections.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.model/https://org.eclipse/fennec/collection/1.0 with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.model/org.eclipse.fennec.model/model/collections.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/collections.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] comparing URIs resource://org.eclipse.fennec.model/model/utilities.genmodel with the requested resource://org.eclipse.fennec.model/model/utilities.ecore
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.service.component.annotations
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() biz.aQute.bnd.annotation
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.annotation.versioning
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.emf.ecore
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.fennec.persistence
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.service.condition
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.framework
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.fennec.query.model
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.emf.common
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.emf.ecore.xmi
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.eclipse.fennec.emf.osgi.api
+[INFO] Comparing org.eclipse.fennec.model with container using getBSN() org.osgi.annotation.bundle
+[INFO] Nothing worked. Trying a relative path as a last ditch effort. 
+[INFO] Deresolving resource://org.eclipse.fennec.persistence.query/ against resource://org.eclipse.fennec.persistence.query/../org.eclipse.fennec.model/model/utilities.ecore result: /../org.eclipse.fennec.model/model/utilities.ecore
+[INFO] Found it in a relative Path. We hope that there is a corresponding project in your buildpath.
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/model/query-api.ecore
+[INFO] Asked to handle resource://org.eclipse.fennec.persistence.query/model/query-api.ecore
+[INFO] Asked to open InputStream for resource://org.eclipse.fennec.persistence.query/model/query-api.ecore
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/model/query-api.ecore
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] Configuring Jet
+[INFO] Setting modelDirectory/org.eclipse.fennec.persistence.query/src-gen
+[INFO] Creating BNDGeneratorAdapterFactory
+[INFO] Starting generator run
+[INFO] Creating GeckoGenModelGeneratorAdapter
+[INFO] Creating GeckoGenPackageGeneratorAdapter
+[INFO] Creating GeckoGenClassGeneratorAdapter
+[INFO] Creating GeckoGenEnumGeneratorAdapter
+[INFO] subtask Generating code
+[INFO] internally worked 0.07142857142857142 on null
+[INFO] internally worked 0.07142857142857142 on null
+[INFO] internally worked 0.8571428571428572 on null
+[INFO] subtask 
+[INFO] subtask Generating Code for QueryApiPackage
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] subtask Generating package interface info for package 'org.eclipse.fennec.persistence.query.api.QueryApiPackage'
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiPackage.java
+[INFO] subtask Generating Java class org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiPackageImpl.java
+[INFO] subtask Generating factory interface info for package 'org.eclipse.fennec.persistence.query.api.QueryApiFactory'
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryApiFactory.java
+[INFO] subtask Generating Java class org.eclipse.fennec.persistence.query.api.impl.QueryApiFactoryImpl
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/QueryApiFactoryImpl.java
+[INFO] subtask Generating Java class org.eclipse.fennec.persistence.query.api.util.QueryApiSwitch
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiSwitch.java
+[INFO] subtask Generating Java class org.eclipse.fennec.persistence.query.api.util.QueryApiAdapterFactory
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/QueryApiAdapterFactory.java
+[INFO] subtask Generating EPackageConfigurator for package 'api'
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiEPackageConfigurator.java
+[INFO] subtask Generating OSGi configuration component for package 'api'
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/configuration/QueryApiConfigurationComponent.java
+[INFO] subtask Generating package info for package 'api'
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/package-info.java
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/impl/package-info.java
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI: /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] toPlatformResourceURI result: platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/util/package-info.java
+[INFO] subtask Generating Auto Closeable
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] subtask Generating Query Capabilities
+[INFO] internally worked 1.0 on null
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryCapabilities
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryCapabilities
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryCapabilities.java
+[INFO] subtask Generating Query Plan
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryCapabilities
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryPlan
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryPlan
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryPlan.java
+[INFO] subtask Generating Query Context
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryPlan
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryContext
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryContext
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryContext.java
+[INFO] subtask Generating Query Processor
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryContext
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryProcessor
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryProcessor
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryProcessor.java
+[INFO] subtask Generating Query Result Row
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryProcessor
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryResultRow
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryResultRow
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResultRow.java
+[INFO] subtask Generating Query Result
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryResultRow
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryResult
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryResult
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryResult.java
+[INFO] subtask Generating Queryable Resource
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryResult
+[INFO] subtask 
+[INFO] subtask Generating Java interface org.eclipse.fennec.persistence.query.api.QueryableResource
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryableResource
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryableResource.java
+[INFO] subtask Generating Query Shape
+[INFO] internally worked 1.0 on Generating Java interface org.eclipse.fennec.persistence.query.api.QueryableResource
+[INFO] subtask 
+[INFO] subtask Generating Java class org.eclipse.fennec.persistence.query.api.QueryShape
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] internally worked 1.0 on Generating Java class org.eclipse.fennec.persistence.query.api.QueryShape
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryShape.java
+[INFO] subtask Generating Query Feature
+[INFO] internally worked 1.0 on Generating Java class org.eclipse.fennec.persistence.query.api.QueryShape
+[INFO] subtask 
+[INFO] subtask Generating Java class org.eclipse.fennec.persistence.query.api.QueryFeature
+[INFO] subtask Generating /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] internally worked 1.0 on Generating Java class org.eclipse.fennec.persistence.query.api.QueryFeature
+[INFO] subtask 
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Asked if exists platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Asked to open InputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] sanatized uri resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] bsn according to URI org.eclipse.fennec.persistence.query
+[INFO] The bsn segment part fits to: org.eclipse.fennec.persistence.query
+[INFO] subtask Preparing new /org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Asked to handle platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Asked to open OutputStream for platform:/resource/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Sanatized resource://org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java
+[INFO] Opening file /opt/git/emf.persistence-jpa/org.eclipse.fennec.persistence.query/src-gen/org/eclipse/fennec/persistence/query/api/QueryFeature.java

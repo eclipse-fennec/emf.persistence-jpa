@@ -1,0 +1,28 @@
+Bundle-Name: Eclipse Fennec Persistence Query
+Bundle-Description: Backend-neutral query SPI: canonical query.model translated per backend via QueryProcessor
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/query-api.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/query-api.genmodel;\
+		output=src-gen;\
+		logfile=gen.log
+# Add this attribute to find some logging information
+#		logfile=test.log;\
+
+-includeresource.model: model=model
+
+-buildpath: \
+	biz.aQute.bnd.annotation;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.model;version=snapshot
+
+-testpath: \
+	assertj-core

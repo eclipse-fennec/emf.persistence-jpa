@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2012 - 2026 Data In Motion and others.&#xA;All rights reserved. &#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;    Data In Motion - initial API and implementation"
+    modelDirectory="/org.eclipse.fennec.query.model/src" modelPluginID="org.eclipse.fennec.query.model"
+    modelName="Query" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
+    usedGenPackages="../../org.eclipse.fennec.model/model/utilities.genmodel#//utilities"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>query.ecore</foreignModel>
+  <genPackages prefix="Query" basePackage="org.eclipse.fennec.model" resource="XMI"
+      disposableProviderFactory="true" ecorePackage="query.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//SortOrder">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortOrder/DESC"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortOrder/ASC"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//SuitableType">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/NUMERIC"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/DATE"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/STRING"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/BOOLEAN"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/ENUM"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/MIXED"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SuitableType/OTHER"/>
+    </genEnums>
+    <genClasses ecoreClass="query.ecore#//Query">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/subject"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/from"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/where"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/groupBy"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/sortBy"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/count"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/distinct"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/limit"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/skip"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/saveQuery"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/name"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//QObject">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference query.ecore#//QObject/rootEClass"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//QSubject">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//QSubject/featurePath"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//QSubject/isExclude"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//QSubject/alias"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference query.ecore#//QSubject/aliasFeature"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//QSubject/operation"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//QWhere">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//QWhere/featurePath"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//QWhere/comparator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//QWhere/operation"/>
+      <genOperations ecoreOperation="query.ecore#//QWhere/execute"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//Chaining"/>
+    <genClasses ecoreClass="query.ecore#//Or"/>
+    <genClasses ecoreClass="query.ecore#//Not"/>
+    <genClasses ecoreClass="query.ecore#//And"/>
+    <genClasses image="false" ecoreClass="query.ecore#//StringOperation"/>
+    <genClasses ecoreClass="query.ecore#//ToLowerCase"/>
+    <genClasses ecoreClass="query.ecore#//ToUpperCase"/>
+    <genClasses image="false" ecoreClass="query.ecore#//NumberOperation"/>
+    <genClasses ecoreClass="query.ecore#//Average"/>
+    <genClasses image="false" ecoreClass="query.ecore#//Comparator">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Comparator/suitableForType"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference query.ecore#//Comparator/where"/>
+      <genOperations ecoreOperation="query.ecore#//Comparator/compare"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//SimpleValueComparator">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//SimpleValueComparator/value"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//StringComparator"/>
+    <genClasses ecoreClass="query.ecore#//EndsWith"/>
+    <genClasses ecoreClass="query.ecore#//StartWith"/>
+    <genClasses ecoreClass="query.ecore#//Contains"/>
+    <genClasses ecoreClass="query.ecore#//Like"/>
+    <genClasses image="false" ecoreClass="query.ecore#//DateComparator"/>
+    <genClasses ecoreClass="query.ecore#//IsBefore"/>
+    <genClasses ecoreClass="query.ecore#//IsAfter"/>
+    <genClasses ecoreClass="query.ecore#//IsBeforeOrEqual"/>
+    <genClasses ecoreClass="query.ecore#//IsAfterOrEqual"/>
+    <genClasses ecoreClass="query.ecore#//IsInRange">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//IsInRange/startValue"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//IsInRange/endValue"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//IsInRange/startIncluded"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//IsInRange/endIncluded"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//NumberComparator"/>
+    <genClasses ecoreClass="query.ecore#//Lt"/>
+    <genClasses ecoreClass="query.ecore#//Lte"/>
+    <genClasses ecoreClass="query.ecore#//Gte"/>
+    <genClasses ecoreClass="query.ecore#//Gt"/>
+    <genClasses ecoreClass="query.ecore#//Eq"/>
+    <genClasses ecoreClass="query.ecore#//BoolComparator"/>
+    <genClasses ecoreClass="query.ecore#//IsBool"/>
+    <genClasses ecoreClass="query.ecore#//SortEntity">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//SortEntity/sortOrder"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference query.ecore#//SortEntity/sortFeature"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//Operation">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Operation/suitableForType"/>
+      <genOperations ecoreOperation="query.ecore#//Operation/execute"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//EnumComparator"/>
+    <genClasses ecoreClass="query.ecore#//IsLiteral"/>
+  </genPackages>
+</genmodel:GenModel>

@@ -1,0 +1,28 @@
+Bundle-Name: Eclipse Fennec Query Model
+Bundle-Description: Backend-neutral EMF query metamodel (canonical query IR). \
+	Development home while the model evolves with the persistence query layer; \
+	will be mirrored back to fennec.common.models once stable.
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+# Code generation is triggered manually (see CLAUDE.md). Activate to generate via bnd:
+-generate:\
+	model/query.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/query.genmodel;\
+		output=src-gen
+# Add this attribute to find some logging information
+#		logfile=test.log;\
+
+# If this is not done with a instruction namespace, bnd would think you like
+# to take full control over whats exported and imported and will ignore @Export
+# Bundle Annotations
+-includeresource.model: model=model
+
+-buildpath: \
+	org.osgi.service.condition;version=latest,\
+	org.eclipse.fennec.model;version=snapshot
