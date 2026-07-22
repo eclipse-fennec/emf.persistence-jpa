@@ -112,7 +112,31 @@
   <eClassifiers xsi:type="ecore:EClass" name="ToLowerCase" eSuperTypes="#//StringOperation"/>
   <eClassifiers xsi:type="ecore:EClass" name="ToUpperCase" eSuperTypes="#//StringOperation"/>
   <eClassifiers xsi:type="ecore:EClass" name="NumberOperation" abstract="true" eSuperTypes="#//Operation"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Average" eSuperTypes="#//NumberOperation"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Average" eSuperTypes="#//NumberOperation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Average aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Min" eSuperTypes="#//NumberOperation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Minimum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Max" eSuperTypes="#//NumberOperation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Maximum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Sum" eSuperTypes="#//NumberOperation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Sum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CountOperation" eSuperTypes="#//NumberOperation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Count aggregate function (per group, or over the whole result set without groupBy). Named CountOperation to avoid clashing with Query.count, which requests a count-only result."/>
+    </eAnnotations>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Comparator" abstract="true">
     <eOperations name="compare" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="suitableForType" lowerBound="1"

@@ -17,18 +17,18 @@ import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * <!-- begin-user-doc -->
- * A representation of the model object '<em><b>Average</b></em>'.
+ * A representation of the model object '<em><b>Sum</b></em>'.
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Average aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row).
+ * Sum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row).
  * <!-- end-model-doc -->
  *
  *
- * @see org.eclipse.fennec.model.query.QueryPackage#getAverage()
+ * @see org.eclipse.fennec.model.query.QueryPackage#getSum()
  * @model
  * @generated
  */
 @ProviderType
-public interface Average extends NumberOperation {
-} // Average
+public interface Sum extends NumberOperation {
+} // Sum

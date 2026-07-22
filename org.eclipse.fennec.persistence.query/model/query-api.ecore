@@ -226,7 +226,7 @@
     </eLiterals>
     <eLiterals name="OP_AVERAGE" value="62">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Subject-level Average number operation."/>
+        <details key="documentation" value="Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">

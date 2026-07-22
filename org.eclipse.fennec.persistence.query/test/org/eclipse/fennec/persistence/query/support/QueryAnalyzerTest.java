@@ -296,7 +296,8 @@ class QueryAnalyzerTest {
 	}
 
 	@Test
-	void ungroupedAverageIsAnOperationNotAnAggregate() {
+	void ungroupedAggregateIsAWholeSetAggregation() {
+		// SQL semantics: an aggregate without groupBy aggregates the whole result set
 		QueryFactory factory = QueryFactory.eINSTANCE;
 		Query query = factory.createQuery();
 		QSubject subject = factory.createQSubject();
@@ -305,9 +306,34 @@ class QueryAnalyzerTest {
 		query.getSubject().add(subject);
 
 		QueryAnalysis analysis = QueryAnalyzer.analyze(query);
-		assertThat(analysis.features()).contains(QueryFeature.OP_AVERAGE);
-		assertThat(analysis.features()).doesNotContain(QueryFeature.AGG_AVG, QueryFeature.GROUP_BY);
-		assertThat(analysis.shape()).isEqualTo(QueryShape.PROJECTION);
+		assertThat(analysis.features()).contains(QueryFeature.AGG_AVG);
+		assertThat(analysis.features()).doesNotContain(QueryFeature.OP_AVERAGE, QueryFeature.GROUP_BY);
+		assertThat(analysis.shape()).isEqualTo(QueryShape.AGGREGATION);
+	}
+
+	@Test
+	void allAggregateFunctionsMapToTheirFeatures() {
+		QueryFactory factory = QueryFactory.eINSTANCE;
+		Query query = factory.createQuery();
+		query.getGroupBy().add(path(name));
+		record Pair(org.eclipse.fennec.model.query.Operation op, QueryFeature feature) {
+		}
+		java.util.List<Pair> pairs = java.util.List.of(
+				new Pair(factory.createMin(), QueryFeature.AGG_MIN),
+				new Pair(factory.createMax(), QueryFeature.AGG_MAX),
+				new Pair(factory.createSum(), QueryFeature.AGG_SUM),
+				new Pair(factory.createCountOperation(), QueryFeature.AGG_COUNT));
+		for (Pair pair : pairs) {
+			QSubject subject = factory.createQSubject();
+			subject.setFeaturePath(path(age));
+			subject.setOperation(pair.op());
+			query.getSubject().add(subject);
+		}
+
+		QueryAnalysis analysis = QueryAnalyzer.analyze(query);
+		assertThat(analysis.features()).contains(QueryFeature.GROUP_BY, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX,
+				QueryFeature.AGG_SUM, QueryFeature.AGG_COUNT);
+		assertThat(analysis.shape()).isEqualTo(QueryShape.AGGREGATION);
 	}
 
 	@Test

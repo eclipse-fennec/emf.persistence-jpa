@@ -364,7 +364,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Subject-level Average number operation.
+	 * Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics).
 	 * <!-- end-model-doc -->
 	 * @see #OP_AVERAGE_VALUE
 	 * @generated
@@ -805,7 +805,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Subject-level Average number operation.
+	 * Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics).
 	 * <!-- end-model-doc -->
 	 * @see #OP_AVERAGE
 	 * @model

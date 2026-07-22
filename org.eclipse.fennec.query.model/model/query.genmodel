@@ -60,6 +60,10 @@
     <genClasses ecoreClass="query.ecore#//ToUpperCase"/>
     <genClasses image="false" ecoreClass="query.ecore#//NumberOperation"/>
     <genClasses ecoreClass="query.ecore#//Average"/>
+    <genClasses ecoreClass="query.ecore#//Min"/>
+    <genClasses ecoreClass="query.ecore#//Max"/>
+    <genClasses ecoreClass="query.ecore#//Sum"/>
+    <genClasses ecoreClass="query.ecore#//CountOperation"/>
     <genClasses image="false" ecoreClass="query.ecore#//Comparator">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Comparator/suitableForType"/>
       <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference query.ecore#//Comparator/where"/>

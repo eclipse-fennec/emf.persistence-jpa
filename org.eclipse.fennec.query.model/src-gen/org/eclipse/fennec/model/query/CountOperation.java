@@ -17,18 +17,18 @@ import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * <!-- begin-user-doc -->
- * A representation of the model object '<em><b>Average</b></em>'.
+ * A representation of the model object '<em><b>Count Operation</b></em>'.
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Average aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row).
+ * Count aggregate function (per group, or over the whole result set without groupBy). Named CountOperation to avoid clashing with Query.count, which requests a count-only result.
  * <!-- end-model-doc -->
  *
  *
- * @see org.eclipse.fennec.model.query.QueryPackage#getAverage()
+ * @see org.eclipse.fennec.model.query.QueryPackage#getCountOperation()
  * @model
  * @generated
  */
 @ProviderType
-public interface Average extends NumberOperation {
-} // Average
+public interface CountOperation extends NumberOperation {
+} // CountOperation
