@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="api" nsURI="https://eclipse.org/fennec/persistence/query/api/1.0.0" nsPrefix="query.api">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="complianceLevel" value="17.0"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="basePackage" value="org.eclipse.fennec.persistence.query"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="rootExtendsInterface" value=""/>
+    <details key="documentation" value="Backend-neutral query SPI. A QueryProcessor per backend translates the canonical query model (query.ecore) into a backend-typed QueryPlan; the backend resource executes the plan. Capabilities are declared per backend and violations are diagnosed via EMF Diagnostics — never silently post-filtered in memory. See docs/unified-persistence/query-processor-spi.md."/>
+  </eAnnotations>
+  <!-- ==================== Wrapped Java types ==================== -->
+  <eClassifiers xsi:type="ecore:EDataType" name="Diagnostic" instanceClassName="org.eclipse.emf.common.util.Diagnostic">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="EMF Diagnostic carrying validation results. ERROR entries name the offending QueryFeature and model element and make a query non-executable."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="ConverterService" instanceClassName="org.eclipse.fennec.persistence.api.ConverterService">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The shared persistence value converter. Comparator values are EString in the query model; conversion to the target feature's EDataType happens once through this service at translate time — never per backend."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="QueryException" instanceClassName="org.eclipse.fennec.persistence.query.QueryException">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Hand-written exception (lives in src, not generated) signalling that a query could not be validated or translated. Carries the validation Diagnostic when it results from a failed validate call."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="IOException" instanceClassName="java.io.IOException">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="java.io.IOException — thrown by resource-level query execution, consistent with the EMF Resource load/save contract."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="EObjectStream" instanceTypeName="java.util.stream.Stream&lt;org.eclipse.emf.ecore.EObject&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A lazy java.util.stream.Stream of EObjects. Backend cursors materialise objects one by one while the stream is consumed; closing the owning QueryResult closes the stream and releases the cursor."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="RowStream" instanceTypeName="java.util.stream.Stream&lt;org.eclipse.fennec.persistence.query.api.QueryResultRow&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A lazy java.util.stream.Stream of QueryResultRows for PROJECTION and AGGREGATION shapes."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="ObjectList" instanceTypeName="java.util.List&lt;java.lang.Object&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An immutable java.util.List of row cell values in subject order."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="QueryFeatureSet" instanceTypeName="java.util.Set&lt;org.eclipse.fennec.persistence.query.api.QueryFeature&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An immutable java.util.Set of QueryFeatures."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="ParameterMap" instanceTypeName="java.util.Map&lt;java.lang.String, java.lang.Object&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Bound values for placeholders used by prepared queries (see QueryFeature PARAMETERS)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="OptionsMap" instanceTypeName="java.util.Map&lt;?, ?&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Backend options for translation/execution (e.g. page size, batch size, read options) — the same option map style used by the EMF Resource load/save contract."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AutoCloseable" abstract="true" interface="true"
+      instanceClassName="java.lang.AutoCloseable">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="java.lang.AutoCloseable as an externally implemented interface, so QueryResult participates in try-with-resources."/>
+    </eAnnotations>
+  </eClassifiers>
+  <!-- ==================== Enums ==================== -->
+  <eClassifiers xsi:type="ecore:EEnum" name="QueryShape">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The shape of a QueryPlan and, correspondingly, of the QueryResult a backend produces when executing it."/>
+    </eAnnotations>
+    <eLiterals name="OBJECTS">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whole entities: the result exposes a Stream of EObjects."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PROJECTION" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Selected scalar fields (subject projection): the result exposes rows."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGGREGATION" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Grouped/aggregated values (groupBy + aggregate functions): the result exposes rows."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="COUNT" value="3">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="A single cardinality: the result exposes a long count."/>
+      </eAnnotations>
+    </eLiterals>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="QueryFeature">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A single, backend-neutral query capability. Each QueryProcessor declares the set of features it serves natively (QueryCapabilities); a query using an unsupported feature is rejected with a Diagnostic during validate — never silently post-filtered in memory. Literal values are grouped with gaps: predicates 0+, shaping 20+, aggregation 40+, value/path operations 60+, structural 80+, future 100+."/>
+    </eAnnotations>
+    <eLiterals name="WHERE_EQ">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Equality comparator (Eq)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_COMPARISON" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordering comparators (Lt, Lte, Gt, Gte)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_STRING_MATCH" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="String matching (Contains, StartWith, EndsWith, Like)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_RANGE" value="3">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Range comparator (IsInRange)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_DATE" value="4">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Date comparators (IsBefore/IsAfter and the OrEqual variants)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_ENUM" value="5">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Enum literal comparator (IsLiteral)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_BOOL" value="6">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Boolean comparator (IsBool)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LOGICAL_AND" value="7">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Logical conjunction (And)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LOGICAL_OR" value="8">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Logical disjunction (Or)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LOGICAL_NOT" value="9">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Logical negation (Not)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SORT" value="20">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordering of results (sortBy)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LIMIT" value="21">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Result cardinality cap (limit)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SKIP" value="22">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Result offset (skip)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DISTINCT" value="23">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Duplicate elimination (distinct)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="COUNT" value="24">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Count-only result (count)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PROJECTION" value="25">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Projection of scalar fields via subject/FeaturePath."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PROJECTION_NESTED" value="26">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Projection through references (requires a join)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="GROUP_BY" value="40">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Grouping (groupBy)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_AVG" value="41">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Average aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_MIN" value="42">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Minimum aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_MAX" value="43">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_SUM" value="44">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Sum aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_COUNT" value="45">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Count aggregate (per group)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="OP_TO_LOWER" value="60">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="ToLowerCase string operation."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="OP_TO_UPPER" value="61">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="ToUpperCase string operation."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="OP_AVERAGE" value="62">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Subject-level Average number operation."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FEATUREPATH_NESTED" value="80">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TYPE_FILTER" value="81">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Polymorphic type filter via QObject.rootEClass (type plus subtypes)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TYPE_FILTER_STRICT" value="82">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Exact type filter (no subtypes)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PARAMETERS" value="83">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Bound placeholders for prepared queries."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AS_OF" value="100">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Point-in-time reads (asOf) — future, see unified-persistence concept §14."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SERIES_RANGE" value="101">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Range/aggregation over time-series streams — future, see unified-persistence concept §14."/>
+      </eAnnotations>
+    </eLiterals>
+  </eClassifiers>
+  <!-- ==================== Capability model ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="QueryCapabilities" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The set of QueryFeatures a QueryProcessor serves natively, plus structural limits. Used to validate a query before translation so unsupported constructs are rejected with a Diagnostic rather than silently post-filtered."/>
+    </eAnnotations>
+    <eOperations name="supports" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Returns true if this backend serves the feature natively."/>
+      </eAnnotations>
+      <eParameters name="feature" lowerBound="1" eType="#//QueryFeature"/>
+    </eOperations>
+    <eOperations name="supported" eType="#//QueryFeatureSet">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Returns the immutable set of natively supported features."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="maxFeaturePathDepth" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The maximum FeaturePath depth this backend can traverse in where/sort/projection (each segment beyond the first is a join). 1 = local features only, -1 = unlimited."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
+  <!-- ==================== Plan / Context ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="QueryPlan" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A backend-typed, executable translation of a canonical Query. Concrete plans live in the backend bundles and carry the native payload (e.g. a MongoDB aggregation pipeline or a JPA CriteriaQuery). Only the backend that produced a plan handles its concrete type; callers stay on this generic surface."/>
+    </eAnnotations>
+    <eOperations name="source" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The canonical query this plan was translated from."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="shape" eType="#//QueryShape">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The shape of the result this plan produces when executed."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="QueryContext" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Everything a QueryProcessor needs for translation that is not carried by the Query itself: the resolved root type, the shared value converter, bound parameters and backend options."/>
+    </eAnnotations>
+    <eOperations name="rootEClass" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The resolved root EClass the query selects from."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="converter" eType="#//ConverterService">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The shared converter used to turn the query's EString comparator values into the target feature's typed value — done once here, not per backend. Never null."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="parameters" eType="#//ParameterMap">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Bound values for placeholders used by prepared queries. Empty if none."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="options" eType="#//OptionsMap">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Backend options for the translation/execution (e.g. page size, batch size, read options). Empty if none."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
+  <!-- ==================== Processor SPI ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="QueryProcessor" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Translates a canonical Query into a backend-typed QueryPlan. Registered as an OSGi service with the property persistence.query.backend=&lt;id&gt; (see the hand-written QueryConstants) so a QueryableResource can resolve the processor matching its backend. Translation is a pure function of the query, the root type and the QueryContext; it must not touch the database. Execution of the produced plan is the responsibility of the backend resource, which knows the concrete plan type."/>
+    </eAnnotations>
+    <eOperations name="backend" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The stable backend id this processor serves, e.g. &quot;mongo&quot; or &quot;jpa&quot;."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="capabilities" eType="#//QueryCapabilities">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The features this processor serves natively."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="validate" eType="#//Diagnostic">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Validates a query against the declared capabilities for the given root type. The result never contains a silent fallback: any construct this backend cannot serve natively yields a Diagnostic ERROR entry naming the offending QueryFeature and model element. Returns Diagnostic OK if the query translates natively."/>
+      </eAnnotations>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="rootEClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
+    </eOperations>
+    <eOperations name="translate" eType="#//QueryPlan" eExceptions="#//QueryException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Translates a validated query into an executable, backend-typed plan. Callers must validate first; a processor may assume a validated query and throw QueryException when it encounters an unsupported construct."/>
+      </eAnnotations>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="context" lowerBound="1" eType="#//QueryContext"/>
+    </eOperations>
+  </eClassifiers>
+  <!-- ==================== Result model ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="QueryResultRow" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A single projection or aggregation row: cells addressed either by the subject alias or by ordinal position. Values are already typed via the ConverterService."/>
+    </eAnnotations>
+    <eOperations name="get" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The cell value for the subject alias (QSubject.alias), or null if absent."/>
+      </eAnnotations>
+      <eParameters name="alias" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    </eOperations>
+    <eOperations name="get" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The cell value at the zero-based ordinal position."/>
+      </eAnnotations>
+      <eParameters name="index" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    </eOperations>
+    <eOperations name="values" eType="#//ObjectList">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The cell values in subject order, as an immutable list."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="QueryResult" abstract="true" interface="true"
+      eSuperTypes="#//AutoCloseable">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The outcome of executing a QueryPlan. The accessor that matches shape() is valid; the others throw IllegalStateException. A result may hold backend resources (cursors, connections) and must be closed by the caller — use try-with-resources. Closing also closes any stream obtained from it."/>
+    </eAnnotations>
+    <eOperations name="shape" eType="#//QueryShape">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The shape of this result, determining which accessor is valid."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="objects" eType="#//EObjectStream">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Valid for OBJECTS: the selected entities, streamed lazily. Closed together with this result. Throws IllegalStateException for any other shape."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="rows" eType="#//RowStream">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Valid for PROJECTION and AGGREGATION: the result rows. Closed together with this result. Throws IllegalStateException for any other shape."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="count" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Valid for COUNT: the cardinality. Throws IllegalStateException for any other shape."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="close">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Releases all backend resources held by this result. Never throws."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
+  <!-- ==================== Resource entry point ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="QueryableResource" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Optional capability of a PersistenceResource: execute a canonical Query against the backend the resource is bound to (analogous to StreamingResource). The resource resolves its QueryProcessor, validates and translates the query, then executes the resulting QueryPlan and returns a QueryResult. A query using constructs the backend cannot serve natively fails with an IOException carrying the validation Diagnostic — never a silent in-memory fallback. Lives in the query bundle rather than the core persistence API so the core does not depend on the query model."/>
+    </eAnnotations>
+    <eOperations name="query" eType="#//QueryResult" eExceptions="#//IOException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Executes a query with no parameters and no extra options. The result must be closed by the caller."/>
+      </eAnnotations>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+    </eOperations>
+    <eOperations name="query" eType="#//QueryResult" eExceptions="#//IOException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Executes a query with bound parameters and backend options (both may be null). The result must be closed by the caller."/>
+      </eAnnotations>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="parameters" eType="#//ParameterMap"/>
+      <eParameters name="options" eType="#//OptionsMap"/>
+    </eOperations>
+  </eClassifiers>
+</ecore:EPackage>

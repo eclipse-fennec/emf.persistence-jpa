@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="collection" nsURI="https://org.eclipse/fennec/collection/1.0"
+    nsPrefix="collection">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="suppressInterfaces" value="false"/>
+    <details key="containmentProxies" value="true"/>
+    <details key="basePackage" value="org.eclipse.fennec.model"/>
+    <details key="complianceLevel" value="21.0"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made available under the terms of the Eclipse Public License 2.0 which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="resource" value="XMI"/>
+  </eAnnotations>
+  <eAnnotations source="Version">
+    <details key="value" value="2.2"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EDataType" name="EList" instanceTypeName="org.eclipse.emf.common.util.EList&lt;org.eclipse.emf.ecore.EObject>"/>
+  <eClassifiers xsi:type="ecore:EClass" name="ECollection" abstract="true" interface="true">
+    <eOperations name="getValues" unique="false" eType="#//EList"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EContainmentCollection" eSuperTypes="#//ECollection">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="values" upperBound="-1"
+        eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject" containment="true"
+        resolveProxies="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EReferenceCollection" eSuperTypes="#//ECollection">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="values" upperBound="-1"
+        eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="EIterator" instanceTypeName="java.util.Iterator&lt;org.eclipse.emf.ecore.EObject>"/>
+  <eClassifiers xsi:type="ecore:EClass" name="EIterable" eSuperTypes="#//EIterableInterface">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delegate" eType="#//Iterable"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="Iterable" instanceTypeName="java.lang.Iterable&lt;org.eclipse.emf.ecore.EObject>"/>
+  <eClassifiers xsi:type="ecore:EClass" name="EIterableInterface" instanceTypeName="java.lang.Iterable&lt;org.eclipse.emf.ecore.EObject>"
+      abstract="true" interface="true">
+    <eOperations name="iterator" lowerBound="1" eType="#//EIterator">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="body" value="return getDelegate() != null ? getDelegate().iterator() : null;"/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
+</ecore:EPackage>

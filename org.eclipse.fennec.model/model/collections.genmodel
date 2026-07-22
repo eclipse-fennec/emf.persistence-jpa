@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made available under the terms of the Eclipse Public License 2.0 which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="" modelPluginID="" modelName="collections" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" containmentProxies="true" complianceLevel="21.0"
+    suppressGenModelAnnotations="false" copyrightFields="false" operationReflection="true"
+    importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>collections.ecore</foreignModel>
+  <genPackages prefix="Collection" basePackage="org.eclipse.fennec.model" resource="XMI"
+      disposableProviderFactory="true" ecorePackage="collections.ecore#/">
+    <genDataTypes ecoreDataType="collections.ecore#//EList"/>
+    <genDataTypes ecoreDataType="collections.ecore#//EIterator"/>
+    <genDataTypes ecoreDataType="collections.ecore#//Iterable"/>
+    <genClasses image="false" ecoreClass="collections.ecore#//ECollection">
+      <genOperations ecoreOperation="collections.ecore#//ECollection/getValues"/>
+    </genClasses>
+    <genClasses ecoreClass="collections.ecore#//EContainmentCollection">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference collections.ecore#//EContainmentCollection/values"/>
+    </genClasses>
+    <genClasses ecoreClass="collections.ecore#//EReferenceCollection">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference collections.ecore#//EReferenceCollection/values"/>
+    </genClasses>
+    <genClasses ecoreClass="collections.ecore#//EIterable">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute collections.ecore#//EIterable/delegate"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="collections.ecore#//EIterableInterface">
+      <genOperations ecoreOperation="collections.ecore#//EIterableInterface/iterator"
+          body="return getDelegate() != null ? getDelegate().iterator() : null;"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made available under the terms of the Eclipse Public License 2.0 which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.model/src" modelPluginID="org.eclipse.fennec.model"
+    modelName="Utilities" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>utilities.ecore</foreignModel>
+  <genPackages prefix="Utilities" basePackage="org.eclipse.fennec.model" resource="XMI"
+      disposableProviderFactory="true" ecorePackage="utilities.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="utilities.ecore#//SortType">
+      <genEnumLiterals ecoreEnumLiteral="utilities.ecore#//SortType/ASCENDING"/>
+      <genEnumLiterals ecoreEnumLiteral="utilities.ecore#//SortType/DESCENDING"/>
+    </genEnums>
+    <genClasses ecoreClass="utilities.ecore#//FeaturePath">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//FeaturePath/name"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference utilities.ecore#//FeaturePath/feature"/>
+      <genOperations ecoreOperation="utilities.ecore#//FeaturePath/getValue" body="&lt;%java.util.List%>&lt;Object> result = &lt;%org.eclipse.fennec.model.utils.UtilModelHelper%>.getFeaturePathValue(this, object);&#xA;if (result != null) {&#xA;&#x9;return &lt;%org.eclipse.emf.common.util.ECollections%>.asEList(result);&#xA;}&#xA;return &lt;%org.eclipse.emf.common.util.ECollections%>.emptyEList();">
+        <genParameters ecoreParameter="utilities.ecore#//FeaturePath/getValue/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="utilities.ecore#//FeaturePath/isValid" body="if (object == null) {&#xA;&#x9;return false;&#xA;}&#xA;return &lt;%org.eclipse.fennec.model.utils.UtilModelHelper%>.validateFeaturePath(this, object.eClass());">
+        <genParameters ecoreParameter="utilities.ecore#//FeaturePath/isValid/object"/>
+      </genOperations>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//Converter">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Converter/converterId"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference utilities.ecore#//Converter/fromType"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference utilities.ecore#//Converter/toType"/>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//LatLng">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//LatLng/latitude"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//LatLng/longitude"/>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//StringToStringMap">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//StringToStringMap/key"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//StringToStringMap/value"/>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//Request">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/objectId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/from"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/to"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/page"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/pageSize"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/returnResultSize"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference utilities.ecore#//Request/sorting"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference utilities.ecore#//Request/filtering"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/projection"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Request/query"/>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//Response">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Response/timestamp"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Response/resultSize"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Response/responseCode"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Response/responseMessage"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference utilities.ecore#//Response/data"/>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//Sort">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Sort/index"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Sort/field"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Sort/type"/>
+    </genClasses>
+    <genClasses ecoreClass="utilities.ecore#//Filter">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Filter/index"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Filter/field"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute utilities.ecore#//Filter/value"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

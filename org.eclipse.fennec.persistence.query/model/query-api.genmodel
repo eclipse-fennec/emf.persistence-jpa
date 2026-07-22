@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel"
+    copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.persistence.query/src-gen" modelPluginID="org.eclipse.fennec.persistence.query"
+    modelName="QueryApi" rootExtendsInterface="" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
+    usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.model/model/utilities.genmodel#//utilities"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>query-api.ecore</foreignModel>
+  <genPackages prefix="QueryApi" basePackage="org.eclipse.fennec.persistence.query" disposableProviderFactory="true"
+      ecorePackage="query-api.ecore#/">
+    <genDataTypes ecoreDataType="query-api.ecore#//Diagnostic"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ConverterService"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//QueryException"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//IOException"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//EObjectStream"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//QueryFeatureSet"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query-api.ecore#//QueryShape">
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/OBJECTS"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/PROJECTION"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/AGGREGATION"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/COUNT"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query-api.ecore#//QueryFeature">
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_EQ"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_COMPARISON"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_STRING_MATCH"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_RANGE"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_DATE"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_ENUM"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_BOOL"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LOGICAL_AND"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LOGICAL_OR"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LOGICAL_NOT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SORT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LIMIT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SKIP"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/DISTINCT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PROJECTION"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PROJECTION_NESTED"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GROUP_BY"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_AVG"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_MIN"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_MAX"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_SUM"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/OP_TO_LOWER"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/OP_TO_UPPER"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/OP_AVERAGE"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER_STRICT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PARAMETERS"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AS_OF"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SERIES_RANGE"/>
+    </genEnums>
+    <genClasses image="false" ecoreClass="query-api.ecore#//AutoCloseable"/>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryCapabilities">
+      <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/supports">
+        <genParameters ecoreParameter="query-api.ecore#//QueryCapabilities/supports/feature"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/supported"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/maxFeaturePathDepth"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryPlan">
+      <genOperations ecoreOperation="query-api.ecore#//QueryPlan/source"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryPlan/shape"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryContext">
+      <genOperations ecoreOperation="query-api.ecore#//QueryContext/rootEClass"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryContext/converter"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryContext/parameters"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryContext/options"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryProcessor">
+      <genOperations ecoreOperation="query-api.ecore#//QueryProcessor/backend"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryProcessor/capabilities"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryProcessor/validate">
+        <genParameters ecoreParameter="query-api.ecore#//QueryProcessor/validate/query"/>
+        <genParameters ecoreParameter="query-api.ecore#//QueryProcessor/validate/rootEClass"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//QueryProcessor/translate">
+        <genParameters ecoreParameter="query-api.ecore#//QueryProcessor/translate/query"/>
+        <genParameters ecoreParameter="query-api.ecore#//QueryProcessor/translate/context"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryResultRow">
+      <genOperations ecoreOperation="query-api.ecore#//QueryResultRow/get">
+        <genParameters ecoreParameter="query-api.ecore#//QueryResultRow/get/alias"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResultRow/get.1">
+        <genParameters ecoreParameter="query-api.ecore#//QueryResultRow/get.1/index"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResultRow/values"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryResult">
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/shape"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/objects"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/rows"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/count"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/close"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//QueryableResource">
+      <genOperations ecoreOperation="query-api.ecore#//QueryableResource/query">
+        <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query/query"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//QueryableResource/query.1">
+        <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query.1/query"/>
+        <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query.1/parameters"/>
+        <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query.1/options"/>
+      </genOperations>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>
