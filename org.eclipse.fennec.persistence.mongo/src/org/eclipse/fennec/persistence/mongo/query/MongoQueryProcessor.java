@@ -12,16 +12,27 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.mongo.query;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
+
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonNull;
+import org.bson.BsonString;
 
 import org.bson.conversions.Bson;
 import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.model.query.Average;
 import org.eclipse.fennec.model.query.Comparator;
 import org.eclipse.fennec.model.query.Contains;
+import org.eclipse.fennec.model.query.CountOperation;
 import org.eclipse.fennec.model.query.DateComparator;
 import org.eclipse.fennec.model.query.EndsWith;
 import org.eclipse.fennec.model.query.Eq;
@@ -37,8 +48,12 @@ import org.eclipse.fennec.model.query.IsLiteral;
 import org.eclipse.fennec.model.query.Like;
 import org.eclipse.fennec.model.query.Lt;
 import org.eclipse.fennec.model.query.Lte;
+import org.eclipse.fennec.model.query.Max;
+import org.eclipse.fennec.model.query.Min;
 import org.eclipse.fennec.model.query.Not;
 import org.eclipse.fennec.model.query.Or;
+import org.eclipse.fennec.model.query.Operation;
+import org.eclipse.fennec.model.query.QSubject;
 import org.eclipse.fennec.model.query.QWhere;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.SimpleValueComparator;
@@ -46,6 +61,7 @@ import org.eclipse.fennec.model.query.SortEntity;
 import org.eclipse.fennec.model.query.SortOrder;
 import org.eclipse.fennec.model.query.StartWith;
 import org.eclipse.fennec.model.query.StringOperation;
+import org.eclipse.fennec.model.query.Sum;
 import org.eclipse.fennec.model.query.ToLowerCase;
 import org.eclipse.fennec.model.query.ToUpperCase;
 import org.eclipse.fennec.model.utilities.FeaturePath;
@@ -66,15 +82,18 @@ import org.eclipse.fennec.persistence.query.support.QueryValidator;
 import org.eclipse.fennec.persistence.query.support.QueryValues;
 import org.osgi.service.component.annotations.Component;
 
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 
 /**
- * {@link QueryProcessor} for MongoDB — the find path.
+ * {@link QueryProcessor} for MongoDB.
  * <p>
- * Translates {@code OBJECTS} and {@code COUNT} shaped queries into a {@link MongoQueryPlan}
- * (filter + sort + skip/limit) executed via {@code collection.find(...)} /
- * {@code countDocuments(...)}. Translation is pure — no database access.
+ * {@code OBJECTS}/{@code COUNT} queries translate to the find path of the
+ * {@link MongoQueryPlan} (filter + sort + skip/limit, executed via
+ * {@code collection.find(...)} / {@code countDocuments(...)}); {@code PROJECTION}/
+ * {@code AGGREGATION} queries translate to an aggregation pipeline ($match → $group/
+ * $project → $sort → $skip/$limit). Translation is pure — no database access.
  * <p>
  * Mongo-specific semantics:
  * <ul>
@@ -89,8 +108,10 @@ import com.mongodb.client.model.Sorts;
  * <li><b>Enum values</b> compare against the literal's name, matching the codec's
  * document encoding.</li>
  * </ul>
- * PROJECTION/AGGREGATION shapes are refused here and served by the aggregation-pipeline
- * stage (issue #41).
+ * Aggregation notes: DISTINCT requires a projection (whole documents cannot be
+ * deduplicated) and is served by a $group over the projected keys; plain subjects in an
+ * AGGREGATION query must match a groupBy path; sorting in PROJECTION/AGGREGATION shapes
+ * addresses output keys.
  *
  * @author Mark Hoffmann
  * @since 23.07.2026
@@ -104,6 +125,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 	/** Diagnostic code: a nested path traverses a non-containment reference. */
 	public static final int CODE_NON_EMBEDDED_PATH = 100;
 
+	/** Diagnostic code: {@code distinct} without a subject projection. */
+	public static final int CODE_DISTINCT_WITHOUT_PROJECTION = 101;
+
 	private static final QueryCapabilities CAPABILITIES = QueryCapabilitiesBuilder.create()
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_COMPARISON, QueryFeature.WHERE_STRING_MATCH,
 					QueryFeature.WHERE_RANGE, QueryFeature.WHERE_DATE, QueryFeature.WHERE_ENUM,
@@ -111,7 +135,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.LOGICAL_NOT, QueryFeature.SORT, QueryFeature.LIMIT, QueryFeature.SKIP,
 					QueryFeature.COUNT, QueryFeature.TYPE_FILTER, QueryFeature.TYPE_FILTER_STRICT,
 					QueryFeature.PARAMETERS, QueryFeature.OP_TO_LOWER, QueryFeature.OP_TO_UPPER,
-					QueryFeature.FEATUREPATH_NESTED)
+					QueryFeature.FEATUREPATH_NESTED, QueryFeature.DISTINCT, QueryFeature.PROJECTION,
+					QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY, QueryFeature.AGG_AVG,
+					QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM, QueryFeature.AGG_COUNT)
 			.maxFeaturePathDepth(-1)
 			.build();
 
@@ -139,6 +165,12 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 		query.getGroupBy().forEach(path -> checkEmbedded(path, result));
 		query.getSubject().forEach(subject -> checkEmbedded(subject.getFeaturePath(), result));
+		if (query.isDistinct() && query.getSubject().isEmpty()) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
+					CODE_DISTINCT_WITHOUT_PROJECTION,
+					"DISTINCT requires a subject projection under Mongo — whole documents cannot be deduplicated",
+					new Object[] { query }));
+		}
 		return result.getSeverity() == Diagnostic.OK ? Diagnostic.OK_INSTANCE : result;
 	}
 
@@ -167,14 +199,158 @@ public class MongoQueryProcessor implements QueryProcessor {
 	public QueryPlan translate(Query query, QueryContext context) throws QueryException {
 		QueryAnalysis analysis = QueryAnalyzer.analyze(query);
 		QueryShape shape = analysis.shape();
-		if (shape == QueryShape.PROJECTION || shape == QueryShape.AGGREGATION) {
-			throw new QueryException(
-					"PROJECTION/AGGREGATION queries are not yet served by the Mongo find path (see issue #41)");
-		}
 		Bson filter = buildFilter(query, context);
+		if (shape == QueryShape.PROJECTION || shape == QueryShape.AGGREGATION) {
+			return buildPipelinePlan(query, shape, filter);
+		}
 		Bson sort = buildSort(query);
 		return new MongoQueryPlan(query, shape, filter, sort, Math.max(0, query.getSkip()),
 				Math.max(0, query.getLimit()));
+	}
+
+	// -------------------------------------------------- aggregation pipeline
+
+	private MongoQueryPlan buildPipelinePlan(Query query, QueryShape shape, Bson filter) throws QueryException {
+		List<Bson> pipeline = new ArrayList<>();
+		if (filter != null) {
+			pipeline.add(Aggregates.match(filter));
+		}
+		// output key per subject (alias, or the path with dots flattened) in subject order
+		Map<String, QSubject> outputs = new LinkedHashMap<>();
+		List<String> rowKeys = new ArrayList<>();
+		List<String> rowAliases = new ArrayList<>();
+		for (QSubject subject : query.getSubject()) {
+			String key = outputKey(subject);
+			if (outputs.put(key, subject) != null) {
+				throw new QueryException("Duplicate result key '" + key + "' — use distinct aliases");
+			}
+			rowKeys.add(key);
+			rowAliases.add(subject.getAlias());
+		}
+
+		if (shape == QueryShape.AGGREGATION) {
+			pipeline.addAll(groupStages(query, outputs));
+		} else if (query.isDistinct()) {
+			pipeline.addAll(distinctStages(outputs));
+		} else {
+			BsonDocument project = new BsonDocument("_id", new BsonInt32(0));
+			outputs.forEach((key, subject) -> project.put(key,
+					new BsonString("$" + MongoFieldNames.render(subject.getFeaturePath()))));
+			pipeline.add(Aggregates.project(project));
+		}
+
+		Bson sort = buildOutputSort(query, outputs.keySet());
+		if (sort != null) {
+			pipeline.add(Aggregates.sort(sort));
+		}
+		if (query.getSkip() > 0) {
+			pipeline.add(Aggregates.skip(query.getSkip()));
+		}
+		if (query.getLimit() > 0) {
+			pipeline.add(Aggregates.limit(query.getLimit()));
+		}
+		return new MongoQueryPlan(query, shape, filter, sort, Math.max(0, query.getSkip()),
+				Math.max(0, query.getLimit()), pipeline, rowKeys, rowAliases);
+	}
+
+	/** $group over group keys + accumulators, then $project flattening _id.* back to keys. */
+	private List<Bson> groupStages(Query query, Map<String, QSubject> outputs) throws QueryException {
+		// group key: the groupBy paths, keyed by their flattened field name
+		Map<String, String> groupKeys = new LinkedHashMap<>();
+		for (FeaturePath path : query.getGroupBy()) {
+			String field = MongoFieldNames.render(path);
+			groupKeys.put(flatten(field), field);
+		}
+		BsonDocument id = new BsonDocument();
+		groupKeys.forEach((key, field) -> id.put(key, new BsonString("$" + field)));
+
+		BsonDocument group = new BsonDocument("_id", groupKeys.isEmpty() ? BsonNull.VALUE : id);
+		BsonDocument project = new BsonDocument("_id", new BsonInt32(0));
+		for (Map.Entry<String, QSubject> output : outputs.entrySet()) {
+			String key = output.getKey();
+			QSubject subject = output.getValue();
+			String field = MongoFieldNames.render(subject.getFeaturePath());
+			Operation operation = subject.getOperation();
+			String accumulator = accumulator(operation);
+			if (accumulator == null) {
+				// plain subject in an aggregation: must be a group key, projected from _id
+				String groupKey = flatten(field);
+				if (!groupKeys.containsKey(groupKey)) {
+					throw new QueryException("Subject '" + field
+							+ "' in an aggregation query is neither aggregated nor part of groupBy");
+				}
+				project.put(key, new BsonString("$_id." + groupKey));
+				continue;
+			}
+			if (operation instanceof CountOperation) {
+				group.put(key, new BsonDocument("$sum", new BsonInt32(1)));
+			} else {
+				group.put(key, new BsonDocument(accumulator, new BsonString("$" + field)));
+			}
+			project.put(key, new BsonInt32(1));
+		}
+		return List.of(new BsonDocument("$group", group), Aggregates.project(project));
+	}
+
+	/** DISTINCT projection: $group over the projected values, then $project from _id. */
+	private List<Bson> distinctStages(Map<String, QSubject> outputs) {
+		BsonDocument id = new BsonDocument();
+		BsonDocument project = new BsonDocument("_id", new BsonInt32(0));
+		outputs.forEach((key, subject) -> {
+			id.put(key, new BsonString("$" + MongoFieldNames.render(subject.getFeaturePath())));
+			project.put(key, new BsonString("$_id." + key));
+		});
+		return List.of(new BsonDocument("$group", new BsonDocument("_id", id)), Aggregates.project(project));
+	}
+
+	private static String accumulator(Operation operation) {
+		if (operation instanceof Average) {
+			return "$avg";
+		}
+		if (operation instanceof Min) {
+			return "$min";
+		}
+		if (operation instanceof Max) {
+			return "$max";
+		}
+		if (operation instanceof Sum) {
+			return "$sum";
+		}
+		if (operation instanceof CountOperation) {
+			return "$sum"; // rendered as {$sum: 1}
+		}
+		return null;
+	}
+
+	private static String outputKey(QSubject subject) {
+		if (subject.getAlias() != null && !subject.getAlias().isBlank()) {
+			return subject.getAlias();
+		}
+		return flatten(MongoFieldNames.render(subject.getFeaturePath()));
+	}
+
+	/** $project/$group output keys must not contain dots. */
+	private static String flatten(String field) {
+		return field.replace('.', '_');
+	}
+
+	/** Sort for pipeline output: sort features must address an output key. */
+	private Bson buildOutputSort(Query query, java.util.Set<String> outputKeys) throws QueryException {
+		if (query.getSortBy().isEmpty()) {
+			return null;
+		}
+		Bson[] entries = new Bson[query.getSortBy().size()];
+		for (int i = 0; i < query.getSortBy().size(); i++) {
+			SortEntity sort = query.getSortBy().get(i);
+			String key = sort.getSortFeature().getName();
+			if (!outputKeys.contains(key)) {
+				throw new QueryException("Sort feature '" + key
+						+ "' does not address an output key of the projection/aggregation (keys: " + outputKeys
+						+ ") — alias the subject accordingly");
+			}
+			entries[i] = sort.getSortOrder() == SortOrder.ASC ? Sorts.ascending(key) : Sorts.descending(key);
+		}
+		return entries.length == 1 ? entries[0] : Sorts.orderBy(entries);
 	}
 
 	// -------------------------------------------------- filter

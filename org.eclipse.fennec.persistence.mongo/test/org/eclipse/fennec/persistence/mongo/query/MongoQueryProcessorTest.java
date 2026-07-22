@@ -251,19 +251,117 @@ class MongoQueryProcessorTest {
 	}
 
 	@Test
-	void unsupportedShapesAreRefusedInTranslate() {
-		Query projection = QueryBuilder.create().select(name).build();
-		assertThatThrownBy(() -> translate(projection)).isInstanceOf(QueryException.class)
-				.hasMessageContaining("#41");
+	void projectionTranslatesToMatchAndProject() throws QueryException {
+		Query query = QueryBuilder.create()
+				.where(age).gte(18)
+				.selectAs("personName", name)
+				.select(address, street)
+				.build();
+		MongoQueryPlan plan = translate(query);
+
+		assertThat(plan.shape()).isEqualTo(QueryShape.PROJECTION);
+		assertThat(plan.aggregation()).isTrue();
+		assertThat(plan.rowKeys()).containsExactly("personName", "address_street");
+		assertThat(plan.rowAliases()).containsExactly("personName", null);
+		assertThat(plan.pipeline()).hasSize(2);
+		assertThat(render(plan.pipeline().get(0)))
+				.isEqualTo(BsonDocument.parse("{'$match': {'age': {'$gte': 18}}}"));
+		assertThat(render(plan.pipeline().get(1))).isEqualTo(BsonDocument.parse(
+				"{'$project': {'_id': 0, 'personName': '$name', 'address_street': '$address.street'}}"));
 	}
 
 	@Test
-	void unsupportedFeatureIsRefusedByValidate() {
+	void distinctProjectionGroupsOverKeys() throws QueryException {
+		Query query = QueryBuilder.create().selectAs("n", name).distinct().build();
+		MongoQueryPlan plan = translate(query);
+
+		assertThat(plan.pipeline()).hasSize(2);
+		assertThat(render(plan.pipeline().get(0)))
+				.isEqualTo(BsonDocument.parse("{'$group': {'_id': {'n': '$name'}}}"));
+		assertThat(render(plan.pipeline().get(1)))
+				.isEqualTo(BsonDocument.parse("{'$project': {'_id': 0, 'n': '$_id.n'}}"));
+	}
+
+	@Test
+	void groupedAggregationBuildsGroupAndProject() throws QueryException {
+		Query query = QueryBuilder.create()
+				.select(name)
+				.avg("avgAge", age)
+				.countOf("cnt", age)
+				.groupBy(name)
+				.build();
+		MongoQueryPlan plan = translate(query);
+
+		assertThat(plan.shape()).isEqualTo(QueryShape.AGGREGATION);
+		assertThat(plan.pipeline()).hasSize(2);
+		assertThat(render(plan.pipeline().get(0))).isEqualTo(BsonDocument.parse(
+				"{'$group': {'_id': {'name': '$name'}, 'avgAge': {'$avg': '$age'}, 'cnt': {'$sum': 1}}}"));
+		assertThat(render(plan.pipeline().get(1))).isEqualTo(BsonDocument.parse(
+				"{'$project': {'_id': 0, 'name': '$_id.name', 'avgAge': 1, 'cnt': 1}}"));
+	}
+
+	@Test
+	void ungroupedAggregateGroupsOverNull() throws QueryException {
+		Query query = QueryBuilder.create().max("maxAge", age).build();
+		MongoQueryPlan plan = translate(query);
+
+		assertThat(render(plan.pipeline().get(0))).isEqualTo(BsonDocument.parse(
+				"{'$group': {'_id': null, 'maxAge': {'$max': '$age'}}}"));
+	}
+
+	@Test
+	void pipelineSortSkipLimitAddressOutputKeys() throws QueryException {
+		EAttribute avgAge = EcoreFactory.eINSTANCE.createEAttribute();
+		avgAge.setName("avgAge");
+		avgAge.setEType(EcorePackage.Literals.EDOUBLE);
+
+		Query query = QueryBuilder.create()
+				.select(name)
+				.avg("avgAge", age)
+				.groupBy(name)
+				.sortBy(avgAge, SortOrder.DESC)
+				.skip(2)
+				.limit(5)
+				.build();
+		MongoQueryPlan plan = translate(query);
+
+		assertThat(plan.pipeline()).hasSize(5);
+		assertThat(render(plan.pipeline().get(2))).isEqualTo(BsonDocument.parse("{'$sort': {'avgAge': -1}}"));
+		assertThat(render(plan.pipeline().get(3))).isEqualTo(BsonDocument.parse("{'$skip': 2}"));
+		assertThat(render(plan.pipeline().get(4))).isEqualTo(BsonDocument.parse("{'$limit': 5}"));
+	}
+
+	@Test
+	void sortOnNonOutputKeyIsRefused() {
+		Query query = QueryBuilder.create()
+				.avg("avgAge", age)
+				.sortBy(name, SortOrder.ASC)
+				.build();
+		assertThatThrownBy(() -> translate(query))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("name");
+	}
+
+	@Test
+	void plainSubjectOutsideGroupByIsRefused() {
+		Query query = QueryBuilder.create()
+				.select(name)
+				.avg("avgAge", age)
+				.groupBy(age)
+				.build();
+		assertThatThrownBy(() -> translate(query))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("name");
+	}
+
+	@Test
+	void distinctWithoutProjectionIsRefusedByValidate() {
 		Query distinct = QueryBuilder.create().where(age).eq(1).distinct().build();
 		Diagnostic diagnostic = processor.validate(distinct, person);
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.getChildren())
-				.anySatisfy(child -> assertThat(child.getMessage()).contains("DISTINCT"));
+				.anySatisfy(child -> assertThat(child.getCode())
+						.isEqualTo(MongoQueryProcessor.CODE_DISTINCT_WITHOUT_PROJECTION));
 	}
 
 	@Test
