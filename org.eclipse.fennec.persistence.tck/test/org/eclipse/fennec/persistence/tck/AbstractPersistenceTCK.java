@@ -13,9 +13,11 @@
 package org.eclipse.fennec.persistence.tck;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -34,7 +36,14 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.SortOrder;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.pushstreams.PersistencePushStreams;
+import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryResultRow;
+import org.eclipse.fennec.persistence.query.api.QueryShape;
+import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.junit.jupiter.api.AfterEach;
@@ -431,5 +440,149 @@ public abstract class AbstractPersistenceTCK {
 		synchronized (names) {
 			assertThat(names).hasSize(total);
 		}
+	}
+
+	// ------------------------------------------------------------ query TCK
+
+	/** Saves the standard query fixture: three persons with distinct names/ages. */
+	private void saveQueryFixture() throws Exception {
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Person",
+				newPerson(1, "Alice", 30),
+				newPerson(2, "Bob", 40),
+				newPerson(3, "Carol", 50));
+	}
+
+	private QueryableResource queryable(ResourceSet resourceSet, String typeName) {
+		return (QueryableResource) resourceSet.createResource(uriFor(typeName));
+	}
+
+	@Test
+	public void queryEqFilterSelectsMatchingObjects() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create().where(personAge).eq(40).build())) {
+			assertThat(result.shape()).isEqualTo(QueryShape.OBJECTS);
+			List<EObject> objects = result.objects().toList();
+			assertThat(objects).hasSize(1);
+			assertThat(objects.get(0).eGet(personName)).isEqualTo("Bob");
+		}
+	}
+
+	@Test
+	public void queryChainedPredicates() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create()
+						.where(personAge).gte(40)
+						.and(personAge).lt(50)
+						.or(personName).eq("Alice")
+						.build())) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactlyInAnyOrder("Alice", "Bob");
+		}
+	}
+
+	@Test
+	public void queryStringMatching() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create().where(personName).contains("aro").build())) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+	}
+
+	@Test
+	public void querySortSkipLimit() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create()
+						.sortBy(personAge, SortOrder.DESC)
+						.skip(1)
+						.limit(1)
+						.build())) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+	}
+
+	@Test
+	public void queryCountShape() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create().where(personAge).gt(30).count().build())) {
+			assertThat(result.shape()).isEqualTo(QueryShape.COUNT);
+			assertThat(result.count()).isEqualTo(2);
+		}
+	}
+
+	@Test
+	public void queryParameterBinding() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create().where(personAge).eqParam("wanted").build(),
+						Map.of("wanted", 50), null)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+	}
+
+	@Test
+	public void queryProjectionRows() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create()
+						.where(personAge).gte(40)
+						.selectAs("n", personName)
+						.build())) {
+			assertThat(result.shape()).isEqualTo(QueryShape.PROJECTION);
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(2);
+			assertThat(rows).extracting(row -> row.get("n"))
+					.containsExactlyInAnyOrder("Bob", "Carol");
+			assertThat(rows).extracting(row -> row.get(0))
+					.containsExactlyInAnyOrder("Bob", "Carol");
+		}
+	}
+
+	@Test
+	public void queryWholeSetAggregation() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet, "Person")
+				.query(QueryBuilder.create()
+						.avg("avgAge", personAge)
+						.countOf("cnt", personAge)
+						.build())) {
+			assertThat(result.shape()).isEqualTo(QueryShape.AGGREGATION);
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(1);
+			QueryResultRow row = rows.get(0);
+			assertThat(((Number) row.get("avgAge")).doubleValue()).isEqualTo(40.0);
+			assertThat(((Number) row.get("cnt")).longValue()).isEqualTo(3L);
+		}
+	}
+
+	@Test
+	public void queryRefusalIsAnIOExceptionWithDiagnostics() throws Exception {
+		saveQueryFixture();
+		ResourceSet readSet = createBackendResourceSet();
+		// sorting an aggregation by a non-output key is refused by both backends
+		Query bad = QueryBuilder.create()
+				.avg("avgAge", personAge)
+				.sortBy(personName, SortOrder.ASC)
+				.build();
+		QueryableResource resource = queryable(readSet, "Person");
+		assertThatThrownBy(() -> resource.query(bad).close())
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("name");
 	}
 }
