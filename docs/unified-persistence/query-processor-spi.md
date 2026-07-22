@@ -1,6 +1,9 @@
 # QueryProcessor SPI & Capability model
 
-**Status:** design proposal (2026-07-22). Companion to `concept.md` §3.1 and §14.
+**Status:** implemented (2026-07-23, #32–#46; user guide: `query-usage.md`). Original design
+proposal of 2026-07-22 — kept as the architecture reference; deviations are recorded in the
+issues (notably #42: JPQL instead of Criteria, #39: builder lives in `query.model`).
+Companion to `concept.md` §3.1 and §14.
 Turns the existing, backend-neutral query metamodel
 (`fennec.common.models/org.eclipse.fennec.query.model`) into a per-backend interpreter SPI
 serving **both** JPA/EclipseLink and MongoDB, with an honest capability declaration instead of
