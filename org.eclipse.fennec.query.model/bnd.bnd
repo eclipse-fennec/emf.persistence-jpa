@@ -26,3 +26,6 @@ src=${^src},src-gen
 -buildpath: \
 	org.osgi.service.condition;version=latest,\
 	org.eclipse.fennec.model;version=snapshot
+
+-testpath: \
+	assertj-core
