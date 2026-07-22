@@ -131,6 +131,22 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 				return createAverageAdapter();
 			}
 			@Override
+			public Adapter caseMin(Min object) {
+				return createMinAdapter();
+			}
+			@Override
+			public Adapter caseMax(Max object) {
+				return createMaxAdapter();
+			}
+			@Override
+			public Adapter caseSum(Sum object) {
+				return createSumAdapter();
+			}
+			@Override
+			public Adapter caseCountOperation(CountOperation object) {
+				return createCountOperationAdapter();
+			}
+			@Override
 			public Adapter caseComparator(Comparator object) {
 				return createComparatorAdapter();
 			}
@@ -429,6 +445,62 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createAverageAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Min <em>Min</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.Min
+	 * @generated
+	 */
+	public Adapter createMinAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Max <em>Max</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.Max
+	 * @generated
+	 */
+	public Adapter createMaxAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Sum <em>Sum</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.Sum
+	 * @generated
+	 */
+	public Adapter createSumAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.CountOperation <em>Count Operation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.CountOperation
+	 * @generated
+	 */
+	public Adapter createCountOperationAdapter() {
 		return null;
 	}
 

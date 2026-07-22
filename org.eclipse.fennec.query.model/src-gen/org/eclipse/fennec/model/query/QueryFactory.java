@@ -117,6 +117,42 @@ public interface QueryFactory extends EFactory {
 	Average createAverage();
 
 	/**
+	 * Returns a new object of class '<em>Min</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Min</em>'.
+	 * @generated
+	 */
+	Min createMin();
+
+	/**
+	 * Returns a new object of class '<em>Max</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Max</em>'.
+	 * @generated
+	 */
+	Max createMax();
+
+	/**
+	 * Returns a new object of class '<em>Sum</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Sum</em>'.
+	 * @generated
+	 */
+	Sum createSum();
+
+	/**
+	 * Returns a new object of class '<em>Count Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Count Operation</em>'.
+	 * @generated
+	 */
+	CountOperation createCountOperation();
+
+	/**
 	 * Returns a new object of class '<em>Ends With</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

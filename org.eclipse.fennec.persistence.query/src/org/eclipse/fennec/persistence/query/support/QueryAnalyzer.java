@@ -18,11 +18,14 @@ import java.util.Set;
 import org.eclipse.fennec.model.query.And;
 import org.eclipse.fennec.model.query.Average;
 import org.eclipse.fennec.model.query.BoolComparator;
+import org.eclipse.fennec.model.query.CountOperation;
 import org.eclipse.fennec.model.query.Comparator;
 import org.eclipse.fennec.model.query.DateComparator;
 import org.eclipse.fennec.model.query.EnumComparator;
 import org.eclipse.fennec.model.query.Eq;
 import org.eclipse.fennec.model.query.IsInRange;
+import org.eclipse.fennec.model.query.Max;
+import org.eclipse.fennec.model.query.Min;
 import org.eclipse.fennec.model.query.Not;
 import org.eclipse.fennec.model.query.NumberComparator;
 import org.eclipse.fennec.model.query.Operation;
@@ -31,8 +34,10 @@ import org.eclipse.fennec.model.query.QObject;
 import org.eclipse.fennec.model.query.QSubject;
 import org.eclipse.fennec.model.query.QWhere;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.NumberOperation;
 import org.eclipse.fennec.model.query.SimpleValueComparator;
 import org.eclipse.fennec.model.query.StringComparator;
+import org.eclipse.fennec.model.query.Sum;
 import org.eclipse.fennec.model.query.ToLowerCase;
 import org.eclipse.fennec.model.query.ToUpperCase;
 import org.eclipse.fennec.model.utilities.FeaturePath;
@@ -89,7 +94,7 @@ public final class QueryAnalyzer {
 				features.add(QueryFeature.LOGICAL_NOT);
 			}
 			analyzeComparator(where.getComparator(), features);
-			analyzeOperation(where.getOperation(), false, features);
+			analyzeOperation(where.getOperation(), features);
 			int depth = depthOf(where.getFeaturePath());
 			maxDepth = Math.max(maxDepth, depth);
 			if (depth > 1) {
@@ -120,7 +125,7 @@ public final class QueryAnalyzer {
 			if (depth > 1) {
 				features.add(QueryFeature.PROJECTION_NESTED);
 			}
-			aggregating |= analyzeOperation(subject.getOperation(), grouped, features);
+			aggregating |= analyzeOperation(subject.getOperation(), features);
 		}
 
 		// --- shaping ---
@@ -194,9 +199,13 @@ public final class QueryAnalyzer {
 	}
 
 	/**
-	 * @return {@code true} if the operation is an aggregate in the given grouping context
+	 * Registers the operation's feature. Aggregate functions ({@link NumberOperation}
+	 * subclasses) always map to their {@code AGG_*} feature — without {@code groupBy}
+	 * they aggregate the whole result set (single row), mirroring SQL semantics.
+	 *
+	 * @return {@code true} if the operation is an aggregate function
 	 */
-	private static boolean analyzeOperation(Operation operation, boolean grouped, Set<QueryFeature> features) {
+	private static boolean analyzeOperation(Operation operation, Set<QueryFeature> features) {
 		if (operation == null) {
 			return false;
 		}
@@ -205,11 +214,20 @@ public final class QueryAnalyzer {
 		} else if (operation instanceof ToUpperCase) {
 			features.add(QueryFeature.OP_TO_UPPER);
 		} else if (operation instanceof Average) {
-			if (grouped) {
-				features.add(QueryFeature.AGG_AVG);
-				return true;
-			}
-			features.add(QueryFeature.OP_AVERAGE);
+			features.add(QueryFeature.AGG_AVG);
+			return true;
+		} else if (operation instanceof Min) {
+			features.add(QueryFeature.AGG_MIN);
+			return true;
+		} else if (operation instanceof Max) {
+			features.add(QueryFeature.AGG_MAX);
+			return true;
+		} else if (operation instanceof Sum) {
+			features.add(QueryFeature.AGG_SUM);
+			return true;
+		} else if (operation instanceof CountOperation) {
+			features.add(QueryFeature.AGG_COUNT);
+			return true;
 		}
 		return false;
 	}

@@ -170,6 +170,38 @@ public class QuerySwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case QueryPackage.MIN: {
+				Min min = (Min)theEObject;
+				T result = caseMin(min);
+				if (result == null) result = caseNumberOperation(min);
+				if (result == null) result = caseOperation(min);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case QueryPackage.MAX: {
+				Max max = (Max)theEObject;
+				T result = caseMax(max);
+				if (result == null) result = caseNumberOperation(max);
+				if (result == null) result = caseOperation(max);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case QueryPackage.SUM: {
+				Sum sum = (Sum)theEObject;
+				T result = caseSum(sum);
+				if (result == null) result = caseNumberOperation(sum);
+				if (result == null) result = caseOperation(sum);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case QueryPackage.COUNT_OPERATION: {
+				CountOperation countOperation = (CountOperation)theEObject;
+				T result = caseCountOperation(countOperation);
+				if (result == null) result = caseNumberOperation(countOperation);
+				if (result == null) result = caseOperation(countOperation);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case QueryPackage.COMPARATOR: {
 				Comparator comparator = (Comparator)theEObject;
 				T result = caseComparator(comparator);
@@ -573,6 +605,66 @@ public class QuerySwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseAverage(Average object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Min</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Min</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseMin(Min object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Max</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Max</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseMax(Max object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Sum</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Sum</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseSum(Sum object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Count Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Count Operation</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseCountOperation(CountOperation object) {
 		return null;
 	}
 

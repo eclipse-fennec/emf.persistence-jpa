@@ -641,7 +641,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getOperation()
 	 * @generated
 	 */
-	int OPERATION = 35;
+	int OPERATION = 39;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -910,6 +910,190 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int AVERAGE_OPERATION_COUNT = NUMBER_OPERATION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.MinImpl <em>Min</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.MinImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getMin()
+	 * @generated
+	 */
+	int MIN = 13;
+
+	/**
+	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MIN__SUITABLE_FOR_TYPE = NUMBER_OPERATION__SUITABLE_FOR_TYPE;
+
+	/**
+	 * The number of structural features of the '<em>Min</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MIN_FEATURE_COUNT = NUMBER_OPERATION_FEATURE_COUNT + 0;
+
+	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MIN___EXECUTE = NUMBER_OPERATION___EXECUTE;
+
+	/**
+	 * The number of operations of the '<em>Min</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MIN_OPERATION_COUNT = NUMBER_OPERATION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.MaxImpl <em>Max</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.MaxImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getMax()
+	 * @generated
+	 */
+	int MAX = 14;
+
+	/**
+	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAX__SUITABLE_FOR_TYPE = NUMBER_OPERATION__SUITABLE_FOR_TYPE;
+
+	/**
+	 * The number of structural features of the '<em>Max</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAX_FEATURE_COUNT = NUMBER_OPERATION_FEATURE_COUNT + 0;
+
+	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAX___EXECUTE = NUMBER_OPERATION___EXECUTE;
+
+	/**
+	 * The number of operations of the '<em>Max</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAX_OPERATION_COUNT = NUMBER_OPERATION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.SumImpl <em>Sum</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.SumImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSum()
+	 * @generated
+	 */
+	int SUM = 15;
+
+	/**
+	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUM__SUITABLE_FOR_TYPE = NUMBER_OPERATION__SUITABLE_FOR_TYPE;
+
+	/**
+	 * The number of structural features of the '<em>Sum</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUM_FEATURE_COUNT = NUMBER_OPERATION_FEATURE_COUNT + 0;
+
+	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUM___EXECUTE = NUMBER_OPERATION___EXECUTE;
+
+	/**
+	 * The number of operations of the '<em>Sum</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUM_OPERATION_COUNT = NUMBER_OPERATION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.CountOperationImpl <em>Count Operation</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.CountOperationImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getCountOperation()
+	 * @generated
+	 */
+	int COUNT_OPERATION = 16;
+
+	/**
+	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COUNT_OPERATION__SUITABLE_FOR_TYPE = NUMBER_OPERATION__SUITABLE_FOR_TYPE;
+
+	/**
+	 * The number of structural features of the '<em>Count Operation</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COUNT_OPERATION_FEATURE_COUNT = NUMBER_OPERATION_FEATURE_COUNT + 0;
+
+	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COUNT_OPERATION___EXECUTE = NUMBER_OPERATION___EXECUTE;
+
+	/**
+	 * The number of operations of the '<em>Count Operation</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COUNT_OPERATION_OPERATION_COUNT = NUMBER_OPERATION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.ComparatorImpl <em>Comparator</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -917,7 +1101,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComparator()
 	 * @generated
 	 */
-	int COMPARATOR = 13;
+	int COMPARATOR = 17;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -972,7 +1156,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSimpleValueComparator()
 	 * @generated
 	 */
-	int SIMPLE_VALUE_COMPARATOR = 14;
+	int SIMPLE_VALUE_COMPARATOR = 18;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1036,7 +1220,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getStringComparator()
 	 * @generated
 	 */
-	int STRING_COMPARATOR = 15;
+	int STRING_COMPARATOR = 19;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1100,7 +1284,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getEndsWith()
 	 * @generated
 	 */
-	int ENDS_WITH = 16;
+	int ENDS_WITH = 20;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1164,7 +1348,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getStartWith()
 	 * @generated
 	 */
-	int START_WITH = 17;
+	int START_WITH = 21;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1228,7 +1412,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getContains()
 	 * @generated
 	 */
-	int CONTAINS = 18;
+	int CONTAINS = 22;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1292,7 +1476,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getLike()
 	 * @generated
 	 */
-	int LIKE = 19;
+	int LIKE = 23;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1356,7 +1540,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getDateComparator()
 	 * @generated
 	 */
-	int DATE_COMPARATOR = 20;
+	int DATE_COMPARATOR = 24;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1420,7 +1604,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsBefore()
 	 * @generated
 	 */
-	int IS_BEFORE = 21;
+	int IS_BEFORE = 25;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1484,7 +1668,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsAfter()
 	 * @generated
 	 */
-	int IS_AFTER = 22;
+	int IS_AFTER = 26;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1548,7 +1732,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsBeforeOrEqual()
 	 * @generated
 	 */
-	int IS_BEFORE_OR_EQUAL = 23;
+	int IS_BEFORE_OR_EQUAL = 27;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1612,7 +1796,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsAfterOrEqual()
 	 * @generated
 	 */
-	int IS_AFTER_OR_EQUAL = 24;
+	int IS_AFTER_OR_EQUAL = 28;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1676,7 +1860,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsInRange()
 	 * @generated
 	 */
-	int IS_IN_RANGE = 25;
+	int IS_IN_RANGE = 29;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1767,7 +1951,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getNumberComparator()
 	 * @generated
 	 */
-	int NUMBER_COMPARATOR = 26;
+	int NUMBER_COMPARATOR = 30;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1831,7 +2015,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getLt()
 	 * @generated
 	 */
-	int LT = 27;
+	int LT = 31;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1895,7 +2079,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getLte()
 	 * @generated
 	 */
-	int LTE = 28;
+	int LTE = 32;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -1959,7 +2143,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGte()
 	 * @generated
 	 */
-	int GTE = 29;
+	int GTE = 33;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2023,7 +2207,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGt()
 	 * @generated
 	 */
-	int GT = 30;
+	int GT = 34;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2087,7 +2271,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getEq()
 	 * @generated
 	 */
-	int EQ = 31;
+	int EQ = 35;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2151,7 +2335,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getBoolComparator()
 	 * @generated
 	 */
-	int BOOL_COMPARATOR = 32;
+	int BOOL_COMPARATOR = 36;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2215,7 +2399,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsBool()
 	 * @generated
 	 */
-	int IS_BOOL = 33;
+	int IS_BOOL = 37;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2279,7 +2463,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSortEntity()
 	 * @generated
 	 */
-	int SORT_ENTITY = 34;
+	int SORT_ENTITY = 38;
 
 	/**
 	 * The feature id for the '<em><b>Sort Order</b></em>' attribute.
@@ -2325,7 +2509,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getEnumComparator()
 	 * @generated
 	 */
-	int ENUM_COMPARATOR = 36;
+	int ENUM_COMPARATOR = 40;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2389,7 +2573,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getIsLiteral()
 	 * @generated
 	 */
-	int IS_LITERAL = 37;
+	int IS_LITERAL = 41;
 
 	/**
 	 * The feature id for the '<em><b>Suitable For Type</b></em>' attribute.
@@ -2453,7 +2637,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSortOrder()
 	 * @generated
 	 */
-	int SORT_ORDER = 38;
+	int SORT_ORDER = 42;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.SuitableType <em>Suitable Type</em>}' enum.
@@ -2463,7 +2647,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSuitableType()
 	 * @generated
 	 */
-	int SUITABLE_TYPE = 39;
+	int SUITABLE_TYPE = 43;
 
 
 	/**
@@ -2825,6 +3009,46 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EClass getAverage();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Min <em>Min</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Min</em>'.
+	 * @see org.eclipse.fennec.model.query.Min
+	 * @generated
+	 */
+	EClass getMin();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Max <em>Max</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Max</em>'.
+	 * @see org.eclipse.fennec.model.query.Max
+	 * @generated
+	 */
+	EClass getMax();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Sum <em>Sum</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Sum</em>'.
+	 * @see org.eclipse.fennec.model.query.Sum
+	 * @generated
+	 */
+	EClass getSum();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.CountOperation <em>Count Operation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Count Operation</em>'.
+	 * @see org.eclipse.fennec.model.query.CountOperation
+	 * @generated
+	 */
+	EClass getCountOperation();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Comparator <em>Comparator</em>}'.
@@ -3546,6 +3770,46 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EClass AVERAGE = eINSTANCE.getAverage();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.MinImpl <em>Min</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.MinImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getMin()
+		 * @generated
+		 */
+		EClass MIN = eINSTANCE.getMin();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.MaxImpl <em>Max</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.MaxImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getMax()
+		 * @generated
+		 */
+		EClass MAX = eINSTANCE.getMax();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.SumImpl <em>Sum</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.SumImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSum()
+		 * @generated
+		 */
+		EClass SUM = eINSTANCE.getSum();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.CountOperationImpl <em>Count Operation</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.CountOperationImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getCountOperation()
+		 * @generated
+		 */
+		EClass COUNT_OPERATION = eINSTANCE.getCountOperation();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.ComparatorImpl <em>Comparator</em>}' class.

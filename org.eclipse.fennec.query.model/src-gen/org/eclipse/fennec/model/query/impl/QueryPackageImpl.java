@@ -28,6 +28,7 @@ import org.eclipse.fennec.model.query.BoolComparator;
 import org.eclipse.fennec.model.query.Chaining;
 import org.eclipse.fennec.model.query.Comparator;
 import org.eclipse.fennec.model.query.Contains;
+import org.eclipse.fennec.model.query.CountOperation;
 import org.eclipse.fennec.model.query.DateComparator;
 import org.eclipse.fennec.model.query.EndsWith;
 import org.eclipse.fennec.model.query.EnumComparator;
@@ -44,6 +45,8 @@ import org.eclipse.fennec.model.query.IsLiteral;
 import org.eclipse.fennec.model.query.Like;
 import org.eclipse.fennec.model.query.Lt;
 import org.eclipse.fennec.model.query.Lte;
+import org.eclipse.fennec.model.query.Max;
+import org.eclipse.fennec.model.query.Min;
 import org.eclipse.fennec.model.query.Not;
 import org.eclipse.fennec.model.query.NumberComparator;
 import org.eclipse.fennec.model.query.NumberOperation;
@@ -62,6 +65,7 @@ import org.eclipse.fennec.model.query.StartWith;
 import org.eclipse.fennec.model.query.StringComparator;
 import org.eclipse.fennec.model.query.StringOperation;
 import org.eclipse.fennec.model.query.SuitableType;
+import org.eclipse.fennec.model.query.Sum;
 import org.eclipse.fennec.model.query.ToLowerCase;
 import org.eclipse.fennec.model.query.ToUpperCase;
 
@@ -164,6 +168,34 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	private EClass averageEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass minEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass maxEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass sumEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass countOperationEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -763,6 +795,46 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EClass getMin() {
+		return minEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getMax() {
+		return maxEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getSum() {
+		return sumEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getCountOperation() {
+		return countOperationEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getComparator() {
 		return comparatorEClass;
 	}
@@ -1223,6 +1295,14 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		averageEClass = createEClass(AVERAGE);
 
+		minEClass = createEClass(MIN);
+
+		maxEClass = createEClass(MAX);
+
+		sumEClass = createEClass(SUM);
+
+		countOperationEClass = createEClass(COUNT_OPERATION);
+
 		comparatorEClass = createEClass(COMPARATOR);
 		createEAttribute(comparatorEClass, COMPARATOR__SUITABLE_FOR_TYPE);
 		createEReference(comparatorEClass, COMPARATOR__WHERE);
@@ -1330,6 +1410,10 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		toUpperCaseEClass.getESuperTypes().add(this.getStringOperation());
 		numberOperationEClass.getESuperTypes().add(this.getOperation());
 		averageEClass.getESuperTypes().add(this.getNumberOperation());
+		minEClass.getESuperTypes().add(this.getNumberOperation());
+		maxEClass.getESuperTypes().add(this.getNumberOperation());
+		sumEClass.getESuperTypes().add(this.getNumberOperation());
+		countOperationEClass.getESuperTypes().add(this.getNumberOperation());
 		simpleValueComparatorEClass.getESuperTypes().add(this.getComparator());
 		stringComparatorEClass.getESuperTypes().add(this.getSimpleValueComparator());
 		endsWithEClass.getESuperTypes().add(this.getStringComparator());
@@ -1401,6 +1485,14 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEClass(numberOperationEClass, NumberOperation.class, "NumberOperation", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(averageEClass, Average.class, "Average", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(minEClass, Min.class, "Min", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(maxEClass, Max.class, "Max", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(sumEClass, Sum.class, "Sum", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(countOperationEClass, CountOperation.class, "CountOperation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(comparatorEClass, Comparator.class, "Comparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getComparator_SuitableForType(), this.getSuitableType(), "suitableForType", null, 1, 1, Comparator.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

@@ -77,6 +77,10 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 			case QueryPackage.TO_LOWER_CASE: return createToLowerCase();
 			case QueryPackage.TO_UPPER_CASE: return createToUpperCase();
 			case QueryPackage.AVERAGE: return createAverage();
+			case QueryPackage.MIN: return createMin();
+			case QueryPackage.MAX: return createMax();
+			case QueryPackage.SUM: return createSum();
+			case QueryPackage.COUNT_OPERATION: return createCountOperation();
 			case QueryPackage.ENDS_WITH: return createEndsWith();
 			case QueryPackage.START_WITH: return createStartWith();
 			case QueryPackage.CONTAINS: return createContains();
@@ -231,6 +235,50 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 	public Average createAverage() {
 		AverageImpl average = new AverageImpl();
 		return average;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Min createMin() {
+		MinImpl min = new MinImpl();
+		return min;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Max createMax() {
+		MaxImpl max = new MaxImpl();
+		return max;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Sum createSum() {
+		SumImpl sum = new SumImpl();
+		return sum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public CountOperation createCountOperation() {
+		CountOperationImpl countOperation = new CountOperationImpl();
+		return countOperation;
 	}
 
 	/**
