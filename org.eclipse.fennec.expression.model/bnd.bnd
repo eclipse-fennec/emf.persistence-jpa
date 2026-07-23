@@ -1,0 +1,24 @@
+Bundle-Name: Eclipse Fennec Expression Model
+Bundle-Description: Backend-neutral expression-tree IR for predicates over EMF features. \
+	Structurally informed by Essential OCL, deliberately its own world (curated construct \
+	subset, no OCL type dependency). See docs/unified-persistence/query-ir-redesign.md.
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/expression.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/expression.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model
+
+-buildpath: \
+	org.osgi.service.condition;version=latest
+
+-testpath: \
+	assertj-core

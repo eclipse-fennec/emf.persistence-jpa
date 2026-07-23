@@ -1,0 +1,2526 @@
+/*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ * 
+ * Contributors:
+ *   Data In Motion Consulting - initial implementation
+ */
+package org.eclipse.fennec.model.expression;
+
+
+import org.eclipse.emf.ecore.EAttribute;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EEnum;
+import org.eclipse.emf.ecore.EReference;
+
+import org.eclipse.fennec.emf.osgi.annotation.provide.EPackage;
+
+import org.osgi.annotation.versioning.ProviderType;
+
+/**
+ * <!-- begin-user-doc -->
+ * The <b>Package</b> for the model.
+ * It contains accessors for the meta objects to represent
+ * <ul>
+ *   <li>each class,</li>
+ *   <li>each feature of each class,</li>
+ *   <li>each operation of each class,</li>
+ *   <li>each enum,</li>
+ *   <li>and each data type</li>
+ * </ul>
+ * <!-- end-user-doc -->
+ * <!-- begin-model-doc -->
+ * The Fennec Expression Model — a backend-neutral, typed expression-tree IR for predicates over EMF features. Structurally informed by Essential OCL (the documented semantic reference per construct) but deliberately its own world: no type-level dependency on any OCL model, and a curated construct subset — what the model cannot express, no backend has to refuse. Explicit constructs (Comparison with an operator enum, StringMatch with a case-insensitivity flag, Exists/ForAll iterators, first-class ParameterRef, typed literals) instead of generic operation calls. See docs/unified-persistence/query-ir-redesign.md, decisions R1-R5.
+ * <!-- end-model-doc -->
+ * @see org.eclipse.fennec.model.expression.ExpressionFactory
+ * @model kind="package"
+ *        annotation="Version value='1.0'"
+ * @generated
+ */
+@ProviderType
+@EPackage(uri = ExpressionPackage.eNS_URI, genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
+	/**
+	 * The package name.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	String eNAME = "expression";
+
+	/**
+	 * The package namespace URI.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	String eNS_URI = "https://eclipse.org/fennec/expression/1.0.0";
+
+	/**
+	 * The package namespace name.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	String eNS_PREFIX = "expr";
+
+	/**
+	 * The singleton instance of the package.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	ExpressionPackage eINSTANCE = org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl.init();
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ExpressionImpl <em>Expression</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getExpression()
+	 * @generated
+	 */
+	int EXPRESSION = 0;
+
+	/**
+	 * The number of structural features of the '<em>Expression</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPRESSION_FEATURE_COUNT = 0;
+
+	/**
+	 * The number of operations of the '<em>Expression</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPRESSION_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.JunctionImpl <em>Junction</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.JunctionImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getJunction()
+	 * @generated
+	 */
+	int JUNCTION = 1;
+
+	/**
+	 * The feature id for the '<em><b>Operands</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JUNCTION__OPERANDS = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Junction</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JUNCTION_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Junction</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JUNCTION_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.AndImpl <em>And</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.AndImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAnd()
+	 * @generated
+	 */
+	int AND = 2;
+
+	/**
+	 * The feature id for the '<em><b>Operands</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int AND__OPERANDS = JUNCTION__OPERANDS;
+
+	/**
+	 * The number of structural features of the '<em>And</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int AND_FEATURE_COUNT = JUNCTION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>And</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int AND_OPERATION_COUNT = JUNCTION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.OrImpl <em>Or</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.OrImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getOr()
+	 * @generated
+	 */
+	int OR = 3;
+
+	/**
+	 * The feature id for the '<em><b>Operands</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int OR__OPERANDS = JUNCTION__OPERANDS;
+
+	/**
+	 * The number of structural features of the '<em>Or</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int OR_FEATURE_COUNT = JUNCTION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Or</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int OR_OPERATION_COUNT = JUNCTION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.NotImpl <em>Not</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.NotImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNot()
+	 * @generated
+	 */
+	int NOT = 4;
+
+	/**
+	 * The feature id for the '<em><b>Operand</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NOT__OPERAND = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Not</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NOT_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Not</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NOT_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ComparisonImpl <em>Comparison</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ComparisonImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparison()
+	 * @generated
+	 */
+	int COMPARISON = 5;
+
+	/**
+	 * The feature id for the '<em><b>Operator</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPARISON__OPERATOR = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Left</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPARISON__LEFT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Right</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPARISON__RIGHT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of structural features of the '<em>Comparison</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPARISON_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The number of operations of the '<em>Comparison</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPARISON_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.IsNullImpl <em>Is Null</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.IsNullImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIsNull()
+	 * @generated
+	 */
+	int IS_NULL = 6;
+
+	/**
+	 * The feature id for the '<em><b>Negated</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IS_NULL__NEGATED = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IS_NULL__SOURCE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Is Null</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IS_NULL_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Is Null</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IS_NULL_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.BetweenImpl <em>Between</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.BetweenImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBetween()
+	 * @generated
+	 */
+	int BETWEEN = 7;
+
+	/**
+	 * The feature id for the '<em><b>Lower Included</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN__LOWER_INCLUDED = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Upper Included</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN__UPPER_INCLUDED = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN__SOURCE = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The feature id for the '<em><b>Lower</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN__LOWER = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The feature id for the '<em><b>Upper</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN__UPPER = EXPRESSION_FEATURE_COUNT + 4;
+
+	/**
+	 * The number of structural features of the '<em>Between</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 5;
+
+	/**
+	 * The number of operations of the '<em>Between</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BETWEEN_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.InImpl <em>In</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.InImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIn()
+	 * @generated
+	 */
+	int IN = 8;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IN__SOURCE = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Values</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IN__VALUES = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>In</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IN_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>In</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int IN_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl <em>String Match</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.StringMatchImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatch()
+	 * @generated
+	 */
+	int STRING_MATCH = 9;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH__KIND = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Case Insensitive</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH__CASE_INSENSITIVE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH__SOURCE = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The feature id for the '<em><b>Pattern</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH__PATTERN = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The number of structural features of the '<em>String Match</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 4;
+
+	/**
+	 * The number of operations of the '<em>String Match</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.QuantifierImpl <em>Quantifier</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.QuantifierImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getQuantifier()
+	 * @generated
+	 */
+	int QUANTIFIER = 10;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUANTIFIER__SOURCE = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Variable</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUANTIFIER__VARIABLE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Predicate</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUANTIFIER__PREDICATE = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of structural features of the '<em>Quantifier</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUANTIFIER_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The number of operations of the '<em>Quantifier</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUANTIFIER_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ExistsImpl <em>Exists</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ExistsImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getExists()
+	 * @generated
+	 */
+	int EXISTS = 11;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXISTS__SOURCE = QUANTIFIER__SOURCE;
+
+	/**
+	 * The feature id for the '<em><b>Variable</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXISTS__VARIABLE = QUANTIFIER__VARIABLE;
+
+	/**
+	 * The feature id for the '<em><b>Predicate</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXISTS__PREDICATE = QUANTIFIER__PREDICATE;
+
+	/**
+	 * The number of structural features of the '<em>Exists</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXISTS_FEATURE_COUNT = QUANTIFIER_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Exists</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXISTS_OPERATION_COUNT = QUANTIFIER_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ForAllImpl <em>For All</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ForAllImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getForAll()
+	 * @generated
+	 */
+	int FOR_ALL = 12;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOR_ALL__SOURCE = QUANTIFIER__SOURCE;
+
+	/**
+	 * The feature id for the '<em><b>Variable</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOR_ALL__VARIABLE = QUANTIFIER__VARIABLE;
+
+	/**
+	 * The feature id for the '<em><b>Predicate</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOR_ALL__PREDICATE = QUANTIFIER__PREDICATE;
+
+	/**
+	 * The number of structural features of the '<em>For All</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOR_ALL_FEATURE_COUNT = QUANTIFIER_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>For All</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOR_ALL_OPERATION_COUNT = QUANTIFIER_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.PropertyPathImpl <em>Property Path</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.PropertyPathImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getPropertyPath()
+	 * @generated
+	 */
+	int PROPERTY_PATH = 13;
+
+	/**
+	 * The feature id for the '<em><b>Segments</b></em>' reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PROPERTY_PATH__SEGMENTS = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Base</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PROPERTY_PATH__BASE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Property Path</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PROPERTY_PATH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Property Path</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PROPERTY_PATH_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.VariableImpl <em>Variable</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.VariableImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getVariable()
+	 * @generated
+	 */
+	int VARIABLE = 14;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int VARIABLE__NAME = 0;
+
+	/**
+	 * The number of structural features of the '<em>Variable</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int VARIABLE_FEATURE_COUNT = 1;
+
+	/**
+	 * The number of operations of the '<em>Variable</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int VARIABLE_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.VariableRefImpl <em>Variable Ref</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.VariableRefImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getVariableRef()
+	 * @generated
+	 */
+	int VARIABLE_REF = 15;
+
+	/**
+	 * The feature id for the '<em><b>Variable</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int VARIABLE_REF__VARIABLE = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Variable Ref</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int VARIABLE_REF_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Variable Ref</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int VARIABLE_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ParameterRefImpl <em>Parameter Ref</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ParameterRefImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getParameterRef()
+	 * @generated
+	 */
+	int PARAMETER_REF = 16;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER_REF__NAME = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Parameter Ref</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER_REF_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Parameter Ref</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.LiteralImpl <em>Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.LiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getLiteral()
+	 * @generated
+	 */
+	int LITERAL = 17;
+
+	/**
+	 * The number of structural features of the '<em>Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LITERAL_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LITERAL_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.StringLiteralImpl <em>String Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.StringLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringLiteral()
+	 * @generated
+	 */
+	int STRING_LITERAL = 18;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_LITERAL__VALUE = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>String Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>String Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.IntegerLiteralImpl <em>Integer Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.IntegerLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntegerLiteral()
+	 * @generated
+	 */
+	int INTEGER_LITERAL = 19;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTEGER_LITERAL__VALUE = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Integer Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTEGER_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Integer Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTEGER_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.RealLiteralImpl <em>Real Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.RealLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getRealLiteral()
+	 * @generated
+	 */
+	int REAL_LITERAL = 20;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REAL_LITERAL__VALUE = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Real Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REAL_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Real Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REAL_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.BooleanLiteralImpl <em>Boolean Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.BooleanLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBooleanLiteral()
+	 * @generated
+	 */
+	int BOOLEAN_LITERAL = 21;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BOOLEAN_LITERAL__VALUE = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Boolean Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BOOLEAN_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Boolean Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int BOOLEAN_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.NullLiteralImpl <em>Null Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.NullLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNullLiteral()
+	 * @generated
+	 */
+	int NULL_LITERAL = 22;
+
+	/**
+	 * The number of structural features of the '<em>Null Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NULL_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Null Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NULL_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.EnumLiteralImpl <em>Enum Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.EnumLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getEnumLiteral()
+	 * @generated
+	 */
+	int ENUM_LITERAL = 23;
+
+	/**
+	 * The feature id for the '<em><b>Literal Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ENUM_LITERAL__LITERAL_NAME = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Enum Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ENUM_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Enum Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ENUM_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.TemporalLiteralImpl <em>Temporal Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.TemporalLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalLiteral()
+	 * @generated
+	 */
+	int TEMPORAL_LITERAL = 24;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_LITERAL__VALUE = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_LITERAL__KIND = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Temporal Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Temporal Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.StringFunctionImpl <em>String Function</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.StringFunctionImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunction()
+	 * @generated
+	 */
+	int STRING_FUNCTION = 25;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_FUNCTION__KIND = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_FUNCTION__SOURCE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>String Function</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_FUNCTION_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>String Function</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_FUNCTION_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.ComparisonOperator
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
+	 * @generated
+	 */
+	int COMPARISON_OPERATOR = 26;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.StringMatchKind
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
+	 * @generated
+	 */
+	int STRING_MATCH_KIND = 27;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.StringFunctionKind
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
+	 * @generated
+	 */
+	int STRING_FUNCTION_KIND = 28;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.TemporalKind
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
+	 * @generated
+	 */
+	int TEMPORAL_KIND = 29;
+
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Expression <em>Expression</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Expression</em>'.
+	 * @see org.eclipse.fennec.model.expression.Expression
+	 * @generated
+	 */
+	EClass getExpression();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Junction <em>Junction</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Junction</em>'.
+	 * @see org.eclipse.fennec.model.expression.Junction
+	 * @generated
+	 */
+	EClass getJunction();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.expression.Junction#getOperands <em>Operands</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Operands</em>'.
+	 * @see org.eclipse.fennec.model.expression.Junction#getOperands()
+	 * @see #getJunction()
+	 * @generated
+	 */
+	EReference getJunction_Operands();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.And <em>And</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>And</em>'.
+	 * @see org.eclipse.fennec.model.expression.And
+	 * @generated
+	 */
+	EClass getAnd();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Or <em>Or</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Or</em>'.
+	 * @see org.eclipse.fennec.model.expression.Or
+	 * @generated
+	 */
+	EClass getOr();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Not <em>Not</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Not</em>'.
+	 * @see org.eclipse.fennec.model.expression.Not
+	 * @generated
+	 */
+	EClass getNot();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Not#getOperand <em>Operand</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Operand</em>'.
+	 * @see org.eclipse.fennec.model.expression.Not#getOperand()
+	 * @see #getNot()
+	 * @generated
+	 */
+	EReference getNot_Operand();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Comparison <em>Comparison</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Comparison</em>'.
+	 * @see org.eclipse.fennec.model.expression.Comparison
+	 * @generated
+	 */
+	EClass getComparison();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.Comparison#getOperator <em>Operator</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Operator</em>'.
+	 * @see org.eclipse.fennec.model.expression.Comparison#getOperator()
+	 * @see #getComparison()
+	 * @generated
+	 */
+	EAttribute getComparison_Operator();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Comparison#getLeft <em>Left</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Left</em>'.
+	 * @see org.eclipse.fennec.model.expression.Comparison#getLeft()
+	 * @see #getComparison()
+	 * @generated
+	 */
+	EReference getComparison_Left();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Comparison#getRight <em>Right</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Right</em>'.
+	 * @see org.eclipse.fennec.model.expression.Comparison#getRight()
+	 * @see #getComparison()
+	 * @generated
+	 */
+	EReference getComparison_Right();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.IsNull <em>Is Null</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Is Null</em>'.
+	 * @see org.eclipse.fennec.model.expression.IsNull
+	 * @generated
+	 */
+	EClass getIsNull();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IsNull#isNegated <em>Negated</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Negated</em>'.
+	 * @see org.eclipse.fennec.model.expression.IsNull#isNegated()
+	 * @see #getIsNull()
+	 * @generated
+	 */
+	EAttribute getIsNull_Negated();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IsNull#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.IsNull#getSource()
+	 * @see #getIsNull()
+	 * @generated
+	 */
+	EReference getIsNull_Source();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Between <em>Between</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Between</em>'.
+	 * @see org.eclipse.fennec.model.expression.Between
+	 * @generated
+	 */
+	EClass getBetween();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.Between#isLowerIncluded <em>Lower Included</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Lower Included</em>'.
+	 * @see org.eclipse.fennec.model.expression.Between#isLowerIncluded()
+	 * @see #getBetween()
+	 * @generated
+	 */
+	EAttribute getBetween_LowerIncluded();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.Between#isUpperIncluded <em>Upper Included</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Upper Included</em>'.
+	 * @see org.eclipse.fennec.model.expression.Between#isUpperIncluded()
+	 * @see #getBetween()
+	 * @generated
+	 */
+	EAttribute getBetween_UpperIncluded();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Between#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.Between#getSource()
+	 * @see #getBetween()
+	 * @generated
+	 */
+	EReference getBetween_Source();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Between#getLower <em>Lower</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Lower</em>'.
+	 * @see org.eclipse.fennec.model.expression.Between#getLower()
+	 * @see #getBetween()
+	 * @generated
+	 */
+	EReference getBetween_Lower();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Between#getUpper <em>Upper</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Upper</em>'.
+	 * @see org.eclipse.fennec.model.expression.Between#getUpper()
+	 * @see #getBetween()
+	 * @generated
+	 */
+	EReference getBetween_Upper();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.In <em>In</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>In</em>'.
+	 * @see org.eclipse.fennec.model.expression.In
+	 * @generated
+	 */
+	EClass getIn();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.In#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.In#getSource()
+	 * @see #getIn()
+	 * @generated
+	 */
+	EReference getIn_Source();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.expression.In#getValues <em>Values</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Values</em>'.
+	 * @see org.eclipse.fennec.model.expression.In#getValues()
+	 * @see #getIn()
+	 * @generated
+	 */
+	EReference getIn_Values();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.StringMatch <em>String Match</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>String Match</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch
+	 * @generated
+	 */
+	EClass getStringMatch();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.StringMatch#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch#getKind()
+	 * @see #getStringMatch()
+	 * @generated
+	 */
+	EAttribute getStringMatch_Kind();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.StringMatch#isCaseInsensitive <em>Case Insensitive</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Case Insensitive</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch#isCaseInsensitive()
+	 * @see #getStringMatch()
+	 * @generated
+	 */
+	EAttribute getStringMatch_CaseInsensitive();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.StringMatch#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch#getSource()
+	 * @see #getStringMatch()
+	 * @generated
+	 */
+	EReference getStringMatch_Source();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.StringMatch#getPattern <em>Pattern</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Pattern</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch#getPattern()
+	 * @see #getStringMatch()
+	 * @generated
+	 */
+	EReference getStringMatch_Pattern();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Quantifier <em>Quantifier</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Quantifier</em>'.
+	 * @see org.eclipse.fennec.model.expression.Quantifier
+	 * @generated
+	 */
+	EClass getQuantifier();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Quantifier#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.Quantifier#getSource()
+	 * @see #getQuantifier()
+	 * @generated
+	 */
+	EReference getQuantifier_Source();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Quantifier#getVariable <em>Variable</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Variable</em>'.
+	 * @see org.eclipse.fennec.model.expression.Quantifier#getVariable()
+	 * @see #getQuantifier()
+	 * @generated
+	 */
+	EReference getQuantifier_Variable();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Quantifier#getPredicate <em>Predicate</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Predicate</em>'.
+	 * @see org.eclipse.fennec.model.expression.Quantifier#getPredicate()
+	 * @see #getQuantifier()
+	 * @generated
+	 */
+	EReference getQuantifier_Predicate();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Exists <em>Exists</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Exists</em>'.
+	 * @see org.eclipse.fennec.model.expression.Exists
+	 * @generated
+	 */
+	EClass getExists();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.ForAll <em>For All</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>For All</em>'.
+	 * @see org.eclipse.fennec.model.expression.ForAll
+	 * @generated
+	 */
+	EClass getForAll();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.PropertyPath <em>Property Path</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Property Path</em>'.
+	 * @see org.eclipse.fennec.model.expression.PropertyPath
+	 * @generated
+	 */
+	EClass getPropertyPath();
+
+	/**
+	 * Returns the meta object for the reference list '{@link org.eclipse.fennec.model.expression.PropertyPath#getSegments <em>Segments</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference list '<em>Segments</em>'.
+	 * @see org.eclipse.fennec.model.expression.PropertyPath#getSegments()
+	 * @see #getPropertyPath()
+	 * @generated
+	 */
+	EReference getPropertyPath_Segments();
+
+	/**
+	 * Returns the meta object for the reference '{@link org.eclipse.fennec.model.expression.PropertyPath#getBase <em>Base</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference '<em>Base</em>'.
+	 * @see org.eclipse.fennec.model.expression.PropertyPath#getBase()
+	 * @see #getPropertyPath()
+	 * @generated
+	 */
+	EReference getPropertyPath_Base();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Variable <em>Variable</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Variable</em>'.
+	 * @see org.eclipse.fennec.model.expression.Variable
+	 * @generated
+	 */
+	EClass getVariable();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.Variable#getName <em>Name</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Name</em>'.
+	 * @see org.eclipse.fennec.model.expression.Variable#getName()
+	 * @see #getVariable()
+	 * @generated
+	 */
+	EAttribute getVariable_Name();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.VariableRef <em>Variable Ref</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Variable Ref</em>'.
+	 * @see org.eclipse.fennec.model.expression.VariableRef
+	 * @generated
+	 */
+	EClass getVariableRef();
+
+	/**
+	 * Returns the meta object for the reference '{@link org.eclipse.fennec.model.expression.VariableRef#getVariable <em>Variable</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference '<em>Variable</em>'.
+	 * @see org.eclipse.fennec.model.expression.VariableRef#getVariable()
+	 * @see #getVariableRef()
+	 * @generated
+	 */
+	EReference getVariableRef_Variable();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.ParameterRef <em>Parameter Ref</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Parameter Ref</em>'.
+	 * @see org.eclipse.fennec.model.expression.ParameterRef
+	 * @generated
+	 */
+	EClass getParameterRef();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.ParameterRef#getName <em>Name</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Name</em>'.
+	 * @see org.eclipse.fennec.model.expression.ParameterRef#getName()
+	 * @see #getParameterRef()
+	 * @generated
+	 */
+	EAttribute getParameterRef_Name();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Literal <em>Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.Literal
+	 * @generated
+	 */
+	EClass getLiteral();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.StringLiteral <em>String Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>String Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringLiteral
+	 * @generated
+	 */
+	EClass getStringLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.StringLiteral#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringLiteral#getValue()
+	 * @see #getStringLiteral()
+	 * @generated
+	 */
+	EAttribute getStringLiteral_Value();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.IntegerLiteral <em>Integer Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Integer Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntegerLiteral
+	 * @generated
+	 */
+	EClass getIntegerLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntegerLiteral#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntegerLiteral#getValue()
+	 * @see #getIntegerLiteral()
+	 * @generated
+	 */
+	EAttribute getIntegerLiteral_Value();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.RealLiteral <em>Real Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Real Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.RealLiteral
+	 * @generated
+	 */
+	EClass getRealLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.RealLiteral#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.RealLiteral#getValue()
+	 * @see #getRealLiteral()
+	 * @generated
+	 */
+	EAttribute getRealLiteral_Value();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.BooleanLiteral <em>Boolean Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Boolean Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.BooleanLiteral
+	 * @generated
+	 */
+	EClass getBooleanLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.BooleanLiteral#isValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.BooleanLiteral#isValue()
+	 * @see #getBooleanLiteral()
+	 * @generated
+	 */
+	EAttribute getBooleanLiteral_Value();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.NullLiteral <em>Null Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Null Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.NullLiteral
+	 * @generated
+	 */
+	EClass getNullLiteral();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.EnumLiteral <em>Enum Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Enum Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.EnumLiteral
+	 * @generated
+	 */
+	EClass getEnumLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.EnumLiteral#getLiteralName <em>Literal Name</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Literal Name</em>'.
+	 * @see org.eclipse.fennec.model.expression.EnumLiteral#getLiteralName()
+	 * @see #getEnumLiteral()
+	 * @generated
+	 */
+	EAttribute getEnumLiteral_LiteralName();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.TemporalLiteral <em>Temporal Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Temporal Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalLiteral
+	 * @generated
+	 */
+	EClass getTemporalLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.TemporalLiteral#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalLiteral#getValue()
+	 * @see #getTemporalLiteral()
+	 * @generated
+	 */
+	EAttribute getTemporalLiteral_Value();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.TemporalLiteral#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalLiteral#getKind()
+	 * @see #getTemporalLiteral()
+	 * @generated
+	 */
+	EAttribute getTemporalLiteral_Kind();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.StringFunction <em>String Function</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>String Function</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringFunction
+	 * @generated
+	 */
+	EClass getStringFunction();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.StringFunction#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringFunction#getKind()
+	 * @see #getStringFunction()
+	 * @generated
+	 */
+	EAttribute getStringFunction_Kind();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.StringFunction#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringFunction#getSource()
+	 * @see #getStringFunction()
+	 * @generated
+	 */
+	EReference getStringFunction_Source();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Comparison Operator</em>'.
+	 * @see org.eclipse.fennec.model.expression.ComparisonOperator
+	 * @generated
+	 */
+	EEnum getComparisonOperator();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>String Match Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatchKind
+	 * @generated
+	 */
+	EEnum getStringMatchKind();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>String Function Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringFunctionKind
+	 * @generated
+	 */
+	EEnum getStringFunctionKind();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Temporal Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalKind
+	 * @generated
+	 */
+	EEnum getTemporalKind();
+
+	/**
+	 * Returns the factory that creates the instances of the model.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the factory that creates the instances of the model.
+	 * @generated
+	 */
+	ExpressionFactory getExpressionFactory();
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * Defines literals for the meta objects that represent
+	 * <ul>
+	 *   <li>each class,</li>
+	 *   <li>each feature of each class,</li>
+	 *   <li>each operation of each class,</li>
+	 *   <li>each enum,</li>
+	 *   <li>and each data type</li>
+	 * </ul>
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	interface Literals {
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ExpressionImpl <em>Expression</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getExpression()
+		 * @generated
+		 */
+		EClass EXPRESSION = eINSTANCE.getExpression();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.JunctionImpl <em>Junction</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.JunctionImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getJunction()
+		 * @generated
+		 */
+		EClass JUNCTION = eINSTANCE.getJunction();
+
+		/**
+		 * The meta object literal for the '<em><b>Operands</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference JUNCTION__OPERANDS = eINSTANCE.getJunction_Operands();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.AndImpl <em>And</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.AndImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAnd()
+		 * @generated
+		 */
+		EClass AND = eINSTANCE.getAnd();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.OrImpl <em>Or</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.OrImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getOr()
+		 * @generated
+		 */
+		EClass OR = eINSTANCE.getOr();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.NotImpl <em>Not</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.NotImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNot()
+		 * @generated
+		 */
+		EClass NOT = eINSTANCE.getNot();
+
+		/**
+		 * The meta object literal for the '<em><b>Operand</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference NOT__OPERAND = eINSTANCE.getNot_Operand();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ComparisonImpl <em>Comparison</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ComparisonImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparison()
+		 * @generated
+		 */
+		EClass COMPARISON = eINSTANCE.getComparison();
+
+		/**
+		 * The meta object literal for the '<em><b>Operator</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute COMPARISON__OPERATOR = eINSTANCE.getComparison_Operator();
+
+		/**
+		 * The meta object literal for the '<em><b>Left</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference COMPARISON__LEFT = eINSTANCE.getComparison_Left();
+
+		/**
+		 * The meta object literal for the '<em><b>Right</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference COMPARISON__RIGHT = eINSTANCE.getComparison_Right();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.IsNullImpl <em>Is Null</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.IsNullImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIsNull()
+		 * @generated
+		 */
+		EClass IS_NULL = eINSTANCE.getIsNull();
+
+		/**
+		 * The meta object literal for the '<em><b>Negated</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute IS_NULL__NEGATED = eINSTANCE.getIsNull_Negated();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference IS_NULL__SOURCE = eINSTANCE.getIsNull_Source();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.BetweenImpl <em>Between</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.BetweenImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBetween()
+		 * @generated
+		 */
+		EClass BETWEEN = eINSTANCE.getBetween();
+
+		/**
+		 * The meta object literal for the '<em><b>Lower Included</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute BETWEEN__LOWER_INCLUDED = eINSTANCE.getBetween_LowerIncluded();
+
+		/**
+		 * The meta object literal for the '<em><b>Upper Included</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute BETWEEN__UPPER_INCLUDED = eINSTANCE.getBetween_UpperIncluded();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference BETWEEN__SOURCE = eINSTANCE.getBetween_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Lower</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference BETWEEN__LOWER = eINSTANCE.getBetween_Lower();
+
+		/**
+		 * The meta object literal for the '<em><b>Upper</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference BETWEEN__UPPER = eINSTANCE.getBetween_Upper();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.InImpl <em>In</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.InImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIn()
+		 * @generated
+		 */
+		EClass IN = eINSTANCE.getIn();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference IN__SOURCE = eINSTANCE.getIn_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Values</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference IN__VALUES = eINSTANCE.getIn_Values();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl <em>String Match</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.StringMatchImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatch()
+		 * @generated
+		 */
+		EClass STRING_MATCH = eINSTANCE.getStringMatch();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STRING_MATCH__KIND = eINSTANCE.getStringMatch_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Case Insensitive</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STRING_MATCH__CASE_INSENSITIVE = eINSTANCE.getStringMatch_CaseInsensitive();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference STRING_MATCH__SOURCE = eINSTANCE.getStringMatch_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Pattern</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference STRING_MATCH__PATTERN = eINSTANCE.getStringMatch_Pattern();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.QuantifierImpl <em>Quantifier</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.QuantifierImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getQuantifier()
+		 * @generated
+		 */
+		EClass QUANTIFIER = eINSTANCE.getQuantifier();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference QUANTIFIER__SOURCE = eINSTANCE.getQuantifier_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Variable</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference QUANTIFIER__VARIABLE = eINSTANCE.getQuantifier_Variable();
+
+		/**
+		 * The meta object literal for the '<em><b>Predicate</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference QUANTIFIER__PREDICATE = eINSTANCE.getQuantifier_Predicate();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ExistsImpl <em>Exists</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ExistsImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getExists()
+		 * @generated
+		 */
+		EClass EXISTS = eINSTANCE.getExists();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ForAllImpl <em>For All</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ForAllImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getForAll()
+		 * @generated
+		 */
+		EClass FOR_ALL = eINSTANCE.getForAll();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.PropertyPathImpl <em>Property Path</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.PropertyPathImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getPropertyPath()
+		 * @generated
+		 */
+		EClass PROPERTY_PATH = eINSTANCE.getPropertyPath();
+
+		/**
+		 * The meta object literal for the '<em><b>Segments</b></em>' reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference PROPERTY_PATH__SEGMENTS = eINSTANCE.getPropertyPath_Segments();
+
+		/**
+		 * The meta object literal for the '<em><b>Base</b></em>' reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference PROPERTY_PATH__BASE = eINSTANCE.getPropertyPath_Base();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.VariableImpl <em>Variable</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.VariableImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getVariable()
+		 * @generated
+		 */
+		EClass VARIABLE = eINSTANCE.getVariable();
+
+		/**
+		 * The meta object literal for the '<em><b>Name</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute VARIABLE__NAME = eINSTANCE.getVariable_Name();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.VariableRefImpl <em>Variable Ref</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.VariableRefImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getVariableRef()
+		 * @generated
+		 */
+		EClass VARIABLE_REF = eINSTANCE.getVariableRef();
+
+		/**
+		 * The meta object literal for the '<em><b>Variable</b></em>' reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference VARIABLE_REF__VARIABLE = eINSTANCE.getVariableRef_Variable();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ParameterRefImpl <em>Parameter Ref</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ParameterRefImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getParameterRef()
+		 * @generated
+		 */
+		EClass PARAMETER_REF = eINSTANCE.getParameterRef();
+
+		/**
+		 * The meta object literal for the '<em><b>Name</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PARAMETER_REF__NAME = eINSTANCE.getParameterRef_Name();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.LiteralImpl <em>Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.LiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getLiteral()
+		 * @generated
+		 */
+		EClass LITERAL = eINSTANCE.getLiteral();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.StringLiteralImpl <em>String Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.StringLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringLiteral()
+		 * @generated
+		 */
+		EClass STRING_LITERAL = eINSTANCE.getStringLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STRING_LITERAL__VALUE = eINSTANCE.getStringLiteral_Value();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.IntegerLiteralImpl <em>Integer Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.IntegerLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntegerLiteral()
+		 * @generated
+		 */
+		EClass INTEGER_LITERAL = eINSTANCE.getIntegerLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTEGER_LITERAL__VALUE = eINSTANCE.getIntegerLiteral_Value();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.RealLiteralImpl <em>Real Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.RealLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getRealLiteral()
+		 * @generated
+		 */
+		EClass REAL_LITERAL = eINSTANCE.getRealLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute REAL_LITERAL__VALUE = eINSTANCE.getRealLiteral_Value();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.BooleanLiteralImpl <em>Boolean Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.BooleanLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBooleanLiteral()
+		 * @generated
+		 */
+		EClass BOOLEAN_LITERAL = eINSTANCE.getBooleanLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute BOOLEAN_LITERAL__VALUE = eINSTANCE.getBooleanLiteral_Value();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.NullLiteralImpl <em>Null Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.NullLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNullLiteral()
+		 * @generated
+		 */
+		EClass NULL_LITERAL = eINSTANCE.getNullLiteral();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.EnumLiteralImpl <em>Enum Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.EnumLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getEnumLiteral()
+		 * @generated
+		 */
+		EClass ENUM_LITERAL = eINSTANCE.getEnumLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Literal Name</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute ENUM_LITERAL__LITERAL_NAME = eINSTANCE.getEnumLiteral_LiteralName();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.TemporalLiteralImpl <em>Temporal Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.TemporalLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalLiteral()
+		 * @generated
+		 */
+		EClass TEMPORAL_LITERAL = eINSTANCE.getTemporalLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TEMPORAL_LITERAL__VALUE = eINSTANCE.getTemporalLiteral_Value();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TEMPORAL_LITERAL__KIND = eINSTANCE.getTemporalLiteral_Kind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.StringFunctionImpl <em>String Function</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.StringFunctionImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunction()
+		 * @generated
+		 */
+		EClass STRING_FUNCTION = eINSTANCE.getStringFunction();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STRING_FUNCTION__KIND = eINSTANCE.getStringFunction_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference STRING_FUNCTION__SOURCE = eINSTANCE.getStringFunction_Source();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.ComparisonOperator
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
+		 * @generated
+		 */
+		EEnum COMPARISON_OPERATOR = eINSTANCE.getComparisonOperator();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.StringMatchKind
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
+		 * @generated
+		 */
+		EEnum STRING_MATCH_KIND = eINSTANCE.getStringMatchKind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.StringFunctionKind
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
+		 * @generated
+		 */
+		EEnum STRING_FUNCTION_KIND = eINSTANCE.getStringFunctionKind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.TemporalKind
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
+		 * @generated
+		 */
+		EEnum TEMPORAL_KIND = eINSTANCE.getTemporalKind();
+
+	}
+
+} //ExpressionPackage

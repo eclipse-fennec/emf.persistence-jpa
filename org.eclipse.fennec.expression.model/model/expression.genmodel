@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.expression.model/src-gen" modelPluginID="org.eclipse.fennec.expression.model"
+    modelName="Expression" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>expression.ecore</foreignModel>
+  <genPackages prefix="Expression" basePackage="org.eclipse.fennec.model" disposableProviderFactory="true"
+      ecorePackage="expression.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//ComparisonOperator">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ComparisonOperator/EQ"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ComparisonOperator/NE"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ComparisonOperator/LT"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ComparisonOperator/LE"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ComparisonOperator/GT"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ComparisonOperator/GE"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//StringMatchKind">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/CONTAINS"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/STARTS_WITH"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/ENDS_WITH"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/LIKE"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//StringFunctionKind">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/TO_LOWER"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/TO_UPPER"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/TRIM"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/LENGTH"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//TemporalKind">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalKind/DATE"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalKind/TIME"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalKind/DATE_TIME"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalKind/INSTANT"/>
+    </genEnums>
+    <genClasses image="false" ecoreClass="expression.ecore#//Expression"/>
+    <genClasses image="false" ecoreClass="expression.ecore#//Junction">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Junction/operands"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//And"/>
+    <genClasses ecoreClass="expression.ecore#//Or"/>
+    <genClasses ecoreClass="expression.ecore#//Not">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Not/operand"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//Comparison">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//Comparison/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Comparison/left"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Comparison/right"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//IsNull">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IsNull/negated"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IsNull/source"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//Between">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//Between/lowerIncluded"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//Between/upperIncluded"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Between/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Between/lower"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Between/upper"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//In">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//In/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//In/values"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//StringMatch">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringMatch/kind"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringMatch/caseInsensitive"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//StringMatch/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//StringMatch/pattern"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="expression.ecore#//Quantifier">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Quantifier/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Quantifier/variable"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Quantifier/predicate"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//Exists"/>
+    <genClasses ecoreClass="expression.ecore#//ForAll"/>
+    <genClasses ecoreClass="expression.ecore#//PropertyPath">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//PropertyPath/segments"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//PropertyPath/base"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//Variable">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//Variable/name"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//VariableRef">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//VariableRef/variable"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//ParameterRef">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//ParameterRef/name"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="expression.ecore#//Literal"/>
+    <genClasses ecoreClass="expression.ecore#//StringLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringLiteral/value"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//IntegerLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntegerLiteral/value"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//RealLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//RealLiteral/value"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//BooleanLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//BooleanLiteral/value"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//NullLiteral"/>
+    <genClasses ecoreClass="expression.ecore#//EnumLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//EnumLiteral/literalName"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//TemporalLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//TemporalLiteral/value"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//TemporalLiteral/kind"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//StringFunction">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringFunction/kind"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//StringFunction/source"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

@@ -1,0 +1,482 @@
+/**
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ * 
+ * SPDX-License-Identifier: EPL-2.0
+ * 
+ * Contributors:
+ *   Data In Motion Consulting - initial implementation
+ */
+package org.eclipse.fennec.model.expression.impl;
+
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EDataType;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EPackage;
+
+import org.eclipse.emf.ecore.impl.EFactoryImpl;
+
+import org.eclipse.emf.ecore.plugin.EcorePlugin;
+
+import org.eclipse.fennec.model.expression.*;
+
+/**
+ * <!-- begin-user-doc -->
+ * An implementation of the model <b>Factory</b>.
+ * <!-- end-user-doc -->
+ * @generated
+ */
+public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFactory {
+	/**
+	 * Creates the default factory implementation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static ExpressionFactory init() {
+		try {
+			ExpressionFactory theExpressionFactory = (ExpressionFactory)EPackage.Registry.INSTANCE.getEFactory(ExpressionPackage.eNS_URI);
+			if (theExpressionFactory != null) {
+				return theExpressionFactory;
+			}
+		}
+		catch (Exception exception) {
+			EcorePlugin.INSTANCE.log(exception);
+		}
+		return new ExpressionFactoryImpl();
+	}
+
+	/**
+	 * Creates an instance of the factory.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ExpressionFactoryImpl() {
+		super();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EObject create(EClass eClass) {
+		switch (eClass.getClassifierID()) {
+			case ExpressionPackage.AND: return createAnd();
+			case ExpressionPackage.OR: return createOr();
+			case ExpressionPackage.NOT: return createNot();
+			case ExpressionPackage.COMPARISON: return createComparison();
+			case ExpressionPackage.IS_NULL: return createIsNull();
+			case ExpressionPackage.BETWEEN: return createBetween();
+			case ExpressionPackage.IN: return createIn();
+			case ExpressionPackage.STRING_MATCH: return createStringMatch();
+			case ExpressionPackage.EXISTS: return createExists();
+			case ExpressionPackage.FOR_ALL: return createForAll();
+			case ExpressionPackage.PROPERTY_PATH: return createPropertyPath();
+			case ExpressionPackage.VARIABLE: return createVariable();
+			case ExpressionPackage.VARIABLE_REF: return createVariableRef();
+			case ExpressionPackage.PARAMETER_REF: return createParameterRef();
+			case ExpressionPackage.STRING_LITERAL: return createStringLiteral();
+			case ExpressionPackage.INTEGER_LITERAL: return createIntegerLiteral();
+			case ExpressionPackage.REAL_LITERAL: return createRealLiteral();
+			case ExpressionPackage.BOOLEAN_LITERAL: return createBooleanLiteral();
+			case ExpressionPackage.NULL_LITERAL: return createNullLiteral();
+			case ExpressionPackage.ENUM_LITERAL: return createEnumLiteral();
+			case ExpressionPackage.TEMPORAL_LITERAL: return createTemporalLiteral();
+			case ExpressionPackage.STRING_FUNCTION: return createStringFunction();
+			default:
+				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
+		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Object createFromString(EDataType eDataType, String initialValue) {
+		switch (eDataType.getClassifierID()) {
+			case ExpressionPackage.COMPARISON_OPERATOR:
+				return createComparisonOperatorFromString(eDataType, initialValue);
+			case ExpressionPackage.STRING_MATCH_KIND:
+				return createStringMatchKindFromString(eDataType, initialValue);
+			case ExpressionPackage.STRING_FUNCTION_KIND:
+				return createStringFunctionKindFromString(eDataType, initialValue);
+			case ExpressionPackage.TEMPORAL_KIND:
+				return createTemporalKindFromString(eDataType, initialValue);
+			default:
+				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
+		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public String convertToString(EDataType eDataType, Object instanceValue) {
+		switch (eDataType.getClassifierID()) {
+			case ExpressionPackage.COMPARISON_OPERATOR:
+				return convertComparisonOperatorToString(eDataType, instanceValue);
+			case ExpressionPackage.STRING_MATCH_KIND:
+				return convertStringMatchKindToString(eDataType, instanceValue);
+			case ExpressionPackage.STRING_FUNCTION_KIND:
+				return convertStringFunctionKindToString(eDataType, instanceValue);
+			case ExpressionPackage.TEMPORAL_KIND:
+				return convertTemporalKindToString(eDataType, instanceValue);
+			default:
+				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
+		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public And createAnd() {
+		AndImpl and = new AndImpl();
+		return and;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Or createOr() {
+		OrImpl or = new OrImpl();
+		return or;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Not createNot() {
+		NotImpl not = new NotImpl();
+		return not;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Comparison createComparison() {
+		ComparisonImpl comparison = new ComparisonImpl();
+		return comparison;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public IsNull createIsNull() {
+		IsNullImpl isNull = new IsNullImpl();
+		return isNull;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Between createBetween() {
+		BetweenImpl between = new BetweenImpl();
+		return between;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public In createIn() {
+		InImpl in = new InImpl();
+		return in;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public StringMatch createStringMatch() {
+		StringMatchImpl stringMatch = new StringMatchImpl();
+		return stringMatch;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Exists createExists() {
+		ExistsImpl exists = new ExistsImpl();
+		return exists;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ForAll createForAll() {
+		ForAllImpl forAll = new ForAllImpl();
+		return forAll;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public PropertyPath createPropertyPath() {
+		PropertyPathImpl propertyPath = new PropertyPathImpl();
+		return propertyPath;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Variable createVariable() {
+		VariableImpl variable = new VariableImpl();
+		return variable;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public VariableRef createVariableRef() {
+		VariableRefImpl variableRef = new VariableRefImpl();
+		return variableRef;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ParameterRef createParameterRef() {
+		ParameterRefImpl parameterRef = new ParameterRefImpl();
+		return parameterRef;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public StringLiteral createStringLiteral() {
+		StringLiteralImpl stringLiteral = new StringLiteralImpl();
+		return stringLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public IntegerLiteral createIntegerLiteral() {
+		IntegerLiteralImpl integerLiteral = new IntegerLiteralImpl();
+		return integerLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public RealLiteral createRealLiteral() {
+		RealLiteralImpl realLiteral = new RealLiteralImpl();
+		return realLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public BooleanLiteral createBooleanLiteral() {
+		BooleanLiteralImpl booleanLiteral = new BooleanLiteralImpl();
+		return booleanLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public NullLiteral createNullLiteral() {
+		NullLiteralImpl nullLiteral = new NullLiteralImpl();
+		return nullLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EnumLiteral createEnumLiteral() {
+		EnumLiteralImpl enumLiteral = new EnumLiteralImpl();
+		return enumLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public TemporalLiteral createTemporalLiteral() {
+		TemporalLiteralImpl temporalLiteral = new TemporalLiteralImpl();
+		return temporalLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public StringFunction createStringFunction() {
+		StringFunctionImpl stringFunction = new StringFunctionImpl();
+		return stringFunction;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ComparisonOperator createComparisonOperatorFromString(EDataType eDataType, String initialValue) {
+		ComparisonOperator result = ComparisonOperator.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertComparisonOperatorToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public StringMatchKind createStringMatchKindFromString(EDataType eDataType, String initialValue) {
+		StringMatchKind result = StringMatchKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertStringMatchKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public StringFunctionKind createStringFunctionKindFromString(EDataType eDataType, String initialValue) {
+		StringFunctionKind result = StringFunctionKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertStringFunctionKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public TemporalKind createTemporalKindFromString(EDataType eDataType, String initialValue) {
+		TemporalKind result = TemporalKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertTemporalKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ExpressionPackage getExpressionPackage() {
+		return (ExpressionPackage)getEPackage();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @deprecated
+	 * @generated
+	 */
+	@Deprecated
+	public static ExpressionPackage getPackage() {
+		return ExpressionPackage.eINSTANCE;
+	}
+
+} //ExpressionFactoryImpl
