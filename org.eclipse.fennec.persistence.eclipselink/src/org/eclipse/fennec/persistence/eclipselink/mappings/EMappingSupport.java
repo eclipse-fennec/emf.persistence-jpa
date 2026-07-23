@@ -18,8 +18,6 @@ import static java.util.Objects.nonNull;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -54,7 +52,6 @@ import org.eclipse.persistence.queries.DirectReadQuery;
  */
 final class EMappingSupport {
 
-	private static final Logger LOG = Logger.getLogger(EMappingSupport.class.getName());
 
 	private EMappingSupport() {
 	}
