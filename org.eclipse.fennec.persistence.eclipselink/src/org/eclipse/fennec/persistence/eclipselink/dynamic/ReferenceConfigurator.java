@@ -20,8 +20,6 @@ import static java.util.function.Predicate.not;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
@@ -65,8 +63,6 @@ import org.eclipse.persistence.mappings.UnidirectionalOneToManyMapping;
  * @since 15.04.2026
  */
 class ReferenceConfigurator {
-
-	private static final Logger LOG = Logger.getLogger(ReferenceConfigurator.class.getName());
 
 	private final BuilderOperations ops;
 	private final EDynamicTypeContext context;
