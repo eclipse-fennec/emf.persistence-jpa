@@ -22,8 +22,8 @@ Bundle-Version: ${base-version}.SNAPSHOT
 # For Eclipse Fennec the groupid must start with org.eclipse.fennec
 -groupid: org.eclipse.fennec.persistence.jpa
 
-javac.source: 17
-javac.target: 17
+javac.source: 21
+javac.target: 21
 
 -require-bnd "(version>=7.2.1)"
 
