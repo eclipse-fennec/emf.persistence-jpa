@@ -24,7 +24,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Updates every object the selector matches by applying the ChangeSet template (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executable once the patch-apply engine exists — until then backends refuse it with a diagnostic.
+ * Updates every object the selector matches by applying the ChangeSet template (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executed by the patch-apply engine (ChangeTemplates): entry coordinates address features of the selector's root type, values travel as EMF string literals; unsupported entries are refused with a diagnostic.
  * <!-- end-model-doc -->
  *
  * <p>

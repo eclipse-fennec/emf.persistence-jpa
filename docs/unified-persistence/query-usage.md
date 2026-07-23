@@ -166,17 +166,38 @@ Refusal codes (`QueryValidator.DIAGNOSTIC_SOURCE`): `1` unsupported feature, `2`
 exceeded, `100` Mongo cross-document/non-embedded, `101` Mongo distinct without
 projection.
 
-## 5. OSGi wiring
+## 5. The memory backend
 
-Both processors are DS components registered as `QueryProcessor` services carrying
-`persistence.query.backend` (`jpa` / `mongo`) for selection. The `jpa` whiteboard
-resource factory holds an **optional greedy** reference to the `jpa`-backend service and
-hands it to every resource it creates — no service means the resources' local default
-processor, a higher-ranked service (decorator, reconfiguration) wins for subsequently
-created resources. The programmatic `MongoResourceFactory` takes the processor as an
-optional constructor argument.
+`MemoryQueryProcessor` (`persistence.query.backend=memory`, issue #62) is the third
+backend: it has **no store** — its plan evaluates the query against caller-provided
+objects (`Resource.getContents()`, any EMF collection):
 
-## 6. The OCL bridge
+```java
+QueryResult result = MemoryQueries.execute(query, resource.getContents(), parameters);
+// or two-step: MemoryQueryPlan plan = MemoryQueries.translate(query, parameters);
+//              plan.execute(objects);
+```
+
+Its capability set is near-complete (everything except the reserved temporal features,
+including multi-stage pipelines and field-to-field comparisons); values stay in EMF
+space. Two roles: the **reference oracle** — the TCK differential test runs the same
+conformance corpus against every database binding *and* in memory and requires identical
+results — and the in-memory execution option for IR consumers such as the OData layer
+(`jpa`, `mongo` or `memory` through one SPI). Comparison semantics mirror the database
+backends: comparisons with `null` are false, `IsNull` probes explicitly, `forAll` is
+vacuously true on empty collections.
+
+## 6. OSGi wiring
+
+All three processors are DS components registered as `QueryProcessor` services carrying
+`persistence.query.backend` (`jpa` / `mongo` / `memory`) for selection. The `jpa`
+whiteboard resource factory holds an **optional greedy** reference to the `jpa`-backend
+service and hands it to every resource it creates — no service means the resources'
+local default processor, a higher-ranked service (decorator, reconfiguration) wins for
+subsequently created resources. The programmatic `MongoResourceFactory` takes the
+processor as an optional constructor argument.
+
+## 7. The OCL bridge
 
 `org.eclipse.fennec.expression.ocl` connects the IR to the m2x Essential-OCL AST
 (consumed binary; m2x untouched): `ExprToOcl` is **total** over the blessed subset
@@ -184,7 +205,7 @@ optional constructor argument.
 outside it. This is the entry path for OCL-producing frontends — notably the OData
 `$filter` pipeline in its phase-1 migration.
 
-## 7. Behind the scenes
+## 8. Behind the scenes
 
 `validate → translate → execute`, unchanged: `ExpressionAnalyzer` walks envelope +
 expression trees into the shared `QueryAnalysis`/`QueryValidator`/`QueryCapabilities`

@@ -1,0 +1,350 @@
+/********************************************************************
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Contributors:
+ *   Data In Motion Consulting - initial implementation
+ ********************************************************************/
+package org.eclipse.fennec.persistence.query.memory;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IsNull;
+import org.eclipse.fennec.model.expression.Junction;
+import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.ParameterRef;
+import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.Quantifier;
+import org.eclipse.fennec.model.expression.StringFunction;
+import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Variable;
+import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.FilterStage;
+import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.OrderBy;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.Selection;
+import org.eclipse.fennec.model.query.SkipStage;
+import org.eclipse.fennec.model.query.Stage;
+import org.eclipse.fennec.model.query.TopStage;
+import org.eclipse.fennec.persistence.query.QueryConstants;
+import org.eclipse.fennec.persistence.query.QueryException;
+import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
+import org.eclipse.fennec.persistence.query.api.QueryContext;
+import org.eclipse.fennec.persistence.query.api.QueryFeature;
+import org.eclipse.fennec.persistence.query.api.QueryPlan;
+import org.eclipse.fennec.persistence.query.api.QueryProcessor;
+import org.eclipse.fennec.persistence.query.api.QueryShape;
+import org.eclipse.fennec.persistence.query.expr.ExpressionAnalyzer;
+import org.eclipse.fennec.persistence.query.expr.ExpressionValues;
+import org.eclipse.fennec.persistence.query.support.QueryCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.query.support.QueryValidator;
+import org.osgi.service.component.annotations.Component;
+
+/**
+ * {@link QueryProcessor} for the {@code memory} backend: evaluates the canonical query
+ * <b>in memory</b> against caller-provided EObjects — the plan carries no store, see
+ * {@link MemoryQueryPlan#execute(java.util.Collection)}.
+ * <p>
+ * Two roles (issue #62): the <em>reference oracle</em> — its capability set is
+ * near-complete (everything except the reserved temporal features), so every query the
+ * database backends serve can be cross-checked against in-memory semantics — and the
+ * third execution option for IR consumers such as the OData layer, which gets
+ * {@code jpa}, {@code mongo} or {@code memory} through one SPI.
+ * <p>
+ * All structural validation and literal/parameter resolution happens at translation
+ * time; execution never throws. Values stay in EMF space (no {@code ConverterService}
+ * involved) because the evaluation runs against EMF objects.
+ *
+ * @author Mark Hoffmann
+ * @since 24.07.2026
+ */
+@Component(service = QueryProcessor.class, property = QueryConstants.BACKEND_PROPERTY + "=" + MemoryQueryProcessor.BACKEND)
+public class MemoryQueryProcessor implements QueryProcessor {
+
+	/** The backend id of this processor. */
+	public static final String BACKEND = "memory";
+
+	private static final QueryCapabilities CAPABILITIES = QueryCapabilitiesBuilder.create()
+			.support(EnumSet.complementOf(EnumSet.of(QueryFeature.AS_OF, QueryFeature.SERIES_RANGE))
+					.toArray(QueryFeature[]::new))
+			.maxFeaturePathDepth(-1)
+			.build();
+
+	@Override
+	public String backend() {
+		return BACKEND;
+	}
+
+	@Override
+	public QueryCapabilities capabilities() {
+		return CAPABILITIES;
+	}
+
+	@Override
+	public Diagnostic validate(Query query, EClass rootEClass) {
+		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
+	}
+
+	@Override
+	public QueryPlan translate(Query query, QueryContext context) throws QueryException {
+		QueryShape shape = ExpressionAnalyzer.analyze(query).shape();
+		if (query.getFrom() == null) {
+			throw new QueryException("The query carries no root type (from) — cannot evaluate in memory");
+		}
+		if (query.getApply() != null && !query.getSelect().isEmpty()) {
+			throw new QueryException("select and apply are mutually exclusive — aggregation defines its own columns");
+		}
+		Resolution resolution = new Resolution(context);
+		resolution.walk(query.getPredicate(), Set.of());
+
+		List<String> rowKeys = new ArrayList<>();
+		List<String> rowAliases = new ArrayList<>();
+		if (shape == QueryShape.PROJECTION) {
+			for (Selection selection : query.getSelect()) {
+				resolution.rootPath(selection.getPath());
+				registerKey(outputKey(selection.getAlias(), selection.getPath()), selection.getAlias(),
+						rowKeys, rowAliases);
+			}
+		}
+		if (query.getApply() != null) {
+			resolution.walkPipeline(query.getApply().getStages(), rowKeys, rowAliases);
+		}
+		for (PropertyPath expand : query.getExpand()) {
+			resolution.rootPath(expand); // objects are in memory — expand is a no-op
+		}
+		for (OrderBy orderBy : query.getOrderBy()) {
+			if (shape == QueryShape.OBJECTS) {
+				resolution.rootPath(orderBy.getPath());
+			} else if (shape != QueryShape.COUNT) {
+				rowKey(orderBy.getPath(), rowKeys);
+			}
+		}
+		return new MemoryQueryPlan(query, shape,
+				new MemoryPredicate(query.getPredicate(), resolution.values), rowKeys, rowAliases);
+	}
+
+	// ------------------------------------------------------- translation walk
+
+	/** Validates the trees and resolves every literal/parameter operand once. */
+	private static final class Resolution {
+
+		private final QueryContext context;
+		private final Map<Expression, Object> values = new IdentityHashMap<>();
+
+		private Resolution(QueryContext context) {
+			this.context = context;
+		}
+
+		private void walk(Expression expression, Set<Variable> scope) throws QueryException {
+			if (expression == null) {
+				return;
+			}
+			if (expression instanceof Junction junction) {
+				for (Expression operand : junction.getOperands()) {
+					walk(operand, scope);
+				}
+				return;
+			}
+			if (expression instanceof Not not) {
+				walk(not.getOperand(), scope);
+				return;
+			}
+			if (expression instanceof Comparison comparison) {
+				EStructuralFeature target = targetOf(comparison.getLeft(), comparison.getRight());
+				operand(comparison.getLeft(), target, scope);
+				operand(comparison.getRight(), target, scope);
+				return;
+			}
+			if (expression instanceof IsNull isNull) {
+				operand(isNull.getSource(), null, scope);
+				return;
+			}
+			if (expression instanceof Between between) {
+				EStructuralFeature target = targetOf(between.getSource(), null);
+				operand(between.getSource(), target, scope);
+				operand(between.getLower(), target, scope);
+				operand(between.getUpper(), target, scope);
+				return;
+			}
+			if (expression instanceof In in) {
+				EStructuralFeature target = targetOf(in.getSource(), null);
+				operand(in.getSource(), target, scope);
+				for (Expression option : in.getValues()) {
+					operand(option, target, scope);
+				}
+				return;
+			}
+			if (expression instanceof StringMatch match) {
+				operand(match.getSource(), null, scope);
+				Expression pattern = match.getPattern();
+				if (!(pattern instanceof Literal) && !(pattern instanceof ParameterRef)) {
+					throw new QueryException("String match patterns must be literals or bound parameters");
+				}
+				values.put(pattern, ExpressionValues.resolve(pattern, null, context.parameters(), null));
+				return;
+			}
+			if (expression instanceof Quantifier quantifier) {
+				collectionPath(quantifier.getSource(), scope);
+				Set<Variable> inner = new HashSet<>(scope);
+				inner.add(quantifier.getVariable());
+				walk(quantifier.getPredicate(), inner);
+				return;
+			}
+			throw new QueryException("Unsupported predicate " + expression.eClass().getName());
+		}
+
+		private void operand(Expression expression, EStructuralFeature target, Set<Variable> scope)
+				throws QueryException {
+			if (expression instanceof PropertyPath path) {
+				path(path, scope);
+				return;
+			}
+			if (expression instanceof StringFunction function) {
+				operand(function.getSource(), target, scope);
+				return;
+			}
+			values.put(expression, ExpressionValues.resolve(expression, target, context.parameters(), null));
+		}
+
+		private void walkPipeline(List<Stage> stages, List<String> rowKeys, List<String> rowAliases)
+				throws QueryException {
+			boolean grouped = false;
+			for (Stage stage : stages) {
+				if (stage instanceof GroupByStage groupBy) {
+					if (grouped) {
+						throw new QueryException("Multiple GroupBy stages are not supported");
+					}
+					grouped = true;
+					for (PropertyPath path : groupBy.getPaths()) {
+						rootPath(path);
+						String key = outputKey(null, path);
+						registerKey(key, key, rowKeys, rowAliases);
+					}
+					for (Aggregate aggregate : groupBy.getAggregates()) {
+						if (aggregate.getPath() != null) {
+							rootPath(aggregate.getPath());
+						}
+						registerKey(aggregate.getAlias(), aggregate.getAlias(), rowKeys, rowAliases);
+					}
+				} else if (stage instanceof FilterStage filter) {
+					if (grouped) {
+						throw new QueryException(
+								"A filter stage after GroupBy would address aggregated rows — not supported in memory");
+					}
+					walk(filter.getPredicate(), Set.of());
+				} else if (!(stage instanceof TopStage) && !(stage instanceof SkipStage)) {
+					throw new QueryException("Unsupported pipeline stage " + stage.eClass().getName());
+				}
+			}
+		}
+
+		private void rootPath(PropertyPath path) throws QueryException {
+			if (path.getBase() != null) {
+				throw new QueryException("Variable-based paths are only valid inside quantifier predicates");
+			}
+			path(path, Set.of());
+		}
+
+		private void path(PropertyPath path, Set<Variable> scope) throws QueryException {
+			checkScope(path, scope);
+			List<EStructuralFeature> segments = path.getSegments();
+			for (int i = 0; i < segments.size() - 1; i++) {
+				if (segments.get(i).isMany()) {
+					throw new QueryException("Path navigates through the many-valued feature '"
+							+ segments.get(i).getName() + "' — address collections with exists/forAll");
+				}
+			}
+		}
+
+		private void collectionPath(PropertyPath path, Set<Variable> scope) throws QueryException {
+			checkScope(path, scope);
+			List<EStructuralFeature> segments = path.getSegments();
+			if (segments.isEmpty() || !segments.get(segments.size() - 1).isMany()) {
+				throw new QueryException("Quantifier sources must end in a many-valued feature");
+			}
+			for (int i = 0; i < segments.size() - 1; i++) {
+				if (segments.get(i).isMany()) {
+					throw new QueryException("Quantifier source navigates through the many-valued feature '"
+							+ segments.get(i).getName() + "' — nest quantifiers instead");
+				}
+			}
+		}
+
+		private void checkScope(PropertyPath path, Set<Variable> scope) throws QueryException {
+			if (path.getBase() != null && !scope.contains(path.getBase())) {
+				throw new QueryException("Variable '" + path.getBase().getName() + "' is not in scope");
+			}
+		}
+
+		private EStructuralFeature targetOf(Expression left, Expression right) {
+			if (left instanceof PropertyPath path) {
+				return ExpressionValues.targetFeature(path);
+			}
+			if (right instanceof PropertyPath path) {
+				return ExpressionValues.targetFeature(path);
+			}
+			if (left instanceof StringFunction function && function.getSource() instanceof PropertyPath path) {
+				return ExpressionValues.targetFeature(path);
+			}
+			return null;
+		}
+	}
+
+	// -------------------------------------------------------------- row keys
+
+	static String rowKey(PropertyPath path, List<String> rowKeys) throws QueryException {
+		String flattened = outputKey(null, path);
+		if (rowKeys.contains(flattened)) {
+			return flattened;
+		}
+		if (path.getSegments().size() == 1 && rowKeys.contains(path.getSegments().get(0).getName())) {
+			return path.getSegments().get(0).getName();
+		}
+		throw new QueryException("Sort path '" + flattened
+				+ "' does not address an output key of the projection/aggregation (keys: " + rowKeys
+				+ ") — alias the column accordingly");
+	}
+
+	private static void registerKey(String key, String alias, List<String> rowKeys, List<String> rowAliases)
+			throws QueryException {
+		if (rowKeys.contains(key)) {
+			throw new QueryException("Duplicate result key '" + key + "' — use distinct aliases");
+		}
+		rowKeys.add(key);
+		rowAliases.add(alias);
+	}
+
+	private static String outputKey(String alias, PropertyPath path) {
+		if (alias != null && !alias.isBlank()) {
+			return alias;
+		}
+		StringBuilder key = new StringBuilder();
+		path.getSegments().forEach(segment -> {
+			if (key.length() > 0) {
+				key.append('_');
+			}
+			key.append(segment.getName());
+		});
+		return key.toString();
+	}
+}
