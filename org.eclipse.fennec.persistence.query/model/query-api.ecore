@@ -149,6 +149,36 @@
         <details key="documentation" value="Logical negation (Not)."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="WHERE_NE" value="10">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Not-equal comparison (v2 IR Comparison NE)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="IS_NULL" value="11">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Explicit null check (v2 IR IsNull)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="IN" value="12">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Membership test (v2 IR In)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="EXISTS" value="13">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Existential quantifier over a multi-valued navigation (v2 IR Exists)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FOR_ALL" value="14">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Universal quantifier over a multi-valued navigation (v2 IR ForAll)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="STRING_MATCH_CASE_INSENSITIVE" value="15">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Case-insensitive string matching (v2 IR StringMatch.caseInsensitive)."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="SORT" value="20">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Ordering of results (sortBy)."/>
@@ -184,6 +214,16 @@
         <details key="documentation" value="Projection through references (requires a join)."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="EXPAND" value="27">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Eager-fetch hints (v2 envelope expand)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PIPELINE" value="28">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Aggregation pipeline stages beyond a single groupBy (v2 envelope apply)."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="GROUP_BY" value="40">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Grouping (groupBy)."/>
@@ -214,6 +254,11 @@
         <details key="documentation" value="Count aggregate (per group)."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="AGG_COUNT_DISTINCT" value="46">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Count-distinct aggregate (v2 pipeline)."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="OP_TO_LOWER" value="60">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="ToLowerCase string operation."/>
@@ -227,6 +272,11 @@
     <eLiterals name="OP_AVERAGE" value="62">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="STRING_FUNCTIONS" value="63">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="String functions applied to values (v2 IR StringFunction: toLower/toUpper/trim/length)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">

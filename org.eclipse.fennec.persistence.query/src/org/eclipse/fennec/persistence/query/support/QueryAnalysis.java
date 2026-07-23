@@ -33,7 +33,15 @@ public final class QueryAnalysis {
 	private final int maxFeaturePathDepth;
 	private final QueryShape shape;
 
-	QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape) {
+	/**
+	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
+	 * v1 model, {@code ExpressionAnalyzer} for the v2 expression IR).
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
