@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="command" nsURI="https://eclipse.org/fennec/command/1.0.0" nsPrefix="cmd">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="complianceLevel" value="21.0"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="basePackage" value="org.eclipse.fennec.model"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="documentation" value="Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (concept.md §14): Delete is a query selector, Update is a selector plus a ChangeSet template from the stream model, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding)."/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="Command" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Abstract write command. Execution is a backend capability (CommandResource); refusal follows the diagnostics contract of the query SPI."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="InsertCommand" eSuperTypes="#//Command">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Inserts the payload objects (save semantics of the target resource)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="objects" lowerBound="1"
+        upperBound="-1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The payload; contained so a persisted command is self-contained."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DeleteCommand" eSuperTypes="#//Command">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Deletes every object the selector matches (concept §14: Delete = selector). Backends translate the selector's predicate to a native scoped delete."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="selector" lowerBound="1"
+        eType="ecore:EClass ../../org.eclipse.fennec.query.model2/model/query.ecore#//Query"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UpdateCommand" eSuperTypes="#//Command">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Updates every object the selector matches by applying the ChangeSet template (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executable once the patch-apply engine exists — until then backends refuse it with a diagnostic."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="selector" lowerBound="1"
+        eType="ecore:EClass ../../org.eclipse.fennec.query.model2/model/query.ecore#//Query"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="template" lowerBound="1"
+        eType="ecore:EClass ../../org.eclipse.fennec.stream.model/model/stream.ecore#//ChangeSet"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The change template applied per matched object. Entry coordinates address features of the selector's root type; objectId is resolved per match."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+</ecore:EPackage>

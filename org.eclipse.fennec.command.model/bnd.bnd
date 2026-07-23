@@ -1,0 +1,26 @@
+Bundle-Name: Eclipse Fennec Command Model
+Bundle-Description: Write commands for the unified persistence layer (concept §14): \
+	Insert with payload, Delete = query selector, Update = selector + ChangeSet template.
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/command.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/command.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model
+
+-buildpath: \
+	org.osgi.service.condition;version=latest,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.query.model2;version=snapshot,\
+	org.eclipse.fennec.stream.model;version=snapshot
+
+-testpath: \
+	assertj-core

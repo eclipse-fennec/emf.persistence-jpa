@@ -1,0 +1,24 @@
+Bundle-Name: Eclipse Fennec Stream Model
+Bundle-Description: Fennec change-stream metamodel (ChangeSet/ChangeEntry/DeltaKind and \
+	the snapshot chain) — the wire/log format of the unified-persistence concept (§5, §20). \
+	Promoted from the concept draft; evolution is additive-only.
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/stream.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/stream.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model
+
+-buildpath: \
+	org.osgi.service.condition;version=latest
+
+-testpath: \
+	assertj-core
