@@ -1,0 +1,18 @@
+Bundle-Name: Eclipse Fennec Expression OCL Bridge
+Bundle-Description: Bidirectional bridge between the Fennec Expression Model and the \
+	m2x Essential-OCL AST (consumed binary, m2x untouched): Expr-to-OCL is total over the \
+	blessed subset (parameters bound before mapping), OCL-to-Expr is partial and refuses \
+	unsupported constructs. See docs/unified-persistence/query-ir-redesign.md decision R6/R7.
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.m2x.ocl.model;version=latest
+
+-testpath: \
+	assertj-core,\
+	org.eclipse.fennec.query.model;version=snapshot
