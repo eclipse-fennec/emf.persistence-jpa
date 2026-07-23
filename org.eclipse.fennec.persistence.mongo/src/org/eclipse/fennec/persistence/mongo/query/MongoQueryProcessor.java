@@ -428,7 +428,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 		BsonDocument group = new BsonDocument("_id", groupKeys.isEmpty() ? BsonNull.VALUE : id);
 		BsonDocument flatten = new BsonDocument("_id", new BsonInt32(0));
 		groupKeys.keySet().forEach(key -> {
-			register(key, null, rowKeys, rowAliases);
+			// group keys are alias-addressable under their derived name
+			register(key, key, rowKeys, rowAliases);
 			flatten.put(key, new BsonString("$_id." + key));
 		});
 		for (Aggregate aggregate : groupBy.getAggregates()) {
