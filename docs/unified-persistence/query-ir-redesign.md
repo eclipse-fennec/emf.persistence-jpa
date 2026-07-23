@@ -1,6 +1,11 @@
 # Query IR redesign — the Fennec Expression Model
 
-**Status:** approved concept (2026-07-23). Supersedes the *IR part* of
+**Status:** implemented (2026-07-24, #47–#58; user guide: `query-usage.md`). Deviations from
+the plan are recorded in the issues — notably: the legacy retirement was pulled forward
+(maintainer call, no transitional names shipped), builder v2 is `Expressions` +
+`QueryBuilder`, group keys are alias-addressable, JPA delete removes children-first, and
+the OclEvaluator differential tests stay blocked until fennec-odata publishes its query
+bundle (#56). Originally the approved concept of 2026-07-23. Supersedes the *IR part* of
 `query-processor-spi.md`; the SPI layer described there (QueryProcessor, capabilities,
 diagnostics, QueryResult, TCK) **stays** and is re-targeted. Companion: `concept.md`
 §3.1/§5/§14, `query-usage.md` (to be rewritten on completion).

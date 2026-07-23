@@ -1,161 +1,169 @@
-# Querying persistence resources — user guide
+# Querying and writing persistence resources — user guide
 
-**Status:** implemented (2026-07-23, issues #32–#45 on `feature/unified-query-spi`).
-Companion documents: `query-processor-spi.md` (SPI design), `concept.md` §3.1/§14 (architecture).
+**Status:** rewritten for the expression IR (2026-07-24, Query IR v2, issues #47–#58).
+Companions: `query-ir-redesign.md` (decision record R1–R10), `query-processor-spi.md`
+(SPI architecture), `concept.md` §3.1/§14.
 
-One canonical, backend-neutral query model (`org.eclipse.fennec.query.model`) serves **both**
-backends: JPA/EclipseLink translates it to JPQL, MongoDB to filter documents or aggregation
-pipelines. A query either runs natively or is **refused with diagnostics** — there is no silent
-in-memory post-filtering.
+One canonical IR — the **Fennec Expression Model** (`org.eclipse.fennec.model.expression`)
+inside the **query envelope** (`org.eclipse.fennec.model.query`) — serves both backends:
+JPA/EclipseLink translates to JPQL, MongoDB to filter documents or aggregation pipelines.
+A query either runs natively or is **refused with diagnostics**; there is no silent
+in-memory post-filtering. Write commands (CUD) live in the **command model**
+(`org.eclipse.fennec.model.command`), not in the query language.
 
 ---
 
-## 1. Building a query
+## 1. Building queries
 
-Use the fluent `QueryBuilder` (`org.eclipse.fennec.model.query.builder`) — never hand-assemble
-the containment trees:
+Compose predicates with the static `Expressions` factory, envelopes with `QueryBuilder`
+(both in `org.eclipse.fennec.model.query.builder`):
 
 ```java
-import org.eclipse.fennec.model.query.Query;
-import org.eclipse.fennec.model.query.SortOrder;
+import static org.eclipse.fennec.model.query.builder.Expressions.*;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 
-Query adults = QueryBuilder.create()
-    .from(personClass)                       // optional type filter
-    .where(nameFeature).toLower().contains("smith")
-    .and(ageFeature).gte(18)
-    .or(ageFeature).eq(65)
-    .not(nameFeature).like("%test%")
-    .sortBy(ageFeature, SortOrder.ASC)
-    .skip(20).limit(10)
+Query query = QueryBuilder.from(personClass)
+    .where(and(
+        or(path(name).eq("smith"), path(name).containsIgnoreCase("x")),
+        path(age).ge(18),
+        path(age).ne(65),
+        path(nickname).isNull(),
+        path(age).in(30, 40, param("more")),
+        any(propertyPath(addresses), a -> a.path(street).startsWith("Main"))))
+    .orderByAsc(age)
+    .top(10).skip(5)
     .build();
 ```
 
-Chaining semantics: the **first** `where` entry is the base predicate; every further entry
-chains with the semantics of its call (`and`/`or`); `not` negates its own predicate and chains
-conjunctively.
+- **Real expression trees**: `and`/`or` are n-ary, arbitrarily nested — `(a OR b) AND c`
+  is a first-class shape.
+- **Comparisons**: `eq ne lt le gt ge` (typed values, auto-boxed literals), `isNull`/
+  `isNotNull`, `between(lo, hi[, loIncl, hiIncl])`, `in(...)`.
+- **String matching**: `contains/startsWith/endsWith/like` with `…IgnoreCase` variants —
+  case-insensitivity is a model flag, translated natively (LOWER both sides / regex `i`).
+- **Quantifiers**: `any`/`all(propertyPath(ref), it -> …)` over multi-valued references,
+  with a scoped iterator variable. `all` is vacuously true on empty collections.
+- **Parameters**: `param("name")` is a first-class `ParameterRef`; declare with
+  `.parameter("name", type)` and bind at execution. Unbound parameters fail translation.
 
-Comparators: `eq`, `lt/lte/gt/gte`, `contains/startsWith/endsWith/like`,
-`isBefore/isAfter(+OrEqual)`, `inRange(start, end[, startIncl, endIncl])`, `isLiteral` (enums),
-`isBool`. `toLower()`/`toUpper()` before the comparator makes string matching case-insensitive
-on both backends.
-
-Nested paths traverse references: `where(addressRef, streetAttr)` — see the capability matrix
-for backend limits.
-
-### Projection and aggregation
+### Projection, aggregation, fetch hints
 
 ```java
-// projection: rows instead of whole objects
-Query names = QueryBuilder.create()
-    .where(ageFeature).gte(18)
-    .selectAs("n", nameFeature)
+// projection → rows
+QueryBuilder.from(personClass)
+    .where(path(age).ge(18))
+    .selectAs("n", name)
     .distinct()
     .build();
 
-// aggregation: group keys + aggregate functions
-Query stats = QueryBuilder.create()
-    .select(departmentFeature)               // must match a groupBy path
-    .avg("avgAge", ageFeature)
-    .countOf("cnt", ageFeature)
-    .groupBy(departmentFeature)
-    .sortBy(avgAgeFeature, SortOrder.DESC)   // row sorting addresses OUTPUT KEYS (aliases)
+// aggregation → pipeline with a GroupBy stage
+QueryBuilder.from(personClass)
+    .groupBy(department)
+    .avg("avgAge", age)
+    .countOf("cnt")
+    .countDistinct("streets", addresses, street)
+    .orderByDesc(avgAgeFeature)      // row sorting addresses OUTPUT KEYS
     .build();
+
+// eager-fetch hint (JPA: LEFT JOIN FETCH; Mongo: refused)
+QueryBuilder.from(personClass).expand(addresses).build();
 ```
 
-Aggregates without `groupBy` aggregate the **whole result set** into a single row (SQL
-semantics). Plain subjects in an aggregation must match a `groupBy` path. `count()` (on the
-builder) requests a count-only result — distinct from `countOf(alias, path)`, the per-group
-count aggregate.
+Aggregates without `groupBy` aggregate the whole result set (single row). Group-key
+columns are alias-addressable under their derived name. Plain selections and `apply`
+are mutually exclusive. Richer pipelines (extra `Filter`/`Top`/`Skip` stages) can be
+composed via the model — Mongo executes them natively, JPA refuses them (see the
+matrix).
 
-### Prepared queries / parameters
+## 2. Executing queries
 
-A comparator value `":name"` is a **named placeholder**, bound at execution time; `"::x"`
-escapes a literal leading colon. Unbound placeholders fail translation loudly.
-
-```java
-Query byAge = QueryBuilder.create().where(ageFeature).eqParam("wanted").build();
-// bind later:
-resource.query(byAge, Map.of("wanted", 50), null);
-```
-
-`named("id")` sets `saveQuery` + name for persisting the query itself (queries are EMF objects).
-
----
-
-## 2. Executing
-
-Every persistence resource (JPA and Mongo) implements `QueryableResource`
+Both persistence resources implement `QueryableResource`
 (`org.eclipse.fennec.persistence.query.api`):
 
 ```java
 Resource resource = resourceSet.createResource(URI.createURI("jpa://tck/Person"));
-try (QueryResult result = ((QueryableResource) resource).query(adults)) {
+try (QueryResult result = ((QueryableResource) resource).query(query)) {
     switch (result.shape()) {
-    case OBJECTS     -> result.objects().forEach(this::handle);   // Stream<EObject>, lazy
+    case OBJECTS     -> result.objects().forEach(this::handle);   // lazy Stream<EObject>
     case PROJECTION,
-         AGGREGATION -> result.rows().forEach(row ->              // Stream<QueryResultRow>
+         AGGREGATION -> result.rows().forEach(row ->
                             log(row.get("n") + " / " + row.get(0)));
     case COUNT       -> log("count = " + result.count());
     }
 }
 ```
 
-Rules:
+Rules unchanged from v1: **close the result** (cursor/lease lives until close), accessors
+are shape-guarded, refusals surface as `IOException` with the `Diagnostic` in
+`resource.getErrors()` and `QueryException.getDiagnostic()`.
 
-- **Always close the result** (try-with-resources): it holds the backend cursor — for JPA the
-  `EntityManager`/lease stays open until close; for Mongo the cursor.
-- The accessor must match `result.shape()`; the others throw `IllegalStateException`.
-- Row cells are addressed by subject **alias** or **ordinal** (subject order).
-- A query the backend cannot serve natively fails with an `IOException`; the EMF `Diagnostic`
-  naming the offending constructs is recorded in `resource.getErrors()` and attached to the
-  cause (`QueryException.getDiagnostic()`).
+## 3. Write commands (CUD v1)
 
-Streaming results plug into PushStreams via the existing add-on
-(`PersistencePushStreams`) when consuming `OBJECTS` shapes reactively.
+Per concept §14 the query language is read-only; writes are commands
+(`org.eclipse.fennec.model.command`) executed via `CommandResource`:
 
----
+```java
+InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
+insert.getObjects().add(person);                       // command owns its payload
+long inserted = ((CommandResource) resource).execute(insert);   // executes on copies
 
-## 3. Capability matrix
+DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+delete.setSelector(QueryBuilder.from(personClass)
+    .where(path(age).ge(40)).build());                 // plain filter only
+long deleted = ((CommandResource) resource).execute(delete);
 
-Both backends declare their capabilities (`QueryProcessor.capabilities()`); `validate(query,
-rootEClass)` reports every violation as a `Diagnostic` ERROR before anything executes. Current
-declarations:
+UpdateCommand update = …;   // selector + ChangeSet template (stream model)
+// v1: refused with a diagnostic — execution follows the patch-apply engine
+```
 
-| `QueryFeature` | JPA (JPQL) | Mongo | Notes |
+- Insert = the resource's save semantics over **copies** of the contained payload.
+- Delete = selector-scoped removal; JPA removes matches **children-first** (containment
+  FK safety), Mongo uses `deleteMany(filter)`.
+- Command selectors must be **plain filters** — projection/aggregation/ordering/paging
+  on a selector are refused.
+
+## 4. Capability matrix
+
+Declared via `QueryProcessor.capabilities()`; `validate()` reports every violation as a
+`Diagnostic` ERROR before anything executes.
+
+| Feature | JPA (JPQL) | Mongo | Notes |
 |---|---|---|---|
-| WHERE_EQ / WHERE_COMPARISON | ✅ | ✅ | |
-| WHERE_STRING_MATCH | ✅ `LIKE` (escaped, `ESCAPE '\'`) | ✅ anchored regex | `Like` `%`/`_` translated |
-| WHERE_RANGE / WHERE_DATE / WHERE_ENUM / WHERE_BOOL | ✅ | ✅ | enums compare by literal name |
-| LOGICAL_AND / OR / NOT | ✅ | ✅ (`$nor` for NOT) | chaining semantics identical |
-| SORT / LIMIT / SKIP | ✅ | ✅ | row shapes: sort addresses **output keys** |
-| DISTINCT | ✅ (also whole entities) | ⚠️ **projection only** (`$group` over keys); whole documents refused (code 101) | |
-| COUNT | ✅ `COUNT(e)` | ✅ `countDocuments` | |
-| PROJECTION / PROJECTION_NESTED | ✅ result variables | ✅ `$project` | rows, not EObjects |
-| GROUP_BY + AGG_AVG/MIN/MAX/SUM/COUNT | ✅ | ✅ pipeline accumulators | ungrouped = whole-set |
-| OP_TO_LOWER / OP_TO_UPPER | ✅ `LOWER/UPPER` both sides | ✅ case-insensitive regex | |
-| FEATUREPATH_NESTED | ✅ joins, unlimited depth | ⚠️ **containment (embedded) only**, unlimited depth; cross-document paths refused (code 100 — no join) | |
-| TYPE_FILTER (+STRICT) | ✅ FROM clause | ✅ collection-per-type layout | satisfied structurally |
-| PARAMETERS | ✅ named JPQL parameters | ✅ resolved at translate | |
+| Comparisons incl. `ne`, `isNull`, `between`, `in` | ✅ | ✅ | Mongo IsNull = missing-or-null |
+| Logic trees (n-ary and/or, not, nested) | ✅ | ✅ (`$nor`) | |
+| String matching + case-insensitive flag | ✅ LOWER both sides | ✅ regex `i` | LIKE `%`/`_` translated |
+| String functions (toLower/toUpper/trim/length) | ✅ | ❌ (needs `$expr`) | |
+| Field-to-field comparisons | ✅ | ❌ | |
+| `exists` / `forAll` quantifiers | ✅ correlated `[NOT] EXISTS`, nested | ⚠️ **embedded collections only** (`$elemMatch`; code 100) | vacuous truth on empty |
+| Path navigation | ✅ joins, unlimited | ⚠️ containment only, unlimited (code 100) | |
+| Sort / top / skip / count | ✅ | ✅ | row sorting addresses output keys |
+| DISTINCT | ✅ incl. whole entities | ⚠️ projection only (code 101) | |
+| Projection / grouped + whole-set aggregation, COUNT_DISTINCT | ✅ | ✅ (`$addToSet`+`$size`) | group keys alias-addressable |
+| **Multi-stage pipelines** | ❌ refused | ✅ **native** ($match/$limit/$skip in stage order) | the capability asymmetry showcase |
+| `expand` fetch hints | ✅ LEFT JOIN FETCH (depth 1) | ❌ | |
+| Parameters (`ParameterRef`) | ✅ | ✅ | model-level, no string convention |
+| Type filter | ✅ FROM clause | ✅ collection-per-type | structural |
 | AS_OF / SERIES_RANGE | ❌ | ❌ | reserved (concept §14) |
 
-Refusal codes (`QueryValidator.DIAGNOSTIC_SOURCE = org.eclipse.fennec.persistence.query`):
-`1` unsupported feature, `2` path depth exceeded, `100` Mongo cross-document path,
-`101` Mongo distinct without projection.
+Refusal codes (`QueryValidator.DIAGNOSTIC_SOURCE`): `1` unsupported feature, `2` depth
+exceeded, `100` Mongo cross-document/non-embedded, `101` Mongo distinct without
+projection.
 
----
+## 5. The OCL bridge
 
-## 4. Behind the scenes
+`org.eclipse.fennec.expression.ocl` connects the IR to the m2x Essential-OCL AST
+(consumed binary; m2x untouched): `ExprToOcl` is **total** over the blessed subset
+(parameters bound before mapping), `OclToExpr` is **partial** and refuses anything
+outside it. This is the entry path for OCL-producing frontends — notably the OData
+`$filter` pipeline in its phase-1 migration.
 
-`QueryableResource.query(...)` = **validate → translate → execute**:
+## 6. Behind the scenes
 
-1. `QueryProcessor.validate(query, rootEClass)` — shared `QueryValidator` + backend rules.
-2. `translate(query, context)` — pure translation into a `JpaQueryPlan` (JPQL + named
-   parameters) or `MongoQueryPlan` (filter/sort or aggregation pipeline + row metadata).
-   Values are typed centrally (`QueryValues` via the feature's `EDataType` and the
-   `ConverterService`); placeholders resolve from the parameter map (`QueryParameters`).
-3. The resource executes the plan against its backend and wraps cursors into a streamed
-   `QueryResult` (`QueryResults` factories guarantee shape guarding and idempotent close).
-
-Conformance is guaranteed by the TCK query suite (`AbstractPersistenceTCK`), executed against
-H2/EclipseLink and MongoDB in all id-type bindings.
+`validate → translate → execute`, unchanged: `ExpressionAnalyzer` walks envelope +
+expression trees into the shared `QueryAnalysis`/`QueryValidator`/`QueryCapabilities`
+mechanism; `ExpressionValues` resolves typed literals (target-narrowing, enum/temporal
+resolution) and parameter bindings, with the `ConverterService` owning EMF→persistence
+conversion; the processors emit `JpaQueryPlan` (JPQL + named parameters) or
+`MongoQueryPlan` (filter/sort or pipeline + row metadata); the resources execute and
+stream. Conformance: the TCK query + command suites run against H2/EclipseLink and
+MongoDB in all four id-type bindings.
