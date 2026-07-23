@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +48,9 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.stream.ChangeEntry;
+import org.eclipse.fennec.model.stream.ChangeSet;
+import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
@@ -682,17 +686,107 @@ public abstract class AbstractPersistenceTCK {
 		assertThat(remaining.getContents().get(0).eGet(personName)).isEqualTo("Alice");
 	}
 
-	@Test
-	public void commandUpdateIsRefusedPendingPatchEngine() throws Exception {
-		saveQueryFixture();
-		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
-		update.setSelector(QueryBuilder.from(personClass).build());
-		update.setTemplate(StreamFactory.eINSTANCE.createChangeSet());
+	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {
+		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
+		entry.setKind(kind);
+		entry.setFeatureId(personClass.getFeatureID(feature));
+		return entry;
+	}
 
+	private UpdateCommand updateCommand(Query selector, ChangeEntry... entries) {
+		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
+		update.setSelector(selector);
+		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+		for (ChangeEntry entry : entries) {
+			template.getEntries().add(entry);
+		}
+		update.setTemplate(template);
+		return update;
+	}
+
+	@Test
+	public void commandUpdateAppliesTheTemplatePerMatch() throws Exception {
+		saveQueryFixture();
+		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
+		setName.setValueNew("Robert");
+		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
+		setAge.setValueNew("41");
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personName).eq("Bob"))
+						.build(),
+				setName, setAge);
+
+		long affected = commands(createBackendResourceSet()).execute(update);
+		assertThat(affected).isEqualTo(1);
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		Map<Object, Object> byName = new HashMap<>();
+		loaded.getContents().forEach(person -> byName.put(person.eGet(personName), person.eGet(personAge)));
+		assertThat(byName).containsOnlyKeys("Alice", "Robert", "Carol");
+		assertThat(((Number) byName.get("Robert")).intValue()).isEqualTo(41);
+		assertThat(((Number) byName.get("Alice")).intValue()).isEqualTo(30);
+	}
+
+	@Test
+	public void commandUpdateMatchesEveryObjectOnEmptySelector() throws Exception {
+		saveQueryFixture();
+		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
+		setAge.setValueNew("18");
+		UpdateCommand update = updateCommand(QueryBuilder.from(personClass).build(), setAge);
+
+		long affected = commands(createBackendResourceSet()).execute(update);
+		assertThat(affected).isEqualTo(3);
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents())
+				.allSatisfy(person -> assertThat(((Number) person.eGet(personAge)).intValue()).isEqualTo(18));
+	}
+
+	@Test
+	public void commandUpdateUnsetClearsTheValue() throws Exception {
+		saveQueryFixture();
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personAge).eq(50))
+						.build(),
+				changeEntry(DeltaKind.UNSET, personName));
+
+		long affected = commands(createBackendResourceSet()).execute(update);
+		assertThat(affected).isEqualTo(1);
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		List<Object> names = loaded.getContents().stream().map(person -> person.eGet(personName)).toList();
+		assertThat(names).contains("Alice", "Bob");
+		assertThat(names).filteredOn(java.util.Objects::isNull).hasSize(1);
+	}
+
+	@Test
+	public void commandUpdateRefusesBadTemplates() throws Exception {
+		saveQueryFixture();
+		Query all = QueryBuilder.from(personClass).build();
 		CommandResource resource = commands(createBackendResourceSet());
-		assertThatThrownBy(() -> resource.execute(update))
+
+		// lifecycle kinds belong to Insert/Delete commands, not templates
+		ChangeEntry create = changeEntry(DeltaKind.CREATE, personName);
+		assertThatThrownBy(() -> resource.execute(updateCommand(all, create)))
 				.isInstanceOf(IOException.class)
-				.hasMessageContaining("patch-apply engine");
+				.hasMessageContaining("Unsupported template kind");
+
+		// reference patching is not part of the v1 engine
+		ChangeEntry onReference = changeEntry(DeltaKind.SET, personAddresses);
+		assertThatThrownBy(() -> resource.execute(updateCommand(all, onReference)))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("reference");
+
+		// an empty template patches nothing — refused, not a silent no-op
+		assertThatThrownBy(() -> resource.execute(updateCommand(all)))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("no entries");
+
+		// nothing may have been changed by the refused commands
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents()).hasSize(3);
 	}
 
 	@Test
