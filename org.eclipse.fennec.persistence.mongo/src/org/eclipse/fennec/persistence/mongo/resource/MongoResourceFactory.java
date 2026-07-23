@@ -18,6 +18,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.model.metadata.api.MetadataService;
+import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 
 import com.mongodb.client.MongoDatabase;
 
@@ -39,19 +40,35 @@ public class MongoResourceFactory implements Resource.Factory {
 	private final MongoDatabase database;
 	private final MetadataService metadataService;
 	private final CodecValueRegistry valueRegistry;
+	private final QueryProcessor queryProcessor;
 
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
+		this(database, metadataService, valueRegistry, null);
+	}
+
+	/**
+	 * Variant with an explicit {@link QueryProcessor} handed to every created resource
+	 * (issue #61, e.g. the {@code mongo}-backend service from the OSGi registry);
+	 * {@code null} keeps the resources' local default processor.
+	 */
+	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor) {
 		requireNonNull(database, "MongoDatabase is required");
 		requireNonNull(metadataService, "MetadataService is required");
 		this.database = database;
 		this.metadataService = metadataService;
 		this.valueRegistry = valueRegistry;
+		this.queryProcessor = queryProcessor;
 	}
 
 	@Override
 	public Resource createResource(URI uri) {
-		return new MongoResourceImpl(uri, database, metadataService,
+		MongoResourceImpl resource = new MongoResourceImpl(uri, database, metadataService,
 				valueRegistry != null ? valueRegistry.copy() : null);
+		if (queryProcessor != null) {
+			resource.setQueryProcessor(queryProcessor);
+		}
+		return resource;
 	}
 }

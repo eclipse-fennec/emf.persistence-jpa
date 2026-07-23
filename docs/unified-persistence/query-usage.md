@@ -166,7 +166,17 @@ Refusal codes (`QueryValidator.DIAGNOSTIC_SOURCE`): `1` unsupported feature, `2`
 exceeded, `100` Mongo cross-document/non-embedded, `101` Mongo distinct without
 projection.
 
-## 5. The OCL bridge
+## 5. OSGi wiring
+
+Both processors are DS components registered as `QueryProcessor` services carrying
+`persistence.query.backend` (`jpa` / `mongo`) for selection. The `jpa` whiteboard
+resource factory holds an **optional greedy** reference to the `jpa`-backend service and
+hands it to every resource it creates — no service means the resources' local default
+processor, a higher-ranked service (decorator, reconfiguration) wins for subsequently
+created resources. The programmatic `MongoResourceFactory` takes the processor as an
+optional constructor argument.
+
+## 6. The OCL bridge
 
 `org.eclipse.fennec.expression.ocl` connects the IR to the m2x Essential-OCL AST
 (consumed binary; m2x untouched): `ExprToOcl` is **total** over the blessed subset
@@ -174,7 +184,7 @@ projection.
 outside it. This is the entry path for OCL-producing frontends — notably the OData
 `$filter` pipeline in its phase-1 migration.
 
-## 6. Behind the scenes
+## 7. Behind the scenes
 
 `validate → translate → execute`, unchanged: `ExpressionAnalyzer` walks envelope +
 expression trees into the shared `QueryAnalysis`/`QueryValidator`/`QueryCapabilities`

@@ -17,6 +17,7 @@ import static java.util.Objects.nonNull;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,7 +25,10 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.emf.osgi.annotation.ConfiguratorType;
 import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
+import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
+import org.eclipse.fennec.persistence.query.QueryConstants;
+import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
@@ -33,6 +37,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 
 /**
  * The single {@link Resource.Factory} for the {@code jpa} URI scheme — an emf.osgi
@@ -65,10 +70,31 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 	private final Map<String, ServiceReference<JPAUnit>> unitRefs = new ConcurrentHashMap<>();
 	/** Unit name → resolved service object; filled lazily on the first URI hit per unit. */
 	private final Map<String, JPAUnit> resolvedUnits = new ConcurrentHashMap<>();
+	/** The processor handed to created resources; empty = resources use their local default. */
+	private final AtomicReference<QueryProcessor> queryProcessor = new AtomicReference<>();
 
 	@Activate
 	public JPAResourceFactoryComponent(BundleContext ctx) {
 		this.ctx = ctx;
+	}
+
+	/**
+	 * The {@link QueryProcessor} handed to created resources (issue #61). Optional and
+	 * greedy: without a matching service the resources fall back to their local default
+	 * processor; a registered {@code jpa}-backend service (e.g. reconfigured, decorated
+	 * or higher-ranked) takes precedence for all subsequently created resources.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY,
+			target = "(" + QueryConstants.BACKEND_PROPERTY + "=" + JpaQueryProcessor.BACKEND + ")")
+	void bindQueryProcessor(QueryProcessor processor) {
+		queryProcessor.set(processor);
+	}
+
+	void unbindQueryProcessor(QueryProcessor processor) {
+		// on a greedy rebind DS binds the replacement first — only clear if the
+		// departing service is still the bound one
+		queryProcessor.compareAndSet(processor, null);
 	}
 
 	@Deactivate
@@ -122,15 +148,24 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 	public Resource createResource(URI uri) {
 		String puName = uri.authority();
 		if (isNull(puName) || puName.isEmpty()) {
-			return new JPAResourceImpl(uri, JPAUnit.unavailable(
+			return newResource(uri, JPAUnit.unavailable(
 					"URI '" + uri + "' does not name a persistence unit (expected jpa://<unitName>/<Entity>)"));
 		}
 		JPAUnit unit = resolveUnit(puName);
 		if (isNull(unit)) {
-			return new JPAResourceImpl(uri, JPAUnit.unavailable(
+			return newResource(uri, JPAUnit.unavailable(
 					"No persistence unit '" + puName + "' is available for URI '" + uri + "'"));
 		}
-		return new JPAResourceImpl(uri, unit);
+		return newResource(uri, unit);
+	}
+
+	private Resource newResource(URI uri, JPAUnit unit) {
+		JPAResourceImpl resource = new JPAResourceImpl(uri, unit);
+		QueryProcessor processor = queryProcessor.get();
+		if (nonNull(processor)) {
+			resource.setQueryProcessor(processor);
+		}
+		return resource;
 	}
 
 	/**
