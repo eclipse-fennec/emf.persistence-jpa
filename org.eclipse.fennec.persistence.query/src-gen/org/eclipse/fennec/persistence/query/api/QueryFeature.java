@@ -165,6 +165,84 @@ public enum QueryFeature implements Enumerator {
 	LOGICAL_NOT(9, "LOGICAL_NOT", "LOGICAL_NOT"),
 
 	/**
+	 * The '<em><b>WHERE NE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Not-equal comparison (v2 IR Comparison NE).
+	 * <!-- end-model-doc -->
+	 * @see #WHERE_NE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	WHERE_NE(10, "WHERE_NE", "WHERE_NE"),
+
+	/**
+	 * The '<em><b>IS NULL</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Explicit null check (v2 IR IsNull).
+	 * <!-- end-model-doc -->
+	 * @see #IS_NULL_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	IS_NULL(11, "IS_NULL", "IS_NULL"),
+
+	/**
+	 * The '<em><b>IN</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Membership test (v2 IR In).
+	 * <!-- end-model-doc -->
+	 * @see #IN_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	IN(12, "IN", "IN"),
+
+	/**
+	 * The '<em><b>EXISTS</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Existential quantifier over a multi-valued navigation (v2 IR Exists).
+	 * <!-- end-model-doc -->
+	 * @see #EXISTS_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	EXISTS(13, "EXISTS", "EXISTS"),
+
+	/**
+	 * The '<em><b>FOR ALL</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Universal quantifier over a multi-valued navigation (v2 IR ForAll).
+	 * <!-- end-model-doc -->
+	 * @see #FOR_ALL_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	FOR_ALL(14, "FOR_ALL", "FOR_ALL"),
+
+	/**
+	 * The '<em><b>STRING MATCH CASE INSENSITIVE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Case-insensitive string matching (v2 IR StringMatch.caseInsensitive).
+	 * <!-- end-model-doc -->
+	 * @see #STRING_MATCH_CASE_INSENSITIVE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	STRING_MATCH_CASE_INSENSITIVE(15, "STRING_MATCH_CASE_INSENSITIVE", "STRING_MATCH_CASE_INSENSITIVE"),
+
+	/**
 	 * The '<em><b>SORT</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -256,6 +334,32 @@ public enum QueryFeature implements Enumerator {
 	PROJECTION_NESTED(26, "PROJECTION_NESTED", "PROJECTION_NESTED"),
 
 	/**
+	 * The '<em><b>EXPAND</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Eager-fetch hints (v2 envelope expand).
+	 * <!-- end-model-doc -->
+	 * @see #EXPAND_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	EXPAND(27, "EXPAND", "EXPAND"),
+
+	/**
+	 * The '<em><b>PIPELINE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Aggregation pipeline stages beyond a single groupBy (v2 envelope apply).
+	 * <!-- end-model-doc -->
+	 * @see #PIPELINE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	PIPELINE(28, "PIPELINE", "PIPELINE"),
+
+	/**
 	 * The '<em><b>GROUP BY</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -334,6 +438,19 @@ public enum QueryFeature implements Enumerator {
 	AGG_COUNT(45, "AGG_COUNT", "AGG_COUNT"),
 
 	/**
+	 * The '<em><b>AGG COUNT DISTINCT</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Count-distinct aggregate (v2 pipeline).
+	 * <!-- end-model-doc -->
+	 * @see #AGG_COUNT_DISTINCT_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	AGG_COUNT_DISTINCT(46, "AGG_COUNT_DISTINCT", "AGG_COUNT_DISTINCT"),
+
+	/**
 	 * The '<em><b>OP TO LOWER</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -371,6 +488,19 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	OP_AVERAGE(62, "OP_AVERAGE", "OP_AVERAGE"),
+
+	/**
+	 * The '<em><b>STRING FUNCTIONS</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * String functions applied to values (v2 IR StringFunction: toLower/toUpper/trim/length).
+	 * <!-- end-model-doc -->
+	 * @see #STRING_FUNCTIONS_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	STRING_FUNCTIONS(63, "STRING_FUNCTIONS", "STRING_FUNCTIONS"),
 
 	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
@@ -591,6 +721,90 @@ public enum QueryFeature implements Enumerator {
 	public static final int LOGICAL_NOT_VALUE = 9;
 
 	/**
+	 * The '<em><b>WHERE NE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Not-equal comparison (v2 IR Comparison NE).
+	 * <!-- end-model-doc -->
+	 * @see #WHERE_NE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int WHERE_NE_VALUE = 10;
+
+	/**
+	 * The '<em><b>IS NULL</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Explicit null check (v2 IR IsNull).
+	 * <!-- end-model-doc -->
+	 * @see #IS_NULL
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int IS_NULL_VALUE = 11;
+
+	/**
+	 * The '<em><b>IN</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Membership test (v2 IR In).
+	 * <!-- end-model-doc -->
+	 * @see #IN
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int IN_VALUE = 12;
+
+	/**
+	 * The '<em><b>EXISTS</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Existential quantifier over a multi-valued navigation (v2 IR Exists).
+	 * <!-- end-model-doc -->
+	 * @see #EXISTS
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int EXISTS_VALUE = 13;
+
+	/**
+	 * The '<em><b>FOR ALL</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Universal quantifier over a multi-valued navigation (v2 IR ForAll).
+	 * <!-- end-model-doc -->
+	 * @see #FOR_ALL
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int FOR_ALL_VALUE = 14;
+
+	/**
+	 * The '<em><b>STRING MATCH CASE INSENSITIVE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Case-insensitive string matching (v2 IR StringMatch.caseInsensitive).
+	 * <!-- end-model-doc -->
+	 * @see #STRING_MATCH_CASE_INSENSITIVE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int STRING_MATCH_CASE_INSENSITIVE_VALUE = 15;
+
+	/**
 	 * The '<em><b>SORT</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -689,6 +903,34 @@ public enum QueryFeature implements Enumerator {
 	public static final int PROJECTION_NESTED_VALUE = 26;
 
 	/**
+	 * The '<em><b>EXPAND</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Eager-fetch hints (v2 envelope expand).
+	 * <!-- end-model-doc -->
+	 * @see #EXPAND
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int EXPAND_VALUE = 27;
+
+	/**
+	 * The '<em><b>PIPELINE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Aggregation pipeline stages beyond a single groupBy (v2 envelope apply).
+	 * <!-- end-model-doc -->
+	 * @see #PIPELINE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int PIPELINE_VALUE = 28;
+
+	/**
 	 * The '<em><b>GROUP BY</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -773,6 +1015,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int AGG_COUNT_VALUE = 45;
 
 	/**
+	 * The '<em><b>AGG COUNT DISTINCT</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Count-distinct aggregate (v2 pipeline).
+	 * <!-- end-model-doc -->
+	 * @see #AGG_COUNT_DISTINCT
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int AGG_COUNT_DISTINCT_VALUE = 46;
+
+	/**
 	 * The '<em><b>OP TO LOWER</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -813,6 +1069,20 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	public static final int OP_AVERAGE_VALUE = 62;
+
+	/**
+	 * The '<em><b>STRING FUNCTIONS</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * String functions applied to values (v2 IR StringFunction: toLower/toUpper/trim/length).
+	 * <!-- end-model-doc -->
+	 * @see #STRING_FUNCTIONS
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int STRING_FUNCTIONS_VALUE = 63;
 
 	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
@@ -916,6 +1186,12 @@ public enum QueryFeature implements Enumerator {
 			LOGICAL_AND,
 			LOGICAL_OR,
 			LOGICAL_NOT,
+			WHERE_NE,
+			IS_NULL,
+			IN,
+			EXISTS,
+			FOR_ALL,
+			STRING_MATCH_CASE_INSENSITIVE,
 			SORT,
 			LIMIT,
 			SKIP,
@@ -923,15 +1199,19 @@ public enum QueryFeature implements Enumerator {
 			COUNT,
 			PROJECTION,
 			PROJECTION_NESTED,
+			EXPAND,
+			PIPELINE,
 			GROUP_BY,
 			AGG_AVG,
 			AGG_MIN,
 			AGG_MAX,
 			AGG_SUM,
 			AGG_COUNT,
+			AGG_COUNT_DISTINCT,
 			OP_TO_LOWER,
 			OP_TO_UPPER,
 			OP_AVERAGE,
+			STRING_FUNCTIONS,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			TYPE_FILTER_STRICT,
@@ -1004,6 +1284,12 @@ public enum QueryFeature implements Enumerator {
 			case LOGICAL_AND_VALUE: return LOGICAL_AND;
 			case LOGICAL_OR_VALUE: return LOGICAL_OR;
 			case LOGICAL_NOT_VALUE: return LOGICAL_NOT;
+			case WHERE_NE_VALUE: return WHERE_NE;
+			case IS_NULL_VALUE: return IS_NULL;
+			case IN_VALUE: return IN;
+			case EXISTS_VALUE: return EXISTS;
+			case FOR_ALL_VALUE: return FOR_ALL;
+			case STRING_MATCH_CASE_INSENSITIVE_VALUE: return STRING_MATCH_CASE_INSENSITIVE;
 			case SORT_VALUE: return SORT;
 			case LIMIT_VALUE: return LIMIT;
 			case SKIP_VALUE: return SKIP;
@@ -1011,15 +1297,19 @@ public enum QueryFeature implements Enumerator {
 			case COUNT_VALUE: return COUNT;
 			case PROJECTION_VALUE: return PROJECTION;
 			case PROJECTION_NESTED_VALUE: return PROJECTION_NESTED;
+			case EXPAND_VALUE: return EXPAND;
+			case PIPELINE_VALUE: return PIPELINE;
 			case GROUP_BY_VALUE: return GROUP_BY;
 			case AGG_AVG_VALUE: return AGG_AVG;
 			case AGG_MIN_VALUE: return AGG_MIN;
 			case AGG_MAX_VALUE: return AGG_MAX;
 			case AGG_SUM_VALUE: return AGG_SUM;
 			case AGG_COUNT_VALUE: return AGG_COUNT;
+			case AGG_COUNT_DISTINCT_VALUE: return AGG_COUNT_DISTINCT;
 			case OP_TO_LOWER_VALUE: return OP_TO_LOWER;
 			case OP_TO_UPPER_VALUE: return OP_TO_UPPER;
 			case OP_AVERAGE_VALUE: return OP_AVERAGE;
+			case STRING_FUNCTIONS_VALUE: return STRING_FUNCTIONS;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case TYPE_FILTER_STRICT_VALUE: return TYPE_FILTER_STRICT;

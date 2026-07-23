@@ -21,6 +21,8 @@ src=${^src},src-gen
 	biz.aQute.bnd.annotation;version=latest,\
 	org.eclipse.fennec.persistence;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.query.model2;version=snapshot,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.model;version=snapshot
 
 -testpath: \
