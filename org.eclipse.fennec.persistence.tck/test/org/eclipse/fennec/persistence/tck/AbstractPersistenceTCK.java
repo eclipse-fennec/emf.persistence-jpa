@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -54,6 +55,7 @@ import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
+import org.eclipse.fennec.persistence.query.memory.MemoryQueries;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.junit.jupiter.api.AfterEach;
@@ -647,6 +649,83 @@ public abstract class AbstractPersistenceTCK {
 		assertThatThrownBy(() -> resource.query(bad).close())
 				.isInstanceOf(IOException.class)
 				.hasMessageContaining("output key");
+	}
+
+	/**
+	 * Differential mode (#62): the {@code memory} backend is the reference oracle — the
+	 * same conformance queries run against the database backend and against the fixture
+	 * objects in memory, and the result sets must agree.
+	 */
+	@Test
+	public void queryDifferentialAgainstMemoryOracle() throws Exception {
+		saveQueryFixture();
+		List<EObject> oracle = new ArrayList<>();
+		oracle.add(newPerson(1, "Alice", 30));
+		EObject bob = newPerson(2, "Bob", 40);
+		listOf(bob, personAddresses).add(newAddress(21, "Main Street 5", "Jena"));
+		listOf(bob, personAddresses).add(newAddress(22, "Side Road 9", "Gera"));
+		oracle.add(bob);
+		oracle.add(newPerson(3, "Carol", 50));
+
+		Map<String, Query> corpus = new LinkedHashMap<>();
+		corpus.put("grouped tree", QueryBuilder.from(personClass)
+				.where(Expressions.and(
+						Expressions.or(
+								Expressions.path(personAge).ge(40),
+								Expressions.path(personName).eq("Alice")),
+						Expressions.path(personAge).ne(50)))
+				.build());
+		corpus.put("in + ne + isNotNull", QueryBuilder.from(personClass)
+				.where(Expressions.and(
+						Expressions.path(personAge).in(30, 40, 99),
+						Expressions.path(personName).ne("Alice"),
+						Expressions.path(personName).isNotNull()))
+				.build());
+		corpus.put("ci contains", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).containsIgnoreCase("ARO"))
+				.build());
+		corpus.put("exists", QueryBuilder.from(personClass)
+				.where(Expressions.any(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("Main")))
+				.build());
+		corpus.put("forAll", QueryBuilder.from(personClass)
+				.where(Expressions.all(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("Main")))
+				.build());
+		corpus.put("sort/skip/top", QueryBuilder.from(personClass)
+				.orderByDesc(personAge)
+				.skip(1)
+				.top(1)
+				.build());
+		corpus.put("between", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).between(30, 40))
+				.build());
+
+		for (Map.Entry<String, Query> entry : corpus.entrySet()) {
+			List<Object> backendNames;
+			try (QueryResult result = queryable(createBackendResourceSet()).query(entry.getValue())) {
+				backendNames = result.objects().map(person -> person.eGet(personName))
+						.map(Object.class::cast).toList();
+			}
+			List<Object> memoryNames;
+			try (QueryResult result = MemoryQueries.execute(entry.getValue(), oracle, null)) {
+				memoryNames = result.objects().map(person -> person.eGet(personName))
+						.map(Object.class::cast).toList();
+			}
+			assertThat(backendNames)
+					.as("backend and memory oracle must agree on '%s'", entry.getKey())
+					.containsExactlyInAnyOrderElementsOf(memoryNames);
+		}
+
+		Query count = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).gt(30))
+				.countOnly()
+				.build();
+		try (QueryResult backend = queryable(createBackendResourceSet()).query(count);
+				QueryResult memory = MemoryQueries.execute(count, oracle, null)) {
+			assertThat(backend.count()).as("count must agree with the memory oracle")
+					.isEqualTo(memory.count());
+		}
 	}
 
 	// ------------------------------------------------------------ command TCK (CUD v1)
