@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.stream.model/src-gen" modelPluginID="org.eclipse.fennec.stream.model"
+    modelName="Stream" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>stream.ecore</foreignModel>
+  <genPackages prefix="Stream" basePackage="org.eclipse.fennec.model" disposableProviderFactory="true"
+      ecorePackage="stream.ecore#/">
+    <genClasses ecoreClass="stream.ecore#//ChangeSet">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/streamId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/sequence"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/timestamp"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/commitTime"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/contextFingerprint"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/author"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/cause"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/transactionId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeSet/manifest"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference stream.ecore#//ChangeSet/entries"/>
+    </genClasses>
+    <genClasses ecoreClass="stream.ecore#//ChangeEntry">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/objectId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/classId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/kind"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/featureId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/index"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/toIndex"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/key"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/coords"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/valueOld"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ChangeEntry/valueNew"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference stream.ecore#//ChangeEntry/state"/>
+    </genClasses>
+    <genClasses ecoreClass="stream.ecore#//SlotValue">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//SlotValue/featureId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//SlotValue/index"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//SlotValue/key"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//SlotValue/coords"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//SlotValue/value"/>
+    </genClasses>
+    <genClasses ecoreClass="stream.ecore#//ContextSnapshot">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ContextSnapshot/fingerprint"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ContextSnapshot/predecessorFingerprint"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ContextSnapshot/created"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ContextSnapshot/author"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ContextSnapshot/labels"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//ContextSnapshot/packageUri"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference stream.ecore#//ContextSnapshot/content"/>
+    </genClasses>
+    <genClasses ecoreClass="stream.ecore#//CompositeSnapshot">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//CompositeSnapshot/fingerprint"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//CompositeSnapshot/predecessorFingerprint"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//CompositeSnapshot/created"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference stream.ecore#//CompositeSnapshot/packages"/>
+    </genClasses>
+    <genClasses ecoreClass="stream.ecore#//PackageFingerprint">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//PackageFingerprint/packageUri"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute stream.ecore#//PackageFingerprint/packageFingerprint"/>
+    </genClasses>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="stream.ecore#//DeltaKind">
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/CREATE"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/SET"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/UNSET"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/ADD"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/REMOVE"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/MOVE"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/PUT"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/REMOVE_KEY"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/SET_AT"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/RESHAPE"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/DELETE"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/KEYFRAME"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/TOUCH"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/MIGRATE_OUT"/>
+      <genEnumLiterals ecoreEnumLiteral="stream.ecore#//DeltaKind/MIGRATE_IN"/>
+    </genEnums>
+  </genPackages>
+</genmodel:GenModel>

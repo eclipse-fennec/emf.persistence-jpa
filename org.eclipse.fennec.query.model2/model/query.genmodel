@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.query.model2/src-gen" modelPluginID="org.eclipse.fennec.query.model2"
+    modelName="Query" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true" usedGenPackages="../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression">
+  <foreignModel>query.ecore</foreignModel>
+  <genPackages prefix="Query" basePackage="org.eclipse.fennec.model2" disposableProviderFactory="true"
+      ecorePackage="query.ecore#/">
+    <genClasses ecoreClass="query.ecore#//Query">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference query.ecore#//Query/from"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/predicate"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/orderBy"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/select"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/apply"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/expand"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/top"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/skip"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/distinct"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/countOnly"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/parameters"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/saveQuery"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//OrderBy">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//OrderBy/path"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//OrderBy/direction"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//Selection">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Selection/path"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Selection/alias"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//ParameterDecl">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//ParameterDecl/name"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference query.ecore#//ParameterDecl/typeHint"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//Pipeline">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Pipeline/stages"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query.ecore#//Stage"/>
+    <genClasses ecoreClass="query.ecore#//FilterStage">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//FilterStage/predicate"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//GroupByStage">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/paths"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/aggregates"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//Aggregate">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Aggregate/path"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Aggregate/method"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Aggregate/alias"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//TopStage">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//TopStage/count"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//SkipStage">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//SkipStage/count"/>
+    </genClasses>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//SortDirection">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/ASC"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/DESC"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//AggregateMethod">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/SUM"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MIN"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MAX"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/AVG"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/COUNT_DISTINCT"/>
+    </genEnums>
+  </genPackages>
+</genmodel:GenModel>

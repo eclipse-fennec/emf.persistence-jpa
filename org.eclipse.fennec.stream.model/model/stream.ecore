@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="stream" nsURI="https://org.eclipse/fennec/stream/1.0.0" nsPrefix="stream">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="documentation" value="Fennec change-stream metamodel (the 'diff-Ecore'). Promoted from the unified-persistence concept draft — see docs/unified-persistence/concept.md (§5, §20).&#xA;&#xA;DISCIPLINE (concept §12.3): this package is the ONLY schema sender and receiver must share. It cannot fingerprint-bootstrap itself, so the protobuf doctrine applies manually: evolution is additive-only (append, never remove/reorder), the semantics of an existing feature are never rebound. Keep it small and boring — convenience belongs in projections, not here.&#xA;&#xA;Values (valueOld/valueNew/value) are encoded literals or object IDs as strings; their typing resolves EXCLUSIVELY from (contextFingerprint, featureId) via the snapshot registry. Deliberately no type flags in this model."/>
+    <details key="basePackage" value="org.eclipse.fennec.model"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="complianceLevel" value="21.0"/>
+    <details key="oSGiCompatible" value="true"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="ChangeSet">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Atomic batch of change entries: one commit / one editor save / one ingest message (concept §5.1, §5.5). Applied all-or-nothing, in two phases (§5.4f): first all CREATE entries, then all feature deltas — forward references within the batch are legal. COALESCED by definition (§5.5): at most one entry per (objectId, featureId, address) — valueOld = before the batch, valueNew = after it; net-zero changes are not written. Exception: ordered-list features keep their ADD/REMOVE/MOVE sequences as an ordered operation list (index ops do not commute)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString" iD="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Globally unique id of this batch (UUID). Supports transport idempotency."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="streamId" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The aggregate-root stream this batch belongs to (concept §5.4 base rule 3). Containment children of the root write into this same stream."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sequence" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-stream contiguous monotonic sequence — the authoritative order (§4.3). Used for gap detection, replay, undo, idempotent apply."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timestamp" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Event time (epoch millis) — domain time, may arrive late/out of order (§4.3). Range queries use this; ordering uses sequence."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="commitTime" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ingest/commit time (epoch millis): when the entry landed in the log."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contextFingerprint" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Fingerprint of the interpretation context this batch was written under: the COMPOSITE root (§6.4, §22 decision #2) — one batch may touch classes from several packages, and the composite stamp keeps every entry resolvable via (compositeFp, classId). LOGICALLY present on every batch; storage formats may run-length/delta-encode it (§6.3). Resolvable against the snapshot registry: CompositeSnapshot → per-package ContextSnapshots."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="author" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provenance: user, device, import job, ..."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cause" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Optional cause/correlation info (e.g. the capture source, an ingest message id)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="transactionId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Links batches that were split across several streams by one logical commit (cross-aggregate save, §5.4 base rule 3). Atomicity across streams is a backend transaction concern, not a log-format concern."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="manifest" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="True = this batch is a STREAM MANIFEST (concept §10, §22 decision #5): it carries KEYFRAME entries for EVERY live object of the aggregate at this sequence. Absence from the manifest = deleted (makes older tombstones purgeable). Retention cuts only at manifests; resync serves 'latest manifest + deltas since'. Explicit by design — completeness IS the semantics, a keyframe-only batch without this flag is NOT a manifest."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="entries" upperBound="-1" eType="#//ChangeEntry" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordered entries of this batch."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ChangeEntry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One delta with the coordinates (objectId, featureId, address, valueOld, valueNew) — concept §5.1. Every entry is invertible: undo swaps valueOld/valueNew and reverses ADD/REMOVE, PUT/REMOVE_KEY etc. (§5.2). valueOld doubles as an optimistic-concurrency guard on apply (§13)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="objectId" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stable object id (§4.1). Containment children carry their own id but live in the root's stream."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="classId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stable class id, resolved via (contextFingerprint, classId) — assigned in the tracking aspect (tracking.ecore). Required for CREATE; redundant otherwise."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//DeltaKind">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The delta kind (concept §5.2). Determines which address and value fields of this entry apply."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="featureId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stable feature id (§4.2, protobuf discipline: bound to semantics, never renamed away, never reused). Absent (-1) for CREATE/DELETE/KEYFRAME."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Address for ordered lists (ADD/REMOVE/MOVE). -1 = not applicable (§5.4 addressing modes)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="toIndex" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Target index, MOVE only."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Address for maps (PUT/REMOVE_KEY): encoded literal or objectId for object keys (§5.4h)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="coords" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Address for arrays (SET_AT): n-dimensional coordinate vector (§5.4i)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="valueOld" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Previous value: encoded literal, or objectId for references. Enables inversion, conflict detection and the apply-time guard. For RESHAPE: the old dimension vector, encoded."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="valueNew" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="New value: encoded literal, or objectId for references. For RESHAPE: the new dimension vector, encoded."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="state" upperBound="-1" eType="#//SlotValue" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="KEYFRAME only: the full tracked state of the object as a flat list of addressed slots (§10)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SlotValue">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One addressed slot within a keyframe: featureId plus the same addressing modes as ChangeEntry (index for ordered lists, key for maps, coords for arrays; none for single-valued)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="featureId" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stable feature id of the slot's feature (§4.2)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Slot address for ordered lists; -1 = not applicable."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Slot address for maps: encoded literal or objectId for object keys."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="coords" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Slot address for arrays: n-dimensional coordinate vector."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The slot's value: encoded literal, or objectId for references — typing via (contextFingerprint, featureId), like ChangeEntry values."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ContextSnapshot">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One PER-PACKAGE state of the interpretation context, stored content-addressed under its fingerprint and linking its predecessor — the chain IS the model stream (§6.4). Travels in-band in the same envelope as ChangeSets (§12.2). Merkle internals are FingerprintService implementation, not wire model. Referenced from CompositeSnapshot; per-package chains remain the units of evolution and governance."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fingerprint" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString" iD="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The fingerprint of this context state: reproducible, identifying, resolvable (§6.2). Computed by the FingerprintService from the canonical form of 'content'; also the storage key (content-addressed, §6.4)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="predecessorFingerprint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Fingerprint of the predecessor state (git-commit principle). Absent only on the genesis snapshot (§6.4)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="created" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Creation time of this snapshot (epoch millis). Informational — ordering comes from the predecessor chain, never from timestamps."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="author" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provenance: who/what produced this context change (modeler, migration tool, import)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="labels" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Human-readable tags on this chain position (release names like '1.2') — git-tag principle (§6.4)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="packageUri" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="nsURI of the EPackage this context describes (chain granularity is per EPackage, §6.4/§15)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="content" upperBound="-1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The interpretation context itself: the Ecore model plus all log-relevant aspect models (tracking incl. id bindings, units, value-affecting mappings — §17.3). Arbitrary EMF content, canonicalized by the FingerprintService."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CompositeSnapshot">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Deployment-level chain link (concept §6.4, §22 decision #2): the ordered list of (packageUri, packageFingerprint) pairs of all packages in scope, content-addressed under its fingerprint (the composite root) and predecessor-chained. THIS is what ChangeSet.contextFingerprint references. Per-package ContextSnapshots remain the units of evolution; the composite merely references their states. Single-package deployments degenerate to one entry."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fingerprint" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString" iD="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The composite root: reproducible hash over the canonical pair list; also the storage key."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="predecessorFingerprint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Fingerprint of the predecessor composite state. Absent only on the genesis composite."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="created" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Creation time (epoch millis). Informational — ordering comes from the predecessor chain."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="packages" upperBound="-1" eType="#//PackageFingerprint" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The per-package states this composite references, in canonical order (part of the hashed content)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PackageFingerprint">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One (packageUri, packageFingerprint) pair of a CompositeSnapshot, pointing at a per-package ContextSnapshot."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="packageUri" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="nsURI of the EPackage."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="packageFingerprint" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Fingerprint of the package's ContextSnapshot in effect."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="DeltaKind">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Delta kinds per concept §5.2. Additive-evolution discipline: new literals may be appended, existing values are never renumbered or rebound."/>
+    </eAnnotations>
+    <eLiterals name="CREATE">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Genesis of an object: objectId + classId; initial values follow as SET/ADD/PUT entries in the same batch (§5.3). Inverse: DELETE."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SET" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Single-valued feature set (also: whole-array replacement in ATOMIC mode, §5.4i). Inverse: SET with swapped values / UNSET."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="UNSET" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Single-valued feature unset. Inverse: SET restoring valueOld."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="ADD" value="3">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Many-valued feature: value added at 'index' (ordered) or logically (unordered — commutes, §5.4b). Inverse: REMOVE."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="REMOVE" value="4">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Many-valued feature: value removed at 'index' (always by index — unique=false lists may hold duplicates, §5.4b). Inverse: ADD."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="MOVE" value="5">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordered list: element moved from 'index' to 'toIndex'. Inverse: MOVE back."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PUT" value="6">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Map: value stored under 'key' (§5.4h). PUTs on distinct keys commute. Inverse: PUT with swapped values, or REMOVE_KEY if the key was absent."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="REMOVE_KEY" value="7">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Map: key removed. Inverse: PUT restoring valueOld."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SET_AT" value="8">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Array (ELEMENT_WISE): cell at 'coords' set (§5.4i). SET_ATs on distinct coordinates commute. Inverse: SET_AT with swapped values."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="RESHAPE" value="9">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Array (ELEMENT_WISE): dimensionality changed; old/new dimension vectors travel encoded in valueOld/valueNew. Conflicts with every cell — forces strict fault handling (§11). Inverse: RESHAPE back."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DELETE" value="10">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Tombstone: the object leaves the stream. Cascades are explicit — the batch carries tombstones for the whole containment subtree, child-first (§5.4d). Inverse: CREATE + replay, or keyframe restore."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="KEYFRAME" value="11">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Full tracked state of the object at this sequence, as SlotValue list in 'state' (§10). Replay/retention/resync anchor; informational, not inverted."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TOUCH" value="12">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Audit mode TOUCHED_FEATURES (tracking aspect): the feature was modified, values deliberately elided (data minimization). Informational; not invertible, excluded from conflict detection."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="MIGRATE_OUT" value="13">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Object leaves THIS stream because it moved to another aggregate (§5.4e). Tombstone variant: valueNew carries the target streamId (forward reference). One entry per migrated object — subtrees migrate with explicit per-object pairs, child-first; linked to the target-stream batch via ChangeSet.transactionId. Inverse: the mirrored MIGRATE_IN/OUT pair."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="MIGRATE_IN" value="14">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Object enters THIS stream by migration (§5.4e). Genesis variant: valueOld carries the origin 'streamId#sequence' (origin reference); followed by a KEYFRAME of the object so the receiving stream replays standalone. Parent-first for subtrees; may open a brand-new stream (child promoted to aggregate root). Inverse: the mirrored pair."/>
+      </eAnnotations>
+    </eLiterals>
+  </eClassifiers>
+</ecore:EPackage>
