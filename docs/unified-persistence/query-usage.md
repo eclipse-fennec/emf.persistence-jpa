@@ -112,13 +112,30 @@ delete.setSelector(QueryBuilder.from(personClass)
     .where(path(age).ge(40)).build());                 // plain filter only
 long deleted = ((CommandResource) resource).execute(delete);
 
-UpdateCommand update = …;   // selector + ChangeSet template (stream model)
-// v1: refused with a diagnostic — execution follows the patch-apply engine
+UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
+update.setSelector(QueryBuilder.from(personClass)
+    .where(path(name).eq("Bob")).build());
+ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+ChangeEntry setAge = StreamFactory.eINSTANCE.createChangeEntry();
+setAge.setKind(DeltaKind.SET);
+setAge.setFeatureId(personClass.getFeatureID(age));   // EMF feature id of the root type
+setAge.setValueNew("41");                             // EMF string literal
+template.getEntries().add(setAge);
+update.setTemplate(template);
+long updated = ((CommandResource) resource).execute(update);
 ```
 
 - Insert = the resource's save semantics over **copies** of the contained payload.
 - Delete = selector-scoped removal; JPA removes matches **children-first** (containment
   FK safety), Mongo uses `deleteMany(filter)`.
+- Update = the template is applied **per match** by the patch-apply engine
+  (`ChangeTemplates` in `org.eclipse.fennec.persistence.query.support`): entry
+  coordinates address features of the selector's root type (`featureId` = EMF feature
+  id, values as EMF string literals). Supported kinds: `SET`/`UNSET` on single-valued
+  attributes, `ADD`/`REMOVE`/`MOVE` on many-valued attributes. Reference patching and
+  map/array kinds are refused with a precise diagnostic; `valueOld` is not evaluated as
+  an optimistic guard. JPA patches the managed entities in one transaction; Mongo
+  decodes, patches and replaces each document under its `_id`.
 - Command selectors must be **plain filters** — projection/aggregation/ordering/paging
   on a selector are refused.
 

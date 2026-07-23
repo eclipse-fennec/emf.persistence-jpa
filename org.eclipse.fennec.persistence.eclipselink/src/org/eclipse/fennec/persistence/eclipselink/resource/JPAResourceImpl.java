@@ -64,6 +64,7 @@ import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
+import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
@@ -711,10 +712,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (command instanceof DeleteCommand delete) {
 			return executeDelete(delete);
 		}
-		if (command instanceof UpdateCommand) {
-			String message = "UpdateCommand execution requires the patch-apply engine (concept §18.1) — refused";
-			getErrors().add(new JPADiagnostic(message, getURI(), null));
-			throw new IOException(message);
+		if (command instanceof UpdateCommand update) {
+			return executeUpdate(update);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
@@ -764,6 +763,45 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				getErrors().add(new JPADiagnostic("Delete failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
+			}
+		}
+	}
+
+	/** Update = selector + ChangeSet template per match (concept §14, patch-apply engine §18.1). */
+	private long executeUpdate(UpdateCommand update) throws IOException {
+		JpaQueryPlan plan;
+		try {
+			guardPlainSelector(update.getSelector());
+			ChangeTemplates.validate(update.getTemplate(), update.getSelector().getFrom());
+			plan = JpaQueries.translate(queryProcessor, update.getSelector(),
+					update.getSelector().getFrom(), null, null);
+		} catch (QueryException e) {
+			getErrors().add(new JPADiagnostic("Update rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Update rejected: " + e.getMessage(), e);
+		}
+		// load the matches and patch them managed — the template addresses features
+		// generically, so EclipseLink's change detection persists the delta on commit
+		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
+			em.getTransaction().begin();
+			try {
+				jakarta.persistence.Query select = em.createQuery(plan.jpql());
+				plan.parameters().forEach(select::setParameter);
+				List<?> matches = select.getResultList();
+				long applied = 0;
+				for (Object match : matches) {
+					if (match instanceof EObject eObject) {
+						ChangeTemplates.apply(update.getTemplate(), eObject);
+						applied++;
+					}
+				}
+				em.getTransaction().commit();
+				return applied;
+			} catch (QueryException | RuntimeException e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				getErrors().add(new JPADiagnostic("Update failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Update failed for selector on '" + plan.jpql() + "'", e);
 			}
 		}
 	}

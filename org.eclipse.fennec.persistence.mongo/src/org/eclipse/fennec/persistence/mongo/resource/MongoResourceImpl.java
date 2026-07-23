@@ -93,6 +93,7 @@ import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
+import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.mongo.query.BsonValues;
@@ -460,10 +461,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		if (command instanceof DeleteCommand delete) {
 			return executeDelete(delete);
 		}
-		if (command instanceof UpdateCommand) {
-			String message = "UpdateCommand execution requires the patch-apply engine (concept §18.1) — refused";
-			getErrors().add(new MongoDiagnostic(message, getURI(), null));
-			throw new IOException(message);
+		if (command instanceof UpdateCommand update) {
+			return executeUpdate(update);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
@@ -501,6 +500,54 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		} catch (RuntimeException e) {
 			getErrors().add(new MongoDiagnostic("Delete failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete failed on collection '" + collectionName + "'", e);
+		}
+	}
+
+	/**
+	 * Update = selector + ChangeSet template per match (concept §14, patch-apply engine
+	 * §18.1): decode each matched document, patch it, replace it under its {@code _id}.
+	 */
+	private long executeUpdate(UpdateCommand update) throws IOException {
+		String collectionName = getCollectionName(null);
+		if (isNull(collectionName)) {
+			throw new IOException("Resource URI has no collection segment — cannot update: " + getURI());
+		}
+		EClass eClass = update.getSelector().getFrom();
+		MongoQueryPlan plan;
+		try {
+			guardPlainSelector(update.getSelector());
+			ChangeTemplates.validate(update.getTemplate(), eClass);
+			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, null, null);
+		} catch (QueryException e) {
+			getErrors().add(new MongoDiagnostic("Update rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Update rejected: " + e.getMessage(), e);
+		}
+		try {
+			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
+			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			long applied = 0;
+			try (MongoCursor<BsonDocument> cursor = collection.find(filter).iterator()) {
+				while (cursor.hasNext()) {
+					BsonDocument document = cursor.next();
+					EObject eObject = decodeUnchecked(document, eClass);
+					if (isNull(eObject)) {
+						continue;
+					}
+					ChangeTemplates.apply(update.getTemplate(), eObject);
+					BsonValue id = document.get(MongoPersistenceConstants.ID_FIELD);
+					BsonDocument replacement = encode(eObject);
+					replacement.put(MongoPersistenceConstants.ID_FIELD, id);
+					collection.replaceOne(eq(MongoPersistenceConstants.ID_FIELD, id), replacement);
+					applied++;
+				}
+			}
+			return applied;
+		} catch (QueryException e) {
+			getErrors().add(new MongoDiagnostic("Update failed: " + e.getMessage(), getURI(), e));
+			throw new IOException("Update failed on collection '" + collectionName + "': " + e.getMessage(), e);
+		} catch (RuntimeException e) {
+			getErrors().add(new MongoDiagnostic("Update failed: " + e.getMessage(), getURI(), e));
+			throw new IOException("Update failed on collection '" + collectionName + "'", e);
 		}
 	}
 
