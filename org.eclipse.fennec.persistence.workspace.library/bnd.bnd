@@ -10,7 +10,7 @@ Provide-Capability: \
 
 fennec-base:\
     bnd.library;\
-        bnd.library     = fennecJPA; \
+        bnd.library     = fennecPersistence; \
         path            = template
 Bundle-Name: Eclipse Fennec Persistence Workspace Library
 Bundle-Description: Eclipse Fennec Persistence Workspace Library
