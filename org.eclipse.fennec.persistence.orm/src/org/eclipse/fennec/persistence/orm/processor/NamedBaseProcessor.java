@@ -15,8 +15,6 @@ package org.eclipse.fennec.persistence.orm.processor;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
@@ -41,7 +39,6 @@ import org.eclipse.persistence.internal.cache.Processor;
  */
 public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStructuralFeature> extends ProcessorImpl<MappingContext, T, F> implements EFeatureProcessor<T, F> {
 
-	private static final Logger LOG = Logger.getLogger(NamedBaseProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.

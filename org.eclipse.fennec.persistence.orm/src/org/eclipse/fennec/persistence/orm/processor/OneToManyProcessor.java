@@ -17,8 +17,6 @@ import static java.util.Objects.nonNull;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
 
 import org.eclipse.emf.ecore.EClass;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
@@ -51,7 +49,6 @@ import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
  */
 public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 
-	private static final Logger LOG = Logger.getLogger(OneToManyProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.

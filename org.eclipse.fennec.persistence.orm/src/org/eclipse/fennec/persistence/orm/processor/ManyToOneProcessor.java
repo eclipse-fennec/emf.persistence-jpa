@@ -16,8 +16,6 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
@@ -36,7 +34,6 @@ import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
  */
 public class ManyToOneProcessor extends BaseReferenceProcessor<ManyToOne> {
 
-	private static final Logger LOG = Logger.getLogger(ManyToOneProcessor.class.getName());
 
 	/**
 	 * Creates a new instance.
