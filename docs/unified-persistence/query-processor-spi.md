@@ -1,6 +1,8 @@
 # QueryProcessor SPI & Capability model
 
-**Status:** implemented (2026-07-23, #32–#46; user guide: `query-usage.md`). Original design
+**Status:** implemented (2026-07-23, #32–#46; user guide: `query-usage.md`). **The IR part
+(query.ecore where/comparator vocabulary) is superseded by `query-ir-redesign.md`** — the
+SPI layer described here stays. Original design
 proposal of 2026-07-22 — kept as the architecture reference; deviations are recorded in the
 issues (notably #42: JPQL instead of Criteria, #39: builder lives in `query.model`).
 Companion to `concept.md` §3.1 and §14.
