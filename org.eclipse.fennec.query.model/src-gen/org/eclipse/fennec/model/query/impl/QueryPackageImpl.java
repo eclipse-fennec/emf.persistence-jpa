@@ -1,6 +1,5 @@
 /**
- * Copyright (c) 2012 - 2026 Data In Motion and others.
- * All rights reserved. 
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * 
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -9,67 +8,35 @@
  * SPDX-License-Identifier: EPL-2.0
  * 
  * Contributors:
- *     Data In Motion - initial API and implementation
+ *   Data In Motion Consulting - initial implementation
  */
 package org.eclipse.fennec.model.query.impl;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EEnum;
-import org.eclipse.emf.ecore.EOperation;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
-import org.eclipse.fennec.model.query.And;
-import org.eclipse.fennec.model.query.Average;
-import org.eclipse.fennec.model.query.BoolComparator;
-import org.eclipse.fennec.model.query.Chaining;
-import org.eclipse.fennec.model.query.Comparator;
-import org.eclipse.fennec.model.query.Contains;
-import org.eclipse.fennec.model.query.CountOperation;
-import org.eclipse.fennec.model.query.DateComparator;
-import org.eclipse.fennec.model.query.EndsWith;
-import org.eclipse.fennec.model.query.EnumComparator;
-import org.eclipse.fennec.model.query.Eq;
-import org.eclipse.fennec.model.query.Gt;
-import org.eclipse.fennec.model.query.Gte;
-import org.eclipse.fennec.model.query.IsAfter;
-import org.eclipse.fennec.model.query.IsAfterOrEqual;
-import org.eclipse.fennec.model.query.IsBefore;
-import org.eclipse.fennec.model.query.IsBeforeOrEqual;
-import org.eclipse.fennec.model.query.IsBool;
-import org.eclipse.fennec.model.query.IsInRange;
-import org.eclipse.fennec.model.query.IsLiteral;
-import org.eclipse.fennec.model.query.Like;
-import org.eclipse.fennec.model.query.Lt;
-import org.eclipse.fennec.model.query.Lte;
-import org.eclipse.fennec.model.query.Max;
-import org.eclipse.fennec.model.query.Min;
-import org.eclipse.fennec.model.query.Not;
-import org.eclipse.fennec.model.query.NumberComparator;
-import org.eclipse.fennec.model.query.NumberOperation;
-import org.eclipse.fennec.model.query.Operation;
-import org.eclipse.fennec.model.query.Or;
-import org.eclipse.fennec.model.query.QObject;
-import org.eclipse.fennec.model.query.QSubject;
-import org.eclipse.fennec.model.query.QWhere;
+import org.eclipse.fennec.model.expression.ExpressionPackage;
+
+import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.FilterStage;
+import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.OrderBy;
+import org.eclipse.fennec.model.query.ParameterDecl;
+import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.QueryPackage;
-import org.eclipse.fennec.model.query.SimpleValueComparator;
-import org.eclipse.fennec.model.query.SortEntity;
-import org.eclipse.fennec.model.query.SortOrder;
-import org.eclipse.fennec.model.query.StartWith;
-import org.eclipse.fennec.model.query.StringComparator;
-import org.eclipse.fennec.model.query.StringOperation;
-import org.eclipse.fennec.model.query.SuitableType;
-import org.eclipse.fennec.model.query.Sum;
-import org.eclipse.fennec.model.query.ToLowerCase;
-import org.eclipse.fennec.model.query.ToUpperCase;
-
-import org.eclipse.fennec.model.utilities.UtilitiesPackage;
+import org.eclipse.fennec.model.query.Selection;
+import org.eclipse.fennec.model.query.SkipStage;
+import org.eclipse.fennec.model.query.SortDirection;
+import org.eclipse.fennec.model.query.Stage;
+import org.eclipse.fennec.model.query.TopStage;
 
 /**
  * <!-- begin-user-doc -->
@@ -90,301 +57,84 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass qObjectEClass = null;
+	private EClass orderByEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass qSubjectEClass = null;
+	private EClass selectionEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass qWhereEClass = null;
+	private EClass parameterDeclEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass chainingEClass = null;
+	private EClass pipelineEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass orEClass = null;
+	private EClass stageEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass notEClass = null;
+	private EClass filterStageEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass andEClass = null;
+	private EClass groupByStageEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass stringOperationEClass = null;
+	private EClass aggregateEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass toLowerCaseEClass = null;
+	private EClass topStageEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass toUpperCaseEClass = null;
+	private EClass skipStageEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass numberOperationEClass = null;
+	private EEnum sortDirectionEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass averageEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass minEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass maxEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass sumEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass countOperationEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass comparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass simpleValueComparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass stringComparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass endsWithEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass startWithEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass containsEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass likeEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass dateComparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isBeforeEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isAfterEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isBeforeOrEqualEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isAfterOrEqualEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isInRangeEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass numberComparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass ltEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass lteEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass gteEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass gtEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass eqEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass boolComparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isBoolEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass sortEntityEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass operationEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass enumComparatorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass isLiteralEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EEnum sortOrderEEnum = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EEnum suitableTypeEEnum = null;
+	private EEnum aggregateMethodEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -433,7 +183,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		isInited = true;
 
 		// Initialize simple dependencies
-		UtilitiesPackage.eINSTANCE.eClass();
+		ExpressionPackage.eINSTANCE.eClass();
 
 		// Create package meta-data objects
 		theQueryPackage.createPackageContents();
@@ -465,7 +215,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQuery_Subject() {
+	public EReference getQuery_From() {
 		return (EReference)queryEClass.getEStructuralFeatures().get(0);
 	}
 
@@ -475,7 +225,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQuery_From() {
+	public EReference getQuery_Predicate() {
 		return (EReference)queryEClass.getEStructuralFeatures().get(1);
 	}
 
@@ -485,7 +235,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQuery_Where() {
+	public EReference getQuery_OrderBy() {
 		return (EReference)queryEClass.getEStructuralFeatures().get(2);
 	}
 
@@ -495,7 +245,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQuery_GroupBy() {
+	public EReference getQuery_Select() {
 		return (EReference)queryEClass.getEStructuralFeatures().get(3);
 	}
 
@@ -505,7 +255,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQuery_SortBy() {
+	public EReference getQuery_Apply() {
 		return (EReference)queryEClass.getEStructuralFeatures().get(4);
 	}
 
@@ -515,8 +265,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQuery_Count() {
-		return (EAttribute)queryEClass.getEStructuralFeatures().get(5);
+	public EReference getQuery_Expand() {
+		return (EReference)queryEClass.getEStructuralFeatures().get(5);
 	}
 
 	/**
@@ -525,7 +275,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQuery_Distinct() {
+	public EAttribute getQuery_Top() {
 		return (EAttribute)queryEClass.getEStructuralFeatures().get(6);
 	}
 
@@ -535,7 +285,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQuery_Limit() {
+	public EAttribute getQuery_Skip() {
 		return (EAttribute)queryEClass.getEStructuralFeatures().get(7);
 	}
 
@@ -545,7 +295,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQuery_Skip() {
+	public EAttribute getQuery_Distinct() {
 		return (EAttribute)queryEClass.getEStructuralFeatures().get(8);
 	}
 
@@ -555,7 +305,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQuery_SaveQuery() {
+	public EAttribute getQuery_CountOnly() {
 		return (EAttribute)queryEClass.getEStructuralFeatures().get(9);
 	}
 
@@ -565,8 +315,18 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EReference getQuery_Parameters() {
+		return (EReference)queryEClass.getEStructuralFeatures().get(10);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EAttribute getQuery_Name() {
-		return (EAttribute)queryEClass.getEStructuralFeatures().get(10);
+		return (EAttribute)queryEClass.getEStructuralFeatures().get(11);
 	}
 
 	/**
@@ -575,8 +335,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getQObject() {
-		return qObjectEClass;
+	public EAttribute getQuery_SaveQuery() {
+		return (EAttribute)queryEClass.getEStructuralFeatures().get(12);
 	}
 
 	/**
@@ -585,8 +345,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQObject_RootEClass() {
-		return (EReference)qObjectEClass.getEStructuralFeatures().get(0);
+	public EClass getOrderBy() {
+		return orderByEClass;
 	}
 
 	/**
@@ -595,8 +355,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getQSubject() {
-		return qSubjectEClass;
+	public EReference getOrderBy_Path() {
+		return (EReference)orderByEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -605,8 +365,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQSubject_FeaturePath() {
-		return (EReference)qSubjectEClass.getEStructuralFeatures().get(0);
+	public EAttribute getOrderBy_Direction() {
+		return (EAttribute)orderByEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -615,8 +375,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQSubject_IsExclude() {
-		return (EAttribute)qSubjectEClass.getEStructuralFeatures().get(1);
+	public EClass getSelection() {
+		return selectionEClass;
 	}
 
 	/**
@@ -625,8 +385,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getQSubject_Alias() {
-		return (EAttribute)qSubjectEClass.getEStructuralFeatures().get(2);
+	public EReference getSelection_Path() {
+		return (EReference)selectionEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -635,8 +395,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQSubject_AliasFeature() {
-		return (EReference)qSubjectEClass.getEStructuralFeatures().get(3);
+	public EAttribute getSelection_Alias() {
+		return (EAttribute)selectionEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -645,8 +405,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQSubject_Operation() {
-		return (EReference)qSubjectEClass.getEStructuralFeatures().get(4);
+	public EClass getParameterDecl() {
+		return parameterDeclEClass;
 	}
 
 	/**
@@ -655,8 +415,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getQWhere() {
-		return qWhereEClass;
+	public EAttribute getParameterDecl_Name() {
+		return (EAttribute)parameterDeclEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -665,8 +425,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQWhere_FeaturePath() {
-		return (EReference)qWhereEClass.getEStructuralFeatures().get(0);
+	public EReference getParameterDecl_TypeHint() {
+		return (EReference)parameterDeclEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -675,8 +435,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQWhere_Comparator() {
-		return (EReference)qWhereEClass.getEStructuralFeatures().get(1);
+	public EClass getPipeline() {
+		return pipelineEClass;
 	}
 
 	/**
@@ -685,8 +445,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getQWhere_Operation() {
-		return (EReference)qWhereEClass.getEStructuralFeatures().get(2);
+	public EReference getPipeline_Stages() {
+		return (EReference)pipelineEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -695,8 +455,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EOperation getQWhere__Execute() {
-		return qWhereEClass.getEOperations().get(0);
+	public EClass getStage() {
+		return stageEClass;
 	}
 
 	/**
@@ -705,8 +465,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getChaining() {
-		return chainingEClass;
+	public EClass getFilterStage() {
+		return filterStageEClass;
 	}
 
 	/**
@@ -715,8 +475,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getOr() {
-		return orEClass;
+	public EReference getFilterStage_Predicate() {
+		return (EReference)filterStageEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -725,8 +485,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getNot() {
-		return notEClass;
+	public EClass getGroupByStage() {
+		return groupByStageEClass;
 	}
 
 	/**
@@ -735,8 +495,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getAnd() {
-		return andEClass;
+	public EReference getGroupByStage_Paths() {
+		return (EReference)groupByStageEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -745,8 +505,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getStringOperation() {
-		return stringOperationEClass;
+	public EReference getGroupByStage_Aggregates() {
+		return (EReference)groupByStageEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -755,8 +515,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getToLowerCase() {
-		return toLowerCaseEClass;
+	public EClass getAggregate() {
+		return aggregateEClass;
 	}
 
 	/**
@@ -765,8 +525,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getToUpperCase() {
-		return toUpperCaseEClass;
+	public EReference getAggregate_Path() {
+		return (EReference)aggregateEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -775,8 +535,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getNumberOperation() {
-		return numberOperationEClass;
+	public EAttribute getAggregate_Method() {
+		return (EAttribute)aggregateEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -785,8 +545,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getAverage() {
-		return averageEClass;
+	public EAttribute getAggregate_Alias() {
+		return (EAttribute)aggregateEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -795,8 +555,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getMin() {
-		return minEClass;
+	public EClass getTopStage() {
+		return topStageEClass;
 	}
 
 	/**
@@ -805,8 +565,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getMax() {
-		return maxEClass;
+	public EAttribute getTopStage_Count() {
+		return (EAttribute)topStageEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -815,8 +575,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getSum() {
-		return sumEClass;
+	public EClass getSkipStage() {
+		return skipStageEClass;
 	}
 
 	/**
@@ -825,8 +585,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getCountOperation() {
-		return countOperationEClass;
+	public EAttribute getSkipStage_Count() {
+		return (EAttribute)skipStageEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -835,8 +595,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EClass getComparator() {
-		return comparatorEClass;
+	public EEnum getSortDirection() {
+		return sortDirectionEEnum;
 	}
 
 	/**
@@ -845,378 +605,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EAttribute getComparator_SuitableForType() {
-		return (EAttribute)comparatorEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EReference getComparator_Where() {
-		return (EReference)comparatorEClass.getEStructuralFeatures().get(1);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EOperation getComparator__Compare() {
-		return comparatorEClass.getEOperations().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getSimpleValueComparator() {
-		return simpleValueComparatorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getSimpleValueComparator_Value() {
-		return (EAttribute)simpleValueComparatorEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getStringComparator() {
-		return stringComparatorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getEndsWith() {
-		return endsWithEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getStartWith() {
-		return startWithEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getContains() {
-		return containsEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getLike() {
-		return likeEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getDateComparator() {
-		return dateComparatorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsBefore() {
-		return isBeforeEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsAfter() {
-		return isAfterEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsBeforeOrEqual() {
-		return isBeforeOrEqualEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsAfterOrEqual() {
-		return isAfterOrEqualEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsInRange() {
-		return isInRangeEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getIsInRange_StartValue() {
-		return (EAttribute)isInRangeEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getIsInRange_EndValue() {
-		return (EAttribute)isInRangeEClass.getEStructuralFeatures().get(1);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getIsInRange_StartIncluded() {
-		return (EAttribute)isInRangeEClass.getEStructuralFeatures().get(2);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getIsInRange_EndIncluded() {
-		return (EAttribute)isInRangeEClass.getEStructuralFeatures().get(3);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getNumberComparator() {
-		return numberComparatorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getLt() {
-		return ltEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getLte() {
-		return lteEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getGte() {
-		return gteEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getGt() {
-		return gtEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getEq() {
-		return eqEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getBoolComparator() {
-		return boolComparatorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsBool() {
-		return isBoolEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getSortEntity() {
-		return sortEntityEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getSortEntity_SortOrder() {
-		return (EAttribute)sortEntityEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EReference getSortEntity_SortFeature() {
-		return (EReference)sortEntityEClass.getEStructuralFeatures().get(1);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getOperation() {
-		return operationEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getOperation_SuitableForType() {
-		return (EAttribute)operationEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EOperation getOperation__Execute() {
-		return operationEClass.getEOperations().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getEnumComparator() {
-		return enumComparatorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getIsLiteral() {
-		return isLiteralEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EEnum getSortOrder() {
-		return sortOrderEEnum;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EEnum getSuitableType() {
-		return suitableTypeEEnum;
+	public EEnum getAggregateMethod() {
+		return aggregateMethodEEnum;
 	}
 
 	/**
@@ -1249,125 +639,58 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		// Create classes and their features
 		queryEClass = createEClass(QUERY);
-		createEReference(queryEClass, QUERY__SUBJECT);
 		createEReference(queryEClass, QUERY__FROM);
-		createEReference(queryEClass, QUERY__WHERE);
-		createEReference(queryEClass, QUERY__GROUP_BY);
-		createEReference(queryEClass, QUERY__SORT_BY);
-		createEAttribute(queryEClass, QUERY__COUNT);
-		createEAttribute(queryEClass, QUERY__DISTINCT);
-		createEAttribute(queryEClass, QUERY__LIMIT);
+		createEReference(queryEClass, QUERY__PREDICATE);
+		createEReference(queryEClass, QUERY__ORDER_BY);
+		createEReference(queryEClass, QUERY__SELECT);
+		createEReference(queryEClass, QUERY__APPLY);
+		createEReference(queryEClass, QUERY__EXPAND);
+		createEAttribute(queryEClass, QUERY__TOP);
 		createEAttribute(queryEClass, QUERY__SKIP);
-		createEAttribute(queryEClass, QUERY__SAVE_QUERY);
+		createEAttribute(queryEClass, QUERY__DISTINCT);
+		createEAttribute(queryEClass, QUERY__COUNT_ONLY);
+		createEReference(queryEClass, QUERY__PARAMETERS);
 		createEAttribute(queryEClass, QUERY__NAME);
+		createEAttribute(queryEClass, QUERY__SAVE_QUERY);
 
-		qObjectEClass = createEClass(QOBJECT);
-		createEReference(qObjectEClass, QOBJECT__ROOT_ECLASS);
+		orderByEClass = createEClass(ORDER_BY);
+		createEReference(orderByEClass, ORDER_BY__PATH);
+		createEAttribute(orderByEClass, ORDER_BY__DIRECTION);
 
-		qSubjectEClass = createEClass(QSUBJECT);
-		createEReference(qSubjectEClass, QSUBJECT__FEATURE_PATH);
-		createEAttribute(qSubjectEClass, QSUBJECT__IS_EXCLUDE);
-		createEAttribute(qSubjectEClass, QSUBJECT__ALIAS);
-		createEReference(qSubjectEClass, QSUBJECT__ALIAS_FEATURE);
-		createEReference(qSubjectEClass, QSUBJECT__OPERATION);
+		selectionEClass = createEClass(SELECTION);
+		createEReference(selectionEClass, SELECTION__PATH);
+		createEAttribute(selectionEClass, SELECTION__ALIAS);
 
-		qWhereEClass = createEClass(QWHERE);
-		createEReference(qWhereEClass, QWHERE__FEATURE_PATH);
-		createEReference(qWhereEClass, QWHERE__COMPARATOR);
-		createEReference(qWhereEClass, QWHERE__OPERATION);
-		createEOperation(qWhereEClass, QWHERE___EXECUTE);
+		parameterDeclEClass = createEClass(PARAMETER_DECL);
+		createEAttribute(parameterDeclEClass, PARAMETER_DECL__NAME);
+		createEReference(parameterDeclEClass, PARAMETER_DECL__TYPE_HINT);
 
-		chainingEClass = createEClass(CHAINING);
+		pipelineEClass = createEClass(PIPELINE);
+		createEReference(pipelineEClass, PIPELINE__STAGES);
 
-		orEClass = createEClass(OR);
+		stageEClass = createEClass(STAGE);
 
-		notEClass = createEClass(NOT);
+		filterStageEClass = createEClass(FILTER_STAGE);
+		createEReference(filterStageEClass, FILTER_STAGE__PREDICATE);
 
-		andEClass = createEClass(AND);
+		groupByStageEClass = createEClass(GROUP_BY_STAGE);
+		createEReference(groupByStageEClass, GROUP_BY_STAGE__PATHS);
+		createEReference(groupByStageEClass, GROUP_BY_STAGE__AGGREGATES);
 
-		stringOperationEClass = createEClass(STRING_OPERATION);
+		aggregateEClass = createEClass(AGGREGATE);
+		createEReference(aggregateEClass, AGGREGATE__PATH);
+		createEAttribute(aggregateEClass, AGGREGATE__METHOD);
+		createEAttribute(aggregateEClass, AGGREGATE__ALIAS);
 
-		toLowerCaseEClass = createEClass(TO_LOWER_CASE);
+		topStageEClass = createEClass(TOP_STAGE);
+		createEAttribute(topStageEClass, TOP_STAGE__COUNT);
 
-		toUpperCaseEClass = createEClass(TO_UPPER_CASE);
-
-		numberOperationEClass = createEClass(NUMBER_OPERATION);
-
-		averageEClass = createEClass(AVERAGE);
-
-		minEClass = createEClass(MIN);
-
-		maxEClass = createEClass(MAX);
-
-		sumEClass = createEClass(SUM);
-
-		countOperationEClass = createEClass(COUNT_OPERATION);
-
-		comparatorEClass = createEClass(COMPARATOR);
-		createEAttribute(comparatorEClass, COMPARATOR__SUITABLE_FOR_TYPE);
-		createEReference(comparatorEClass, COMPARATOR__WHERE);
-		createEOperation(comparatorEClass, COMPARATOR___COMPARE);
-
-		simpleValueComparatorEClass = createEClass(SIMPLE_VALUE_COMPARATOR);
-		createEAttribute(simpleValueComparatorEClass, SIMPLE_VALUE_COMPARATOR__VALUE);
-
-		stringComparatorEClass = createEClass(STRING_COMPARATOR);
-
-		endsWithEClass = createEClass(ENDS_WITH);
-
-		startWithEClass = createEClass(START_WITH);
-
-		containsEClass = createEClass(CONTAINS);
-
-		likeEClass = createEClass(LIKE);
-
-		dateComparatorEClass = createEClass(DATE_COMPARATOR);
-
-		isBeforeEClass = createEClass(IS_BEFORE);
-
-		isAfterEClass = createEClass(IS_AFTER);
-
-		isBeforeOrEqualEClass = createEClass(IS_BEFORE_OR_EQUAL);
-
-		isAfterOrEqualEClass = createEClass(IS_AFTER_OR_EQUAL);
-
-		isInRangeEClass = createEClass(IS_IN_RANGE);
-		createEAttribute(isInRangeEClass, IS_IN_RANGE__START_VALUE);
-		createEAttribute(isInRangeEClass, IS_IN_RANGE__END_VALUE);
-		createEAttribute(isInRangeEClass, IS_IN_RANGE__START_INCLUDED);
-		createEAttribute(isInRangeEClass, IS_IN_RANGE__END_INCLUDED);
-
-		numberComparatorEClass = createEClass(NUMBER_COMPARATOR);
-
-		ltEClass = createEClass(LT);
-
-		lteEClass = createEClass(LTE);
-
-		gteEClass = createEClass(GTE);
-
-		gtEClass = createEClass(GT);
-
-		eqEClass = createEClass(EQ);
-
-		boolComparatorEClass = createEClass(BOOL_COMPARATOR);
-
-		isBoolEClass = createEClass(IS_BOOL);
-
-		sortEntityEClass = createEClass(SORT_ENTITY);
-		createEAttribute(sortEntityEClass, SORT_ENTITY__SORT_ORDER);
-		createEReference(sortEntityEClass, SORT_ENTITY__SORT_FEATURE);
-
-		operationEClass = createEClass(OPERATION);
-		createEAttribute(operationEClass, OPERATION__SUITABLE_FOR_TYPE);
-		createEOperation(operationEClass, OPERATION___EXECUTE);
-
-		enumComparatorEClass = createEClass(ENUM_COMPARATOR);
-
-		isLiteralEClass = createEClass(IS_LITERAL);
+		skipStageEClass = createEClass(SKIP_STAGE);
+		createEAttribute(skipStageEClass, SKIP_STAGE__COUNT);
 
 		// Create enums
-		sortOrderEEnum = createEEnum(SORT_ORDER);
-		suitableTypeEEnum = createEEnum(SUITABLE_TYPE);
+		sortDirectionEEnum = createEEnum(SORT_DIRECTION);
+		aggregateMethodEEnum = createEEnum(AGGREGATE_METHOD);
 	}
 
 	/**
@@ -1394,183 +717,81 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		setNsURI(eNS_URI);
 
 		// Obtain other dependent packages
-		UtilitiesPackage theUtilitiesPackage = (UtilitiesPackage)EPackage.Registry.INSTANCE.getEPackage(UtilitiesPackage.eNS_URI);
+		ExpressionPackage theExpressionPackage = (ExpressionPackage)EPackage.Registry.INSTANCE.getEPackage(ExpressionPackage.eNS_URI);
 
 		// Create type parameters
 
 		// Set bounds for type parameters
 
 		// Add supertypes to classes
-		chainingEClass.getESuperTypes().add(this.getQWhere());
-		orEClass.getESuperTypes().add(this.getChaining());
-		notEClass.getESuperTypes().add(this.getChaining());
-		andEClass.getESuperTypes().add(this.getChaining());
-		stringOperationEClass.getESuperTypes().add(this.getOperation());
-		toLowerCaseEClass.getESuperTypes().add(this.getStringOperation());
-		toUpperCaseEClass.getESuperTypes().add(this.getStringOperation());
-		numberOperationEClass.getESuperTypes().add(this.getOperation());
-		averageEClass.getESuperTypes().add(this.getNumberOperation());
-		minEClass.getESuperTypes().add(this.getNumberOperation());
-		maxEClass.getESuperTypes().add(this.getNumberOperation());
-		sumEClass.getESuperTypes().add(this.getNumberOperation());
-		countOperationEClass.getESuperTypes().add(this.getNumberOperation());
-		simpleValueComparatorEClass.getESuperTypes().add(this.getComparator());
-		stringComparatorEClass.getESuperTypes().add(this.getSimpleValueComparator());
-		endsWithEClass.getESuperTypes().add(this.getStringComparator());
-		startWithEClass.getESuperTypes().add(this.getStringComparator());
-		containsEClass.getESuperTypes().add(this.getStringComparator());
-		likeEClass.getESuperTypes().add(this.getStringComparator());
-		dateComparatorEClass.getESuperTypes().add(this.getSimpleValueComparator());
-		isBeforeEClass.getESuperTypes().add(this.getDateComparator());
-		isAfterEClass.getESuperTypes().add(this.getDateComparator());
-		isBeforeOrEqualEClass.getESuperTypes().add(this.getDateComparator());
-		isAfterOrEqualEClass.getESuperTypes().add(this.getDateComparator());
-		isInRangeEClass.getESuperTypes().add(this.getComparator());
-		numberComparatorEClass.getESuperTypes().add(this.getSimpleValueComparator());
-		ltEClass.getESuperTypes().add(this.getNumberComparator());
-		lteEClass.getESuperTypes().add(this.getNumberComparator());
-		gteEClass.getESuperTypes().add(this.getNumberComparator());
-		gtEClass.getESuperTypes().add(this.getNumberComparator());
-		eqEClass.getESuperTypes().add(this.getNumberComparator());
-		boolComparatorEClass.getESuperTypes().add(this.getSimpleValueComparator());
-		isBoolEClass.getESuperTypes().add(this.getBoolComparator());
-		enumComparatorEClass.getESuperTypes().add(this.getSimpleValueComparator());
-		isLiteralEClass.getESuperTypes().add(this.getEnumComparator());
+		filterStageEClass.getESuperTypes().add(this.getStage());
+		groupByStageEClass.getESuperTypes().add(this.getStage());
+		topStageEClass.getESuperTypes().add(this.getStage());
+		skipStageEClass.getESuperTypes().add(this.getStage());
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(queryEClass, Query.class, "Query", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getQuery_Subject(), this.getQSubject(), null, "subject", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQuery_From(), this.getQObject(), null, "from", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQuery_Where(), this.getQWhere(), null, "where", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQuery_GroupBy(), theUtilitiesPackage.getFeaturePath(), null, "groupBy", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQuery_SortBy(), this.getSortEntity(), null, "sortBy", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getQuery_Count(), ecorePackage.getEBoolean(), "count", null, 1, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getQuery_Distinct(), ecorePackage.getEBoolean(), "distinct", null, 1, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getQuery_Limit(), ecorePackage.getEInt(), "limit", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_From(), ecorePackage.getEClass(), null, "from", null, 1, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_Predicate(), theExpressionPackage.getExpression(), null, "predicate", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_OrderBy(), this.getOrderBy(), null, "orderBy", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_Select(), this.getSelection(), null, "select", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_Apply(), this.getPipeline(), null, "apply", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_Expand(), theExpressionPackage.getPropertyPath(), null, "expand", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getQuery_Top(), ecorePackage.getEInt(), "top", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getQuery_Skip(), ecorePackage.getEInt(), "skip", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getQuery_SaveQuery(), ecorePackage.getEBoolean(), "saveQuery", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getQuery_Distinct(), ecorePackage.getEBoolean(), "distinct", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getQuery_CountOnly(), ecorePackage.getEBoolean(), "countOnly", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getQuery_Parameters(), this.getParameterDecl(), null, "parameters", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getQuery_Name(), ecorePackage.getEString(), "name", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getQuery_SaveQuery(), ecorePackage.getEBoolean(), "saveQuery", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(qObjectEClass, QObject.class, "QObject", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getQObject_RootEClass(), ecorePackage.getEClass(), null, "rootEClass", null, 0, 1, QObject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEClass(orderByEClass, OrderBy.class, "OrderBy", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getOrderBy_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getOrderBy_Direction(), this.getSortDirection(), "direction", "ASC", 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(qSubjectEClass, QSubject.class, "QSubject", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getQSubject_FeaturePath(), theUtilitiesPackage.getFeaturePath(), null, "featurePath", null, 1, 1, QSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getQSubject_IsExclude(), ecorePackage.getEBoolean(), "isExclude", "false", 0, 1, QSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getQSubject_Alias(), ecorePackage.getEString(), "alias", null, 0, 1, QSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQSubject_AliasFeature(), ecorePackage.getEStructuralFeature(), null, "aliasFeature", null, 0, 1, QSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQSubject_Operation(), this.getOperation(), null, "operation", null, 0, 1, QSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEClass(selectionEClass, Selection.class, "Selection", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getSelection_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 1, 1, Selection.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getSelection_Alias(), ecorePackage.getEString(), "alias", null, 0, 1, Selection.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(qWhereEClass, QWhere.class, "QWhere", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getQWhere_FeaturePath(), theUtilitiesPackage.getFeaturePath(), null, "featurePath", null, 1, 1, QWhere.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQWhere_Comparator(), this.getComparator(), this.getComparator_Where(), "comparator", null, 1, 1, QWhere.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getQWhere_Operation(), this.getOperation(), null, "operation", null, 0, 1, QWhere.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEClass(parameterDeclEClass, ParameterDecl.class, "ParameterDecl", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getParameterDecl_Name(), ecorePackage.getEString(), "name", null, 1, 1, ParameterDecl.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getParameterDecl_TypeHint(), ecorePackage.getEClassifier(), null, "typeHint", null, 0, 1, ParameterDecl.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEOperation(getQWhere__Execute(), ecorePackage.getEBoolean(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
+		initEClass(pipelineEClass, Pipeline.class, "Pipeline", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getPipeline_Stages(), this.getStage(), null, "stages", null, 1, -1, Pipeline.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(chainingEClass, Chaining.class, "Chaining", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEClass(stageEClass, Stage.class, "Stage", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
-		initEClass(orEClass, Or.class, "Or", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEClass(filterStageEClass, FilterStage.class, "FilterStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getFilterStage_Predicate(), theExpressionPackage.getExpression(), null, "predicate", null, 1, 1, FilterStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(notEClass, Not.class, "Not", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEClass(groupByStageEClass, GroupByStage.class, "GroupByStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGroupByStage_Paths(), theExpressionPackage.getPropertyPath(), null, "paths", null, 0, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGroupByStage_Aggregates(), this.getAggregate(), null, "aggregates", null, 1, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(andEClass, And.class, "And", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEClass(aggregateEClass, Aggregate.class, "Aggregate", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getAggregate_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 0, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getAggregate_Method(), this.getAggregateMethod(), "method", null, 1, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getAggregate_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(stringOperationEClass, StringOperation.class, "StringOperation", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEClass(topStageEClass, TopStage.class, "TopStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getTopStage_Count(), ecorePackage.getEInt(), "count", null, 1, 1, TopStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(toLowerCaseEClass, ToLowerCase.class, "ToLowerCase", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(toUpperCaseEClass, ToUpperCase.class, "ToUpperCase", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(numberOperationEClass, NumberOperation.class, "NumberOperation", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(averageEClass, Average.class, "Average", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(minEClass, Min.class, "Min", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(maxEClass, Max.class, "Max", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(sumEClass, Sum.class, "Sum", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(countOperationEClass, CountOperation.class, "CountOperation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(comparatorEClass, Comparator.class, "Comparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getComparator_SuitableForType(), this.getSuitableType(), "suitableForType", null, 1, 1, Comparator.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getComparator_Where(), this.getQWhere(), this.getQWhere_Comparator(), "where", null, 0, 1, Comparator.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEOperation(getComparator__Compare(), ecorePackage.getEBoolean(), "compare", 0, 1, IS_UNIQUE, IS_ORDERED);
-
-		initEClass(simpleValueComparatorEClass, SimpleValueComparator.class, "SimpleValueComparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getSimpleValueComparator_Value(), ecorePackage.getEString(), "value", null, 0, 1, SimpleValueComparator.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(stringComparatorEClass, StringComparator.class, "StringComparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(endsWithEClass, EndsWith.class, "EndsWith", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(startWithEClass, StartWith.class, "StartWith", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(containsEClass, Contains.class, "Contains", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(likeEClass, Like.class, "Like", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(dateComparatorEClass, DateComparator.class, "DateComparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isBeforeEClass, IsBefore.class, "IsBefore", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isAfterEClass, IsAfter.class, "IsAfter", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isBeforeOrEqualEClass, IsBeforeOrEqual.class, "IsBeforeOrEqual", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isAfterOrEqualEClass, IsAfterOrEqual.class, "IsAfterOrEqual", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isInRangeEClass, IsInRange.class, "IsInRange", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getIsInRange_StartValue(), ecorePackage.getEString(), "startValue", null, 0, 1, IsInRange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getIsInRange_EndValue(), ecorePackage.getEString(), "endValue", null, 0, 1, IsInRange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getIsInRange_StartIncluded(), ecorePackage.getEBoolean(), "startIncluded", null, 0, 1, IsInRange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getIsInRange_EndIncluded(), ecorePackage.getEBoolean(), "endIncluded", null, 0, 1, IsInRange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(numberComparatorEClass, NumberComparator.class, "NumberComparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(ltEClass, Lt.class, "Lt", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(lteEClass, Lte.class, "Lte", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(gteEClass, Gte.class, "Gte", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(gtEClass, Gt.class, "Gt", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(eqEClass, Eq.class, "Eq", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(boolComparatorEClass, BoolComparator.class, "BoolComparator", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isBoolEClass, IsBool.class, "IsBool", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(sortEntityEClass, SortEntity.class, "SortEntity", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getSortEntity_SortOrder(), this.getSortOrder(), "sortOrder", "DESC", 1, 1, SortEntity.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getSortEntity_SortFeature(), ecorePackage.getEStructuralFeature(), null, "sortFeature", null, 1, 1, SortEntity.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(operationEClass, Operation.class, "Operation", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getOperation_SuitableForType(), this.getSuitableType(), "suitableForType", null, 1, 1, Operation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEOperation(getOperation__Execute(), ecorePackage.getEObject(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
-
-		initEClass(enumComparatorEClass, EnumComparator.class, "EnumComparator", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-
-		initEClass(isLiteralEClass, IsLiteral.class, "IsLiteral", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEClass(skipStageEClass, SkipStage.class, "SkipStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getSkipStage_Count(), ecorePackage.getEInt(), "count", null, 1, 1, SkipStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		// Initialize enums and add enum literals
-		initEEnum(sortOrderEEnum, SortOrder.class, "SortOrder");
-		addEEnumLiteral(sortOrderEEnum, SortOrder.DESC);
-		addEEnumLiteral(sortOrderEEnum, SortOrder.ASC);
+		initEEnum(sortDirectionEEnum, SortDirection.class, "SortDirection");
+		addEEnumLiteral(sortDirectionEEnum, SortDirection.ASC);
+		addEEnumLiteral(sortDirectionEEnum, SortDirection.DESC);
 
-		initEEnum(suitableTypeEEnum, SuitableType.class, "SuitableType");
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.NUMERIC);
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.DATE);
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.STRING);
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.BOOLEAN);
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.ENUM);
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.MIXED);
-		addEEnumLiteral(suitableTypeEEnum, SuitableType.OTHER);
+		initEEnum(aggregateMethodEEnum, AggregateMethod.class, "AggregateMethod");
+		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.SUM);
+		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.MIN);
+		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.MAX);
+		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.AVG);
+		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.COUNT);
+		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.COUNT_DISTINCT);
 
 		// Create resource
 		createResource(eNS_URI);
@@ -1592,7 +813,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		  (this,
 		   source,
 		   new String[] {
-			   "value", "1.0"
+			   "value", "2.0"
 		   });
 	}
 

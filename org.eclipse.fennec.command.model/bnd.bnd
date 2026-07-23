@@ -19,7 +19,7 @@ src=${^src},src-gen
 -buildpath: \
 	org.osgi.service.condition;version=latest,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
-	org.eclipse.fennec.query.model2;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.stream.model;version=snapshot
 
 -testpath: \

@@ -16,6 +16,7 @@ import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.persistence.query.expr.ExpressionAnalyzer;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryFeature;
 
@@ -55,7 +56,7 @@ public final class QueryValidator {
 	 *         diagnostic tree with one {@link Diagnostic#ERROR} child per violation
 	 */
 	public static Diagnostic validate(Query query, EClass rootEClass, QueryCapabilities capabilities) {
-		return validate(QueryAnalyzer.analyze(query), rootEClass, capabilities);
+		return validate(ExpressionAnalyzer.analyze(query), rootEClass, capabilities);
 	}
 
 	/**

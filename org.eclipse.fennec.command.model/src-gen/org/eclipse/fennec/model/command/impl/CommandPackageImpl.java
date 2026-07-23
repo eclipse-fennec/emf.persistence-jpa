@@ -27,9 +27,9 @@ import org.eclipse.fennec.model.command.UpdateCommand;
 
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 
-import org.eclipse.fennec.model.stream.StreamPackage;
+import org.eclipse.fennec.model.query.QueryPackage;
 
-import org.eclipse.fennec.model2.query.QueryPackage;
+import org.eclipse.fennec.model.stream.StreamPackage;
 
 /**
  * <!-- begin-user-doc -->

@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  */
-package org.eclipse.fennec.model.command.impl;
+package org.eclipse.fennec.model.query.impl;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
@@ -20,41 +20,41 @@ import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 
-import org.eclipse.fennec.model.command.CommandPackage;
-import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.expression.Expression;
 
-import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.FilterStage;
+import org.eclipse.fennec.model.query.QueryPackage;
 
 /**
  * <!-- begin-user-doc -->
- * An implementation of the model object '<em><b>Delete Command</b></em>'.
+ * An implementation of the model object '<em><b>Filter Stage</b></em>'.
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
  * </p>
  * <ul>
- *   <li>{@link org.eclipse.fennec.model.command.impl.DeleteCommandImpl#getSelector <em>Selector</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.FilterStageImpl#getPredicate <em>Predicate</em>}</li>
  * </ul>
  *
  * @generated
  */
-public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
+public class FilterStageImpl extends StageImpl implements FilterStage {
 	/**
-	 * The cached value of the '{@link #getSelector() <em>Selector</em>}' containment reference.
+	 * The cached value of the '{@link #getPredicate() <em>Predicate</em>}' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getSelector()
+	 * @see #getPredicate()
 	 * @generated
 	 * @ordered
 	 */
-	protected Query selector;
+	protected Expression predicate;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected DeleteCommandImpl() {
+	protected FilterStageImpl() {
 		super();
 	}
 
@@ -65,7 +65,7 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	 */
 	@Override
 	protected EClass eStaticClass() {
-		return CommandPackage.Literals.DELETE_COMMAND;
+		return QueryPackage.Literals.FILTER_STAGE;
 	}
 
 	/**
@@ -74,8 +74,8 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	 * @generated
 	 */
 	@Override
-	public Query getSelector() {
-		return selector;
+	public Expression getPredicate() {
+		return predicate;
 	}
 
 	/**
@@ -83,11 +83,11 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetSelector(Query newSelector, NotificationChain msgs) {
-		Query oldSelector = selector;
-		selector = newSelector;
+	public NotificationChain basicSetPredicate(Expression newPredicate, NotificationChain msgs) {
+		Expression oldPredicate = predicate;
+		predicate = newPredicate;
 		if (eNotificationRequired()) {
-			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, CommandPackage.DELETE_COMMAND__SELECTOR, oldSelector, newSelector);
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, QueryPackage.FILTER_STAGE__PREDICATE, oldPredicate, newPredicate);
 			if (msgs == null) msgs = notification; else msgs.add(notification);
 		}
 		return msgs;
@@ -99,18 +99,18 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	 * @generated
 	 */
 	@Override
-	public void setSelector(Query newSelector) {
-		if (newSelector != selector) {
+	public void setPredicate(Expression newPredicate) {
+		if (newPredicate != predicate) {
 			NotificationChain msgs = null;
-			if (selector != null)
-				msgs = ((InternalEObject)selector).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - CommandPackage.DELETE_COMMAND__SELECTOR, null, msgs);
-			if (newSelector != null)
-				msgs = ((InternalEObject)newSelector).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - CommandPackage.DELETE_COMMAND__SELECTOR, null, msgs);
-			msgs = basicSetSelector(newSelector, msgs);
+			if (predicate != null)
+				msgs = ((InternalEObject)predicate).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - QueryPackage.FILTER_STAGE__PREDICATE, null, msgs);
+			if (newPredicate != null)
+				msgs = ((InternalEObject)newPredicate).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - QueryPackage.FILTER_STAGE__PREDICATE, null, msgs);
+			msgs = basicSetPredicate(newPredicate, msgs);
 			if (msgs != null) msgs.dispatch();
 		}
 		else if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, CommandPackage.DELETE_COMMAND__SELECTOR, newSelector, newSelector));
+			eNotify(new ENotificationImpl(this, Notification.SET, QueryPackage.FILTER_STAGE__PREDICATE, newPredicate, newPredicate));
 	}
 
 	/**
@@ -121,8 +121,8 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
-			case CommandPackage.DELETE_COMMAND__SELECTOR:
-				return basicSetSelector(null, msgs);
+			case QueryPackage.FILTER_STAGE__PREDICATE:
+				return basicSetPredicate(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -135,8 +135,8 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
-			case CommandPackage.DELETE_COMMAND__SELECTOR:
-				return getSelector();
+			case QueryPackage.FILTER_STAGE__PREDICATE:
+				return getPredicate();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -149,8 +149,8 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	@Override
 	public void eSet(int featureID, Object newValue) {
 		switch (featureID) {
-			case CommandPackage.DELETE_COMMAND__SELECTOR:
-				setSelector((Query)newValue);
+			case QueryPackage.FILTER_STAGE__PREDICATE:
+				setPredicate((Expression)newValue);
 				return;
 		}
 		super.eSet(featureID, newValue);
@@ -164,8 +164,8 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	@Override
 	public void eUnset(int featureID) {
 		switch (featureID) {
-			case CommandPackage.DELETE_COMMAND__SELECTOR:
-				setSelector((Query)null);
+			case QueryPackage.FILTER_STAGE__PREDICATE:
+				setPredicate((Expression)null);
 				return;
 		}
 		super.eUnset(featureID);
@@ -179,10 +179,10 @@ public class DeleteCommandImpl extends CommandImpl implements DeleteCommand {
 	@Override
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
-			case CommandPackage.DELETE_COMMAND__SELECTOR:
-				return selector != null;
+			case QueryPackage.FILTER_STAGE__PREDICATE:
+				return predicate != null;
 		}
 		return super.eIsSet(featureID);
 	}
 
-} //DeleteCommandImpl
+} //FilterStageImpl

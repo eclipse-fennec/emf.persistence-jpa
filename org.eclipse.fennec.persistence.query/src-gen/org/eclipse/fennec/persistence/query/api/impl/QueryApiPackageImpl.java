@@ -32,9 +32,9 @@ import org.eclipse.emf.ecore.EPackage;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
-import org.eclipse.fennec.model.query.QueryPackage;
+import org.eclipse.fennec.model.expression.ExpressionPackage;
 
-import org.eclipse.fennec.model.utilities.UtilitiesPackage;
+import org.eclipse.fennec.model.query.QueryPackage;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
 
@@ -247,7 +247,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 
 		// Initialize simple dependencies
 		QueryPackage.eINSTANCE.eClass();
-		UtilitiesPackage.eINSTANCE.eClass();
+		ExpressionPackage.eINSTANCE.eClass();
 
 		// Create package meta-data objects
 		theQueryApiPackage.createPackageContents();
