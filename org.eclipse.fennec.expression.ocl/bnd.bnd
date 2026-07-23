@@ -14,5 +14,5 @@ Bundle-Description: Bidirectional bridge between the Fennec Expression Model and
 	org.eclipse.fennec.m2x.ocl.model;version=latest
 
 -testpath: \
-	assertj-core,\
+	assertj-core;version=latest,\
 	org.eclipse.fennec.query.model;version=snapshot
