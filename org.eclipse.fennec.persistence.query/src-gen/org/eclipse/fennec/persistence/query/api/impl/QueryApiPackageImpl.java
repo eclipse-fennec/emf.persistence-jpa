@@ -32,14 +32,19 @@ import org.eclipse.emf.ecore.EPackage;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
+import org.eclipse.fennec.model.command.CommandPackage;
+
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 
 import org.eclipse.fennec.model.query.QueryPackage;
+
+import org.eclipse.fennec.model.stream.StreamPackage;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
 
 import org.eclipse.fennec.persistence.query.QueryException;
 
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryApiFactory;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
@@ -114,6 +119,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EClass queryableResourceEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass commandResourceEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -248,6 +260,8 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		// Initialize simple dependencies
 		QueryPackage.eINSTANCE.eClass();
 		ExpressionPackage.eINSTANCE.eClass();
+		CommandPackage.eINSTANCE.eClass();
+		StreamPackage.eINSTANCE.eClass();
 
 		// Create package meta-data objects
 		theQueryApiPackage.createPackageContents();
@@ -579,6 +593,26 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getCommandResource() {
+		return commandResourceEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getCommandResource__Execute__Command() {
+		return commandResourceEClass.getEOperations().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getQueryShape() {
 		return queryShapeEEnum;
 	}
@@ -761,6 +795,9 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		createEOperation(queryableResourceEClass, QUERYABLE_RESOURCE___QUERY__QUERY);
 		createEOperation(queryableResourceEClass, QUERYABLE_RESOURCE___QUERY__QUERY_MAP_MAP);
 
+		commandResourceEClass = createEClass(COMMAND_RESOURCE);
+		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND);
+
 		// Create enums
 		queryShapeEEnum = createEEnum(QUERY_SHAPE);
 		queryFeatureEEnum = createEEnum(QUERY_FEATURE);
@@ -803,6 +840,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 
 		// Obtain other dependent packages
 		QueryPackage theQueryPackage = (QueryPackage)EPackage.Registry.INSTANCE.getEPackage(QueryPackage.eNS_URI);
+		CommandPackage theCommandPackage = (CommandPackage)EPackage.Registry.INSTANCE.getEPackage(CommandPackage.eNS_URI);
 
 		// Create type parameters
 
@@ -886,6 +924,12 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEParameter(op, theQueryPackage.getQuery(), "query", 1, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, this.getParameterMap(), "parameters", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, this.getOptionsMap(), "options", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEException(op, this.getIOException());
+
+		initEClass(commandResourceEClass, CommandResource.class, "CommandResource", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		op = initEOperation(getCommandResource__Execute__Command(), ecorePackage.getELong(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, theCommandPackage.getCommand(), "command", 1, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, this.getIOException());
 
 		// Initialize enums and add enum literals

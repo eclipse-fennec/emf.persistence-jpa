@@ -84,6 +84,11 @@ import com.mongodb.client.model.WriteModel;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
+import org.eclipse.fennec.model.command.Command;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.command.InsertCommand;
+import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
@@ -133,7 +138,7 @@ import tools.jackson.databind.json.JsonMapper;
  * @author Mark Hoffmann
  * @since 16.07.2026
  */
-public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource {
+public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource, CommandResource {
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
 
@@ -442,6 +447,71 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			values.add(BsonValues.toJava(document.get(key)));
 		}
 		return QueryResultRows.of(plan.rowAliases(), values);
+	}
+
+	// -------------------------------------------------------------- commands
+
+	@Override
+	public long execute(Command command) throws IOException {
+		requireNonNull(command, "command must not be null");
+		if (command instanceof InsertCommand insert) {
+			return executeInsert(insert);
+		}
+		if (command instanceof DeleteCommand delete) {
+			return executeDelete(delete);
+		}
+		if (command instanceof UpdateCommand) {
+			String message = "UpdateCommand execution requires the patch-apply engine (concept §18.1) — refused";
+			getErrors().add(new MongoDiagnostic(message, getURI(), null));
+			throw new IOException(message);
+		}
+		throw new IOException("Unsupported command " + command.eClass().getName());
+	}
+
+	/** Insert = the resource's save semantics over copies of the contained payload. */
+	private long executeInsert(InsertCommand insert) throws IOException {
+		List<EObject> copies = new ArrayList<>(EcoreUtil.copyAll(insert.getObjects()));
+		getContents().addAll(copies);
+		try {
+			save(null);
+		} finally {
+			getContents().clear();
+		}
+		return copies.size();
+	}
+
+	/** Delete = selector-scoped deleteMany (concept §14: Delete = query selector). */
+	private long executeDelete(DeleteCommand delete) throws IOException {
+		String collectionName = getCollectionName(null);
+		if (isNull(collectionName)) {
+			throw new IOException("Resource URI has no collection segment — cannot delete: " + getURI());
+		}
+		MongoQueryPlan plan;
+		try {
+			guardPlainSelector(delete.getSelector());
+			plan = MongoQueries.translate(queryProcessor, delete.getSelector(),
+					delete.getSelector().getFrom(), null, null);
+		} catch (QueryException e) {
+			getErrors().add(new MongoDiagnostic("Delete selector rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
+		}
+		try {
+			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
+			return getCollection(collectionName).deleteMany(filter).getDeletedCount();
+		} catch (RuntimeException e) {
+			getErrors().add(new MongoDiagnostic("Delete failed: " + e.getMessage(), getURI(), e));
+			throw new IOException("Delete failed on collection '" + collectionName + "'", e);
+		}
+	}
+
+	/** Command selectors are plain filters — everything shape-changing is refused. */
+	private static void guardPlainSelector(org.eclipse.fennec.model.query.Query selector) throws QueryException {
+		if (!selector.getSelect().isEmpty() || selector.getApply() != null || !selector.getOrderBy().isEmpty()
+				|| selector.getTop() > 0 || selector.getSkip() > 0 || selector.isDistinct()
+				|| selector.isCountOnly() || !selector.getExpand().isEmpty()) {
+			throw new QueryException(
+					"Command selectors must be plain filters — projection/aggregation/ordering/paging are not allowed");
+		}
 	}
 
 	// -------------------------------------------------------------- streaming

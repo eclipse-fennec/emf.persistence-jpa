@@ -21,7 +21,9 @@ src=${^src},src-gen
 	biz.aQute.bnd.annotation;version=latest,\
 	org.eclipse.fennec.persistence;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
-	org.eclipse.fennec.expression.model;version=snapshot
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.command.model;version=snapshot,\
+	org.eclipse.fennec.stream.model;version=snapshot
 
 -testpath: \
 	assertj-core
