@@ -34,7 +34,6 @@ import java.util.stream.StreamSupport;
 
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.conversions.Bson;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
@@ -73,27 +72,12 @@ import org.eclipse.fennec.model.metadata.api.MetadataService;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
-import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CountOptions;
-import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 
-import org.eclipse.fennec.model.query.Query;
-import org.eclipse.fennec.persistence.query.QueryException;
-import org.eclipse.fennec.persistence.query.api.QueryProcessor;
-import org.eclipse.fennec.persistence.query.api.QueryableResource;
-import org.eclipse.fennec.persistence.query.api.QueryResult;
-import org.eclipse.fennec.persistence.query.api.QueryResultRow;
-import org.eclipse.fennec.persistence.query.api.QueryShape;
-import org.eclipse.fennec.persistence.query.support.QueryResultRows;
-import org.eclipse.fennec.persistence.query.support.QueryResults;
-import org.eclipse.fennec.persistence.mongo.query.BsonValues;
-import org.eclipse.fennec.persistence.mongo.query.MongoQueries;
-import org.eclipse.fennec.persistence.mongo.query.MongoQueryPlan;
-import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
 
 import tools.jackson.core.ErrorReportConfiguration;
 import tools.jackson.core.JsonEncoding;
@@ -133,14 +117,13 @@ import tools.jackson.databind.json.JsonMapper;
  * @author Mark Hoffmann
  * @since 16.07.2026
  */
-public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource {
+public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource {
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
 
 	private final MongoDatabase database;
 	private final CodecValueRegistry valueRegistry;
 	private volatile ObjectMapper mongoMapper;
-	private volatile QueryProcessor queryProcessor = new MongoQueryProcessor();
 
 	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -355,93 +338,6 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		} catch (RuntimeException e) {
 			throw new IOException("Failed to check existence of collection '" + collectionName + "'", e);
 		}
-	}
-
-	// -------------------------------------------------------------- querying
-
-	/**
-	 * Overrides the {@link QueryProcessor} used by {@link #query(Query, Map, Map)} —
-	 * intended for OSGi wiring through the factory; defaults to a local
-	 * {@link MongoQueryProcessor} instance (processors are stateless).
-	 */
-	public void setQueryProcessor(QueryProcessor queryProcessor) {
-		this.queryProcessor = requireNonNull(queryProcessor, "queryProcessor must not be null");
-	}
-
-	@Override
-	public QueryResult query(Query query) throws IOException {
-		return query(query, null, null);
-	}
-
-	@Override
-	public QueryResult query(Query query, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
-		requireNonNull(query, "query must not be null");
-		String collectionName = getCollectionName(options);
-		if (isNull(collectionName)) {
-			throw new IOException("Resource URI has no collection segment — cannot query: " + getURI());
-		}
-		EClass eClass = resolveEClass(collectionName, options);
-		MongoQueryPlan plan;
-		try {
-			plan = MongoQueries.translate(queryProcessor, query, eClass, parameters, options);
-		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
-			throw new IOException("Query rejected for collection '" + collectionName + "': " + e.getMessage(), e);
-		}
-		try {
-			return execute(plan, collectionName, eClass, options);
-		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic("Query execution failed: " + e.getMessage(), getURI(), e));
-			throw new IOException("Query execution failed on collection '" + collectionName + "'", e);
-		}
-	}
-
-	private QueryResult execute(MongoQueryPlan plan, String collectionName, EClass eClass, Map<?, ?> options) {
-		MongoCollection<BsonDocument> collection = getCollection(collectionName);
-		Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
-		if (plan.shape() == QueryShape.COUNT) {
-			return QueryResults.count(collection.countDocuments(filter));
-		}
-		if (plan.aggregation()) {
-			AggregateIterable<BsonDocument> aggregate = collection.aggregate(plan.pipeline());
-			MongoCursor<BsonDocument> cursor = aggregate.iterator();
-			Stream<QueryResultRow> rows = cursorStream(cursor)
-					.map(document -> toRow(document, plan));
-			return QueryResults.rows(plan.shape(), rows);
-		}
-		FindIterable<BsonDocument> find = collection.find(filter);
-		if (plan.sort() != null) {
-			find = find.sort(plan.sort());
-		}
-		if (plan.skip() > 0) {
-			find = find.skip(plan.skip());
-		}
-		if (plan.limit() > 0) {
-			find = find.limit(plan.limit());
-		}
-		int pageSize = Options.getPageSize(options);
-		if (pageSize > 0) {
-			find = find.batchSize(pageSize);
-		}
-		MongoCursor<BsonDocument> cursor = find.iterator();
-		Stream<EObject> objects = cursorStream(cursor)
-				.map(document -> decodeUnchecked(document, eClass))
-				.filter(java.util.Objects::nonNull);
-		return QueryResults.objects(objects);
-	}
-
-	private Stream<BsonDocument> cursorStream(MongoCursor<BsonDocument> cursor) {
-		Spliterator<BsonDocument> documents = Spliterators.spliteratorUnknownSize(
-				cursor, Spliterator.ORDERED | Spliterator.NONNULL);
-		return StreamSupport.stream(documents, false).onClose(cursor::close);
-	}
-
-	private QueryResultRow toRow(BsonDocument document, MongoQueryPlan plan) {
-		List<Object> values = new ArrayList<>(plan.rowKeys().size());
-		for (String key : plan.rowKeys()) {
-			values.add(BsonValues.toJava(document.get(key)));
-		}
-		return QueryResultRows.of(plan.rowAliases(), values);
 	}
 
 	// -------------------------------------------------------------- streaming

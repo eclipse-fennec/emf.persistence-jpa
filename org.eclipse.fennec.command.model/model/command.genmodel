@@ -4,7 +4,7 @@
     modelDirectory="/org.eclipse.fennec.command.model/src-gen" modelPluginID="org.eclipse.fennec.command.model"
     modelName="Command" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
-    operationReflection="true" importOrganizing="true" oSGiCompatible="true" usedGenPackages="../../org.eclipse.fennec.query.model2/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream">
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true" usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream">
   <foreignModel>command.ecore</foreignModel>
   <genPackages prefix="Command" basePackage="org.eclipse.fennec.model" disposableProviderFactory="true"
       ecorePackage="command.ecore#/">

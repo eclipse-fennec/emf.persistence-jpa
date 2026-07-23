@@ -9,9 +9,6 @@ Bundle-Description: EMF Persistence with MongoDB
 	biz.aQute.bnd.annotation;version=latest,\
 	org.osgi.service.cm;version=latest,\
 	org.eclipse.fennec.persistence;version=snapshot,\
-	org.eclipse.fennec.persistence.query;version=snapshot,\
-	org.eclipse.fennec.query.model;version=snapshot,\
-	org.eclipse.fennec.model;version=snapshot,\
 	org.eclipse.fennec.codec.api;version=latest,\
 	org.eclipse.fennec.codec;version=latest,\
 	org.eclipse.fennec.codec.bson;version=latest,\

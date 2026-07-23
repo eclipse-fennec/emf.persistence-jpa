@@ -19,8 +19,8 @@ import org.eclipse.fennec.model.stream.ChangeEntry;
 import org.eclipse.fennec.model.stream.ChangeSet;
 import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
-import org.eclipse.fennec.model2.query.Query;
-import org.eclipse.fennec.model2.query.QueryFactory;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.QueryFactory;
 import org.junit.jupiter.api.Test;
 
 /**

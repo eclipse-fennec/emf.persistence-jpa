@@ -1,201 +1,157 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="query" nsURI="https://org.eclipse/fennec/query/1.0.0" nsPrefix="query">
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="query" nsURI="https://eclipse.org/fennec/query/2.0.0" nsPrefix="query">
   <eAnnotations source="Version">
-    <details key="value" value="1.0"/>
+    <details key="value" value="2.0"/>
   </eAnnotations>
   <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-    <details key="complianceLevel" value="17.0"/>
+    <details key="complianceLevel" value="21.0"/>
     <details key="oSGiCompatible" value="true"/>
     <details key="basePackage" value="org.eclipse.fennec.model"/>
-    <details key="resource" value="XMI"/>
-    <details key="copyrightText" value="Copyright (c) 2012 - 2026 Data In Motion and others.&#xA;All rights reserved. &#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;    Data In Motion - initial API and implementation"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="documentation" value="The v2 query envelope around the Fennec Expression Model: root type, predicate, ordering, projection, aggregation pipeline, fetch hints, paging and declared parameters. Read-only by design — CUD lives in the command model (concept.md §14). See docs/unified-persistence/query-ir-redesign.md §4."/>
   </eAnnotations>
   <eClassifiers xsi:type="ecore:EClass" name="Query">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="subject" upperBound="-1"
-        eType="#//QSubject" containment="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A backend-neutral read query. The shape of its result follows the content: countOnly → COUNT; apply with aggregation → AGGREGATION rows; select → PROJECTION rows; otherwise whole OBJECTS."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="from" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="A subject defines the SELECT subjects, e.g. SELECT address, name, age ... where adress, name, age are Subjects"/>
+        <details key="documentation" value="The root type the query selects from — the type filter."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="from" upperBound="-1" eType="#//QObject"
+    <eStructuralFeatures xsi:type="ecore:EReference" name="predicate" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//Expression"
         containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="If we have an include Query, which is default, the FROM values can be calculated out of the set of all FeaturePath's from the subjects. If no Subject is given, the FROM must be set, because we have a SELECT * query, theat needs a FROM. The same applies to excluded queries. In this case we also need a FROM to be able to apply the exclusion from the subjects feature paths's"/>
+        <details key="documentation" value="The boolean filter expression; absent = match all."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="where" upperBound="-1"
-        eType="#//QWhere" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="groupBy" upperBound="-1"
-        eType="ecore:EClass ../../org.eclipse.fennec.model/model/utilities.ecore#//FeaturePath"
-        containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="sortBy" upperBound="-1"
-        eType="#//SortEntity" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="count" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="distinct" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="limit" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="skip" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="saveQuery" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="orderBy" upperBound="-1"
+        eType="#//OrderBy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="select" upperBound="-1"
+        eType="#//Selection" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This attribute can be used to indicate that the Query should be saved to be used at a later step. If a persistence mechanism is present, then the Query will be saved. If set to true, also the name attribute should be set, to allow saving of the Query."/>
+        <details key="documentation" value="Projection subjects; non-empty select makes the query row-shaped."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="apply" eType="#//Pipeline"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Optional aggregation pipeline, modelled after the OData $apply composition."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="expand" upperBound="-1"
+        eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Fetch hints: reference paths to materialise eagerly with the result (decision D5 — envelope-level)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="top" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Result cap; 0 = unlimited."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="skip" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="distinct" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="countOnly" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
+        eType="#//ParameterDecl" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Declared parameters of a prepared query. Every ParameterRef in the predicate should be declared; binding happens at execution."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="A name for the Query. Must be set if saveQuery is set to true."/>
+        <details key="documentation" value="Query name; required when saveQuery is set."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="saveQuery" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Marks the query to be persisted for later reuse (dogfooding — queries are EMF objects)."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="QObject">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="rootEClass" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="QSubject">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="featurePath" lowerBound="1"
-        eType="ecore:EClass ../../org.eclipse.fennec.model/model/utilities.ecore#//FeaturePath"
-        containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This is the path for the subject like SELECT [Person.address, Address.street] to select an Address Street out of a Person object"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isExclude" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
-        defaultValueLiteral="false">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="If set to true, all feature path of the subject are excluded from the SELECT  query"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alias" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This is something like SELECT person AS &lt;alias>"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="aliasFeature" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EStructuralFeature">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This is a optional feature the resulting value can be mapped to"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="operation" eType="#//Operation"
-        containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="An operation defines additional functions, executed on the returning value/values like toUpper, avg, count"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="QWhere" abstract="true">
-    <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="featurePath" lowerBound="1"
-        eType="ecore:EClass ../../org.eclipse.fennec.model/model/utilities.ecore#//FeaturePath"
-        containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This is the feature path on which the (optional) operation and the comparator have to be applied (like Person.name -> toLowerCase -> startsWith(&quot;something&quot;))"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="comparator" lowerBound="1"
-        eType="#//Comparator" containment="true" eOpposite="#//Comparator/where">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This is the comparator to be applied to the feature path (this is the actual predicate of the query)"/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="operation" eType="#//Operation"
-        containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="This is an optional function to be applied to the feature path before the comparator "/>
-      </eAnnotations>
-    </eStructuralFeatures>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Chaining" abstract="true" eSuperTypes="#//QWhere"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Or" eSuperTypes="#//Chaining"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Not" eSuperTypes="#//Chaining"/>
-  <eClassifiers xsi:type="ecore:EClass" name="And" eSuperTypes="#//Chaining"/>
-  <eClassifiers xsi:type="ecore:EClass" name="StringOperation" abstract="true" eSuperTypes="#//Operation"/>
-  <eClassifiers xsi:type="ecore:EClass" name="ToLowerCase" eSuperTypes="#//StringOperation"/>
-  <eClassifiers xsi:type="ecore:EClass" name="ToUpperCase" eSuperTypes="#//StringOperation"/>
-  <eClassifiers xsi:type="ecore:EClass" name="NumberOperation" abstract="true" eSuperTypes="#//Operation"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Average" eSuperTypes="#//NumberOperation">
+  <eClassifiers xsi:type="ecore:EClass" name="OrderBy">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Average aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+      <details key="documentation" value="One ordering entry. For row-shaped queries the path must address an output key (alias)."/>
     </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="path" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" lowerBound="1"
+        eType="#//SortDirection" defaultValueLiteral="ASC"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Min" eSuperTypes="#//NumberOperation">
+  <eClassifiers xsi:type="ecore:EClass" name="Selection">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Minimum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+      <details key="documentation" value="One projection subject. The alias names the result column; without an alias the cell is ordinal-only (dot-flattened path as the key)."/>
     </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="path" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alias" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Max" eSuperTypes="#//NumberOperation">
+  <eClassifiers xsi:type="ecore:EClass" name="ParameterDecl">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="typeHint" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClassifier">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Optional expected type of the bound value."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <!-- ==================== Aggregation pipeline ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Pipeline">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Maximum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+      <details key="documentation" value="Compositional aggregation: stages apply in order. v1 stages: Filter, GroupBy(+Aggregate), Top, Skip; further stages (Compute, Concat, BottomTop) are additive later (decision D3)."/>
     </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="stages" lowerBound="1"
+        upperBound="-1" eType="#//Stage" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Sum" eSuperTypes="#//NumberOperation">
+  <eClassifiers xsi:type="ecore:EClass" name="Stage" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="FilterStage" eSuperTypes="#//Stage">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="predicate" lowerBound="1"
+        eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//Expression"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GroupByStage" eSuperTypes="#//Stage">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Sum aggregate function. On a subject it aggregates the addressed feature; without groupBy over the whole result set (single row)."/>
+      <details key="documentation" value="Grouping over the given paths with aggregate outputs. Without paths the aggregates apply to the whole input (single row)."/>
     </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="paths" upperBound="-1"
+        eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="aggregates" lowerBound="1"
+        upperBound="-1" eType="#//Aggregate" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="CountOperation" eSuperTypes="#//NumberOperation">
+  <eClassifiers xsi:type="ecore:EClass" name="Aggregate">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Count aggregate function (per group, or over the whole result set without groupBy). Named CountOperation to avoid clashing with Query.count, which requests a count-only result."/>
+      <details key="documentation" value="One aggregate output. path is optional for COUNT (count of group members)."/>
     </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="path" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1"
+        eType="#//AggregateMethod"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alias" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Comparator" abstract="true">
-    <eOperations name="compare" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="suitableForType" lowerBound="1"
-        eType="#//SuitableType"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="where" eType="#//QWhere"
-        eOpposite="#//QWhere/comparator"/>
+  <eClassifiers xsi:type="ecore:EClass" name="TopStage" eSuperTypes="#//Stage">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="count" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="SimpleValueComparator" abstract="true"
-      eSuperTypes="#//Comparator">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  <eClassifiers xsi:type="ecore:EClass" name="SkipStage" eSuperTypes="#//Stage">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="count" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="StringComparator" abstract="true" eSuperTypes="#//SimpleValueComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="EndsWith" eSuperTypes="#//StringComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="StartWith" eSuperTypes="#//StringComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Contains" eSuperTypes="#//StringComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Like" eSuperTypes="#//StringComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="DateComparator" abstract="true" eSuperTypes="#//SimpleValueComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsBefore" eSuperTypes="#//DateComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsAfter" eSuperTypes="#//DateComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsBeforeOrEqual" eSuperTypes="#//DateComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsAfterOrEqual" eSuperTypes="#//DateComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsInRange" eSuperTypes="#//Comparator">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="startValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="endValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="startIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="endIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  <!-- ==================== Enums ==================== -->
+  <eClassifiers xsi:type="ecore:EEnum" name="SortDirection">
+    <eLiterals name="ASC"/>
+    <eLiterals name="DESC" value="1"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="NumberComparator" abstract="true" eSuperTypes="#//SimpleValueComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Lt" eSuperTypes="#//NumberComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Lte" eSuperTypes="#//NumberComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Gte" eSuperTypes="#//NumberComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Gt" eSuperTypes="#//NumberComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="Eq" eSuperTypes="#//NumberComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="BoolComparator" eSuperTypes="#//SimpleValueComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsBool" eSuperTypes="#//BoolComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="SortEntity">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sortOrder" lowerBound="1"
-        eType="#//SortOrder" defaultValueLiteral="DESC"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="sortFeature" lowerBound="1"
-        eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EStructuralFeature"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="SortOrder">
-    <eLiterals name="DESC"/>
-    <eLiterals name="ASC" value="1"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Operation" abstract="true">
-    <eOperations name="execute" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="suitableForType" lowerBound="1"
-        eType="#//SuitableType"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="EnumComparator" abstract="true" eSuperTypes="#//SimpleValueComparator"/>
-  <eClassifiers xsi:type="ecore:EClass" name="IsLiteral" eSuperTypes="#//EnumComparator"/>
-  <eClassifiers xsi:type="ecore:EEnum" name="SuitableType">
-    <eLiterals name="NUMERIC"/>
-    <eLiterals name="DATE" value="1"/>
-    <eLiterals name="STRING" value="2"/>
-    <eLiterals name="BOOLEAN" value="3"/>
-    <eLiterals name="ENUM" value="4"/>
-    <eLiterals name="MIXED" value="5"/>
-    <eLiterals name="OTHER" value="100"/>
+  <eClassifiers xsi:type="ecore:EEnum" name="AggregateMethod">
+    <eLiterals name="SUM"/>
+    <eLiterals name="MIN" value="1"/>
+    <eLiterals name="MAX" value="2"/>
+    <eLiterals name="AVG" value="3"/>
+    <eLiterals name="COUNT" value="4"/>
+    <eLiterals name="COUNT_DISTINCT" value="5"/>
   </eClassifiers>
 </ecore:EPackage>

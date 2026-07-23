@@ -12,7 +12,7 @@
  */
 package org.eclipse.fennec.model.command;
 
-import org.eclipse.fennec.model2.query.Query;
+import org.eclipse.fennec.model.query.Query;
 
 import org.osgi.annotation.versioning.ProviderType;
 

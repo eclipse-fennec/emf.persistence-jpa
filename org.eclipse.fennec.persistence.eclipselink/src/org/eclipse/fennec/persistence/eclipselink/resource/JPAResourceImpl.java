@@ -42,25 +42,8 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
-import java.util.Arrays;
-import java.util.Collections;
 
-import org.eclipse.emf.ecore.EClass;
-import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
-import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
-import org.eclipse.fennec.persistence.eclipselink.query.JpaQueries;
-import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryPlan;
-import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
-import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
-import org.eclipse.fennec.persistence.query.QueryException;
-import org.eclipse.fennec.persistence.query.api.QueryProcessor;
-import org.eclipse.fennec.persistence.query.api.QueryResult;
-import org.eclipse.fennec.persistence.query.api.QueryResultRow;
-import org.eclipse.fennec.persistence.query.api.QueryShape;
-import org.eclipse.fennec.persistence.query.api.QueryableResource;
-import org.eclipse.fennec.persistence.query.support.QueryResultRows;
-import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
@@ -95,12 +78,11 @@ import jakarta.persistence.TypedQuery;
  * @author Mark Hoffmann
  * @since 13.04.2026
  */
-public class JPAResourceImpl extends ResourceImpl implements PersistenceResource, StreamingResource, QueryableResource {
+public class JPAResourceImpl extends ResourceImpl implements PersistenceResource, StreamingResource {
 
 	private static final Logger LOG = Logger.getLogger(JPAResourceImpl.class.getName());
 
 	private final JPAUnit unit;
-	private volatile QueryProcessor queryProcessor = new JpaQueryProcessor();
 
 	/** Options captured by {@link #load(Map)} for the deferred full population. */
 	private Map<?, ?> loadOptions;
@@ -695,141 +677,6 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * (non-Javadoc)
 	 * @see org.eclipse.fennec.persistence.resource.StreamingResource#stream()
 	 */
-	// -------------------------------------------------------------- querying
-
-	/**
-	 * Overrides the {@link QueryProcessor} used by {@link #query(Query, Map, Map)} —
-	 * intended for OSGi wiring through the factory; defaults to a local
-	 * {@link JpaQueryProcessor} instance (processors are stateless).
-	 */
-	public void setQueryProcessor(QueryProcessor queryProcessor) {
-		this.queryProcessor = requireNonNull(queryProcessor, "queryProcessor must not be null");
-	}
-
-	@Override
-	public QueryResult query(Query query) throws IOException {
-		return query(query, null, null);
-	}
-
-	@Override
-	public QueryResult query(Query query, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
-		requireNonNull(query, "query must not be null");
-		String entityName = getEntityName();
-		if (isNull(entityName)) {
-			throw new IOException("Resource URI has no entity segment — cannot query: " + getURI());
-		}
-		Lease lease = leaseChecked();
-		ClassDescriptor descriptor;
-		try {
-			descriptor = getDescriptor(entityName);
-		} catch (RuntimeException e) {
-			lease.close();
-			throw new IOException("Failed to resolve entity '" + entityName + "'", e);
-		}
-		if (isNull(descriptor)) {
-			lease.close();
-			throw new IOException("No descriptor found for entity '" + entityName + "' in " + getURI());
-		}
-		EClass eClass = descriptor instanceof EClassDescriptor ecd ? EORMHelper.getEClass(ecd.getEntity()) : null;
-		if (isNull(eClass)) {
-			lease.close();
-			throw new IOException("No EClass known for entity '" + entityName + "' in " + getURI());
-		}
-		JpaQueryPlan plan;
-		try {
-			plan = JpaQueries.translate(queryProcessor, query, eClass, parameters, options);
-		} catch (QueryException e) {
-			lease.close();
-			getErrors().add(new JPADiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
-			throw new IOException("Query rejected for entity '" + entityName + "': " + e.getMessage(), e);
-		}
-		if (plan.shape() == QueryShape.COUNT) {
-			return executeCount(plan, lease, entityName);
-		}
-		return executeCursor(plan, lease, entityName);
-	}
-
-	private QueryResult executeCount(JpaQueryPlan plan, Lease lease, String entityName) throws IOException {
-		try (lease; EntityManager em = lease.createEntityManager()) {
-			TypedQuery<Long> countQuery = em.createQuery(plan.jpql(), Long.class);
-			plan.parameters().forEach(countQuery::setParameter);
-			return QueryResults.count(countQuery.getSingleResult());
-		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
-					"Failed to execute count query on '" + entityName + "': " + e.getMessage(), getURI(), e));
-			throw new IOException("Failed to execute count query on '" + entityName + "'", e);
-		}
-	}
-
-	/**
-	 * Executes an OBJECTS or row-shaped plan over a scrollable cursor. The
-	 * {@link EntityManager} and lease stay open until the returned result is closed.
-	 */
-	private QueryResult executeCursor(JpaQueryPlan plan, Lease lease, String entityName) throws IOException {
-		EntityManager em = lease.createEntityManager();
-		try {
-			TypedQuery<?> typedQuery = em.createQuery(plan.jpql(), resultType(plan));
-			plan.parameters().forEach(typedQuery::setParameter);
-			if (plan.skip() > 0) {
-				typedQuery.setFirstResult(plan.skip());
-			}
-			if (plan.limit() > 0) {
-				typedQuery.setMaxResults(plan.limit());
-			}
-			typedQuery.setHint(QueryHints.SCROLLABLE_CURSOR, HintValues.TRUE);
-			ScrollableCursor cursor = (ScrollableCursor) typedQuery.unwrap(JpaQuery.class).getResultCursor();
-			Stream<Object> rows = cursorStream(cursor).onClose(() -> {
-				cursor.close();
-				em.close();
-				lease.close();
-			});
-			if (plan.shape() == QueryShape.OBJECTS) {
-				return QueryResults.objects(rows
-						.filter(EObject.class::isInstance)
-						.map(EObject.class::cast));
-			}
-			return QueryResults.rows(plan.shape(), rows.map(row -> toRow(row, plan)));
-		} catch (RuntimeException e) {
-			em.close();
-			lease.close();
-			getErrors().add(new JPADiagnostic(
-					"Failed to execute query on '" + entityName + "': " + e.getMessage(), getURI(), e));
-			throw new IOException("Failed to execute query on '" + entityName + "'", e);
-		}
-	}
-
-	private Class<?> resultType(JpaQueryPlan plan) {
-		if (plan.shape() == QueryShape.OBJECTS) {
-			return Object.class;
-		}
-		return plan.rowKeys().size() > 1 ? Object[].class : Object.class;
-	}
-
-	private Stream<Object> cursorStream(ScrollableCursor cursor) {
-		Spliterator<Object> rows = Spliterators.spliteratorUnknownSize(new Iterator<Object>() {
-			@Override
-			public boolean hasNext() {
-				return cursor.hasNext();
-			}
-
-			@Override
-			public Object next() {
-				return cursor.next();
-			}
-		}, Spliterator.ORDERED | Spliterator.NONNULL);
-		return StreamSupport.stream(rows, false);
-	}
-
-	private QueryResultRow toRow(Object row, JpaQueryPlan plan) {
-		List<Object> values;
-		if (row instanceof Object[] cells) {
-			values = Arrays.asList(cells);
-		} else {
-			values = Collections.singletonList(row);
-		}
-		return QueryResultRows.of(plan.rowAliases(), values);
-	}
-
 	@Override
 	public Stream<EObject> stream() throws IOException {
 		return stream(null);

@@ -23,9 +23,9 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.fennec.model.command.CommandPackage;
 import org.eclipse.fennec.model.command.UpdateCommand;
 
-import org.eclipse.fennec.model.stream.ChangeSet;
+import org.eclipse.fennec.model.query.Query;
 
-import org.eclipse.fennec.model2.query.Query;
+import org.eclipse.fennec.model.stream.ChangeSet;
 
 /**
  * <!-- begin-user-doc -->

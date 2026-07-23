@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.query.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.eclipse.fennec.model.query.builder.Expressions.path;
 
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
@@ -22,19 +23,15 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
-import org.eclipse.fennec.model.query.And;
-import org.eclipse.fennec.model.query.Eq;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
-import org.eclipse.fennec.model.utilities.FeaturePath;
-import org.eclipse.fennec.model.utilities.UtilitiesFactory;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryFeature;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the {@link QueryValidator} capability checking and diagnostic reporting.
+ * Tests the {@link QueryValidator} capability checking over the expression IR.
  *
  * @author Mark Hoffmann
  */
@@ -68,41 +65,30 @@ class QueryValidatorTest {
 		person.getEStructuralFeatures().add(address);
 	}
 
-	private FeaturePath path(EStructuralFeature... features) {
-		FeaturePath path = UtilitiesFactory.eINSTANCE.createFeaturePath();
-		for (EStructuralFeature feature : features) {
-			path.getFeature().add(feature);
-		}
-		return path;
+	private Query eqQuery(Object value, EStructuralFeature... segments) {
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(person);
+		query.setPredicate(path(segments).eq(value));
+		return query;
 	}
 
-	private Query eqQuery(String value, EStructuralFeature... pathFeatures) {
-		QueryFactory factory = QueryFactory.eINSTANCE;
-		Query query = factory.createQuery();
-		And where = factory.createAnd();
-		where.setFeaturePath(path(pathFeatures));
-		Eq eq = factory.createEq();
-		eq.setValue(value);
-		where.setComparator(eq);
-		query.getWhere().add(where);
-		return query;
+	private QueryCapabilities capabilities(QueryFeature... supported) {
+		return QueryCapabilitiesBuilder.create()
+				.support(QueryFeature.TYPE_FILTER)
+				.support(supported)
+				.build();
 	}
 
 	@Test
 	void supportedQueryValidatesOk() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create()
-				.support(QueryFeature.WHERE_EQ)
-				.build();
-
-		Diagnostic diagnostic = QueryValidator.validate(eqQuery("42", name), person, capabilities);
+		Diagnostic diagnostic = QueryValidator.validate(eqQuery(42, name), person,
+				capabilities(QueryFeature.WHERE_EQ));
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.OK);
 	}
 
 	@Test
 	void unsupportedFeatureYieldsErrorNamingTheFeature() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create().build();
-
-		Diagnostic diagnostic = QueryValidator.validate(eqQuery("42", name), person, capabilities);
+		Diagnostic diagnostic = QueryValidator.validate(eqQuery(42, name), person, capabilities());
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.getChildren()).hasSize(1);
 
@@ -115,13 +101,11 @@ class QueryValidatorTest {
 
 	@Test
 	void everyUnsupportedFeatureIsReported() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create().build();
-
-		Query query = eqQuery("42", name);
-		query.setLimit(10);
+		Query query = eqQuery(42, name);
+		query.setTop(10);
 		query.setDistinct(true);
 
-		Diagnostic diagnostic = QueryValidator.validate(query, person, capabilities);
+		Diagnostic diagnostic = QueryValidator.validate(query, person, capabilities());
 		assertThat(diagnostic.getChildren()).hasSize(3);
 		assertThat(diagnostic.getChildren())
 				.allSatisfy(child -> assertThat(child.getSeverity()).isEqualTo(Diagnostic.ERROR));
@@ -129,12 +113,12 @@ class QueryValidatorTest {
 
 	@Test
 	void depthBeyondCapabilityYieldsError() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create()
-				.support(QueryFeature.WHERE_EQ, QueryFeature.FEATUREPATH_NESTED)
+		QueryCapabilities depthOne = QueryCapabilitiesBuilder.create()
+				.support(QueryFeature.WHERE_EQ, QueryFeature.FEATUREPATH_NESTED, QueryFeature.TYPE_FILTER)
 				.maxFeaturePathDepth(1)
 				.build();
 
-		Diagnostic diagnostic = QueryValidator.validate(eqQuery("x", address, street), person, capabilities);
+		Diagnostic diagnostic = QueryValidator.validate(eqQuery("x", address, street), person, depthOne);
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.getChildren())
 				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_DEPTH_EXCEEDED));
@@ -142,30 +126,21 @@ class QueryValidatorTest {
 
 	@Test
 	void unlimitedDepthAcceptsDeepPaths() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create()
-				.support(QueryFeature.WHERE_EQ, QueryFeature.FEATUREPATH_NESTED)
+		QueryCapabilities unlimited = QueryCapabilitiesBuilder.create()
+				.support(QueryFeature.WHERE_EQ, QueryFeature.FEATUREPATH_NESTED, QueryFeature.TYPE_FILTER)
 				.maxFeaturePathDepth(-1)
 				.build();
 
-		Diagnostic diagnostic = QueryValidator.validate(eqQuery("x", address, street), person, capabilities);
+		Diagnostic diagnostic = QueryValidator.validate(eqQuery("x", address, street), person, unlimited);
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.OK);
 	}
 
 	@Test
-	void nullRootEClassIsToleratedInMessages() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create().build();
-
-		Diagnostic diagnostic = QueryValidator.validate(eqQuery("42", name), null, capabilities);
-		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
-		assertThat(diagnostic.getChildren().get(0).getMessage()).contains("<unknown>");
-	}
-
-	@Test
 	void nullArgumentsAreRejected() {
-		QueryCapabilities capabilities = QueryCapabilitiesBuilder.create().build();
+		QueryCapabilities none = capabilities();
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> QueryValidator.validate((QueryAnalysis) null, person, capabilities));
+				.isThrownBy(() -> QueryValidator.validate((QueryAnalysis) null, person, none));
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> QueryValidator.validate(eqQuery("42", name), person, null));
+				.isThrownBy(() -> QueryValidator.validate(eqQuery(42, name), person, null));
 	}
 }

@@ -1,6 +1,5 @@
 /**
- * Copyright (c) 2012 - 2026 Data In Motion and others.
- * All rights reserved. 
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
  * 
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -9,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  * 
  * Contributors:
- *     Data In Motion - initial API and implementation
+ *   Data In Motion Consulting - initial implementation
  */
 package org.eclipse.fennec.model.query.util;
 
@@ -83,168 +82,44 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 				return createQueryAdapter();
 			}
 			@Override
-			public Adapter caseQObject(QObject object) {
-				return createQObjectAdapter();
+			public Adapter caseOrderBy(OrderBy object) {
+				return createOrderByAdapter();
 			}
 			@Override
-			public Adapter caseQSubject(QSubject object) {
-				return createQSubjectAdapter();
+			public Adapter caseSelection(Selection object) {
+				return createSelectionAdapter();
 			}
 			@Override
-			public Adapter caseQWhere(QWhere object) {
-				return createQWhereAdapter();
+			public Adapter caseParameterDecl(ParameterDecl object) {
+				return createParameterDeclAdapter();
 			}
 			@Override
-			public Adapter caseChaining(Chaining object) {
-				return createChainingAdapter();
+			public Adapter casePipeline(Pipeline object) {
+				return createPipelineAdapter();
 			}
 			@Override
-			public Adapter caseOr(Or object) {
-				return createOrAdapter();
+			public Adapter caseStage(Stage object) {
+				return createStageAdapter();
 			}
 			@Override
-			public Adapter caseNot(Not object) {
-				return createNotAdapter();
+			public Adapter caseFilterStage(FilterStage object) {
+				return createFilterStageAdapter();
 			}
 			@Override
-			public Adapter caseAnd(And object) {
-				return createAndAdapter();
+			public Adapter caseGroupByStage(GroupByStage object) {
+				return createGroupByStageAdapter();
 			}
 			@Override
-			public Adapter caseStringOperation(StringOperation object) {
-				return createStringOperationAdapter();
+			public Adapter caseAggregate(Aggregate object) {
+				return createAggregateAdapter();
 			}
 			@Override
-			public Adapter caseToLowerCase(ToLowerCase object) {
-				return createToLowerCaseAdapter();
+			public Adapter caseTopStage(TopStage object) {
+				return createTopStageAdapter();
 			}
 			@Override
-			public Adapter caseToUpperCase(ToUpperCase object) {
-				return createToUpperCaseAdapter();
-			}
-			@Override
-			public Adapter caseNumberOperation(NumberOperation object) {
-				return createNumberOperationAdapter();
-			}
-			@Override
-			public Adapter caseAverage(Average object) {
-				return createAverageAdapter();
-			}
-			@Override
-			public Adapter caseMin(Min object) {
-				return createMinAdapter();
-			}
-			@Override
-			public Adapter caseMax(Max object) {
-				return createMaxAdapter();
-			}
-			@Override
-			public Adapter caseSum(Sum object) {
-				return createSumAdapter();
-			}
-			@Override
-			public Adapter caseCountOperation(CountOperation object) {
-				return createCountOperationAdapter();
-			}
-			@Override
-			public Adapter caseComparator(Comparator object) {
-				return createComparatorAdapter();
-			}
-			@Override
-			public Adapter caseSimpleValueComparator(SimpleValueComparator object) {
-				return createSimpleValueComparatorAdapter();
-			}
-			@Override
-			public Adapter caseStringComparator(StringComparator object) {
-				return createStringComparatorAdapter();
-			}
-			@Override
-			public Adapter caseEndsWith(EndsWith object) {
-				return createEndsWithAdapter();
-			}
-			@Override
-			public Adapter caseStartWith(StartWith object) {
-				return createStartWithAdapter();
-			}
-			@Override
-			public Adapter caseContains(Contains object) {
-				return createContainsAdapter();
-			}
-			@Override
-			public Adapter caseLike(Like object) {
-				return createLikeAdapter();
-			}
-			@Override
-			public Adapter caseDateComparator(DateComparator object) {
-				return createDateComparatorAdapter();
-			}
-			@Override
-			public Adapter caseIsBefore(IsBefore object) {
-				return createIsBeforeAdapter();
-			}
-			@Override
-			public Adapter caseIsAfter(IsAfter object) {
-				return createIsAfterAdapter();
-			}
-			@Override
-			public Adapter caseIsBeforeOrEqual(IsBeforeOrEqual object) {
-				return createIsBeforeOrEqualAdapter();
-			}
-			@Override
-			public Adapter caseIsAfterOrEqual(IsAfterOrEqual object) {
-				return createIsAfterOrEqualAdapter();
-			}
-			@Override
-			public Adapter caseIsInRange(IsInRange object) {
-				return createIsInRangeAdapter();
-			}
-			@Override
-			public Adapter caseNumberComparator(NumberComparator object) {
-				return createNumberComparatorAdapter();
-			}
-			@Override
-			public Adapter caseLt(Lt object) {
-				return createLtAdapter();
-			}
-			@Override
-			public Adapter caseLte(Lte object) {
-				return createLteAdapter();
-			}
-			@Override
-			public Adapter caseGte(Gte object) {
-				return createGteAdapter();
-			}
-			@Override
-			public Adapter caseGt(Gt object) {
-				return createGtAdapter();
-			}
-			@Override
-			public Adapter caseEq(Eq object) {
-				return createEqAdapter();
-			}
-			@Override
-			public Adapter caseBoolComparator(BoolComparator object) {
-				return createBoolComparatorAdapter();
-			}
-			@Override
-			public Adapter caseIsBool(IsBool object) {
-				return createIsBoolAdapter();
-			}
-			@Override
-			public Adapter caseSortEntity(SortEntity object) {
-				return createSortEntityAdapter();
-			}
-			@Override
-			public Adapter caseOperation(Operation object) {
-				return createOperationAdapter();
-			}
-			@Override
-			public Adapter caseEnumComparator(EnumComparator object) {
-				return createEnumComparatorAdapter();
-			}
-			@Override
-			public Adapter caseIsLiteral(IsLiteral object) {
-				return createIsLiteralAdapter();
+			public Adapter caseSkipStage(SkipStage object) {
+				return createSkipStageAdapter();
 			}
 			@Override
 			public Adapter defaultCase(EObject object) {
@@ -281,576 +156,142 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.QObject <em>QObject</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.OrderBy <em>Order By</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.QObject
+	 * @see org.eclipse.fennec.model.query.OrderBy
 	 * @generated
 	 */
-	public Adapter createQObjectAdapter() {
+	public Adapter createOrderByAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.QSubject <em>QSubject</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Selection <em>Selection</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.QSubject
+	 * @see org.eclipse.fennec.model.query.Selection
 	 * @generated
 	 */
-	public Adapter createQSubjectAdapter() {
+	public Adapter createSelectionAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.QWhere <em>QWhere</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.ParameterDecl <em>Parameter Decl</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.QWhere
+	 * @see org.eclipse.fennec.model.query.ParameterDecl
 	 * @generated
 	 */
-	public Adapter createQWhereAdapter() {
+	public Adapter createParameterDeclAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Chaining <em>Chaining</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Pipeline <em>Pipeline</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Chaining
+	 * @see org.eclipse.fennec.model.query.Pipeline
 	 * @generated
 	 */
-	public Adapter createChainingAdapter() {
+	public Adapter createPipelineAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Or <em>Or</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Stage <em>Stage</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Or
+	 * @see org.eclipse.fennec.model.query.Stage
 	 * @generated
 	 */
-	public Adapter createOrAdapter() {
+	public Adapter createStageAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Not <em>Not</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.FilterStage <em>Filter Stage</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Not
+	 * @see org.eclipse.fennec.model.query.FilterStage
 	 * @generated
 	 */
-	public Adapter createNotAdapter() {
+	public Adapter createFilterStageAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.And <em>And</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.GroupByStage <em>Group By Stage</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.And
+	 * @see org.eclipse.fennec.model.query.GroupByStage
 	 * @generated
 	 */
-	public Adapter createAndAdapter() {
+	public Adapter createGroupByStageAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.StringOperation <em>String Operation</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Aggregate <em>Aggregate</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.StringOperation
+	 * @see org.eclipse.fennec.model.query.Aggregate
 	 * @generated
 	 */
-	public Adapter createStringOperationAdapter() {
+	public Adapter createAggregateAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.ToLowerCase <em>To Lower Case</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.TopStage <em>Top Stage</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.ToLowerCase
+	 * @see org.eclipse.fennec.model.query.TopStage
 	 * @generated
 	 */
-	public Adapter createToLowerCaseAdapter() {
+	public Adapter createTopStageAdapter() {
 		return null;
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.ToUpperCase <em>To Upper Case</em>}'.
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.SkipStage <em>Skip Stage</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
 	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
 	 * <!-- end-user-doc -->
 	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.ToUpperCase
+	 * @see org.eclipse.fennec.model.query.SkipStage
 	 * @generated
 	 */
-	public Adapter createToUpperCaseAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.NumberOperation <em>Number Operation</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.NumberOperation
-	 * @generated
-	 */
-	public Adapter createNumberOperationAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Average <em>Average</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Average
-	 * @generated
-	 */
-	public Adapter createAverageAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Min <em>Min</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Min
-	 * @generated
-	 */
-	public Adapter createMinAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Max <em>Max</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Max
-	 * @generated
-	 */
-	public Adapter createMaxAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Sum <em>Sum</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Sum
-	 * @generated
-	 */
-	public Adapter createSumAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.CountOperation <em>Count Operation</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.CountOperation
-	 * @generated
-	 */
-	public Adapter createCountOperationAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Comparator <em>Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Comparator
-	 * @generated
-	 */
-	public Adapter createComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.SimpleValueComparator <em>Simple Value Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.SimpleValueComparator
-	 * @generated
-	 */
-	public Adapter createSimpleValueComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.StringComparator <em>String Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.StringComparator
-	 * @generated
-	 */
-	public Adapter createStringComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.EndsWith <em>Ends With</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.EndsWith
-	 * @generated
-	 */
-	public Adapter createEndsWithAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.StartWith <em>Start With</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.StartWith
-	 * @generated
-	 */
-	public Adapter createStartWithAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Contains <em>Contains</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Contains
-	 * @generated
-	 */
-	public Adapter createContainsAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Like <em>Like</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Like
-	 * @generated
-	 */
-	public Adapter createLikeAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.DateComparator <em>Date Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.DateComparator
-	 * @generated
-	 */
-	public Adapter createDateComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsBefore <em>Is Before</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsBefore
-	 * @generated
-	 */
-	public Adapter createIsBeforeAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsAfter <em>Is After</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsAfter
-	 * @generated
-	 */
-	public Adapter createIsAfterAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsBeforeOrEqual <em>Is Before Or Equal</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsBeforeOrEqual
-	 * @generated
-	 */
-	public Adapter createIsBeforeOrEqualAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsAfterOrEqual <em>Is After Or Equal</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsAfterOrEqual
-	 * @generated
-	 */
-	public Adapter createIsAfterOrEqualAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsInRange <em>Is In Range</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsInRange
-	 * @generated
-	 */
-	public Adapter createIsInRangeAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.NumberComparator <em>Number Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.NumberComparator
-	 * @generated
-	 */
-	public Adapter createNumberComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Lt <em>Lt</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Lt
-	 * @generated
-	 */
-	public Adapter createLtAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Lte <em>Lte</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Lte
-	 * @generated
-	 */
-	public Adapter createLteAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Gte <em>Gte</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Gte
-	 * @generated
-	 */
-	public Adapter createGteAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Gt <em>Gt</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Gt
-	 * @generated
-	 */
-	public Adapter createGtAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Eq <em>Eq</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Eq
-	 * @generated
-	 */
-	public Adapter createEqAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.BoolComparator <em>Bool Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.BoolComparator
-	 * @generated
-	 */
-	public Adapter createBoolComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsBool <em>Is Bool</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsBool
-	 * @generated
-	 */
-	public Adapter createIsBoolAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.SortEntity <em>Sort Entity</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.SortEntity
-	 * @generated
-	 */
-	public Adapter createSortEntityAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Operation <em>Operation</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.Operation
-	 * @generated
-	 */
-	public Adapter createOperationAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.EnumComparator <em>Enum Comparator</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.EnumComparator
-	 * @generated
-	 */
-	public Adapter createEnumComparatorAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.IsLiteral <em>Is Literal</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.query.IsLiteral
-	 * @generated
-	 */
-	public Adapter createIsLiteralAdapter() {
+	public Adapter createSkipStageAdapter() {
 		return null;
 	}
 

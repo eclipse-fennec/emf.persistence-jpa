@@ -4,7 +4,7 @@
     modelDirectory="/org.eclipse.fennec.persistence.query/src-gen" modelPluginID="org.eclipse.fennec.persistence.query"
     modelName="QueryApi" rootExtendsInterface="" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
-    usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.model/model/utilities.genmodel#//utilities"
+    usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression"
     operationReflection="true" importOrganizing="true" oSGiCompatible="true">
   <foreignModel>query-api.ecore</foreignModel>
   <genPackages prefix="QueryApi" basePackage="org.eclipse.fennec.persistence.query" disposableProviderFactory="true"
