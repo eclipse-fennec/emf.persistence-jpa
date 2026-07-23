@@ -4,7 +4,7 @@
     modelDirectory="/org.eclipse.fennec.persistence.query/src-gen" modelPluginID="org.eclipse.fennec.persistence.query"
     modelName="QueryApi" rootExtendsInterface="" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
-    usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression"
+    usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.command.model/model/command.genmodel#//command ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream"
     operationReflection="true" importOrganizing="true" oSGiCompatible="true">
   <foreignModel>query-api.ecore</foreignModel>
   <genPackages prefix="QueryApi" basePackage="org.eclipse.fennec.persistence.query" disposableProviderFactory="true"
@@ -123,6 +123,11 @@
         <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query.1/query"/>
         <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query.1/parameters"/>
         <genParameters ecoreParameter="query-api.ecore#//QueryableResource/query.1/options"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//CommandResource">
+      <genOperations ecoreOperation="query-api.ecore#//CommandResource/execute">
+        <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute/command"/>
       </genOperations>
     </genClasses>
   </genPackages>

@@ -43,6 +43,12 @@ import org.eclipse.fennec.persistence.pushstreams.PersistencePushStreams;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
+import org.eclipse.fennec.model.command.CommandFactory;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.command.InsertCommand;
+import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.stream.StreamFactory;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
@@ -637,5 +643,70 @@ public abstract class AbstractPersistenceTCK {
 		assertThatThrownBy(() -> resource.query(bad).close())
 				.isInstanceOf(IOException.class)
 				.hasMessageContaining("output key");
+	}
+
+	// ------------------------------------------------------------ command TCK (CUD v1)
+
+	private CommandResource commands(ResourceSet resourceSet) {
+		return (CommandResource) resourceSet.createResource(uriFor("Person"));
+	}
+
+	@Test
+	public void commandInsertPersistsThePayload() throws Exception {
+		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
+		insert.getObjects().add(newPerson(1, "Alice", 30));
+		insert.getObjects().add(newPerson(2, "Bob", 40));
+
+		long affected = commands(createBackendResourceSet()).execute(insert);
+		assertThat(affected).isEqualTo(2);
+		// the command still owns its payload (execution works on copies)
+		assertThat(insert.getObjects()).hasSize(2);
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents()).hasSize(2);
+	}
+
+	@Test
+	public void commandDeleteBySelector() throws Exception {
+		saveQueryFixture();
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(40))
+				.build());
+
+		long affected = commands(createBackendResourceSet()).execute(delete);
+		assertThat(affected).isEqualTo(2);
+
+		Resource remaining = loadAll(createBackendResourceSet(), "Person");
+		assertThat(remaining.getContents()).hasSize(1);
+		assertThat(remaining.getContents().get(0).eGet(personName)).isEqualTo("Alice");
+	}
+
+	@Test
+	public void commandUpdateIsRefusedPendingPatchEngine() throws Exception {
+		saveQueryFixture();
+		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
+		update.setSelector(QueryBuilder.from(personClass).build());
+		update.setTemplate(StreamFactory.eINSTANCE.createChangeSet());
+
+		CommandResource resource = commands(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.execute(update))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("patch-apply engine");
+	}
+
+	@Test
+	public void commandSelectorMustBeAPlainFilter() throws Exception {
+		saveQueryFixture();
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(40))
+				.top(1)
+				.build());
+
+		CommandResource resource = commands(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.execute(delete))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("plain filters");
 	}
 }

@@ -58,6 +58,11 @@ import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
+import org.eclipse.fennec.model.command.Command;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.command.InsertCommand;
+import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
@@ -95,7 +100,7 @@ import jakarta.persistence.TypedQuery;
  * @author Mark Hoffmann
  * @since 13.04.2026
  */
-public class JPAResourceImpl extends ResourceImpl implements PersistenceResource, StreamingResource, QueryableResource {
+public class JPAResourceImpl extends ResourceImpl implements PersistenceResource, StreamingResource, QueryableResource, CommandResource {
 
 	private static final Logger LOG = Logger.getLogger(JPAResourceImpl.class.getName());
 
@@ -695,6 +700,91 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * (non-Javadoc)
 	 * @see org.eclipse.fennec.persistence.resource.StreamingResource#stream()
 	 */
+	// -------------------------------------------------------------- commands
+
+	@Override
+	public long execute(Command command) throws IOException {
+		requireNonNull(command, "command must not be null");
+		if (command instanceof InsertCommand insert) {
+			return executeInsert(insert);
+		}
+		if (command instanceof DeleteCommand delete) {
+			return executeDelete(delete);
+		}
+		if (command instanceof UpdateCommand) {
+			String message = "UpdateCommand execution requires the patch-apply engine (concept §18.1) — refused";
+			getErrors().add(new JPADiagnostic(message, getURI(), null));
+			throw new IOException(message);
+		}
+		throw new IOException("Unsupported command " + command.eClass().getName());
+	}
+
+	/** Insert = the resource's save semantics over copies of the contained payload. */
+	private long executeInsert(InsertCommand insert) throws IOException {
+		List<EObject> copies = new ArrayList<>(EcoreUtil.copyAll(insert.getObjects()));
+		getContents().addAll(copies);
+		try {
+			save(null);
+		} finally {
+			getContents().clear();
+		}
+		return copies.size();
+	}
+
+	/** Delete = selector-scoped bulk DELETE (concept §14: Delete = query selector). */
+	private long executeDelete(DeleteCommand delete) throws IOException {
+		JpaQueryPlan plan;
+		try {
+			guardPlainSelector(delete.getSelector());
+			plan = JpaQueries.translate(queryProcessor, delete.getSelector(),
+					delete.getSelector().getFrom(), null, null);
+		} catch (QueryException e) {
+			getErrors().add(new JPADiagnostic("Delete selector rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
+		}
+		// load the matches and remove children-first: a JPQL bulk DELETE bypasses cascade
+		// semantics and trips containment FK constraints — the entities are EObjects, so
+		// the containment tree is generically walkable
+		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
+			em.getTransaction().begin();
+			try {
+				jakarta.persistence.Query select = em.createQuery(plan.jpql());
+				plan.parameters().forEach(select::setParameter);
+				List<?> matches = select.getResultList();
+				for (Object match : matches) {
+					if (match instanceof EObject eObject) {
+						removeChildrenFirst(em, eObject);
+					}
+				}
+				em.getTransaction().commit();
+				return matches.size();
+			} catch (RuntimeException e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				getErrors().add(new JPADiagnostic("Delete failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
+			}
+		}
+	}
+
+	private void removeChildrenFirst(EntityManager em, EObject object) {
+		for (EObject child : List.copyOf(object.eContents())) {
+			removeChildrenFirst(em, child);
+		}
+		em.remove(object);
+	}
+
+	/** Command selectors are plain filters — everything shape-changing is refused. */
+	private static void guardPlainSelector(Query selector) throws QueryException {
+		if (!selector.getSelect().isEmpty() || selector.getApply() != null || !selector.getOrderBy().isEmpty()
+				|| selector.getTop() > 0 || selector.getSkip() > 0 || selector.isDistinct()
+				|| selector.isCountOnly() || !selector.getExpand().isEmpty()) {
+			throw new QueryException(
+					"Command selectors must be plain filters — projection/aggregation/ordering/paging are not allowed");
+		}
+	}
+
 	// -------------------------------------------------------------- querying
 
 	/**

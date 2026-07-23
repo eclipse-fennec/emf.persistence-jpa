@@ -17,6 +17,7 @@ import org.eclipse.emf.ecore.EPackage;
 
 import org.eclipse.emf.ecore.util.Switch;
 
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
@@ -129,6 +130,12 @@ public class QueryApiSwitch<T> extends Switch<T> {
 			case QueryApiPackage.QUERYABLE_RESOURCE: {
 				QueryableResource queryableResource = (QueryableResource)theEObject;
 				T result = caseQueryableResource(queryableResource);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case QueryApiPackage.COMMAND_RESOURCE: {
+				CommandResource commandResource = (CommandResource)theEObject;
+				T result = caseCommandResource(commandResource);
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
@@ -253,6 +260,21 @@ public class QueryApiSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseQueryableResource(QueryableResource object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Command Resource</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Command Resource</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseCommandResource(CommandResource object) {
 		return null;
 	}
 
