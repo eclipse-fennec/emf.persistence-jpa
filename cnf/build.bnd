@@ -16,11 +16,10 @@
 github-orga: eclipse-fennec
 github-project: emf.persistence-jpa
 base-version: 0.1.0
-Bundle-Version: ${base-version}.SNAPSHOT
 
 # Maven Central Group-Id
 # For Eclipse Fennec the groupid must start with org.eclipse.fennec
--groupid: org.eclipse.fennec.persistence.jpa
+-groupid: org.eclipse.fennec.persistence
 
 javac.source: 21
 javac.target: 21

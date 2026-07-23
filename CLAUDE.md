@@ -30,8 +30,8 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 | `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: `EPersistenceContext`, `EMFEntityManagerProvider`, EclipseLink descriptors (`EClassDescriptor`), object builders, OSGi classloader |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — reverse-engineers Ecore models from database schemas via JDBC metadata |
 | `org.eclipse.fennec.persistence.test` | OSGi integration tests using JUnit 5 + `@InjectService`, H2 database, test ecore/eorm fixtures in `data/` |
-| `org.eclipse.fennec.persistence.jpa.library.workspace` | bnd library template for external workspace consumption |
-| `org.eclipse.fennec.persistence.jpa.bom` | Bill of Materials — re-exports the workspace library buildpath for downstream consumers |
+| `org.eclipse.fennec.persistence.workspace.library` | bnd library template for external workspace consumption |
+| `org.eclipse.fennec.persistence.bom` | Bill of Materials — re-exports the workspace library buildpath for downstream consumers |
 
 ## Key Architectural Patterns
 
