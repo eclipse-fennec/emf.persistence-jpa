@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="expression" nsURI="https://eclipse.org/fennec/expression/1.0.0" nsPrefix="expr">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="complianceLevel" value="21.0"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="basePackage" value="org.eclipse.fennec.model"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="documentation" value="The Fennec Expression Model — a backend-neutral, typed expression-tree IR for predicates over EMF features. Structurally informed by Essential OCL (the documented semantic reference per construct) but deliberately its own world: no type-level dependency on any OCL model, and a curated construct subset — what the model cannot express, no backend has to refuse. Explicit constructs (Comparison with an operator enum, StringMatch with a case-insensitivity flag, Exists/ForAll iterators, first-class ParameterRef, typed literals) instead of generic operation calls. See docs/unified-persistence/query-ir-redesign.md, decisions R1-R5."/>
+  </eAnnotations>
+  <!-- ==================== Root ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Expression" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Abstract root of all expression-tree nodes. An expression evaluates against a context object (the query root, or an iterator variable) to a value; predicates evaluate to boolean."/>
+    </eAnnotations>
+  </eClassifiers>
+  <!-- ==================== Logic ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Junction" abstract="true" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="N-ary logical combination of boolean operands. Deliberately n-ary (flattened) — translators emit AND/OR chains without rebalancing binary trees."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operands" lowerBound="2"
+        upperBound="-1" eType="#//Expression" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The boolean operands; at least two."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="And" eSuperTypes="#//Junction">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Logical conjunction of all operands."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Or" eSuperTypes="#//Junction">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Logical disjunction of all operands."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Not" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Logical negation of a boolean operand."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operand" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <!-- ==================== Predicates ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Comparison" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Binary comparison of two value expressions. OCL reference: the =, &lt;&gt;, &lt;, &lt;=, &gt;, &gt;= operations. Null handling is backend SQL semantics — use IsNull for explicit null checks."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operator" lowerBound="1"
+        eType="#//ComparisonOperator"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="left" lowerBound="1" eType="#//Expression"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="right" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IsNull" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Explicit null check (SQL IS [NOT] NULL) — deliberately its own construct, because Comparison against a null literal has different semantics on most backends."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="negated" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="true = IS NOT NULL."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Between" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Range check with configurable bound inclusion. Replaces the v1 IsInRange."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lowerIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upperIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="lower" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="upper" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="In" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Membership test: source value is one of the given values (literals or parameters). OCL reference: Collection::includes."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="values" lowerBound="1"
+        upperBound="-1" eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StringMatch" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="String pattern matching. The caseInsensitive flag replaces the v1 toLower/toUpper predicate workaround — backends translate it natively (LOWER() both sides, regex i-option)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//StringMatchKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="caseInsensitive" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pattern" lowerBound="1"
+        eType="#//Expression" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The pattern value (literal or parameter). For LIKE the SQL wildcards % and _ apply; for the other kinds the value matches verbatim."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <!-- ==================== Quantifiers ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Quantifier" abstract="true" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Quantified predicate over a multi-valued navigation. The variable scopes the element inside the predicate (PropertyPath.base / VariableRef). OCL reference: exists/forAll iterators. JPA translates to correlated [NOT] EXISTS subqueries, Mongo to $elemMatch over embedded collections."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//PropertyPath" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The multi-valued navigation the quantifier ranges over."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="variable" lowerBound="1"
+        eType="#//Variable" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="predicate" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Exists" eSuperTypes="#//Quantifier">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="At least one element satisfies the predicate (OCL exists, SQL EXISTS)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ForAll" eSuperTypes="#//Quantifier">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Every element satisfies the predicate (OCL forAll, SQL NOT EXISTS with negated predicate). Vacuously true on empty collections."/>
+    </eAnnotations>
+  </eClassifiers>
+  <!-- ==================== Navigation / variables / parameters ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="PropertyPath" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Feature navigation from the context object (or from an iterator variable when base is set), root feature first. Intermediate segments navigate references; the last segment addresses the compared feature."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="segments" lowerBound="1"
+        upperBound="-1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EStructuralFeature"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="base" eType="#//Variable">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Optional iterator variable this path starts from; unset = the query root."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Variable">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An iterator variable declared by a Quantifier. Not an expression itself — referenced via PropertyPath.base or VariableRef."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VariableRef" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The iterator variable's element itself as a value (e.g. In over the element)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="variable" lowerBound="1"
+        eType="#//Variable"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ParameterRef" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="First-class named parameter, bound at execution time — retires the v1 &quot;:name&quot; string convention. Unbound parameters fail translation with a diagnostic."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- ==================== Literals ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Literal" abstract="true" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Typed literal values — retires the v1 string-typed comparator values."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StringLiteral" eSuperTypes="#//Literal">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IntegerLiteral" eSuperTypes="#//Literal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Whole-number literal, held as long; the target feature's EDataType narrows it at translation."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RealLiteral" eSuperTypes="#//Literal">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BooleanLiteral" eSuperTypes="#//Literal">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NullLiteral" eSuperTypes="#//Literal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The null value — valid as a comparison operand only where the backend defines it; prefer IsNull for null checks."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnumLiteral" eSuperTypes="#//Literal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Enum value by literal name, resolved against the target feature's EEnum at translation (decision D2 — no metamodel-instance reference in query instances)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="literalName" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TemporalLiteral" eSuperTypes="#//Literal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Temporal value as ISO-8601 text plus kind (decision D1) — parsed to the target feature's temporal type at translation."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//TemporalKind"/>
+  </eClassifiers>
+  <!-- ==================== Functions ==================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="StringFunction" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Minimal v1 string function set applied to a value expression. Further functions (concat, substring, date parts, arithmetic) are additive later — see the deliberately-absent list in the redesign concept §3.1."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//StringFunctionKind"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <!-- ==================== Enums ==================== -->
+  <eClassifiers xsi:type="ecore:EEnum" name="ComparisonOperator">
+    <eLiterals name="EQ"/>
+    <eLiterals name="NE" value="1"/>
+    <eLiterals name="LT" value="2"/>
+    <eLiterals name="LE" value="3"/>
+    <eLiterals name="GT" value="4"/>
+    <eLiterals name="GE" value="5"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="StringMatchKind">
+    <eLiterals name="CONTAINS"/>
+    <eLiterals name="STARTS_WITH" value="1"/>
+    <eLiterals name="ENDS_WITH" value="2"/>
+    <eLiterals name="LIKE" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="StringFunctionKind">
+    <eLiterals name="TO_LOWER"/>
+    <eLiterals name="TO_UPPER" value="1"/>
+    <eLiterals name="TRIM" value="2"/>
+    <eLiterals name="LENGTH" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TemporalKind">
+    <eLiterals name="DATE"/>
+    <eLiterals name="TIME" value="1"/>
+    <eLiterals name="DATE_TIME" value="2"/>
+    <eLiterals name="INSTANT" value="3"/>
+  </eClassifiers>
+</ecore:EPackage>
