@@ -11,8 +11,7 @@ src=${^src},src-gen
 	model/query-api.genmodel;\
 		generate=fennecEMF;\
 		genmodel=model/query-api.genmodel;\
-		output=src-gen;\
-		logfile=gen.log
+		output=src-gen
 # Add this attribute to find some logging information
 #		logfile=test.log;\
 
