@@ -189,7 +189,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 		StringBuilder columns = new StringBuilder();
 		for (PropertyPath path : stage.getPaths()) {
 			String key = outputKey(null, path);
-			registerKey(key, null, rowKeys, rowAliases);
+			// group keys are alias-addressable under their derived name
+			registerKey(key, key, rowKeys, rowAliases);
 			if (columns.length() > 0) {
 				columns.append(", ");
 			}
