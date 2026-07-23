@@ -340,16 +340,17 @@ public abstract class AbstractPersistenceTCK {
 		ResourceSet writeSet = createBackendResourceSet();
 		Resource resource = writeSet.createResource(uriFor("Person"));
 		assertThat(resource).isInstanceOf(PersistenceResource.class);
-		PersistenceResource persistence = (PersistenceResource) resource;
-		assertThat(persistence.exist()).isFalse();
-		assertThat(persistence.count()).isZero();
+		try (PersistenceResource persistence = (PersistenceResource) resource) {
+			assertThat(persistence.exist()).isFalse();
+			assertThat(persistence.count()).isZero();
 
-		resource.getContents().add(newPerson(1, "Emil", 30));
-		resource.getContents().add(newPerson(2, "Emilia", 31));
-		resource.save(null);
+			resource.getContents().add(newPerson(1, "Emil", 30));
+			resource.getContents().add(newPerson(2, "Emilia", 31));
+			resource.save(null);
 
-		assertThat(persistence.count()).isEqualTo(2);
-		assertThat(persistence.exist()).isTrue();
+			assertThat(persistence.count()).isEqualTo(2);
+			assertThat(persistence.exist()).isTrue();
+		}
 	}
 
 	@Test
@@ -359,10 +360,11 @@ public abstract class AbstractPersistenceTCK {
 
 		ResourceSet workSet = createBackendResourceSet();
 		Resource resource = loadAll(workSet, "Person");
-		PersistenceResource persistence = (PersistenceResource) resource;
-		assertThat(persistence.count()).isEqualTo(1);
-		persistence.delete(null);
-		assertThat(persistence.count()).isZero();
+		try (PersistenceResource persistence = (PersistenceResource) resource) {
+			assertThat(persistence.count()).isEqualTo(1);
+			persistence.delete(null);
+			assertThat(persistence.count()).isZero();
+		}
 	}
 
 	@Test

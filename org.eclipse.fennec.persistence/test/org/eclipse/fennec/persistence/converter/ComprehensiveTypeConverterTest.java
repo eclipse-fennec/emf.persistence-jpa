@@ -286,7 +286,7 @@ class ComprehensiveTypeConverterTest {
             assertInstanceOf(java.net.URL.class, emfValue);
 
             // EMF → DB
-            java.net.URL url = new java.net.URL("https://example.com/api");
+            java.net.URL url = java.net.URI.create("https://example.com/api").toURL();
             Object dbValue = converter.convertEMFToValue(dataType, url);
             assertEquals("https://example.com/api", dbValue);
         }

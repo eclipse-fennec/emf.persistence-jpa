@@ -23,6 +23,7 @@ import java.io.ObjectOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.sql.Date;
 import java.sql.Time;
@@ -380,8 +381,10 @@ public class ComprehensiveTypeConverter implements TypeConverter {
             if (isNull(value)) return null;
             if (value instanceof String urlStr) {
                 try {
-                    return new URL(urlStr);
-                } catch (MalformedURLException e) {
+                    // new URL(String) is deprecated since Java 20 — go through URI
+                    // (qualified: the EMF URI import owns the simple name in this file)
+                    return new java.net.URI(urlStr).toURL();
+                } catch (URISyntaxException | MalformedURLException | IllegalArgumentException e) {
                     logger.log(Level.WARNING, "Malformed URL: " + urlStr, e);
                     return null;
                 }
