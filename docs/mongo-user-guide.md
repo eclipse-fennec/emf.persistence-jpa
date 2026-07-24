@@ -29,7 +29,7 @@ is all the mapping the backend needs.
 
 ## Prerequisites
 
-- Java 17 or newer
+- Java 21 or newer
 - A reachable MongoDB server (the tests use a plain `mongo:7` container)
 - An Ecore model whose persistent EClasses each have exactly one EID
   attribute (`iD="true"`) — it becomes the document `_id`

@@ -7,8 +7,8 @@ Eclipse Fennec Persistence JPA is part of the [Eclipse Fennec](https://projects.
 If you discover a security vulnerability in this project, please report it responsibly:
 
 1. **Do NOT open a public GitHub issue** for security vulnerabilities.
-2. Report the vulnerability via the [Eclipse Foundation Security Team](https://www.eclipse.org/security/).
-3. Alternatively, email: security@eclipse.org
+2. Preferably, report it privately via [GitHub Security Advisories for this repository](https://github.com/eclipse-fennec/emf.persistence-jpa/security/advisories).
+3. Alternatively, report it via the [Eclipse Foundation Security Team](https://www.eclipse.org/security/) or email security@eclipse.org.
 4. Include a description of the vulnerability, steps to reproduce, and potential impact.
 
 The Eclipse Foundation security team will acknowledge your report within 5 business days and work with the project maintainers to address the issue.
