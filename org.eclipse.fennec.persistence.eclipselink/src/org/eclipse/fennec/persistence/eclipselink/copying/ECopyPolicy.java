@@ -16,7 +16,6 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
 import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPolicy;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.eclipselink.exception.EDescriptorException;
@@ -112,15 +111,6 @@ public class ECopyPolicy extends AbstractCopyPolicy {
 			return getDescriptor().getInstantiationPolicy().buildNewInstance();
 		}
 		return super.buildWorkingCopyClone(domainObject, session);
-	}
-	
-	/* 
-	 * (non-Javadoc)
-	 * @see org.eclipse.persistence.descriptors.copying.AbstractCopyPolicy#getDescriptor()
-	 */
-	@Override
-	protected EClassDescriptor getDescriptor() {
-		return (EClassDescriptor) super.getDescriptor();
 	}
 
 }

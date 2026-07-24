@@ -1,3 +1,6 @@
+Bundle-Name: Eclipse Fennec Ecore Reverse Engineering
+Bundle-Description: Reverse-engineers Ecore models from database schemas via JDBC metadata
+
 -workingset: persistence
 
 -library: enableEMF
