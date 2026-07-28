@@ -18,6 +18,7 @@ Bundle-Description: EMF Persistence with MongoDB
 	org.eclipse.fennec.codec;version=latest,\
 	org.eclipse.fennec.codec.bson;version=latest,\
 	org.eclipse.fennec.model.metadata;version=latest,\
+	org.eclipse.fennec.model.metadata.api;version=latest,\
 	tools.jackson.core.jackson-core;version=latest,\
 	tools.jackson.core.jackson-databind;version=latest,\
 	com.fasterxml.jackson.core.jackson-annotations;version=latest,\

@@ -68,7 +68,8 @@
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.expression.ocl;version=snapshot,\
 	org.eclipse.fennec.m2x.ocl.model;version='[0.1.0,0.1.1)',\
-	org.eclipse.fennec.model.metadata;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.model.metadata;version='[1.0.0,1.0.1)',\
+	org.eclipse.fennec.model.metadata.api;version='[1.0.0,1.0.1)',\
 	org.eclipse.fennec.persistence.mongo;version=snapshot,\
 	org.eclipse.fennec.persistence.pushstreams;version=snapshot,\
 	org.eclipse.fennec.persistence.query;version=snapshot,\
