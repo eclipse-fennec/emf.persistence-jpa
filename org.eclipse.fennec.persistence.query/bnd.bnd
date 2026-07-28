@@ -20,6 +20,7 @@ src=${^src},src-gen
 -buildpath: \
 	biz.aQute.bnd.annotation;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.emf.ecore.xmi;version=latest,\
 	org.eclipse.fennec.persistence;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\

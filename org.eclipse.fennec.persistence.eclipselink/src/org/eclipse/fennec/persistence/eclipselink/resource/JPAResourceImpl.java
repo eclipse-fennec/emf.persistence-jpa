@@ -18,6 +18,8 @@ import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.sql.Clob;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -46,6 +48,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
@@ -65,6 +68,7 @@ import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
@@ -840,8 +844,24 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	@Override
+	public QueryResult query(String name, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
+		requireNonNull(name, "query name must not be null");
+		return query(loadNamedQuery(name), parameters, options);
+	}
+
+	@Override
 	public QueryResult query(Query query, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
 		requireNonNull(query, "query must not be null");
+		String catalogName;
+		try {
+			catalogName = PersistedQueries.catalogName(query);
+		} catch (QueryException e) {
+			getErrors().add(new JPADiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Query rejected: " + e.getMessage(), e);
+		}
+		if (catalogName != null) {
+			saveNamedQuery(catalogName, query);
+		}
 		String entityName = getEntityName();
 		if (isNull(entityName)) {
 			throw new IOException("Resource URI has no entity segment — cannot query: " + getURI());
@@ -875,6 +895,95 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return executeCount(plan, lease, entityName);
 		}
 		return executeCursor(plan, lease, entityName);
+	}
+
+	// ------------------------------------------------------- persisted queries
+
+	/** The query catalog table (concept.md §14 saveQuery): name → XMI payload. */
+	static final String QUERY_CATALOG_TABLE = "FENNEC_QUERIES";
+
+	private void saveNamedQuery(String name, Query query) throws IOException {
+		String xmi;
+		try {
+			xmi = PersistedQueries.toXmi(query);
+		} catch (QueryException e) {
+			getErrors().add(new JPADiagnostic("Cannot persist query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Cannot persist query '" + name + "': " + e.getMessage(), e);
+		}
+		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
+			em.getTransaction().begin();
+			try {
+				ensureCatalogTable(em);
+				em.createNativeQuery("DELETE FROM " + QUERY_CATALOG_TABLE + " WHERE NAME = ?1")
+						.setParameter(1, name).executeUpdate();
+				em.createNativeQuery("INSERT INTO " + QUERY_CATALOG_TABLE + " (NAME, XMI) VALUES (?1, ?2)")
+						.setParameter(1, name).setParameter(2, xmi).executeUpdate();
+				em.getTransaction().commit();
+			} catch (RuntimeException e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				throw e;
+			}
+		} catch (RuntimeException e) {
+			getErrors().add(new JPADiagnostic(
+					"Failed to persist query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to persist query '" + name + "'", e);
+		}
+	}
+
+	private Query loadNamedQuery(String name) throws IOException {
+		List<?> rows;
+		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
+			em.getTransaction().begin();
+			try {
+				ensureCatalogTable(em);
+				rows = em.createNativeQuery("SELECT XMI FROM " + QUERY_CATALOG_TABLE + " WHERE NAME = ?1")
+						.setParameter(1, name).getResultList();
+				em.getTransaction().commit();
+			} catch (RuntimeException e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				throw e;
+			}
+		} catch (RuntimeException e) {
+			getErrors().add(new JPADiagnostic(
+					"Failed to load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to load persisted query '" + name + "'", e);
+		}
+		if (rows.isEmpty()) {
+			throw new IOException("No persisted query named '" + name + "'");
+		}
+		try {
+			return PersistedQueries.fromXmi(name, clobText(rows.get(0)), packageRegistry());
+		} catch (QueryException e) {
+			getErrors().add(new JPADiagnostic(
+					"Cannot load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Cannot load persisted query '" + name + "': " + e.getMessage(), e);
+		}
+	}
+
+	/** The catalog lives outside the mapped model — plain DDL, created on first use. */
+	private void ensureCatalogTable(EntityManager em) {
+		em.createNativeQuery("CREATE TABLE IF NOT EXISTS " + QUERY_CATALOG_TABLE
+				+ " (NAME VARCHAR(255) NOT NULL PRIMARY KEY, XMI CLOB NOT NULL)").executeUpdate();
+	}
+
+	private static String clobText(Object value) {
+		if (value instanceof Clob clob) {
+			try {
+				return clob.getSubString(1, (int) clob.length());
+			} catch (SQLException e) {
+				throw new WrappedException(e);
+			}
+		}
+		return String.valueOf(value);
+	}
+
+	private EPackage.Registry packageRegistry() {
+		return getResourceSet() == null ? EPackage.Registry.INSTANCE
+				: getResourceSet().getPackageRegistry();
 	}
 
 	private QueryResult executeCount(JpaQueryPlan plan, Lease lease, String entityName) throws IOException {

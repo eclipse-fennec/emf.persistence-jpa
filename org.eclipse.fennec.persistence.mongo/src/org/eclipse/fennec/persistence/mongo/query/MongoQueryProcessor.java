@@ -13,6 +13,7 @@
 package org.eclipse.fennec.persistence.mongo.query;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.bson.BsonDocument;
+import org.bson.Document;
 import org.bson.BsonInt32;
 import org.bson.BsonNull;
 import org.bson.BsonString;
@@ -43,6 +45,8 @@ import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
+import org.eclipse.fennec.model.expression.StringFunction;
+import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
@@ -93,8 +97,11 @@ import com.mongodb.client.model.Sorts;
  * predicate); non-embedded quantifier sources are refused (code 100).</li>
  * <li>Case-insensitive matching via the regex {@code i} option; enum values compare by
  * literal name; DISTINCT requires a projection (code 101).</li>
- * <li>Field-to-field comparisons and string functions need {@code $expr} and are not
- * served (undeclared features).</li>
+ * <li>Field-to-field comparisons and string functions translate to {@code $expr}
+ * aggregation expressions; every referenced field carries a {@code $ne null} guard so
+ * comparisons with missing/null values are false — mirroring the SQL and in-memory
+ * semantics. Both are limited to root-based paths (not available inside quantifier
+ * predicates).</li>
  * </ul>
  *
  * @author Mark Hoffmann
@@ -116,13 +123,14 @@ public class MongoQueryProcessor implements QueryProcessor {
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
+					QueryFeature.STRING_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
 					QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY, QueryFeature.PIPELINE,
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
-					QueryFeature.TYPE_FILTER_STRICT, QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED)
+					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED)
 			.maxFeaturePathDepth(-1)
 			.build();
 
@@ -207,6 +215,11 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return Filters.nor(predicate(not.getOperand(), context));
 		}
 		if (expression instanceof Comparison comparison) {
+			boolean plain = comparison.getLeft() instanceof PropertyPath
+					&& (comparison.getRight() instanceof Literal || comparison.getRight() instanceof ParameterRef);
+			if (!plain) {
+				return exprComparison(comparison, context);
+			}
 			String field = field(comparison.getLeft());
 			EStructuralFeature target = targetOf(comparison.getLeft());
 			Object value = value(comparison.getRight(), target, context);
@@ -262,6 +275,82 @@ public class MongoQueryProcessor implements QueryProcessor {
 		case LIKE -> likeToRegex(text);
 		};
 		return match.isCaseInsensitive() ? Filters.regex(field, pattern, "i") : Filters.regex(field, pattern);
+	}
+
+	/**
+	 * Translates a comparison that the find vocabulary cannot express — a string
+	 * function on either side or field-to-field — into an {@code $expr} aggregation
+	 * expression. Every referenced field is guarded with {@code $ne null} so
+	 * comparisons involving missing/null values are false (SQL and in-memory
+	 * semantics; Mongo itself treats missing as equal to null).
+	 */
+	private Bson exprComparison(Comparison comparison, QueryContext context) throws QueryException {
+		EStructuralFeature target = exprTarget(comparison.getLeft(), comparison.getRight());
+		List<Object> guards = new ArrayList<>();
+		Object left = exprOperand(comparison.getLeft(), target, context, guards);
+		Object right = exprOperand(comparison.getRight(), target, context, guards);
+		String operator = switch (comparison.getOperator()) {
+		case EQ -> "$eq";
+		case NE -> "$ne";
+		case LT -> "$lt";
+		case LE -> "$lte";
+		case GT -> "$gt";
+		case GE -> "$gte";
+		};
+		Document compare = new Document(operator, Arrays.asList(left, right));
+		if (guards.isEmpty()) {
+			return Filters.expr(compare);
+		}
+		List<Object> operands = new ArrayList<>(guards);
+		operands.add(compare);
+		return Filters.expr(new Document("$and", operands));
+	}
+
+	/** Renders one {@code $expr} operand; collects a {@code $ne null} guard per referenced field. */
+	private Object exprOperand(Expression expression, EStructuralFeature target, QueryContext context,
+			List<Object> guards) throws QueryException {
+		if (expression instanceof PropertyPath path) {
+			if (path.getBase() != null) {
+				throw new QueryException("String functions and field-to-field comparisons are not supported"
+						+ " inside quantifier predicates on the mongo backend ($expr cannot address"
+						+ " $elemMatch elements)");
+			}
+			String reference = "$" + MongoFieldNames.render(path);
+			Document guard = new Document("$ne", Arrays.asList(reference, null));
+			if (!guards.contains(guard)) {
+				guards.add(guard);
+			}
+			return reference;
+		}
+		if (expression instanceof StringFunction function) {
+			Object inner = exprOperand(function.getSource(), target, context, guards);
+			return switch (function.getKind()) {
+			case TO_LOWER -> new Document("$toLower", inner);
+			case TO_UPPER -> new Document("$toUpper", inner);
+			case TRIM -> new Document("$trim", new Document("input", inner));
+			case LENGTH -> new Document("$strLenCP", inner);
+			};
+		}
+		// $literal keeps values (notably strings starting with '$') out of path interpretation
+		Object value = mongoValue(ExpressionValues.resolve(expression, target, context.parameters(),
+				context.converter()));
+		return new Document("$literal", value);
+	}
+
+	/** The feature that types literal operands: the path side's target — unless LENGTH shifts the domain to numbers. */
+	private EStructuralFeature exprTarget(Expression left, Expression right) {
+		EStructuralFeature target = pathTarget(left);
+		return target != null ? target : pathTarget(right);
+	}
+
+	private EStructuralFeature pathTarget(Expression expression) {
+		if (expression instanceof PropertyPath path) {
+			return ExpressionValues.targetFeature(path);
+		}
+		if (expression instanceof StringFunction function && function.getKind() != StringFunctionKind.LENGTH) {
+			return pathTarget(function.getSource());
+		}
+		return null;
 	}
 
 	private Bson quantifier(Quantifier quantifier, QueryContext context) throws QueryException {

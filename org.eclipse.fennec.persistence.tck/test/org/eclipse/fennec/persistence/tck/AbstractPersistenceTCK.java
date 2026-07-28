@@ -546,6 +546,43 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryStringFunctions() throws Exception {
+		saveQueryFixture();
+		Query lower = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).toLower().eq("bob"))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(lower)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		Query length = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).length().gt(3))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(length)) {
+			// Alice and Carol have 5 letters, Bob only 3
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactlyInAnyOrder("Alice", "Carol");
+		}
+	}
+
+	@Test
+	public void queryFieldToFieldComparison() throws Exception {
+		saveQueryFixture();
+		Query same = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq(Expressions.path(personName)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(same)) {
+			assertThat(result.objects()).hasSize(3);
+		}
+		Query none = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).ne(Expressions.path(personName)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(none)) {
+			assertThat(result.objects()).isEmpty();
+		}
+	}
+
+	@Test
 	public void querySortSkipTopAndCount() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -639,6 +676,55 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void querySaveAndExecuteByName() throws Exception {
+		saveQueryFixture();
+		Query named = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(Expressions.param("minAge")))
+				.parameter("minAge", null)
+				.named("adults")
+				.build();
+		// executing a saveQuery-marked query persists it (upsert by name) and runs it
+		try (QueryResult result = queryable(createBackendResourceSet())
+				.query(named, Map.of("minAge", 40), null)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactlyInAnyOrder("Bob", "Carol");
+		}
+		// a fresh resource executes it by name, with different parameter bindings
+		try (QueryResult result = queryable(createBackendResourceSet())
+				.query("adults", Map.of("minAge", 50), null)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+	}
+
+	@Test
+	public void querySavedQueryUpsertsAndUnknownNameIsRefused() throws Exception {
+		saveQueryFixture();
+		QueryableResource resource = queryable(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.query("no-such-query", null, null))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("no-such-query");
+
+		Query first = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(40))
+				.named("current").build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(first)) {
+			assertThat(result.objects()).hasSize(2);
+		}
+		// same name, new definition — last write wins
+		Query second = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("Alice"))
+				.named("current").build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(second)) {
+			assertThat(result.objects()).hasSize(1);
+		}
+		try (QueryResult result = queryable(createBackendResourceSet()).query("current", null, null)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+	}
+
+	@Test
 	public void queryRefusalIsAnIOExceptionWithDiagnostics() throws Exception {
 		saveQueryFixture();
 		Query bad = QueryBuilder.from(personClass)
@@ -699,6 +785,15 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		corpus.put("between", QueryBuilder.from(personClass)
 				.where(Expressions.path(personAge).between(30, 40))
+				.build());
+		corpus.put("string function", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).toLower().eq("bob"))
+				.build());
+		corpus.put("length", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).length().gt(3))
+				.build());
+		corpus.put("field-to-field", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq(Expressions.path(personName)))
 				.build());
 
 		for (Map.Entry<String, Query> entry : corpus.entrySet()) {

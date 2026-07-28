@@ -39,7 +39,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Equality comparator (Eq).
+	 * Equality comparison (Comparison EQ).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_EQ_VALUE
 	 * @generated
@@ -52,7 +52,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Ordering comparators (Lt, Lte, Gt, Gte).
+	 * Ordering comparisons (Comparison LT, LE, GT, GE).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_COMPARISON_VALUE
 	 * @generated
@@ -65,7 +65,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * String matching (Contains, StartWith, EndsWith, Like).
+	 * String matching (StringMatch: CONTAINS, STARTS_WITH, ENDS_WITH, LIKE).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_STRING_MATCH_VALUE
 	 * @generated
@@ -78,52 +78,13 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Range comparator (IsInRange).
+	 * Range predicate (Between).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_RANGE_VALUE
 	 * @generated
 	 * @ordered
 	 */
 	WHERE_RANGE(3, "WHERE_RANGE", "WHERE_RANGE"),
-
-	/**
-	 * The '<em><b>WHERE DATE</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Date comparators (IsBefore/IsAfter and the OrEqual variants).
-	 * <!-- end-model-doc -->
-	 * @see #WHERE_DATE_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	WHERE_DATE(4, "WHERE_DATE", "WHERE_DATE"),
-
-	/**
-	 * The '<em><b>WHERE ENUM</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Enum literal comparator (IsLiteral).
-	 * <!-- end-model-doc -->
-	 * @see #WHERE_ENUM_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	WHERE_ENUM(5, "WHERE_ENUM", "WHERE_ENUM"),
-
-	/**
-	 * The '<em><b>WHERE BOOL</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Boolean comparator (IsBool).
-	 * <!-- end-model-doc -->
-	 * @see #WHERE_BOOL_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	WHERE_BOOL(6, "WHERE_BOOL", "WHERE_BOOL"),
 
 	/**
 	 * The '<em><b>LOGICAL AND</b></em>' literal object.
@@ -241,6 +202,19 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	STRING_MATCH_CASE_INSENSITIVE(15, "STRING_MATCH_CASE_INSENSITIVE", "STRING_MATCH_CASE_INSENSITIVE"),
+
+	/**
+	 * The '<em><b>FIELD TO FIELD</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Comparison whose both sides navigate features (field-to-field), directly or through string functions.
+	 * <!-- end-model-doc -->
+	 * @see #FIELD_TO_FIELD_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	FIELD_TO_FIELD(16, "FIELD_TO_FIELD", "FIELD_TO_FIELD"),
 
 	/**
 	 * The '<em><b>SORT</b></em>' literal object.
@@ -451,45 +425,6 @@ public enum QueryFeature implements Enumerator {
 	AGG_COUNT_DISTINCT(46, "AGG_COUNT_DISTINCT", "AGG_COUNT_DISTINCT"),
 
 	/**
-	 * The '<em><b>OP TO LOWER</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * ToLowerCase string operation.
-	 * <!-- end-model-doc -->
-	 * @see #OP_TO_LOWER_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	OP_TO_LOWER(60, "OP_TO_LOWER", "OP_TO_LOWER"),
-
-	/**
-	 * The '<em><b>OP TO UPPER</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * ToUpperCase string operation.
-	 * <!-- end-model-doc -->
-	 * @see #OP_TO_UPPER_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	OP_TO_UPPER(61, "OP_TO_UPPER", "OP_TO_UPPER"),
-
-	/**
-	 * The '<em><b>OP AVERAGE</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics).
-	 * <!-- end-model-doc -->
-	 * @see #OP_AVERAGE_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	OP_AVERAGE(62, "OP_AVERAGE", "OP_AVERAGE"),
-
-	/**
 	 * The '<em><b>STRING FUNCTIONS</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -520,26 +455,13 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Polymorphic type filter via QObject.rootEClass (type plus subtypes).
+	 * Polymorphic type filter via Query.from (root type plus subtypes).
 	 * <!-- end-model-doc -->
 	 * @see #TYPE_FILTER_VALUE
 	 * @generated
 	 * @ordered
 	 */
 	TYPE_FILTER(81, "TYPE_FILTER", "TYPE_FILTER"),
-
-	/**
-	 * The '<em><b>TYPE FILTER STRICT</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Exact type filter (no subtypes).
-	 * <!-- end-model-doc -->
-	 * @see #TYPE_FILTER_STRICT_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	TYPE_FILTER_STRICT(82, "TYPE_FILTER_STRICT", "TYPE_FILTER_STRICT"),
 
 	/**
 	 * The '<em><b>PARAMETERS</b></em>' literal object.
@@ -585,7 +507,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Equality comparator (Eq).
+	 * Equality comparison (Comparison EQ).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_EQ
 	 * @model
@@ -599,7 +521,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Ordering comparators (Lt, Lte, Gt, Gte).
+	 * Ordering comparisons (Comparison LT, LE, GT, GE).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_COMPARISON
 	 * @model
@@ -613,7 +535,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * String matching (Contains, StartWith, EndsWith, Like).
+	 * String matching (StringMatch: CONTAINS, STARTS_WITH, ENDS_WITH, LIKE).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_STRING_MATCH
 	 * @model
@@ -627,7 +549,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Range comparator (IsInRange).
+	 * Range predicate (Between).
 	 * <!-- end-model-doc -->
 	 * @see #WHERE_RANGE
 	 * @model
@@ -635,48 +557,6 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	public static final int WHERE_RANGE_VALUE = 3;
-
-	/**
-	 * The '<em><b>WHERE DATE</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Date comparators (IsBefore/IsAfter and the OrEqual variants).
-	 * <!-- end-model-doc -->
-	 * @see #WHERE_DATE
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int WHERE_DATE_VALUE = 4;
-
-	/**
-	 * The '<em><b>WHERE ENUM</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Enum literal comparator (IsLiteral).
-	 * <!-- end-model-doc -->
-	 * @see #WHERE_ENUM
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int WHERE_ENUM_VALUE = 5;
-
-	/**
-	 * The '<em><b>WHERE BOOL</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Boolean comparator (IsBool).
-	 * <!-- end-model-doc -->
-	 * @see #WHERE_BOOL
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int WHERE_BOOL_VALUE = 6;
 
 	/**
 	 * The '<em><b>LOGICAL AND</b></em>' literal value.
@@ -803,6 +683,20 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	public static final int STRING_MATCH_CASE_INSENSITIVE_VALUE = 15;
+
+	/**
+	 * The '<em><b>FIELD TO FIELD</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Comparison whose both sides navigate features (field-to-field), directly or through string functions.
+	 * <!-- end-model-doc -->
+	 * @see #FIELD_TO_FIELD
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int FIELD_TO_FIELD_VALUE = 16;
 
 	/**
 	 * The '<em><b>SORT</b></em>' literal value.
@@ -1029,48 +923,6 @@ public enum QueryFeature implements Enumerator {
 	public static final int AGG_COUNT_DISTINCT_VALUE = 46;
 
 	/**
-	 * The '<em><b>OP TO LOWER</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * ToLowerCase string operation.
-	 * <!-- end-model-doc -->
-	 * @see #OP_TO_LOWER
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int OP_TO_LOWER_VALUE = 60;
-
-	/**
-	 * The '<em><b>OP TO UPPER</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * ToUpperCase string operation.
-	 * <!-- end-model-doc -->
-	 * @see #OP_TO_UPPER
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int OP_TO_UPPER_VALUE = 61;
-
-	/**
-	 * The '<em><b>OP AVERAGE</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics).
-	 * <!-- end-model-doc -->
-	 * @see #OP_AVERAGE
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int OP_AVERAGE_VALUE = 62;
-
-	/**
 	 * The '<em><b>STRING FUNCTIONS</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1103,7 +955,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Polymorphic type filter via QObject.rootEClass (type plus subtypes).
+	 * Polymorphic type filter via Query.from (root type plus subtypes).
 	 * <!-- end-model-doc -->
 	 * @see #TYPE_FILTER
 	 * @model
@@ -1111,20 +963,6 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	public static final int TYPE_FILTER_VALUE = 81;
-
-	/**
-	 * The '<em><b>TYPE FILTER STRICT</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Exact type filter (no subtypes).
-	 * <!-- end-model-doc -->
-	 * @see #TYPE_FILTER_STRICT
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int TYPE_FILTER_STRICT_VALUE = 82;
 
 	/**
 	 * The '<em><b>PARAMETERS</b></em>' literal value.
@@ -1180,9 +1018,6 @@ public enum QueryFeature implements Enumerator {
 			WHERE_COMPARISON,
 			WHERE_STRING_MATCH,
 			WHERE_RANGE,
-			WHERE_DATE,
-			WHERE_ENUM,
-			WHERE_BOOL,
 			LOGICAL_AND,
 			LOGICAL_OR,
 			LOGICAL_NOT,
@@ -1192,6 +1027,7 @@ public enum QueryFeature implements Enumerator {
 			EXISTS,
 			FOR_ALL,
 			STRING_MATCH_CASE_INSENSITIVE,
+			FIELD_TO_FIELD,
 			SORT,
 			LIMIT,
 			SKIP,
@@ -1208,13 +1044,9 @@ public enum QueryFeature implements Enumerator {
 			AGG_SUM,
 			AGG_COUNT,
 			AGG_COUNT_DISTINCT,
-			OP_TO_LOWER,
-			OP_TO_UPPER,
-			OP_AVERAGE,
 			STRING_FUNCTIONS,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
-			TYPE_FILTER_STRICT,
 			PARAMETERS,
 			AS_OF,
 			SERIES_RANGE,
@@ -1278,9 +1110,6 @@ public enum QueryFeature implements Enumerator {
 			case WHERE_COMPARISON_VALUE: return WHERE_COMPARISON;
 			case WHERE_STRING_MATCH_VALUE: return WHERE_STRING_MATCH;
 			case WHERE_RANGE_VALUE: return WHERE_RANGE;
-			case WHERE_DATE_VALUE: return WHERE_DATE;
-			case WHERE_ENUM_VALUE: return WHERE_ENUM;
-			case WHERE_BOOL_VALUE: return WHERE_BOOL;
 			case LOGICAL_AND_VALUE: return LOGICAL_AND;
 			case LOGICAL_OR_VALUE: return LOGICAL_OR;
 			case LOGICAL_NOT_VALUE: return LOGICAL_NOT;
@@ -1290,6 +1119,7 @@ public enum QueryFeature implements Enumerator {
 			case EXISTS_VALUE: return EXISTS;
 			case FOR_ALL_VALUE: return FOR_ALL;
 			case STRING_MATCH_CASE_INSENSITIVE_VALUE: return STRING_MATCH_CASE_INSENSITIVE;
+			case FIELD_TO_FIELD_VALUE: return FIELD_TO_FIELD;
 			case SORT_VALUE: return SORT;
 			case LIMIT_VALUE: return LIMIT;
 			case SKIP_VALUE: return SKIP;
@@ -1306,13 +1136,9 @@ public enum QueryFeature implements Enumerator {
 			case AGG_SUM_VALUE: return AGG_SUM;
 			case AGG_COUNT_VALUE: return AGG_COUNT;
 			case AGG_COUNT_DISTINCT_VALUE: return AGG_COUNT_DISTINCT;
-			case OP_TO_LOWER_VALUE: return OP_TO_LOWER;
-			case OP_TO_UPPER_VALUE: return OP_TO_UPPER;
-			case OP_AVERAGE_VALUE: return OP_AVERAGE;
 			case STRING_FUNCTIONS_VALUE: return STRING_FUNCTIONS;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
-			case TYPE_FILTER_STRICT_VALUE: return TYPE_FILTER_STRICT;
 			case PARAMETERS_VALUE: return PARAMETERS;
 			case AS_OF_VALUE: return AS_OF;
 			case SERIES_RANGE_VALUE: return SERIES_RANGE;

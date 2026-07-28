@@ -181,6 +181,9 @@ public final class ExpressionAnalyzer {
 			case NE -> QueryFeature.WHERE_NE;
 			default -> QueryFeature.WHERE_COMPARISON;
 			});
+			if (navigates(comparison.getLeft()) && navigates(comparison.getRight())) {
+				features.add(QueryFeature.FIELD_TO_FIELD);
+			}
 			walk(comparison.getLeft(), features, maxDepth);
 			walk(comparison.getRight(), features, maxDepth);
 		} else if (expression instanceof IsNull isNull) {
@@ -215,6 +218,17 @@ public final class ExpressionAnalyzer {
 			path(propertyPath, features, maxDepth);
 		}
 		// literals and variable refs carry no features
+	}
+
+	/** Whether the operand navigates a feature — directly or through string functions. */
+	private static boolean navigates(Expression expression) {
+		if (expression instanceof PropertyPath) {
+			return true;
+		}
+		if (expression instanceof StringFunction function) {
+			return navigates(function.getSource());
+		}
+		return false;
 	}
 
 	private static void path(PropertyPath path, Set<QueryFeature> features, int[] maxDepth) {

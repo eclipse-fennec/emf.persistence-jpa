@@ -141,6 +141,30 @@ class JpaQueryProcessorTest {
 	}
 
 	@Test
+	void stringFunctionsRenderAsJpqlFunctions() throws QueryException {
+		JpaQueryPlan lower = translate(QueryBuilder.from(person)
+				.where(path(name).toLower().eq("bob")).build());
+		assertThat(lower.jpql()).contains("LOWER(e.name) = :p0");
+		assertThat(lower.parameters()).containsEntry("p0", "bob");
+
+		JpaQueryPlan length = translate(QueryBuilder.from(person)
+				.where(path(name).length().gt(3)).build());
+		assertThat(length.jpql()).contains("LENGTH(e.name) > :p0");
+
+		JpaQueryPlan chained = translate(QueryBuilder.from(person)
+				.where(path(name).trim().toUpper().eq("BOB")).build());
+		assertThat(chained.jpql()).contains("UPPER(TRIM(e.name)) = :p0");
+	}
+
+	@Test
+	void fieldToFieldComparisonRendersBothPaths() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.where(path(name).ne(path(name))).build());
+		assertThat(plan.jpql()).contains("e.name <> e.name");
+		assertThat(plan.parameters()).isEmpty();
+	}
+
+	@Test
 	void quantifiersBecomeCorrelatedExists() throws QueryException {
 		Query query = QueryBuilder.from(person)
 				.where(any(propertyPath(addresses), a -> a.path(street).startsWith("Main")))

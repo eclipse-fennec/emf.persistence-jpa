@@ -46,6 +46,8 @@ import org.eclipse.fennec.model.expression.NullLiteral;
 import org.eclipse.fennec.model.expression.Or;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.StringFunction;
+import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.TemporalKind;
@@ -154,6 +156,29 @@ class QueryBuilderV2Test {
 
 		ForAll forAll = all(propertyPath(addresses), a -> a.path(street).isNotNull());
 		assertThat(forAll.getPredicate()).isInstanceOf(IsNull.class);
+	}
+
+	@Test
+	void stringFunctionsAndFieldToField() {
+		Comparison lower = path(name).toLower().eq("bob");
+		StringFunction function = (StringFunction) lower.getLeft();
+		assertThat(function.getKind()).isEqualTo(StringFunctionKind.TO_LOWER);
+		assertThat(((PropertyPath) function.getSource()).getSegments()).containsExactly(name);
+
+		Comparison chained = path(name).trim().toUpper().length().gt(3);
+		StringFunction length = (StringFunction) chained.getLeft();
+		assertThat(length.getKind()).isEqualTo(StringFunctionKind.LENGTH);
+		StringFunction upper = (StringFunction) length.getSource();
+		assertThat(upper.getKind()).isEqualTo(StringFunctionKind.TO_UPPER);
+		assertThat(((StringFunction) upper.getSource()).getKind()).isEqualTo(StringFunctionKind.TRIM);
+
+		// a PathStep on the right unwraps into its PropertyPath (field-to-field)
+		Comparison fieldToField = path(name).eq(path(name));
+		assertThat(fieldToField.getRight()).isInstanceOf(PropertyPath.class);
+
+		// a FunctionStep on the right unwraps into its function expression
+		Comparison functionRight = path(name).eq(path(name).toLower());
+		assertThat(functionRight.getRight()).isInstanceOf(StringFunction.class);
 	}
 
 	@Test

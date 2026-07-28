@@ -32,6 +32,8 @@ import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Or;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.StringFunction;
+import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
@@ -182,6 +184,24 @@ class ExpressionAnalyzerTest {
 		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query(deep));
 		assertThat(analysis.features()).contains(QueryFeature.FEATUREPATH_NESTED);
 		assertThat(analysis.maxFeaturePathDepth()).isEqualTo(2);
+	}
+
+	@Test
+	void fieldToFieldIsDetected() {
+		Comparison direct = comparison(ComparisonOperator.EQ, path(name), path(name));
+		assertThat(ExpressionAnalyzer.analyze(query(direct)).features())
+				.contains(QueryFeature.FIELD_TO_FIELD);
+
+		StringFunction lower = expr.createStringFunction();
+		lower.setKind(StringFunctionKind.TO_LOWER);
+		lower.setSource(path(name));
+		Comparison throughFunction = comparison(ComparisonOperator.EQ, path(name), lower);
+		assertThat(ExpressionAnalyzer.analyze(query(throughFunction)).features())
+				.contains(QueryFeature.FIELD_TO_FIELD, QueryFeature.STRING_FUNCTIONS);
+
+		Comparison literalOnly = comparison(ComparisonOperator.EQ, path(name), intLit(1));
+		assertThat(ExpressionAnalyzer.analyze(query(literalOnly)).features())
+				.doesNotContain(QueryFeature.FIELD_TO_FIELD);
 	}
 
 	@Test

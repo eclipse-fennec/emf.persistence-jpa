@@ -5,7 +5,17 @@ the plan are recorded in the issues — notably: the legacy retirement was pulle
 (maintainer call, no transitional names shipped), builder v2 is `Expressions` +
 `QueryBuilder`, group keys are alias-addressable, JPA delete removes children-first, and
 the OclEvaluator differential tests stay blocked until fennec-odata publishes its query
-bundle (#56). Originally the approved concept of 2026-07-23. Supersedes the *IR part* of
+bundle (#56); the extraction of the OclEvaluator into an OData-neutral artifact is
+requested upstream (eclipse-fennec/emf.odata#14) — until then the differential tests stay
+deactivated by decision (no `-SNAPSHOT` test dependency on the OData repo). 2026-07-28:
+the dead v1 capability literals (`WHERE_DATE`, `WHERE_ENUM`, `WHERE_BOOL`, `OP_TO_LOWER`,
+`OP_TO_UPPER`, `OP_AVERAGE`, `TYPE_FILTER_STRICT`) were removed from `QueryFeature`,
+completing the M11 vocabulary retirement; decisions D1–D5 are closed (§8); Mongo serves
+`STRING_FUNCTIONS` and the new `FIELD_TO_FIELD` capability via `$expr` (null-guarded, SQL
+semantics; root-based paths only); persisted queries (`saveQuery`, concept §14 P2) execute
+on both backends — XMI payload in a per-backend catalog, named execution via
+`QueryableResource.query(name, …)` (see `query-usage.md`). Originally the approved concept
+of 2026-07-23. Supersedes the *IR part* of
 `query-processor-spi.md`; the SPI layer described there (QueryProcessor, capabilities,
 diagnostics, QueryResult, TCK) **stays** and is re-targeted. Companion: `concept.md`
 §3.1/§5/§14, `query-usage.md` (to be rewritten on completion).
@@ -181,13 +191,18 @@ swap.
 **Explicitly out of scope here:** the patch-apply engine (own epic per concept §18.1),
 `asOf`/series queries (reserved), OData repo changes, repo rename.
 
-## 8. Open decisions
+## 8. Decisions D1–D5 (closed 2026-07-28)
 
-- **D1** `TemporalLiteral` encoding: ISO-8601 string + kind enum (proposed) vs typed
-  EDataType attributes per temporal type.
-- **D2** `EnumLiteral`: literal name only (proposed, resolved against the target feature)
-  vs EEnumLiteral reference (couples query instances to the metamodel instance).
-- **D3** Pipeline `Compute` stage in v1 or later (proposed: later).
-- **D4** `Selection`/projection result typing: keep tuple rows (as implemented) —
-  dynamic-EClass materialisation stays a follow-up.
-- **D5** Does `expand` belong on the envelope (proposed) or as backend option?
+All five went in as proposed; D1/D2/D5 are annotated at the model elements themselves.
+
+- **D1** `TemporalLiteral` = ISO-8601 string + `kind` enum, parsed against the target
+  feature's temporal type at translation (`expression.ecore#TemporalLiteral`).
+- **D2** `EnumLiteral` = literal name only, resolved against the target feature's EEnum at
+  translation — no EEnumLiteral reference, query instances stay decoupled from the
+  metamodel instance (`expression.ecore#EnumLiteral`).
+- **D3** Pipeline `Compute` stage: **later** — not in the v1 stage set, additive when a
+  driving use case appears.
+- **D4** Projection results stay **tuple rows**; dynamic-EClass materialisation remains a
+  follow-up layered on rows (SPI unchanged).
+- **D5** `expand` lives on the **envelope** (`query.ecore#Query.expand`), not as a backend
+  option — capability `EXPAND`, refused where not translatable.
