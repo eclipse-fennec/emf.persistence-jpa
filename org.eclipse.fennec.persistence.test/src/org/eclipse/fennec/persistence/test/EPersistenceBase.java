@@ -99,7 +99,9 @@ public abstract class EPersistenceBase extends EPersistenceModelBase {
 	protected Resource createMappingModelResource() {
 		modelFile = new File(modelPath, PROP_MODEL_FILE);
 		System.setProperty(PROP_MODEL_FILE_PATH, modelFile.toURI().toString());
-		System.setProperty(PROP_MODEL_PATH, modelPath.getAbsolutePath());
+		// forward slashes: the value feeds H2 identifiers AND LDAP target filters,
+		// where a Windows backslash is the escape character and never matches
+		System.setProperty(PROP_MODEL_PATH, modelPath.getAbsolutePath().replace('\\', '/'));
 		Resource resource = rs.createResource(URI.createURI(modelFile.toURI().toString()));
 		assertNotNull(resource);
 		return resource;
