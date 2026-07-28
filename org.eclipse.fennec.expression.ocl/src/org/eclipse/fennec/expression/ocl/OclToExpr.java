@@ -77,12 +77,31 @@ public final class OclToExpr {
 	 * @throws QueryException if the OCL uses constructs outside the blessed subset
 	 */
 	public static Expression toExpr(OclExpression ocl) throws QueryException {
-		return new Mapper().map(ocl);
+		return new Mapper(Map.of()).map(ocl);
+	}
+
+	/**
+	 * Maps an OCL expression with variables that are already in scope — e.g. the body of
+	 * an externally handled iterator, whose iterator variable the caller binds to an
+	 * expression-model {@link Variable} of its own (see the derived-references concept).
+	 *
+	 * @param ocl the OCL expression
+	 * @param scope pre-bound variables, OCL variable → expression variable
+	 * @return the expression tree
+	 * @throws QueryException if the OCL uses constructs outside the blessed subset
+	 */
+	public static Expression toExpr(OclExpression ocl,
+			Map<org.eclipse.fennec.m2x.model.ocl.Variable, Variable> scope) throws QueryException {
+		return new Mapper(scope).map(ocl);
 	}
 
 	private static final class Mapper {
 
 		private final Map<org.eclipse.fennec.m2x.model.ocl.Variable, Variable> variables = new HashMap<>();
+
+		private Mapper(Map<org.eclipse.fennec.m2x.model.ocl.Variable, Variable> scope) {
+			variables.putAll(scope);
+		}
 
 		private Expression map(OclExpression ocl) throws QueryException {
 			if (ocl instanceof OperationCallExp call) {

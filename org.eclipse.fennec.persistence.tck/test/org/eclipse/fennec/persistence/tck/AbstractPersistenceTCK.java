@@ -55,6 +55,8 @@ import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
+import org.eclipse.fennec.persistence.query.derived.DerivedReferenceCompiler;
+import org.eclipse.fennec.persistence.query.derived.QueryBackedSettingDelegateFactory;
 import org.eclipse.fennec.persistence.query.memory.MemoryQueries;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
@@ -721,6 +723,65 @@ public abstract class AbstractPersistenceTCK {
 		try (QueryResult result = queryable(createBackendResourceSet()).query("current", null, null)) {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Alice");
+		}
+	}
+
+	// -------------------------------------------- derived references (query-backed)
+
+	/** Registers the query-backed delegate factory for the duration of one test. */
+	private AutoCloseable derivedDelegateRegistration() {
+		EStructuralFeature.Internal.SettingDelegate.Factory.Registry.INSTANCE.put(
+				DerivedReferenceCompiler.DELEGATE_URI, new QueryBackedSettingDelegateFactory());
+		return () -> EStructuralFeature.Internal.SettingDelegate.Factory.Registry.INSTANCE
+				.remove(DerivedReferenceCompiler.DELEGATE_URI);
+	}
+
+	private void saveFriendsFixture() throws Exception {
+		EObject adult = newPerson(2, "Adult", 30);
+		EObject kid = newPerson(3, "Kid", 8);
+		EObject owner = newPerson(1, "Owner", 40);
+		listOf(owner, personFriends).add(adult);
+		listOf(owner, personFriends).add(kid);
+		save(createBackendResourceSet(), "Person", adult, kid, owner);
+	}
+
+	@Test
+	public void derivedReferenceComputesViaBackendQuery() throws Exception {
+		try (AutoCloseable registration = derivedDelegateRegistration()) {
+			saveFriendsFixture();
+			ResourceSet readSet = createBackendResourceSet();
+			EObject loaded = findById(loadAll(readSet, "Person"), "1");
+			assertThat(loaded).isNotNull();
+			EStructuralFeature adultFriends = personClass.getEStructuralFeature("adultFriends");
+			@SuppressWarnings("unchecked")
+			List<EObject> result = (List<EObject>) loaded.eGet(adultFriends);
+			assertThat(result).extracting(person -> person.eGet(personName)).containsExactly("Adult");
+		}
+	}
+
+	@Test
+	public void derivedReferenceDifferentialLocalVsBackend() throws Exception {
+		try (AutoCloseable registration = derivedDelegateRegistration()) {
+			saveFriendsFixture();
+			EStructuralFeature adultFriends = personClass.getEStructuralFeature("adultFriends");
+
+			// unattached objects — the same annotation evaluates locally (concept P5)
+			EObject localAdult = newPerson(2, "Adult", 30);
+			EObject localOwner = newPerson(1, "Owner", 40);
+			listOf(localOwner, personFriends).add(localAdult);
+			listOf(localOwner, personFriends).add(newPerson(3, "Kid", 8));
+			@SuppressWarnings("unchecked")
+			List<EObject> local = (List<EObject>) localOwner.eGet(adultFriends);
+
+			// attached object — the backend answers the same annotation (concept P7)
+			EObject loaded = findById(loadAll(createBackendResourceSet(), "Person"), "1");
+			@SuppressWarnings("unchecked")
+			List<EObject> pushed = (List<EObject>) loaded.eGet(adultFriends);
+
+			assertThat(pushed).extracting(person -> person.eGet(personName))
+					.as("pushdown and local evaluation must agree")
+					.containsExactlyElementsOf(
+							local.stream().map(person -> person.eGet(personName)).toList());
 		}
 	}
 

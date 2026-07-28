@@ -1,0 +1,24 @@
+Bundle-Name: Eclipse Fennec Persistence Query Derived References
+Bundle-Description: Query-backed derived references: OCL derivation annotations (m2x \
+	vocabulary) evaluate in memory for plain EMF objects and push down to native \
+	backend queries for objects attached to a QueryableResource. Decorator over the \
+	m2x setting delegate, object-specific routing per access. \
+	See docs/unified-persistence/query-derived-references.md.
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.expression.ocl;version=snapshot,\
+	org.eclipse.fennec.m2x.ocl.model;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version=latest,\
+	org.eclipse.fennec.m2x.ocl.parser;version=latest
+
+-testpath: \
+	assertj-core;version=latest,\
+	org.antlr.antlr4-runtime;version=latest
