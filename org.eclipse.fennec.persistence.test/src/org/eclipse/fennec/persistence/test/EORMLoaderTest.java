@@ -69,7 +69,10 @@ public class EORMLoaderTest {
 		modelFile = new File(modelPath, "person.eorm");
 		ResourceSet rs = initResourceSet();
 		String fileUri = modelFile.toURI().toString();
-		System.setProperty(TestAnnotations.PROP_MODEL_PATH, modelPath.toURI().toString());
+		// plain filesystem path with forward slashes: the value feeds the H2 database
+		// identifier (a file URI breaks H2 on Windows: "file:/C:/..." → "/C:/...") and
+		// LDAP target filters (backslashes are the filter escape character)
+		System.setProperty(TestAnnotations.PROP_MODEL_PATH, modelPath.getAbsolutePath().replace('\\', '/'));
 		System.setProperty(TestAnnotations.PROP_MODEL_FILE_PATH, fileUri);
 		Resource resource = rs.createResource(URI.createURI(fileUri));
 		assertNotNull(resource);

@@ -43,7 +43,7 @@ class H2DataSourceTest {
 	
 	@BeforeEach
 	public void before() {
-		System.setProperty(TestAnnotations.PROP_MODEL_PATH, storage.getAbsolutePath());
+		System.setProperty(TestAnnotations.PROP_MODEL_PATH, storage.getAbsolutePath().replace('\\', '/'));
 	}
 	
     @Test
