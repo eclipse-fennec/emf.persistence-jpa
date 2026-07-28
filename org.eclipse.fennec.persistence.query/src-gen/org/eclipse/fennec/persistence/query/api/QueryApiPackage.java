@@ -500,13 +500,22 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int QUERYABLE_RESOURCE___QUERY__QUERY_MAP_MAP = 1;
 
 	/**
+	 * The operation id for the '<em>Query</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUERYABLE_RESOURCE___QUERY__STRING_MAP_MAP = 2;
+
+	/**
 	 * The number of operations of the '<em>Queryable Resource</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int QUERYABLE_RESOURCE_OPERATION_COUNT = 2;
+	int QUERYABLE_RESOURCE_OPERATION_COUNT = 3;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.CommandResource <em>Command Resource</em>}' class.
@@ -978,6 +987,16 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EOperation getQueryableResource__Query__Query_Map_Map();
 
 	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryableResource#query(java.lang.String, java.util.Map, java.util.Map) <em>Query</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Query</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.QueryableResource#query(java.lang.String, java.util.Map, java.util.Map)
+	 * @generated
+	 */
+	EOperation getQueryableResource__Query__String_Map_Map();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.query.api.CommandResource <em>Command Resource</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1443,6 +1462,14 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EOperation QUERYABLE_RESOURCE___QUERY__QUERY_MAP_MAP = eINSTANCE.getQueryableResource__Query__Query_Map_Map();
+
+		/**
+		 * The meta object literal for the '<em><b>Query</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation QUERYABLE_RESOURCE___QUERY__STRING_MAP_MAP = eINSTANCE.getQueryableResource__Query__String_Map_Map();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.CommandResource <em>Command Resource</em>}' class.

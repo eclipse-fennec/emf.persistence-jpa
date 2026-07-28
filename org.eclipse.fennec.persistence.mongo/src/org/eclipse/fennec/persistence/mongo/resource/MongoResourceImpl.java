@@ -94,6 +94,7 @@ import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.mongo.query.BsonValues;
@@ -380,8 +381,24 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	@Override
+	public QueryResult query(String name, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
+		requireNonNull(name, "query name must not be null");
+		return query(loadNamedQuery(name), parameters, options);
+	}
+
+	@Override
 	public QueryResult query(Query query, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
 		requireNonNull(query, "query must not be null");
+		String catalogName;
+		try {
+			catalogName = PersistedQueries.catalogName(query);
+		} catch (QueryException e) {
+			getErrors().add(new MongoDiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Query rejected: " + e.getMessage(), e);
+		}
+		if (catalogName != null) {
+			saveNamedQuery(catalogName, query);
+		}
 		String collectionName = getCollectionName(options);
 		if (isNull(collectionName)) {
 			throw new IOException("Resource URI has no collection segment — cannot query: " + getURI());
@@ -434,6 +451,52 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				.map(document -> decodeUnchecked(document, eClass))
 				.filter(java.util.Objects::nonNull);
 		return QueryResults.objects(objects);
+	}
+
+	// ------------------------------------------------------- persisted queries
+
+	/** The query catalog collection (concept.md §14 saveQuery): _id = name, xmi = payload. */
+	static final String QUERY_CATALOG_COLLECTION = "fennec.queries";
+
+	private void saveNamedQuery(String name, Query query) throws IOException {
+		try {
+			BsonDocument document = new BsonDocument();
+			document.put("_id", new BsonString(name));
+			document.put("xmi", new BsonString(PersistedQueries.toXmi(query)));
+			getCollection(QUERY_CATALOG_COLLECTION).replaceOne(eq("_id", new BsonString(name)),
+					document, new ReplaceOptions().upsert(true));
+		} catch (QueryException | RuntimeException e) {
+			getErrors().add(new MongoDiagnostic(
+					"Failed to persist query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to persist query '" + name + "'", e);
+		}
+	}
+
+	private Query loadNamedQuery(String name) throws IOException {
+		BsonDocument document;
+		try {
+			document = getCollection(QUERY_CATALOG_COLLECTION)
+					.find(eq("_id", new BsonString(name))).first();
+		} catch (RuntimeException e) {
+			getErrors().add(new MongoDiagnostic(
+					"Failed to load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to load persisted query '" + name + "'", e);
+		}
+		if (isNull(document) || !document.containsKey("xmi")) {
+			throw new IOException("No persisted query named '" + name + "'");
+		}
+		try {
+			return PersistedQueries.fromXmi(name, document.getString("xmi").getValue(), packageRegistry());
+		} catch (QueryException e) {
+			getErrors().add(new MongoDiagnostic(
+					"Cannot load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
+			throw new IOException("Cannot load persisted query '" + name + "': " + e.getMessage(), e);
+		}
+	}
+
+	private EPackage.Registry packageRegistry() {
+		return isNull(getResourceSet()) ? EPackage.Registry.INSTANCE
+				: getResourceSet().getPackageRegistry();
 	}
 
 	private Stream<BsonDocument> cursorStream(MongoCursor<BsonDocument> cursor) {

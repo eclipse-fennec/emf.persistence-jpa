@@ -61,6 +61,7 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 	@Override
 	protected ResourceSet createBackendResourceSet() {
 		ResourceSet resourceSet = new ResourceSetImpl();
+		resourceSet.getPackageRegistry().put(tckPackage.getNsURI(), tckPackage);
 		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
 				.put("jpa", new JPAResourceFactory(emf));
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()

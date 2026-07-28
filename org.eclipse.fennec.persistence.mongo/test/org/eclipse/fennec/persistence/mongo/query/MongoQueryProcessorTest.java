@@ -299,10 +299,44 @@ class MongoQueryProcessorTest {
 	}
 
 	@Test
-	void fieldToFieldComparisonIsRefused() {
-		Query query = QueryBuilder.from(person).where(path(name).eq(propertyPath(name))).build();
+	void fieldToFieldComparisonUsesExprWithNullGuards() throws QueryException {
+		Query query = QueryBuilder.from(person).where(path(name).eq(path(id))).build();
+		MongoQueryPlan plan = translate(query);
+		assertThat(render(plan.filter())).isEqualTo(BsonDocument.parse(
+				"{'$expr': {'$and': [{'$ne': ['$name', null]}, {'$ne': ['$_id', null]},"
+						+ " {'$eq': ['$name', '$_id']}]}}"));
+
+		// self-comparison: the guard is deduplicated
+		Query same = QueryBuilder.from(person).where(path(name).ne(propertyPath(name))).build();
+		assertThat(render(translate(same).filter())).isEqualTo(BsonDocument.parse(
+				"{'$expr': {'$and': [{'$ne': ['$name', null]}, {'$ne': ['$name', '$name']}]}}"));
+	}
+
+	@Test
+	void stringFunctionsUseExpr() throws QueryException {
+		Query lower = QueryBuilder.from(person).where(path(name).toLower().eq("bob")).build();
+		assertThat(render(translate(lower).filter())).isEqualTo(BsonDocument.parse(
+				"{'$expr': {'$and': [{'$ne': ['$name', null]},"
+						+ " {'$eq': [{'$toLower': '$name'}, {'$literal': 'bob'}]}]}}"));
+
+		Query length = QueryBuilder.from(person).where(path(name).length().gt(3)).build();
+		assertThat(render(translate(length).filter())).isEqualTo(BsonDocument.parse(
+				"{'$expr': {'$and': [{'$ne': ['$name', null]},"
+						+ " {'$gt': [{'$strLenCP': '$name'}, {'$literal': {'$numberLong': '3'}}]}]}}"));
+
+		Query chained = QueryBuilder.from(person).where(path(name).trim().toUpper().eq("BOB")).build();
+		assertThat(render(translate(chained).filter())).isEqualTo(BsonDocument.parse(
+				"{'$expr': {'$and': [{'$ne': ['$name', null]},"
+						+ " {'$eq': [{'$toUpper': {'$trim': {'input': '$name'}}}, {'$literal': 'BOB'}]}]}}"));
+	}
+
+	@Test
+	void exprComparisonsInsideQuantifiersAreRefused() {
+		Query query = QueryBuilder.from(person)
+				.where(any(propertyPath(addresses), a -> a.path(street).toLower().eq("main st")))
+				.build();
 		assertThatThrownBy(() -> translate(query)).isInstanceOf(QueryException.class)
-				.hasMessageContaining("literal or parameter");
+				.hasMessageContaining("quantifier");
 	}
 
 	@Test

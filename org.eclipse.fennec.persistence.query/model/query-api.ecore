@@ -101,37 +101,22 @@
     </eAnnotations>
     <eLiterals name="WHERE_EQ">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Equality comparator (Eq)."/>
+        <details key="documentation" value="Equality comparison (Comparison EQ)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="WHERE_COMPARISON" value="1">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Ordering comparators (Lt, Lte, Gt, Gte)."/>
+        <details key="documentation" value="Ordering comparisons (Comparison LT, LE, GT, GE)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="WHERE_STRING_MATCH" value="2">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="String matching (Contains, StartWith, EndsWith, Like)."/>
+        <details key="documentation" value="String matching (StringMatch: CONTAINS, STARTS_WITH, ENDS_WITH, LIKE)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="WHERE_RANGE" value="3">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Range comparator (IsInRange)."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="WHERE_DATE" value="4">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Date comparators (IsBefore/IsAfter and the OrEqual variants)."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="WHERE_ENUM" value="5">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Enum literal comparator (IsLiteral)."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="WHERE_BOOL" value="6">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Boolean comparator (IsBool)."/>
+        <details key="documentation" value="Range predicate (Between)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="LOGICAL_AND" value="7">
@@ -177,6 +162,11 @@
     <eLiterals name="STRING_MATCH_CASE_INSENSITIVE" value="15">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Case-insensitive string matching (v2 IR StringMatch.caseInsensitive)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FIELD_TO_FIELD" value="16">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Comparison whose both sides navigate features (field-to-field), directly or through string functions."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="SORT" value="20">
@@ -259,21 +249,6 @@
         <details key="documentation" value="Count-distinct aggregate (v2 pipeline)."/>
       </eAnnotations>
     </eLiterals>
-    <eLiterals name="OP_TO_LOWER" value="60">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="ToLowerCase string operation."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="OP_TO_UPPER" value="61">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="ToUpperCase string operation."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="OP_AVERAGE" value="62">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Reserved. Aggregate functions (Average, Min, Max, Sum, CountOperation) always map to their AGG_* feature — without groupBy they aggregate the whole result set (single row, SQL semantics)."/>
-      </eAnnotations>
-    </eLiterals>
     <eLiterals name="STRING_FUNCTIONS" value="63">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="String functions applied to values (v2 IR StringFunction: toLower/toUpper/trim/length)."/>
@@ -286,12 +261,7 @@
     </eLiterals>
     <eLiterals name="TYPE_FILTER" value="81">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Polymorphic type filter via QObject.rootEClass (type plus subtypes)."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="TYPE_FILTER_STRICT" value="82">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Exact type filter (no subtypes)."/>
+        <details key="documentation" value="Polymorphic type filter via Query.from (root type plus subtypes)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="PARAMETERS" value="83">
@@ -470,9 +440,17 @@
     </eOperations>
     <eOperations name="query" eType="#//QueryResult" eExceptions="#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Executes a query with bound parameters and backend options (both may be null). The result must be closed by the caller."/>
+        <details key="documentation" value="Executes a query with bound parameters and backend options (both may be null). The result must be closed by the caller. If the query carries saveQuery=true and a name, it is persisted (upsert by name) in the backend's query catalog before execution — see the named-query overload."/>
       </eAnnotations>
       <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="parameters" eType="#//ParameterMap"/>
+      <eParameters name="options" eType="#//OptionsMap"/>
+    </eOperations>
+    <eOperations name="query" eType="#//QueryResult" eExceptions="#//IOException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Loads the query persisted under the given name (saveQuery) and executes it with bound parameters and backend options (both may be null). An unknown name is refused with an IOException carrying a Diagnostic. The result must be closed by the caller."/>
+      </eAnnotations>
+      <eParameters name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
       <eParameters name="parameters" eType="#//ParameterMap"/>
       <eParameters name="options" eType="#//OptionsMap"/>
     </eOperations>

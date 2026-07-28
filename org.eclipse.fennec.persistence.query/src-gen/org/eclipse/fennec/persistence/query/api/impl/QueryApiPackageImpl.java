@@ -593,6 +593,16 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
+	public EOperation getQueryableResource__Query__String_Map_Map() {
+		return queryableResourceEClass.getEOperations().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getCommandResource() {
 		return commandResourceEClass;
 	}
@@ -794,6 +804,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		queryableResourceEClass = createEClass(QUERYABLE_RESOURCE);
 		createEOperation(queryableResourceEClass, QUERYABLE_RESOURCE___QUERY__QUERY);
 		createEOperation(queryableResourceEClass, QUERYABLE_RESOURCE___QUERY__QUERY_MAP_MAP);
+		createEOperation(queryableResourceEClass, QUERYABLE_RESOURCE___QUERY__STRING_MAP_MAP);
 
 		commandResourceEClass = createEClass(COMMAND_RESOURCE);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND);
@@ -926,6 +937,12 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEParameter(op, this.getOptionsMap(), "options", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, this.getIOException());
 
+		op = initEOperation(getQueryableResource__Query__String_Map_Map(), this.getQueryResult(), "query", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, ecorePackage.getEString(), "name", 1, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, this.getParameterMap(), "parameters", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, this.getOptionsMap(), "options", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEException(op, this.getIOException());
+
 		initEClass(commandResourceEClass, CommandResource.class, "CommandResource", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		op = initEOperation(getCommandResource__Execute__Command(), ecorePackage.getELong(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
@@ -944,9 +961,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.WHERE_COMPARISON);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.WHERE_STRING_MATCH);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.WHERE_RANGE);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.WHERE_DATE);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.WHERE_ENUM);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.WHERE_BOOL);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.LOGICAL_AND);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.LOGICAL_OR);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.LOGICAL_NOT);
@@ -956,6 +970,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.EXISTS);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FOR_ALL);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.STRING_MATCH_CASE_INSENSITIVE);
+		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FIELD_TO_FIELD);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SORT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.LIMIT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SKIP);
@@ -972,13 +987,9 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AGG_SUM);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AGG_COUNT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AGG_COUNT_DISTINCT);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.OP_TO_LOWER);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.OP_TO_UPPER);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.OP_AVERAGE);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.STRING_FUNCTIONS);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FEATUREPATH_NESTED);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.TYPE_FILTER);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.TYPE_FILTER_STRICT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.PARAMETERS);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AS_OF);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SERIES_RANGE);

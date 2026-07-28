@@ -51,11 +51,22 @@ public interface QueryableResource {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Executes a query with bound parameters and backend options (both may be null). The result must be closed by the caller.
+	 * Executes a query with bound parameters and backend options (both may be null). The result must be closed by the caller. If the query carries saveQuery=true and a name, it is persisted (upsert by name) in the backend's query catalog before execution — see the named-query overload.
 	 * <!-- end-model-doc -->
 	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" queryRequired="true" parametersDataType="org.eclipse.fennec.persistence.query.api.ParameterMap" optionsDataType="org.eclipse.fennec.persistence.query.api.OptionsMap"
 	 * @generated
 	 */
 	QueryResult query(Query query, Map<String, Object> parameters, Map<?, ?> options) throws IOException;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Loads the query persisted under the given name (saveQuery) and executes it with bound parameters and backend options (both may be null). An unknown name is refused with an IOException carrying a Diagnostic. The result must be closed by the caller.
+	 * <!-- end-model-doc -->
+	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" nameRequired="true" parametersDataType="org.eclipse.fennec.persistence.query.api.ParameterMap" optionsDataType="org.eclipse.fennec.persistence.query.api.OptionsMap"
+	 * @generated
+	 */
+	QueryResult query(String name, Map<String, Object> parameters, Map<?, ?> options) throws IOException;
 
 } // QueryableResource

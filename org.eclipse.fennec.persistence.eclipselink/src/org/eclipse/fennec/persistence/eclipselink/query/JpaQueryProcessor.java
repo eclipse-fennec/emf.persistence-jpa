@@ -92,13 +92,14 @@ public class JpaQueryProcessor implements QueryProcessor {
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
+					QueryFeature.STRING_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
 					QueryFeature.PROJECTION, QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY,
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
-					QueryFeature.TYPE_FILTER_STRICT, QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
+					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
 					QueryFeature.EXPAND)
 			.maxFeaturePathDepth(-1)
 			.build();

@@ -41,6 +41,12 @@ Query query = QueryBuilder.from(personClass)
   `isNotNull`, `between(lo, hi[, loIncl, hiIncl])`, `in(...)`.
 - **String matching**: `contains/startsWith/endsWith/like` with `…IgnoreCase` variants —
   case-insensitivity is a model flag, translated natively (LOWER both sides / regex `i`).
+- **String functions**: `path(name).toLower().eq("bob")`, `path(name).length().gt(3)` —
+  `toLower/toUpper/trim/length`, chainable (`trim().toLower()`); JPA renders JPQL
+  functions, Mongo an `$expr` aggregation expression.
+- **Field-to-field**: `path(a).eq(path(b))` compares two features of the root type;
+  either side may wrap string functions. Comparisons involving null/missing values are
+  false on every backend (SQL semantics).
 - **Quantifiers**: `any`/`all(propertyPath(ref), it -> …)` over multi-valued references,
   with a scoped iterator variable. `all` is vacuously true on empty collections.
 - **Parameters**: `param("name")` is a first-class `ParameterRef`; declare with
@@ -97,6 +103,32 @@ Rules unchanged from v1: **close the result** (cursor/lease lives until close), 
 are shape-guarded, refusals surface as `IOException` with the `Diagnostic` in
 `resource.getErrors()` and `QueryException.getDiagnostic()`.
 
+### Saved queries (`saveQuery`)
+
+Queries are EMF objects and persist through the same machinery (concept §14, P2):
+
+```java
+Query adults = QueryBuilder.from(personClass)
+    .where(path(age).ge(param("minAge")))
+    .parameter("minAge", null)
+    .named("adults")                       // sets name + saveQuery
+    .build();
+resource.query(adults, Map.of("minAge", 40), null);   // persists (upsert by name) + executes
+
+// any later resource of the same backend store executes it by name:
+try (QueryResult result = resource.query("adults", Map.of("minAge", 50), null)) { … }
+```
+
+- Executing a query with `saveQuery=true` and a name **upserts** it into the backend's
+  query catalog before execution — last write wins; `saveQuery` without a name is refused.
+- The catalog payload is the query's **XMI document**; metamodel references (root type,
+  path segments) are stored as nsURI hrefs and resolve against the resource set's package
+  registry on load — the model package must be registered, otherwise execution is refused
+  with a precise diagnostic. An unknown name is an `IOException`.
+- Storage: Mongo collection `fennec.queries` (`_id` = name), JPA table `FENNEC_QUERIES`
+  (created on first use, outside the mapped model). The memory backend has no store and
+  therefore no catalog.
+
 ## 3. Write commands (CUD v1)
 
 Per concept §14 the query language is read-only; writes are commands
@@ -149,8 +181,8 @@ Declared via `QueryProcessor.capabilities()`; `validate()` reports every violati
 | Comparisons incl. `ne`, `isNull`, `between`, `in` | ✅ | ✅ | Mongo IsNull = missing-or-null |
 | Logic trees (n-ary and/or, not, nested) | ✅ | ✅ (`$nor`) | |
 | String matching + case-insensitive flag | ✅ LOWER both sides | ✅ regex `i` | LIKE `%`/`_` translated |
-| String functions (toLower/toUpper/trim/length) | ✅ | ❌ (needs `$expr`) | |
-| Field-to-field comparisons | ✅ | ❌ | |
+| String functions (toLower/toUpper/trim/length) | ✅ | ✅ `$expr` | Mongo: root-based paths only (not inside quantifier predicates) |
+| Field-to-field comparisons | ✅ | ✅ `$expr` | Mongo: root-based paths only; `$ne null` guards keep null-comparisons false |
 | `exists` / `forAll` quantifiers | ✅ correlated `[NOT] EXISTS`, nested | ⚠️ **embedded collections only** (`$elemMatch`; code 100) | vacuous truth on empty |
 | Path navigation | ✅ joins, unlimited | ⚠️ containment only, unlimited (code 100) | |
 | Sort / top / skip / count | ✅ | ✅ | row sorting addresses output keys |

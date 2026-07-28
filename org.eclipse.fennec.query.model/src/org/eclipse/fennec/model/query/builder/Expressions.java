@@ -42,6 +42,8 @@ import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
+import org.eclipse.fennec.model.expression.StringFunction;
+import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
@@ -292,7 +294,28 @@ public final class Expressions {
 	}
 
 	private static Expression value(Object value) {
+		if (value instanceof PathStep step) {
+			return step.toPath();
+		}
+		if (value instanceof FunctionStep step) {
+			return step.toExpression();
+		}
 		return value instanceof Expression expression ? expression : literal(value);
+	}
+
+	private static Comparison compare(Expression left, ComparisonOperator operator, Object right) {
+		Comparison comparison = FACTORY.createComparison();
+		comparison.setOperator(operator);
+		comparison.setLeft(left);
+		comparison.setRight(value(right));
+		return comparison;
+	}
+
+	private static StringFunction function(StringFunctionKind kind, Expression source) {
+		StringFunction function = FACTORY.createStringFunction();
+		function.setKind(kind);
+		function.setSource(source);
+		return function;
 	}
 
 	// ==================== the path step ====================
@@ -371,11 +394,29 @@ public final class Expressions {
 		}
 
 		private Comparison compare(ComparisonOperator operator, Object right) {
-			Comparison comparison = FACTORY.createComparison();
-			comparison.setOperator(operator);
-			comparison.setLeft(path);
-			comparison.setRight(value(right));
-			return comparison;
+			return Expressions.compare(path, operator, right);
+		}
+
+		// --- string functions ---
+
+		/** @return a comparable step over {@code LOWER(path)} */
+		public FunctionStep toLower() {
+			return new FunctionStep(function(StringFunctionKind.TO_LOWER, path));
+		}
+
+		/** @return a comparable step over {@code UPPER(path)} */
+		public FunctionStep toUpper() {
+			return new FunctionStep(function(StringFunctionKind.TO_UPPER, path));
+		}
+
+		/** @return a comparable step over {@code TRIM(path)} */
+		public FunctionStep trim() {
+			return new FunctionStep(function(StringFunctionKind.TRIM, path));
+		}
+
+		/** @return a comparable step over {@code LENGTH(path)} — compares numerically */
+		public FunctionStep length() {
+			return new FunctionStep(function(StringFunctionKind.LENGTH, path));
 		}
 
 		// --- null / range / membership ---
@@ -504,6 +545,86 @@ public final class Expressions {
 			match.setSource(path);
 			match.setPattern(value(pattern));
 			return match;
+		}
+	}
+
+	/**
+	 * A string-function application with the comparison vocabulary — created via
+	 * {@link PathStep#toLower()}, {@link PathStep#toUpper()}, {@link PathStep#trim()} and
+	 * {@link PathStep#length()}; functions chain ({@code path(name).trim().toLower()}).
+	 * Values are auto-boxed like on {@link PathStep}.
+	 */
+	public static final class FunctionStep {
+
+		private final StringFunction function;
+
+		private FunctionStep(StringFunction function) {
+			this.function = function;
+		}
+
+		/** @return the underlying function expression */
+		public StringFunction toExpression() {
+			return function;
+		}
+
+		// --- chaining ---
+
+		/** @return a step over {@code LOWER(this)} */
+		public FunctionStep toLower() {
+			return new FunctionStep(function(StringFunctionKind.TO_LOWER, function));
+		}
+
+		/** @return a step over {@code UPPER(this)} */
+		public FunctionStep toUpper() {
+			return new FunctionStep(function(StringFunctionKind.TO_UPPER, function));
+		}
+
+		/** @return a step over {@code TRIM(this)} */
+		public FunctionStep trim() {
+			return new FunctionStep(function(StringFunctionKind.TRIM, function));
+		}
+
+		/** @return a step over {@code LENGTH(this)} — compares numerically */
+		public FunctionStep length() {
+			return new FunctionStep(function(StringFunctionKind.LENGTH, function));
+		}
+
+		// --- comparisons ---
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison eq(Object value) {
+			return compare(function, ComparisonOperator.EQ, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison ne(Object value) {
+			return compare(function, ComparisonOperator.NE, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison lt(Object value) {
+			return compare(function, ComparisonOperator.LT, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison le(Object value) {
+			return compare(function, ComparisonOperator.LE, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison gt(Object value) {
+			return compare(function, ComparisonOperator.GT, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison ge(Object value) {
+			return compare(function, ComparisonOperator.GE, value);
 		}
 	}
 }
