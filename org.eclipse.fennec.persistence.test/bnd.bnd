@@ -31,6 +31,7 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.mongodb.driver-core;version=latest,\
 	org.mongodb.driver-sync;version=latest,\
 	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.persistence.query.derived;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.command.model;version=snapshot,\
