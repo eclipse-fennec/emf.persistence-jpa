@@ -14,6 +14,13 @@
 -runbundles.test: \
 	org.eclipse.fennec.persistence.test;version=snapshot
 
+# spifly.dynamic.framework.extension 1.3.6 embeds an ASM that cannot read Java-21
+# class files (daanse db.* snapshots) — "ClassFormatError: Weaving hook failed".
+# Force the resolver to the dynamic.bundle variant, which wires the current
+# org.objectweb.asm 9.9.x bundles instead.
+-runblacklist: \
+	bnd.identity;id='org.apache.aries.spifly.dynamic.framework.extension'
+
 -runfw: org.apache.felix.framework
 
 -runee: JavaSE-21
