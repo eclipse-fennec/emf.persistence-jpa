@@ -129,6 +129,41 @@ try (QueryResult result = resource.query("adults", Map.of("minAge", 50), null)) 
   (created on first use, outside the mapped model). The memory backend has no store and
   therefore no catalog.
 
+## 2a. Query-backed derived references
+
+A derived reference annotated with an OCL derivation (unchanged m2x delegate vocabulary)
+computes its value through the query stack — concept: `query-derived-references.md`:
+
+```xml
+<eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">      <!-- on the EPackage -->
+  <details key="settingDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
+</eAnnotations>
+
+<eStructuralFeatures xsi:type="ecore:EReference" name="adultFriends" upperBound="-1"
+    eType="#//Person" changeable="false" volatile="true" transient="true" derived="true">
+  <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+    <details key="derivation" value="self.friends->select(f | f.age >= 18)"/>
+  </eAnnotations>
+</eStructuralFeatures>
+```
+
+`person.eGet(adultFriends)` then routes **object-specifically per access**:
+
+- Owner loaded from **XMI** (or any non-`QueryableResource`): standard in-memory OCL
+  semantics — local evaluation, or the wrapped m2x delegate for non-pushdown shapes.
+- Owner loaded from a **JPA/Mongo resource** with unresolved reference proxies: a native
+  backend query `… WHERE id IN (:ownerIds) AND <predicate>` — the proxies are never
+  resolved, their ids correlate the query (documented limit, refusal beyond it).
+- Containment or already-resolved references evaluate locally — the data is there.
+
+v1 recognizes the shape `self.<manyReference>->select(v | <predicate>)` with the
+predicate in the blessed expression subset; other derivations run through the plain m2x
+OCL delegate (in an engine-less runtime they are refused with a diagnostic). Results are
+unmodifiable and **volatile** — every access queries; snapshot the list in hot loops.
+The delegate factory registers on the emf.osgi whiteboard (higher service ranking than
+the m2x factory) or programmatically via
+`SettingDelegate.Factory.Registry.INSTANCE.put(uri, new QueryBackedSettingDelegateFactory())`.
+
 ## 3. Write commands (CUD v1)
 
 Per concept §14 the query language is read-only; writes are commands

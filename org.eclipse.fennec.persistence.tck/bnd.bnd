@@ -21,6 +21,12 @@ Bundle-Description: Backend-agnostic compatibility tests for EMF persistence bac
 	org.eclipse.persistence.core;version=latest,\
 	org.eclipse.fennec.persistence;version=snapshot,\
 	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.persistence.query.derived;version=snapshot,\
+	org.eclipse.fennec.expression.ocl;version=snapshot,\
+	org.eclipse.fennec.m2x.ocl.model;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version=latest,\
+	org.eclipse.fennec.m2x.ocl.parser;version=latest,\
+	org.antlr.antlr4-runtime;version=latest,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.command.model;version=snapshot,\

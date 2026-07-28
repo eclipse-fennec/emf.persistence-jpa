@@ -155,6 +155,9 @@ org.eclipse.fennec.emf:org.eclipse.fennec.emf.osgi.bnd.library.workspace:0.1.2
 org.eclipse.fennec.emf:org.eclipse.fennec.emf.osgi.example.model.basic:0.1.0
 org.eclipse.fennec.models:org.eclipse.fennec.common.models.library:0.0.1-SNAPSHOT
 org.eclipse.fennec.m2x:org.eclipse.fennec.m2x.ocl.model:0.1.0-SNAPSHOT
+org.eclipse.fennec.m2x:org.eclipse.fennec.m2x.ocl.api:0.1.0-SNAPSHOT
+org.eclipse.fennec.m2x:org.eclipse.fennec.m2x.ocl.parser:0.1.0-SNAPSHOT
+org.antlr:antlr4-runtime:4.13.2
 
 # Jakarta Persistence
 jakarta.persistence:jakarta.persistence-api:3.2.0

@@ -2,6 +2,9 @@
 <ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="tck" nsURI="http://eclipse.org/fennec/persistence/tck/1.0"
     nsPrefix="tck">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="settingDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
+  </eAnnotations>
   <eClassifiers xsi:type="ecore:EClass" name="Person">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="pid" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true"/>
@@ -14,6 +17,12 @@
         eType="#//Person"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="employer" eType="#//Company"
         eOpposite="#//Company/employees"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="adultFriends" upperBound="-1"
+        eType="#//Person" changeable="false" volatile="true" transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+        <details key="derivation" value="self.friends->select(f | f.age >= 18)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Address">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="aid" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
