@@ -1,18 +1,23 @@
 # Eclipse Fennec Persistence JPA
 
-An OSGi-based persistence framework bridging [EMF](https://eclipse.dev/modeling/emf/) (Eclipse Modeling Framework) with [Jakarta Persistence](https://jakarta.ee/specifications/persistence/) (JPA) via [EclipseLink](https://eclipse.dev/eclipselink/).
+An OSGi-based persistence framework for [EMF](https://eclipse.dev/modeling/emf/) (Eclipse Modeling Framework) with two backends: relational databases via [Jakarta Persistence](https://jakarta.ee/specifications/persistence/) (JPA) / [EclipseLink](https://eclipse.dev/eclipselink/), and [MongoDB](https://www.mongodb.com/).
 
-It maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities through a processor-based transformation pipeline, allowing EObjects to be persisted to relational databases without writing JPA entity classes.
+On the relational path it maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities through a processor-based transformation pipeline, allowing EObjects to be persisted without writing JPA entity classes. On the document path EObjects are (de)serialized to BSON documents through a codec bridge.
 
 ## Key Features
 
 - **Automatic ORM mapping** from Ecore models -- no hand-written JPA entities required
 - **Custom ORM mapping** via EORM metadata for existing database schemas
 - **Dynamic JPA entities** at runtime using EclipseLink's Dynamic Entity API
+- **MongoDB backend** with liveness-gated connection services and codec-based BSON mapping
 - **All relationship types**: OneToOne, OneToMany, ManyToOne, ManyToMany (containment and non-containment)
 - **Inheritance support** (SINGLE_TABLE strategy)
 - **Type conversion** for common Java types (java.time.*, UUID, BigDecimal, BigInteger, arrays, etc.)
-- **EMF Resource integration** via `jpa://` URI scheme and proxy-based lazy loading
+- **EMF Resource integration** via `jpa://` and `mongodb://` URI schemes and proxy-based lazy loading
+- **Backend-neutral query model** -- one canonical expression IR translated to JPQL or MongoDB filters/pipelines; queries run natively or are refused with diagnostics
+- **Query-backed derived references** -- OCL derivation annotations translated to backend queries
+- **PushStream integration** for streaming query results
+- **Connection liveness** -- backend connection services are only registered while they actually work
 - **OSGi Declarative Services** for configuration and lifecycle management
 - **Reverse engineering** of Ecore models from existing database schemas
 
@@ -20,11 +25,23 @@ It maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities throug
 
 | Module | Role |
 |--------|------|
-| `org.eclipse.fennec.persistence` | Core API: `PersistenceEngine`, `ConverterService`, type converters, `EMFHelper` |
+| `org.eclipse.fennec.persistence` | Core API: `PersistenceResource`, `Options`, `ConverterService`, type converters, connection-liveness support |
 | `org.eclipse.fennec.persistence.orm` | EORM metadata model (`eorm.ecore`) + processors (Entity, Basic, OneToMany, ManyToOne, etc.) |
-| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, accessors, `JPAResource` |
+| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard |
+| `org.eclipse.fennec.persistence.mongo` | MongoDB backend: liveness-gated client/database services, `mongodb://` resources, codec-based BSON mapping |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` -- reverse-engineers Ecore models from database schemas |
+| `org.eclipse.fennec.persistence.query` | Backend-neutral query SPI: the canonical query model translated per backend via `QueryProcessor` |
+| `org.eclipse.fennec.persistence.query.derived` | Query-backed derived references: OCL derivation annotations resolved through backend queries |
+| `org.eclipse.fennec.persistence.pushstreams` | OSGi PushStream integration for persistence results |
+| `org.eclipse.fennec.expression.model` | Backend-neutral expression-tree IR for predicates over EMF features |
+| `org.eclipse.fennec.query.model` | Query envelope around the expression model: root type, projection, ordering, paging |
+| `org.eclipse.fennec.command.model` | Write commands (insert/update/delete) for the unified persistence layer |
+| `org.eclipse.fennec.stream.model` | Change-stream metamodel (ChangeSet, ChangeEntry, DeltaKind) |
+| `org.eclipse.fennec.expression.ocl` | Bidirectional bridge between OCL expressions and the expression model |
+| `org.eclipse.fennec.persistence.tck` | Backend-agnostic compatibility test kit, run against both the JPA and the Mongo backend |
 | `org.eclipse.fennec.persistence.test` | OSGi integration tests (JUnit 5, H2 database) |
+| `org.eclipse.fennec.persistence.workspace.library` | bnd library template for external workspace consumption |
+| `org.eclipse.fennec.persistence.bom` | Bill of Materials for downstream consumers |
 
 ## Branches & releases
 
@@ -89,6 +106,8 @@ resource.delete(null);     // removes contents from DB
 
 ## Architecture
 
+The relational path:
+
 ```
 Ecore Model (.ecore)
        |
@@ -113,6 +132,10 @@ Ecore Model (.ecore)
 
 The framework uses EclipseLink's Dynamic Entity API to create JPA entity types at runtime from Ecore metadata, avoiding the need for compile-time entity classes or bytecode weaving.
 
+The MongoDB path replaces the lower half of the diagram: EObjects are (de)serialized to BSON documents through a codec bridge and stored via liveness-gated `MongoClient`/`MongoDatabase` services -- see the [MongoDB Backend Architecture](docs/mongo-architecture.md).
+
+Queries are expressed once against the backend-neutral expression IR and translated per backend (JPQL for EclipseLink, filter documents or aggregation pipelines for MongoDB). A query either runs natively on the backend or is refused with diagnostics -- there is no silent in-memory post-filtering.
+
 ## Documentation
 
 The user documentation is published at
@@ -125,6 +148,7 @@ via the VitePress site in `docs-site/`).
 | [Getting Started](docs/getting-started.md) | Full walkthrough: Ecore model, bootstrap (OSGi + Non-OSGi), CRUD via `jpa://` Resource, lazy-loading semantics |
 | [JPA User Guide](docs/jpa-user-guide.md) | Day-to-day work with `jpa://` resources, options, eorm mapping semantics, converters, unit lifecycle |
 | [MongoDB User Guide](docs/mongo-user-guide.md) | The MongoDB backend: configuration, `mongodb://` resources, codec-based BSON mapping |
+| [Query User Guide](docs/unified-persistence/query-usage.md) | Building and executing backend-neutral queries: `Expressions`, `QueryBuilder`, capability matrix, write commands |
 | [Configuration Reference](docs/configuration-reference.md) | Every `fennec.jpa.*` property, forwarded EclipseLink keys, liveness keys, load/save `Options` |
 | [JPA & OSGi Architecture](docs/osgi-architecture.md) | Persistence units as services, the `jpa://` whiteboard, lazy factory lifecycle (`emfIdleTimeout`) |
 | [MongoDB Backend Architecture](docs/mongo-architecture.md) | Mongo component chain, liveness gating, resource pipeline, BSON codec bridge |
