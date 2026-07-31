@@ -34,8 +34,9 @@ is all the mapping the backend needs.
 - An Ecore model whose persistent EClasses each have exactly one EID
   attribute (`iD="true"`) — it becomes the document `_id`
 - Bundles: `org.eclipse.fennec.persistence.mongo` plus its codec
-  dependencies (`org.eclipse.fennec.codec`, `org.eclipse.fennec.codec.bson`,
-  `org.eclipse.fennec.model.metadata`) and the MongoDB sync driver
+  dependencies (`org.eclipse.fennec.codec`, `org.eclipse.fennec.codec.bson`),
+  the metadata service (`org.eclipse.fennec.emf.osgi.metadata` plus
+  `org.eclipse.fennec.emf.osgi.api`) and the MongoDB sync driver
 
 If you are new to the framework as a whole, read
 [Getting Started](getting-started.md) first — the EMF `Resource` usage
@@ -92,7 +93,7 @@ yourself:
 ```java
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.fennec.model.metadata.api.MetadataService;
+import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -120,7 +121,9 @@ public class LibraryMongoService {
 The third `MongoResourceFactory` argument is an optional
 `CodecValueRegistry` for custom value (de)serialization — pass `null` to use
 the codec defaults. The `MetadataService` must know every `EPackage` you
-persist.
+persist; in OSGi it tracks `EPackage` services automatically, so a model
+bundle that publishes its `EPackageConfigurator` (the generated one does)
+needs no explicit registration.
 
 Because the component `@Reference`s the `MongoDatabase` service, standard DS
 lifecycle applies: your component only activates while a verified connection
@@ -174,7 +177,8 @@ yourself. This is exactly what the compatibility test suite
 ```java
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.fennec.model.metadata.service.MetadataServiceImpl;
+import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
+import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
 
 import com.mongodb.client.MongoClient;
@@ -184,7 +188,7 @@ import com.mongodb.client.MongoDatabase;
 MongoClient client = MongoClients.create("mongodb://localhost:27017");
 MongoDatabase database = client.getDatabase("library");
 
-MetadataServiceImpl metadataService = new MetadataServiceImpl();
+MetadataWhiteboard metadataService = MetadataServices.createWhiteboard();
 metadataService.registerPackage(libraryPackage);
 
 ResourceSet resourceSet = new ResourceSetImpl();
@@ -193,8 +197,11 @@ resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
         .put("mongodb", new MongoResourceFactory(database, metadataService, null));
 ```
 
-Note that no liveness gate exists in this mode — you own the client
-lifecycle, including error handling for an unreachable server.
+`MetadataServices.createWhiteboard()` needs the metadata implementation on
+the classpath — in this workspace that comes with
+`org.eclipse.fennec.emf.osgi.component.minimal` on the testpath. Note also
+that no liveness gate exists in this mode — you own the client lifecycle,
+including error handling for an unreachable server.
 
 ## The `mongodb://` URI scheme
 
@@ -342,8 +349,9 @@ What this means for you:
 - **The `MetadataService` is the type source.** It supplies the codec with
   the registered `EPackage`s so documents can be decoded back into the right
   EClasses. Register every persisted package (in OSGi, bind the
-  `MetadataService` from `org.eclipse.fennec.model.metadata`; in plain Java,
-  call `MetadataServiceImpl.registerPackage`).
+  `MetadataService` from `org.eclipse.fennec.emf.osgi.metadata` — it picks up
+  `EPackage` services by itself; in plain Java, call
+  `MetadataWhiteboard.registerPackage`).
 - **Custom value handling** is possible via an optional
   `CodecValueRegistry` passed to the factory (each resource gets its own
   copy).

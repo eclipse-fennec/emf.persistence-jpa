@@ -172,7 +172,7 @@ and returns `null`.
 
 Mapping is delegated to the Fennec codec framework (`org.eclipse.fennec.codec`,
 `org.eclipse.fennec.codec.bson`) with EClass metadata provided by a `MetadataService`
-(`org.eclipse.fennec.model.metadata`) — there is no mapping model and no
+(`org.eclipse.fennec.emf.osgi.metadata`) — there is no mapping model and no
 transformation pipeline like the JPA side's eorm/processor chain.
 
 - **BsonDocument-direct.** EObjects are written into / read from `BsonDocument`s

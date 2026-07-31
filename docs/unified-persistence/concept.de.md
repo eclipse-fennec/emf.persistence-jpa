@@ -7,6 +7,14 @@ gegen die bestehenden Assets in `fennec.common.models`, `emf.model.metadata`, `e
 (`org.eclipse.fennec.sensinact.mapping`), `org.eclipse.emf-compare` und
 `org.eclipse.emf` (`ecore.change`, `emf.edit`).
 
+> **Metadaten-Service umgezogen (31.07.2026).** Alles, was dieses Dokument
+> `emf.model.metadata` zuschreibt, liegt jetzt in `emf.osgi`:
+> `org.eclipse.fennec.emf.osgi.metadata` (Metadatenmodell und Service-API) und
+> `org.eclipse.fennec.emf.osgi.api` (`FingerprintService`, `ArtifactStore`). Das Donor-Repo
+> wird archiviert. Die in §3.2 beschriebene Aspekt-*Struktur* hat sich mit dem Umzug geändert
+> — siehe die Notiz dort. Referenzdokumentation: `emf.osgi/docs/metadata-service-guide.md` und
+> `emf.osgi/docs/model-fingerprint-guide.md`.
+
 ---
 
 ## 1. Anforderungen & Scope
@@ -30,7 +38,8 @@ Sieben Anforderungscluster treiben dieses Konzept:
    dennoch müssen einzelne Änderungen selektiv rückgängig gemacht / angewendet werden können
    (vgl. `org.eclipse.emf.edit` Command/CommandStack).
 7. **Modell-Metadaten** — Dokumentation, Privacy-Beschreibungen, Genmodels, Codec-Mappings,
-   Maßeinheiten — werden *getrennt* von den EObjects gehalten (`emf.model.metadata`).
+   Maßeinheiten — werden *getrennt* von den EObjects gehalten
+   (`org.eclipse.fennec.emf.osgi.metadata`).
 
 Dazu aus der Diskussion:
 
@@ -125,12 +134,26 @@ Bekannte Lücken, die zu schließen sind:
 Patch** — sobald das Patch-Modell existiert, braucht die Query-Sprache kein eigenes
 Update-Vokabular.
 
-### 3.2 Metadaten-Service (`emf.model.metadata`)
+### 3.2 Metadaten-Service (`org.eclipse.fennec.emf.osgi.metadata`)
 
-Das `metadata.ecore` hat bereits die Aspekt-Registry-Struktur, die dieses Konzept braucht:
-`Aspect` / `PackageAspect` / `ClassAspect` / `FeatureAspect` plus `PackageProfile`/`ClassProfile`,
+Das Metadatenmodell hat bereits die Aspekt-Registry-Struktur, die dieses Konzept braucht,
 geschlüsselt über Ecore-Elemente. Aspekte sind eigenständige Modelle (keine EAnnotations) —
 richtig so, denn Aspekte haben eigenen Lifecycle, eigene Autoren und eigene Ladbarkeit.
+
+> **Geändert mit dem Umzug nach `emf.osgi` (31.07.2026).** Die typisierte Aspekt-Hierarchie,
+> gegen die dieser Abschnitt geschrieben wurde — `Aspect` / `PackageAspect` / `ClassAspect` /
+> `FeatureAspect` plus `PackageProfile` / `ClassProfile`, von Konsumenten im eigenen Ecore
+> erweitert — ist entfallen. Ersatz: ein opaker `AspectEntry { typeId, content: EObject
+> (Containment), diagnostics }`, sodass ein Aspektmodell keine Ecore-Abhängigkeit auf das
+> Metadatenmodell mehr braucht. Konsequenzen für dieses Konzept: Aspekte werden *komponiert*,
+> nicht abgeleitet; jeder `MetadataService`-Lookup liefert `Optional`; die Traversierungs-SPI ist
+> ein einzelner `MetadataHandler`-Hook (`onPackageRegistered`/`onPackageUnregistered`), der den
+> Mirror-Tree selbst durchläuft, statt der `buildXxxAspect`-Callbacks pro Element; die
+> vorgemergte Annotationshierarchie der Profiles hat keinen Ersatz und ist im eigenen Handler zu
+> berechnen. Die Registrierung ist über den Modell-Fingerprint geschlüsselt, eine nsURI kann also
+> legitim mehrere lebende Versionen halten — `getPackageMetadataVersions(nsURI)` /
+> `getPackageMetadataByFingerprint` wählen darunter aus. Jede Registry in diesem Konzept, die
+> Modelle allein über die nsURI schlüsselt, muss stattdessen über den Fingerprint schlüsseln.
 
 Verallgemeinert wird daraus eine **Aspekt-Registry**: ein OSGi-Service, bei dem Aspektmodelle
 (orm, Codec-Mapping, Docs, Privacy, Units, Tracking-Config) registriert und unter dem Schlüssel
@@ -1241,7 +1264,7 @@ und Prinzipien werden genau deshalb jetzt fixiert, damit das gilt).
 Wie das Konzept auf dem bestehenden Stack landet — MongoDB, PostgreSQL, Lucene, RabbitMQ,
 MQTT, CloudEvents — plus die hauseigenen Bausteine Model Atlas (`fennec-model.atlas`,
 Apicurio- oder file-backed, auf `emf.osgi`), DDSR (`kloster-prototype`) und der
-Metadaten-Service (`emf.model.metadata`). Leitregel: jede Komponente unten implementiert eine
+Metadaten-Service (`org.eclipse.fennec.emf.osgi.metadata`). Leitregel: jede Komponente unten implementiert eine
 *Rolle* aus §2.1; der Rollenvertrag bleibt technologieneutral, sodass jede Zeile pro
 Deployment austauschbar ist.
 
@@ -1253,7 +1276,7 @@ Deployment austauschbar ist.
 | CHANGELOG-Stream | PostgreSQL-Append-only-Tabelle (`(stream_id, seq)` PK, Deltas als JSONB, partitioniert) oder MongoDB-Collection mit Unique-Index `(streamId, sequence)` | das klassische Event-Store-auf-RDBMS-Muster; **einen kanonischen Log-Store pro Deployment** wählen, das Log nie über zwei spiegeln |
 | TIMESERIES-Stream | MongoDB **Time Series Collections**; auf PostgreSQL: **TimescaleDB** | Timescale mappt 1:1: Hypertables = Serienspeicher, Retention-Policies = `DeletionRule`, Continuous Aggregates = unsere Projektionen (§15), native Kompression = das Fingerprint-Spalten-Argument (§6.3) |
 | Snapshot-Kette / Fingerprint-Registry | **Model Atlas** | siehe §19.2 (Hinweis: das frühere Apicurio-Backend war kundenspezifisch und wurde entfernt) |
-| Aspekt-/Metadaten-Registry (API) | Metadaten-Service (`emf.model.metadata`) als OSGi-Service, Artefakte gespeichert über Model Atlas | Schlüssel `(nsURI, EClass, Feature)` (§3.2) |
+| Aspekt-/Metadaten-Registry (API) | Metadaten-Service (`org.eclipse.fennec.emf.osgi.metadata`) als OSGi-Service, Artefakte gespeichert über Model Atlas | Schlüssel `(Fingerprint, EClass, Feature)`, nsURI nur als Sekundärindex (§3.2) |
 | Index-Holder / Such-Projektion | **Lucene** (Model Atlas bringt `management.lucene` bereits mit) | „rebuildable by design" ist genau Lucenes Vertrag — P1 verkörpert |
 | Projektions-Speisung (async) | MongoDB Change Streams / PostgreSQL `LISTEN/NOTIFY` oder logische Replikation | treibt Index-/Aggregat-Updates ohne Polling |
 | Transport-Umschlag | **CloudEvents** | siehe §19.3 — `dataschema` trägt die Fingerprint-Auflösungs-URI |
