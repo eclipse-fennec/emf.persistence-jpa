@@ -68,7 +68,7 @@ import org.eclipse.fennec.codec.format.impl.FormatDelegateParser;
 import org.eclipse.fennec.codec.module.CodecModule;
 import org.eclipse.fennec.codec.resource.CodecResource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
-import org.eclipse.fennec.model.metadata.api.MetadataService;
+import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
 
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;

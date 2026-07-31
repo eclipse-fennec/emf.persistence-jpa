@@ -34,7 +34,8 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.fennec.model.metadata.service.MetadataServiceImpl;
+import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
+import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -73,7 +74,7 @@ class MixedBackendResourceSetTest {
 	private EntityManagerFactory emf;
 	private MongoClient client;
 	private MongoDatabase database;
-	private MetadataServiceImpl metadataService;
+	private MetadataWhiteboard metadataService;
 	private String databaseName;
 
 	@BeforeEach
@@ -94,7 +95,7 @@ class MixedBackendResourceSetTest {
 		eClasses.add(tckPackage.getEClassifier("Company"));
 		emf = JpaTckSupport.bootstrap(PU_NAME, eClasses);
 
-		metadataService = new MetadataServiceImpl();
+		metadataService = MetadataServices.createWhiteboard();
 		metadataService.registerPackage(tckPackage);
 		client = MongoClients.create(connectionString);
 		databaseName = "mixed_" + UUID.randomUUID().toString().replace("-", "");

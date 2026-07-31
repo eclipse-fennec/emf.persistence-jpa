@@ -39,8 +39,8 @@ Bundle-Description: Backend-agnostic compatibility tests for EMF persistence bac
 	org.eclipse.fennec.codec;version=latest,\
 	org.eclipse.fennec.codec.bson;version=latest,\
 	org.eclipse.fennec.codec.metadata;version=latest,\
-	org.eclipse.fennec.model.metadata;version=latest,\
-	org.eclipse.fennec.model.metadata.api;version=latest,\
+	org.eclipse.fennec.emf.osgi.metadata;version=latest,\
+	org.eclipse.fennec.emf.osgi.api;version=latest,\
 	tools.jackson.core.jackson-core;version=latest,\
 	tools.jackson.core.jackson-databind;version=latest,\
 	com.fasterxml.jackson.core.jackson-annotations;version=latest,\

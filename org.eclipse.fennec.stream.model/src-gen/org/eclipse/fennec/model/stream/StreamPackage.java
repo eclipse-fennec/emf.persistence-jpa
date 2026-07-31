@@ -46,7 +46,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = StreamPackage.eNS_URI, genModel = "/model/stream.genmodel", genModelSourceLocations = {"model/stream.genmodel","org.eclipse.fennec.stream.model/model/stream.genmodel"}, ecore = "/model/stream.ecore", ecoreSourceLocations = "/model/stream.ecore")
+@EPackage(uri = StreamPackage.eNS_URI, fingerprint = "fp1:b88eae543d45edf2b5c2f4aeefa350ca67a578d35551931ca03d206879591ffc", genModel = "/model/stream.genmodel", genModelSourceLocations = {"model/stream.genmodel","org.eclipse.fennec.stream.model/model/stream.genmodel"}, ecore = "/model/stream.ecore", ecoreSourceLocations = "/model/stream.ecore")
 public interface StreamPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
