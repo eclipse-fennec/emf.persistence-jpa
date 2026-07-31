@@ -245,7 +245,7 @@ final class MemoryPredicate {
 		return orEqual ? compared <= 0 : compared < 0;
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings("unchecked")
 	private static Integer tryCompare(Object left, Object right) {
 		if (left instanceof Number a && right instanceof Number b) {
 			return Double.compare(a.doubleValue(), b.doubleValue());
