@@ -2,6 +2,24 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 
 -workingset: persistence
 
+# Build-order dependencies on all workspace bundles used in the -runbundles
+# of test.bndrun, so testOSGi never resolves against stale/missing jars of
+# projects that are not on the -buildpath/-testpath (e.g. persistence.ecore,
+# expression.ocl).
+-dependson: \
+	org.eclipse.fennec.command.model,\
+	org.eclipse.fennec.expression.model,\
+	org.eclipse.fennec.expression.ocl,\
+	org.eclipse.fennec.persistence,\
+	org.eclipse.fennec.persistence.eclipselink,\
+	org.eclipse.fennec.persistence.ecore,\
+	org.eclipse.fennec.persistence.mongo,\
+	org.eclipse.fennec.persistence.orm,\
+	org.eclipse.fennec.persistence.query,\
+	org.eclipse.fennec.persistence.query.derived,\
+	org.eclipse.fennec.query.model,\
+	org.eclipse.fennec.stream.model
+
 -library: \
 	enableOSGi-Test,\
 	enableEMF

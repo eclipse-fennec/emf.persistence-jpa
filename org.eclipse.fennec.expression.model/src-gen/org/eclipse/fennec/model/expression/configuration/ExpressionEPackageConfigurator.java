@@ -34,6 +34,14 @@ import org.eclipse.fennec.model.expression.ExpressionPackage;
  */
 public class ExpressionEPackageConfigurator implements EPackageConfigurator {
 	
+	/**
+	 * The fingerprint of this model version, computed from the <code>.ecore</code> at build
+	 * time. It identifies the model content, not the artifact - see the <code>emf.fingerprint</code>
+	 * service property.
+	 * @generated
+	 */
+	public static final String FINGERPRINT = "fp1:9b34cb750aaad036001d4b8e51d5a1bca37470a878faf5d5bbfe88096faeb3f6";
+
 	private ExpressionPackage ePackage;
 
 	protected ExpressionEPackageConfigurator(ExpressionPackage ePackage){
@@ -71,6 +79,7 @@ public class ExpressionEPackageConfigurator implements EPackageConfigurator {
 		properties.put(EMFNamespaces.EMF_MODEL_REGISTRATION, EMFNamespaces.MODEL_REGISTRATION_PROVIDED);
 		properties.put(EMFNamespaces.EMF_MODEL_FILE_EXT, "expression");
 		properties.put(EMFNamespaces.EMF_MODEL_VERSION, "1.0");
+		properties.put(EMFNamespaces.EMF_MODEL_FINGERPRINT, FINGERPRINT);
 		return properties;
 	}
 }

@@ -68,7 +68,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = EORMPackage.eNS_URI, genModel = "/model/epersistence.genmodel", genModelSourceLocations = {"model/epersistence.genmodel","org.eclipse.fennec.persistence.orm/model/epersistence.genmodel"}, ecore = "/model/eorm.ecore", ecoreSourceLocations = "/model/eorm.ecore")
+@EPackage(uri = EORMPackage.eNS_URI, fingerprint = "fp1:ec55bd4be1f58353a63d143b9056e33c1da5f52cda3cfbc1243f570eeb320d0e", genModel = "/model/epersistence.genmodel", genModelSourceLocations = {"model/epersistence.genmodel","org.eclipse.fennec.persistence.orm/model/epersistence.genmodel"}, ecore = "/model/eorm.ecore", ecoreSourceLocations = "/model/eorm.ecore")
 public interface EORMPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.

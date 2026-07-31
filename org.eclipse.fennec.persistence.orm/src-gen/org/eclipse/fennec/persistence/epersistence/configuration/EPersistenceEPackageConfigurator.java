@@ -59,6 +59,14 @@ import org.eclipse.fennec.persistence.epersistence.EPersistencePackage;
  */
 public class EPersistenceEPackageConfigurator implements EPackageConfigurator {
 	
+	/**
+	 * The fingerprint of this model version, computed from the <code>.ecore</code> at build
+	 * time. It identifies the model content, not the artifact - see the <code>emf.fingerprint</code>
+	 * service property.
+	 * @generated
+	 */
+	public static final String FINGERPRINT = "fp1:43c9b2cc9b952123df1a0f5ba4bffbf1a000b381d45e9049eb757fc004d8f3a8";
+
 	private EPersistencePackage ePackage;
 
 	protected EPersistenceEPackageConfigurator(EPersistencePackage ePackage){
@@ -96,6 +104,7 @@ public class EPersistenceEPackageConfigurator implements EPackageConfigurator {
 		properties.put(EMFNamespaces.EMF_MODEL_REGISTRATION, EMFNamespaces.MODEL_REGISTRATION_PROVIDED);
 		properties.put(EMFNamespaces.EMF_MODEL_FILE_EXT, "epersistence");
 		properties.put(EMFNamespaces.EMF_MODEL_VERSION, "1.0");
+		properties.put(EMFNamespaces.EMF_MODEL_FINGERPRINT, FINGERPRINT);
 		return properties;
 	}
 }

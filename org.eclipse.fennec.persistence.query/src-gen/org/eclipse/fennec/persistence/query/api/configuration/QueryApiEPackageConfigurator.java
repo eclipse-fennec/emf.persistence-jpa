@@ -34,6 +34,14 @@ import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
  */
 public class QueryApiEPackageConfigurator implements EPackageConfigurator {
 	
+	/**
+	 * The fingerprint of this model version, computed from the <code>.ecore</code> at build
+	 * time. It identifies the model content, not the artifact - see the <code>emf.fingerprint</code>
+	 * service property.
+	 * @generated
+	 */
+	public static final String FINGERPRINT = "fp1:8512c3d0ecf2fdbdfea82bd5548d7a40e3a7ba31254d8e81f926622d32d5af05";
+
 	private QueryApiPackage ePackage;
 
 	protected QueryApiEPackageConfigurator(QueryApiPackage ePackage){
@@ -71,6 +79,7 @@ public class QueryApiEPackageConfigurator implements EPackageConfigurator {
 		properties.put(EMFNamespaces.EMF_MODEL_REGISTRATION, EMFNamespaces.MODEL_REGISTRATION_PROVIDED);
 		properties.put(EMFNamespaces.EMF_MODEL_FILE_EXT, "queryapi");
 		properties.put(EMFNamespaces.EMF_MODEL_VERSION, "1.0");
+		properties.put(EMFNamespaces.EMF_MODEL_FINGERPRINT, FINGERPRINT);
 		return properties;
 	}
 }

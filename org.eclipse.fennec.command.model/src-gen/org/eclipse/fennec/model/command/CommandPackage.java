@@ -41,7 +41,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = CommandPackage.eNS_URI, genModel = "/model/command.genmodel", genModelSourceLocations = {"model/command.genmodel","org.eclipse.fennec.command.model/model/command.genmodel"}, ecore = "/model/command.ecore", ecoreSourceLocations = "/model/command.ecore")
+@EPackage(uri = CommandPackage.eNS_URI, fingerprint = "fp1:1cb2473b75720ee9b613504439854976d41960f72cfc18e8bc03cfb3c736d544", genModel = "/model/command.genmodel", genModelSourceLocations = {"model/command.genmodel","org.eclipse.fennec.command.model/model/command.genmodel"}, ecore = "/model/command.ecore", ecoreSourceLocations = "/model/command.ecore")
 public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.

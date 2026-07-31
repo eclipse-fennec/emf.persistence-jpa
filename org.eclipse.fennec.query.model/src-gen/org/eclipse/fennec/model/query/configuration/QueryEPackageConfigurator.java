@@ -34,6 +34,14 @@ import org.eclipse.fennec.model.query.QueryPackage;
  */
 public class QueryEPackageConfigurator implements EPackageConfigurator {
 	
+	/**
+	 * The fingerprint of this model version, computed from the <code>.ecore</code> at build
+	 * time. It identifies the model content, not the artifact - see the <code>emf.fingerprint</code>
+	 * service property.
+	 * @generated
+	 */
+	public static final String FINGERPRINT = "fp1:e0c258f24911a9d115b1eb8599da36b94c8a53f97401167558d107ee607da642";
+
 	private QueryPackage ePackage;
 
 	protected QueryEPackageConfigurator(QueryPackage ePackage){
@@ -71,6 +79,7 @@ public class QueryEPackageConfigurator implements EPackageConfigurator {
 		properties.put(EMFNamespaces.EMF_MODEL_REGISTRATION, EMFNamespaces.MODEL_REGISTRATION_PROVIDED);
 		properties.put(EMFNamespaces.EMF_MODEL_FILE_EXT, "query");
 		properties.put(EMFNamespaces.EMF_MODEL_VERSION, "2.0");
+		properties.put(EMFNamespaces.EMF_MODEL_FINGERPRINT, FINGERPRINT);
 		return properties;
 	}
 }
