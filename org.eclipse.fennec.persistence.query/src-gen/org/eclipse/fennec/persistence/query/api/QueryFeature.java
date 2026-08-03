@@ -438,6 +438,19 @@ public enum QueryFeature implements Enumerator {
 	STRING_FUNCTIONS(63, "STRING_FUNCTIONS", "STRING_FUNCTIONS"),
 
 	/**
+	 * The '<em><b>ARITHMETIC</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Arithmetic value expressions (v2 IR Arithmetic ADD/SUB/MUL/DIV/MOD and Negate). DIV is floating-point division; division by a literal zero is refused by the validator.
+	 * <!-- end-model-doc -->
+	 * @see #ARITHMETIC_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	ARITHMETIC(64, "ARITHMETIC", "ARITHMETIC"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -937,6 +950,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int STRING_FUNCTIONS_VALUE = 63;
 
 	/**
+	 * The '<em><b>ARITHMETIC</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Arithmetic value expressions (v2 IR Arithmetic ADD/SUB/MUL/DIV/MOD and Negate). DIV is floating-point division; division by a literal zero is refused by the validator.
+	 * <!-- end-model-doc -->
+	 * @see #ARITHMETIC
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int ARITHMETIC_VALUE = 64;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1045,6 +1072,7 @@ public enum QueryFeature implements Enumerator {
 			AGG_COUNT,
 			AGG_COUNT_DISTINCT,
 			STRING_FUNCTIONS,
+			ARITHMETIC,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1137,6 +1165,7 @@ public enum QueryFeature implements Enumerator {
 			case AGG_COUNT_VALUE: return AGG_COUNT;
 			case AGG_COUNT_DISTINCT_VALUE: return AGG_COUNT_DISTINCT;
 			case STRING_FUNCTIONS_VALUE: return STRING_FUNCTIONS;
+			case ARITHMETIC_VALUE: return ARITHMETIC;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

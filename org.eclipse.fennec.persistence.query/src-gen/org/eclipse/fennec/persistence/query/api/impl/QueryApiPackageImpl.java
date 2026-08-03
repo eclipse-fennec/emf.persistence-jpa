@@ -988,6 +988,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AGG_COUNT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AGG_COUNT_DISTINCT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.STRING_FUNCTIONS);
+		addEEnumLiteral(queryFeatureEEnum, QueryFeature.ARITHMETIC);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FEATUREPATH_NESTED);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.TYPE_FILTER);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.PARAMETERS);

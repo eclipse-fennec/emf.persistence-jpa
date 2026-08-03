@@ -44,6 +44,12 @@ Query query = QueryBuilder.from(personClass)
 - **String functions**: `path(name).toLower().eq("bob")`, `path(name).length().gt(3)` —
   `toLower/toUpper/trim/length`, chainable (`trim().toLower()`); JPA renders JPQL
   functions, Mongo an `$expr` aggregation expression.
+- **Arithmetic** (#76): `path(age).plus(10).times(2).gt(90)`, statics
+  `add/sub/mul/div/mod/neg(…)` — chainable, values auto-boxed. Semantics: type-preserving
+  Java promotion, except `div`, which is **always floating-point**
+  (`path(age).dividedBy(4).eq(7.5)` matches age 30). Division by a literal zero is
+  refused at validation; a runtime zero surfaces the backend's error. JPA renders JPQL
+  operators (`* 1.0 /` for div), Mongo `$expr` (`$add`…`$mod`, root paths only).
 - **Field-to-field**: `path(a).eq(path(b))` compares two features of the root type;
   either side may wrap string functions. Comparisons involving null/missing values are
   false on every backend (SQL semantics).

@@ -7,18 +7,8 @@
     usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.command.model/model/command.genmodel#//command ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream"
     operationReflection="true" importOrganizing="true" oSGiCompatible="true">
   <foreignModel>query-api.ecore</foreignModel>
-  <genPackages prefix="QueryApi" basePackage="org.eclipse.fennec.persistence.query" disposableProviderFactory="true"
-      ecorePackage="query-api.ecore#/">
-    <genDataTypes ecoreDataType="query-api.ecore#//Diagnostic"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//ConverterService"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//QueryException"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//IOException"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//EObjectStream"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//QueryFeatureSet"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
+  <genPackages prefix="QueryApi" basePackage="org.eclipse.fennec.persistence.query"
+      disposableProviderFactory="true" ecorePackage="query-api.ecore#/">
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="query-api.ecore#//QueryShape">
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/OBJECTS"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/PROJECTION"/>
@@ -57,12 +47,23 @@
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_COUNT"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_COUNT_DISTINCT"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/STRING_FUNCTIONS"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/ARITHMETIC"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PARAMETERS"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AS_OF"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SERIES_RANGE"/>
     </genEnums>
+    <genDataTypes ecoreDataType="query-api.ecore#//Diagnostic"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ConverterService"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//QueryException"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//IOException"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//EObjectStream"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//QueryFeatureSet"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//AutoCloseable"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//QueryCapabilities">
       <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/supports">

@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.query.memory;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -23,6 +25,8 @@ import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Exists;
@@ -30,8 +34,9 @@ import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
-import org.eclipse.fennec.model.expression.StringMatchKind;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
@@ -202,7 +207,85 @@ final class MemoryPredicate {
 			case LENGTH -> text.length();
 			};
 		}
+		if (expression instanceof Arithmetic arithmetic) {
+			Object left = operand(arithmetic.getLeft(), candidate, bindings);
+			Object right = operand(arithmetic.getRight(), candidate, bindings);
+			return arithmetic(arithmetic.getOperator(), left, right);
+		}
+		if (expression instanceof Negate negate) {
+			return negate(operand(negate.getOperand(), candidate, bindings));
+		}
 		return values.get(expression);
+	}
+
+	/**
+	 * Arithmetic per issue #76: type-preserving Java promotion — integral operands stay
+	 * integral, one floating operand widens the result, BigDecimal wins over both.
+	 * DIV is the exception and always divides floating-point (DECIMAL64 for decimals).
+	 * Null operands and a zero divisor yield {@code null} (the enclosing comparison is
+	 * false) — the database backends surface their own division error instead.
+	 */
+	private static Object arithmetic(ArithmeticOperator operator, Object left, Object right) {
+		if (!(left instanceof Number a) || !(right instanceof Number b)) {
+			return null;
+		}
+		if (operator == ArithmeticOperator.DIV) {
+			if (a instanceof BigDecimal || b instanceof BigDecimal) {
+				BigDecimal divisor = decimal(b);
+				return divisor.signum() == 0 ? null : decimal(a).divide(divisor, MathContext.DECIMAL64);
+			}
+			double divisor = b.doubleValue();
+			return divisor == 0.0d ? null : a.doubleValue() / divisor;
+		}
+		if (a instanceof BigDecimal || b instanceof BigDecimal) {
+			BigDecimal l = decimal(a);
+			BigDecimal r = decimal(b);
+			return switch (operator) {
+			case ADD -> l.add(r);
+			case SUB -> l.subtract(r);
+			case MUL -> l.multiply(r);
+			case MOD -> r.signum() == 0 ? null : l.remainder(r);
+			default -> null; // DIV handled above
+			};
+		}
+		if (isFloating(a) || isFloating(b)) {
+			double l = a.doubleValue();
+			double r = b.doubleValue();
+			return switch (operator) {
+			case ADD -> l + r;
+			case SUB -> l - r;
+			case MUL -> l * r;
+			case MOD -> r == 0.0d ? null : l % r;
+			default -> null;
+			};
+		}
+		long l = a.longValue();
+		long r = b.longValue();
+		return switch (operator) {
+		case ADD -> l + r;
+		case SUB -> l - r;
+		case MUL -> l * r;
+		case MOD -> r == 0L ? null : l % r;
+		default -> null;
+		};
+	}
+
+	private static Object negate(Object value) {
+		if (value instanceof BigDecimal decimal) {
+			return decimal.negate();
+		}
+		if (value instanceof Number number) {
+			return isFloating(number) ? -number.doubleValue() : -number.longValue();
+		}
+		return null;
+	}
+
+	private static boolean isFloating(Number number) {
+		return number instanceof Double || number instanceof Float;
+	}
+
+	private static BigDecimal decimal(Number number) {
+		return number instanceof BigDecimal decimal ? decimal : new BigDecimal(number.toString());
 	}
 
 	/** Navigates a root-based path (used by the plan for sort/projection/grouping). */

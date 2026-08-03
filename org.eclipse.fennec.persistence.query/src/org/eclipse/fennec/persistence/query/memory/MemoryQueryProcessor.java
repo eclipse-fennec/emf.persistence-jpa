@@ -23,6 +23,7 @@ import java.util.Set;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Expression;
@@ -30,6 +31,7 @@ import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -223,6 +225,15 @@ public class MemoryQueryProcessor implements QueryProcessor {
 				operand(function.getSource(), target, scope);
 				return;
 			}
+			if (expression instanceof Arithmetic arithmetic) {
+				operand(arithmetic.getLeft(), target, scope);
+				operand(arithmetic.getRight(), target, scope);
+				return;
+			}
+			if (expression instanceof Negate negate) {
+				operand(negate.getOperand(), target, scope);
+				return;
+			}
 			values.put(expression, ExpressionValues.resolve(expression, target, context.parameters(), null));
 		}
 
@@ -306,7 +317,23 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			if (left instanceof StringFunction function && function.getSource() instanceof PropertyPath path) {
 				return ExpressionValues.targetFeature(path);
 			}
-			return null;
+			PropertyPath numericPath = firstPath(left);
+			if (numericPath == null) {
+				numericPath = firstPath(right);
+			}
+			return numericPath == null ? null : ExpressionValues.targetFeature(numericPath);
+		}
+
+		/** The first navigated path inside an arithmetic tree — types its literal peers. */
+		private PropertyPath firstPath(Expression expression) {
+			if (expression instanceof Arithmetic arithmetic) {
+				PropertyPath left = firstPath(arithmetic.getLeft());
+				return left != null ? left : firstPath(arithmetic.getRight());
+			}
+			if (expression instanceof Negate negate) {
+				return firstPath(negate.getOperand());
+			}
+			return expression instanceof PropertyPath path ? path : null;
 		}
 	}
 

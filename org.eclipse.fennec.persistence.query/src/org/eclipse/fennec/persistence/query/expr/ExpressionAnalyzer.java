@@ -16,17 +16,22 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
+import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.query.Aggregate;
@@ -67,12 +72,13 @@ public final class ExpressionAnalyzer {
 		}
 		Set<QueryFeature> features = EnumSet.noneOf(QueryFeature.class);
 		int[] maxDepth = { 0 };
+		boolean[] zeroDivision = { false };
 
 		if (query.getFrom() != null) {
 			features.add(QueryFeature.TYPE_FILTER);
 		}
 		if (query.getPredicate() != null) {
-			walk(query.getPredicate(), features, maxDepth);
+			walk(query.getPredicate(), features, maxDepth, zeroDivision);
 		}
 		for (OrderBy orderBy : query.getOrderBy()) {
 			features.add(QueryFeature.SORT);
@@ -86,7 +92,7 @@ public final class ExpressionAnalyzer {
 				features.add(QueryFeature.PROJECTION_NESTED);
 			}
 		}
-		boolean aggregating = analyzePipeline(query.getApply(), features, maxDepth);
+		boolean aggregating = analyzePipeline(query.getApply(), features, maxDepth, zeroDivision);
 		if (!query.getExpand().isEmpty()) {
 			features.add(QueryFeature.EXPAND);
 			query.getExpand().forEach(expand -> path(expand, features, maxDepth));
@@ -108,7 +114,7 @@ public final class ExpressionAnalyzer {
 		}
 
 		QueryShape shape = deriveShape(query, aggregating);
-		return new QueryAnalysis(features, maxDepth[0], shape);
+		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0]);
 	}
 
 	private static QueryShape deriveShape(Query query, boolean aggregating) {
@@ -124,7 +130,8 @@ public final class ExpressionAnalyzer {
 		return QueryShape.OBJECTS;
 	}
 
-	private static boolean analyzePipeline(Pipeline pipeline, Set<QueryFeature> features, int[] maxDepth) {
+	private static boolean analyzePipeline(Pipeline pipeline, Set<QueryFeature> features, int[] maxDepth,
+			boolean[] zeroDivision) {
 		if (pipeline == null) {
 			return false;
 		}
@@ -143,7 +150,7 @@ public final class ExpressionAnalyzer {
 				}
 			} else if (stage instanceof FilterStage filter) {
 				beyondSingleGroupBy = true;
-				walk(filter.getPredicate(), features, maxDepth);
+				walk(filter.getPredicate(), features, maxDepth, zeroDivision);
 			} else {
 				beyondSingleGroupBy = true;
 			}
@@ -165,16 +172,17 @@ public final class ExpressionAnalyzer {
 		};
 	}
 
-	private static void walk(Expression expression, Set<QueryFeature> features, int[] maxDepth) {
+	private static void walk(Expression expression, Set<QueryFeature> features, int[] maxDepth,
+			boolean[] zeroDivision) {
 		if (expression == null) {
 			return;
 		}
 		if (expression instanceof Junction junction) {
 			features.add(junction instanceof And ? QueryFeature.LOGICAL_AND : QueryFeature.LOGICAL_OR);
-			junction.getOperands().forEach(operand -> walk(operand, features, maxDepth));
+			junction.getOperands().forEach(operand -> walk(operand, features, maxDepth, zeroDivision));
 		} else if (expression instanceof Not not) {
 			features.add(QueryFeature.LOGICAL_NOT);
-			walk(not.getOperand(), features, maxDepth);
+			walk(not.getOperand(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof Comparison comparison) {
 			features.add(switch (comparison.getOperator()) {
 			case EQ -> QueryFeature.WHERE_EQ;
@@ -184,40 +192,63 @@ public final class ExpressionAnalyzer {
 			if (navigates(comparison.getLeft()) && navigates(comparison.getRight())) {
 				features.add(QueryFeature.FIELD_TO_FIELD);
 			}
-			walk(comparison.getLeft(), features, maxDepth);
-			walk(comparison.getRight(), features, maxDepth);
+			walk(comparison.getLeft(), features, maxDepth, zeroDivision);
+			walk(comparison.getRight(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof IsNull isNull) {
 			features.add(QueryFeature.IS_NULL);
-			walk(isNull.getSource(), features, maxDepth);
+			walk(isNull.getSource(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof Between between) {
 			features.add(QueryFeature.WHERE_RANGE);
-			walk(between.getSource(), features, maxDepth);
-			walk(between.getLower(), features, maxDepth);
-			walk(between.getUpper(), features, maxDepth);
+			walk(between.getSource(), features, maxDepth, zeroDivision);
+			walk(between.getLower(), features, maxDepth, zeroDivision);
+			walk(between.getUpper(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof In in) {
 			features.add(QueryFeature.IN);
-			walk(in.getSource(), features, maxDepth);
-			in.getValues().forEach(value -> walk(value, features, maxDepth));
+			walk(in.getSource(), features, maxDepth, zeroDivision);
+			in.getValues().forEach(value -> walk(value, features, maxDepth, zeroDivision));
 		} else if (expression instanceof StringMatch match) {
 			features.add(QueryFeature.WHERE_STRING_MATCH);
 			if (match.isCaseInsensitive()) {
 				features.add(QueryFeature.STRING_MATCH_CASE_INSENSITIVE);
 			}
-			walk(match.getSource(), features, maxDepth);
-			walk(match.getPattern(), features, maxDepth);
+			walk(match.getSource(), features, maxDepth, zeroDivision);
+			walk(match.getPattern(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof Quantifier quantifier) {
 			features.add(quantifier instanceof Exists ? QueryFeature.EXISTS : QueryFeature.FOR_ALL);
 			path(quantifier.getSource(), features, maxDepth);
-			walk(quantifier.getPredicate(), features, maxDepth);
+			walk(quantifier.getPredicate(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof StringFunction function) {
 			features.add(QueryFeature.STRING_FUNCTIONS);
-			walk(function.getSource(), features, maxDepth);
+			walk(function.getSource(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof Arithmetic arithmetic) {
+			features.add(QueryFeature.ARITHMETIC);
+			if ((arithmetic.getOperator() == ArithmeticOperator.DIV
+					|| arithmetic.getOperator() == ArithmeticOperator.MOD)
+					&& isLiteralZero(arithmetic.getRight())) {
+				zeroDivision[0] = true;
+			}
+			walk(arithmetic.getLeft(), features, maxDepth, zeroDivision);
+			walk(arithmetic.getRight(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof Negate negate) {
+			features.add(QueryFeature.ARITHMETIC);
+			walk(negate.getOperand(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof ParameterRef) {
 			features.add(QueryFeature.PARAMETERS);
 		} else if (expression instanceof PropertyPath propertyPath) {
 			path(propertyPath, features, maxDepth);
 		}
 		// literals and variable refs carry no features
+	}
+
+	/** Whether the divisor is a literal zero (statically refusable, issue #76). */
+	private static boolean isLiteralZero(Expression divisor) {
+		if (divisor instanceof IntegerLiteral literal) {
+			return literal.getValue() == 0L;
+		}
+		if (divisor instanceof RealLiteral literal) {
+			return literal.getValue() == 0.0d;
+		}
+		return false;
 	}
 
 	/** Whether the operand navigates a feature — directly or through string functions. */

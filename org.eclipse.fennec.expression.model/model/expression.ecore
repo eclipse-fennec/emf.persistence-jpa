@@ -213,10 +213,28 @@
   <!-- ==================== Functions ==================== -->
   <eClassifiers xsi:type="ecore:EClass" name="StringFunction" eSuperTypes="#//Expression">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Minimal v1 string function set applied to a value expression. Further functions (concat, substring, date parts, arithmetic) are additive later — see the deliberately-absent list in the redesign concept §3.1."/>
+      <details key="documentation" value="Minimal v1 string function set applied to a value expression. Further functions (concat, substring, date parts) are additive later — see the deliberately-absent list in the redesign concept §3.1."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//StringFunctionKind"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Arithmetic" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Binary arithmetic over two numeric value expressions (issue #76, driving use case: the fennec-odata pushdown migration). Semantics: type-preserving Java numeric promotion (int op int = int, mixed operands widen to the wider type) — except DIV, which is always floating-point division (integer truncation is deliberately not modelled; OData div/divby both land here). Division by a literal zero is refused statically by the validator; a zero divisor at runtime surfaces the backend's error. OCL reference: the +, -, *, / and mod operations."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="operator" lowerBound="1"
+        eType="#//ArithmeticOperator"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="left" lowerBound="1" eType="#//Expression"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="right" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Negate" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Unary numeric negation of a value expression (OCL unary minus)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operand" lowerBound="1"
         eType="#//Expression" containment="true"/>
   </eClassifiers>
   <!-- ==================== Enums ==================== -->
@@ -239,6 +257,16 @@
     <eLiterals name="TO_UPPER" value="1"/>
     <eLiterals name="TRIM" value="2"/>
     <eLiterals name="LENGTH" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ArithmeticOperator">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="DIV is floating-point division; the other operators are type-preserving."/>
+    </eAnnotations>
+    <eLiterals name="ADD"/>
+    <eLiterals name="SUB" value="1"/>
+    <eLiterals name="MUL" value="2"/>
+    <eLiterals name="DIV" value="3"/>
+    <eLiterals name="MOD" value="4"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="TemporalKind">
     <eLiterals name="DATE"/>

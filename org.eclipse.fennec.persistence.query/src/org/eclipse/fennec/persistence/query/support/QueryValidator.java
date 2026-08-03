@@ -43,6 +43,9 @@ public final class QueryValidator {
 	/** Diagnostic code: the query traverses feature paths deeper than the backend allows. */
 	public static final int CODE_DEPTH_EXCEEDED = 2;
 
+	/** Diagnostic code: an arithmetic DIV/MOD divides by a literal zero (issue #76). */
+	public static final int CODE_DIVISION_BY_ZERO = 3;
+
 	private QueryValidator() {
 	}
 
@@ -86,6 +89,13 @@ public final class QueryValidator {
 								+ rootName + "')",
 						new Object[] { feature }));
 			}
+		}
+
+		if (analysis.divisionByLiteralZero()) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_DIVISION_BY_ZERO,
+					"Query divides by a literal zero (root type '" + rootName
+							+ "') — the expression can never evaluate",
+					new Object[] { analysis }));
 		}
 
 		int maxDepth = capabilities.maxFeaturePathDepth();

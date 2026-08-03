@@ -233,6 +233,24 @@ public interface ExpressionFactory extends EFactory {
 	StringFunction createStringFunction();
 
 	/**
+	 * Returns a new object of class '<em>Arithmetic</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Arithmetic</em>'.
+	 * @generated
+	 */
+	Arithmetic createArithmetic();
+
+	/**
+	 * Returns a new object of class '<em>Negate</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Negate</em>'.
+	 * @generated
+	 */
+	Negate createNegate();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

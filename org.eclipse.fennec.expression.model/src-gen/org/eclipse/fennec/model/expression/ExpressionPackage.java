@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:9b34cb750aaad036001d4b8e51d5a1bca37470a878faf5d5bbfe88096faeb3f6", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:6293434815e24960bab428c509f26cec4e536ffdf9f07773dc0215abff07df78", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1193,6 +1193,98 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int STRING_FUNCTION_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ArithmeticImpl <em>Arithmetic</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ArithmeticImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmetic()
+	 * @generated
+	 */
+	int ARITHMETIC = 26;
+
+	/**
+	 * The feature id for the '<em><b>Operator</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ARITHMETIC__OPERATOR = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Left</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ARITHMETIC__LEFT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Right</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ARITHMETIC__RIGHT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of structural features of the '<em>Arithmetic</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ARITHMETIC_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The number of operations of the '<em>Arithmetic</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ARITHMETIC_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.NegateImpl <em>Negate</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.NegateImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNegate()
+	 * @generated
+	 */
+	int NEGATE = 27;
+
+	/**
+	 * The feature id for the '<em><b>Operand</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NEGATE__OPERAND = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Negate</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NEGATE_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Negate</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NEGATE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1200,7 +1292,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 26;
+	int COMPARISON_OPERATOR = 28;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1210,7 +1302,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 27;
+	int STRING_MATCH_KIND = 29;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1220,7 +1312,17 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 28;
+	int STRING_FUNCTION_KIND = 30;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.ArithmeticOperator
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
+	 * @generated
+	 */
+	int ARITHMETIC_OPERATOR = 31;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1230,7 +1332,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 29;
+	int TEMPORAL_KIND = 32;
 
 
 	/**
@@ -1879,6 +1981,70 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getStringFunction_Source();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Arithmetic <em>Arithmetic</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Arithmetic</em>'.
+	 * @see org.eclipse.fennec.model.expression.Arithmetic
+	 * @generated
+	 */
+	EClass getArithmetic();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.Arithmetic#getOperator <em>Operator</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Operator</em>'.
+	 * @see org.eclipse.fennec.model.expression.Arithmetic#getOperator()
+	 * @see #getArithmetic()
+	 * @generated
+	 */
+	EAttribute getArithmetic_Operator();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Arithmetic#getLeft <em>Left</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Left</em>'.
+	 * @see org.eclipse.fennec.model.expression.Arithmetic#getLeft()
+	 * @see #getArithmetic()
+	 * @generated
+	 */
+	EReference getArithmetic_Left();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Arithmetic#getRight <em>Right</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Right</em>'.
+	 * @see org.eclipse.fennec.model.expression.Arithmetic#getRight()
+	 * @see #getArithmetic()
+	 * @generated
+	 */
+	EReference getArithmetic_Right();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Negate <em>Negate</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Negate</em>'.
+	 * @see org.eclipse.fennec.model.expression.Negate
+	 * @generated
+	 */
+	EClass getNegate();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Negate#getOperand <em>Operand</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Operand</em>'.
+	 * @see org.eclipse.fennec.model.expression.Negate#getOperand()
+	 * @see #getNegate()
+	 * @generated
+	 */
+	EReference getNegate_Operand();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1907,6 +2073,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getStringFunctionKind();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Arithmetic Operator</em>'.
+	 * @see org.eclipse.fennec.model.expression.ArithmeticOperator
+	 * @generated
+	 */
+	EEnum getArithmeticOperator();
 
 	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}'.
@@ -2482,6 +2658,58 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference STRING_FUNCTION__SOURCE = eINSTANCE.getStringFunction_Source();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ArithmeticImpl <em>Arithmetic</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ArithmeticImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmetic()
+		 * @generated
+		 */
+		EClass ARITHMETIC = eINSTANCE.getArithmetic();
+
+		/**
+		 * The meta object literal for the '<em><b>Operator</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute ARITHMETIC__OPERATOR = eINSTANCE.getArithmetic_Operator();
+
+		/**
+		 * The meta object literal for the '<em><b>Left</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference ARITHMETIC__LEFT = eINSTANCE.getArithmetic_Left();
+
+		/**
+		 * The meta object literal for the '<em><b>Right</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference ARITHMETIC__RIGHT = eINSTANCE.getArithmetic_Right();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.NegateImpl <em>Negate</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.NegateImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNegate()
+		 * @generated
+		 */
+		EClass NEGATE = eINSTANCE.getNegate();
+
+		/**
+		 * The meta object literal for the '<em><b>Operand</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference NEGATE__OPERAND = eINSTANCE.getNegate_Operand();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}' enum.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -2510,6 +2738,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum STRING_FUNCTION_KIND = eINSTANCE.getStringFunctionKind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.ArithmeticOperator
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
+		 * @generated
+		 */
+		EEnum ARITHMETIC_OPERATOR = eINSTANCE.getArithmeticOperator();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.

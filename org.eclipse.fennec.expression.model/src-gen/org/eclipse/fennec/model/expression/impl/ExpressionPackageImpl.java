@@ -21,6 +21,8 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
@@ -36,6 +38,7 @@ import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NullLiteral;
 import org.eclipse.fennec.model.expression.Or;
@@ -247,6 +250,20 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass arithmeticEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass negateEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EEnum comparisonOperatorEEnum = null;
 
 	/**
@@ -262,6 +279,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EEnum stringFunctionKindEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum arithmeticOperatorEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -946,6 +970,66 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getArithmetic() {
+		return arithmeticEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getArithmetic_Operator() {
+		return (EAttribute)arithmeticEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getArithmetic_Left() {
+		return (EReference)arithmeticEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getArithmetic_Right() {
+		return (EReference)arithmeticEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getNegate() {
+		return negateEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getNegate_Operand() {
+		return (EReference)negateEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getComparisonOperator() {
 		return comparisonOperatorEEnum;
 	}
@@ -968,6 +1052,16 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	@Override
 	public EEnum getStringFunctionKind() {
 		return stringFunctionKindEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getArithmeticOperator() {
+		return arithmeticOperatorEEnum;
 	}
 
 	/**
@@ -1096,10 +1190,19 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEAttribute(stringFunctionEClass, STRING_FUNCTION__KIND);
 		createEReference(stringFunctionEClass, STRING_FUNCTION__SOURCE);
 
+		arithmeticEClass = createEClass(ARITHMETIC);
+		createEAttribute(arithmeticEClass, ARITHMETIC__OPERATOR);
+		createEReference(arithmeticEClass, ARITHMETIC__LEFT);
+		createEReference(arithmeticEClass, ARITHMETIC__RIGHT);
+
+		negateEClass = createEClass(NEGATE);
+		createEReference(negateEClass, NEGATE__OPERAND);
+
 		// Create enums
 		comparisonOperatorEEnum = createEEnum(COMPARISON_OPERATOR);
 		stringMatchKindEEnum = createEEnum(STRING_MATCH_KIND);
 		stringFunctionKindEEnum = createEEnum(STRING_FUNCTION_KIND);
+		arithmeticOperatorEEnum = createEEnum(ARITHMETIC_OPERATOR);
 		temporalKindEEnum = createEEnum(TEMPORAL_KIND);
 	}
 
@@ -1155,6 +1258,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		enumLiteralEClass.getESuperTypes().add(this.getLiteral());
 		temporalLiteralEClass.getESuperTypes().add(this.getLiteral());
 		stringFunctionEClass.getESuperTypes().add(this.getExpression());
+		arithmeticEClass.getESuperTypes().add(this.getExpression());
+		negateEClass.getESuperTypes().add(this.getExpression());
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(expressionEClass, Expression.class, "Expression", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -1244,6 +1349,14 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEAttribute(getStringFunction_Kind(), this.getStringFunctionKind(), "kind", null, 1, 1, StringFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getStringFunction_Source(), this.getExpression(), null, "source", null, 1, 1, StringFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(arithmeticEClass, Arithmetic.class, "Arithmetic", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getArithmetic_Operator(), this.getArithmeticOperator(), "operator", null, 1, 1, Arithmetic.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getArithmetic_Left(), this.getExpression(), null, "left", null, 1, 1, Arithmetic.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getArithmetic_Right(), this.getExpression(), null, "right", null, 1, 1, Arithmetic.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(negateEClass, Negate.class, "Negate", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getNegate_Operand(), this.getExpression(), null, "operand", null, 1, 1, Negate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		// Initialize enums and add enum literals
 		initEEnum(comparisonOperatorEEnum, ComparisonOperator.class, "ComparisonOperator");
 		addEEnumLiteral(comparisonOperatorEEnum, ComparisonOperator.EQ);
@@ -1264,6 +1377,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TO_UPPER);
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TRIM);
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.LENGTH);
+
+		initEEnum(arithmeticOperatorEEnum, ArithmeticOperator.class, "ArithmeticOperator");
+		addEEnumLiteral(arithmeticOperatorEEnum, ArithmeticOperator.ADD);
+		addEEnumLiteral(arithmeticOperatorEEnum, ArithmeticOperator.SUB);
+		addEEnumLiteral(arithmeticOperatorEEnum, ArithmeticOperator.MUL);
+		addEEnumLiteral(arithmeticOperatorEEnum, ArithmeticOperator.DIV);
+		addEEnumLiteral(arithmeticOperatorEEnum, ArithmeticOperator.MOD);
 
 		initEEnum(temporalKindEEnum, TemporalKind.class, "TemporalKind");
 		addEEnumLiteral(temporalKindEEnum, TemporalKind.DATE);

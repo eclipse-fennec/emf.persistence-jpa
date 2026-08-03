@@ -33,6 +33,7 @@ import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Exists;
@@ -41,6 +42,7 @@ import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -97,11 +99,11 @@ import com.mongodb.client.model.Sorts;
  * predicate); non-embedded quantifier sources are refused (code 100).</li>
  * <li>Case-insensitive matching via the regex {@code i} option; enum values compare by
  * literal name; DISTINCT requires a projection (code 101).</li>
- * <li>Field-to-field comparisons and string functions translate to {@code $expr}
- * aggregation expressions; every referenced field carries a {@code $ne null} guard so
- * comparisons with missing/null values are false — mirroring the SQL and in-memory
- * semantics. Both are limited to root-based paths (not available inside quantifier
- * predicates).</li>
+ * <li>Field-to-field comparisons, string functions and arithmetic translate to
+ * {@code $expr} aggregation expressions; every referenced field carries a
+ * {@code $ne null} guard so comparisons with missing/null values are false — mirroring
+ * the SQL and in-memory semantics. All are limited to root-based paths (not available
+ * inside quantifier predicates).</li>
  * </ul>
  *
  * @author Mark Hoffmann
@@ -123,7 +125,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.STRING_FUNCTIONS, QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -311,8 +313,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 			List<Object> guards) throws QueryException {
 		if (expression instanceof PropertyPath path) {
 			if (path.getBase() != null) {
-				throw new QueryException("String functions and field-to-field comparisons are not supported"
-						+ " inside quantifier predicates on the mongo backend ($expr cannot address"
+				throw new QueryException("String functions, arithmetic and field-to-field comparisons are not"
+						+ " supported inside quantifier predicates on the mongo backend ($expr cannot address"
 						+ " $elemMatch elements)");
 			}
 			String reference = "$" + MongoFieldNames.render(path);
@@ -330,6 +332,21 @@ public class MongoQueryProcessor implements QueryProcessor {
 			case TRIM -> new Document("$trim", new Document("input", inner));
 			case LENGTH -> new Document("$strLenCP", inner);
 			};
+		}
+		if (expression instanceof Arithmetic arithmetic) {
+			Object left = exprOperand(arithmetic.getLeft(), target, context, guards);
+			Object right = exprOperand(arithmetic.getRight(), target, context, guards);
+			return switch (arithmetic.getOperator()) {
+			case ADD -> new Document("$add", Arrays.asList(left, right));
+			case SUB -> new Document("$subtract", Arrays.asList(left, right));
+			case MUL -> new Document("$multiply", Arrays.asList(left, right));
+			case DIV -> new Document("$divide", Arrays.asList(left, right));
+			case MOD -> new Document("$mod", Arrays.asList(left, right));
+			};
+		}
+		if (expression instanceof Negate negate) {
+			Object operand = exprOperand(negate.getOperand(), target, context, guards);
+			return new Document("$multiply", Arrays.asList(-1, operand));
 		}
 		// $literal keeps values (notably strings starting with '$') out of path interpretation
 		Object value = mongoValue(ExpressionValues.resolve(expression, target, context.parameters(),

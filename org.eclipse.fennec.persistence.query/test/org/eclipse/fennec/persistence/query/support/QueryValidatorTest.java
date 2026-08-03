@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.query.support;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.eclipse.fennec.model.query.builder.Expressions.div;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
 
 import org.eclipse.emf.common.util.Diagnostic;
@@ -133,6 +134,20 @@ class QueryValidatorTest {
 
 		Diagnostic diagnostic = QueryValidator.validate(eqQuery("x", address, street), person, unlimited);
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void divisionByLiteralZeroYieldsError() {
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(person);
+		query.setPredicate(div(path(name).length(), 0).gt(1));
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.WHERE_COMPARISON, QueryFeature.ARITHMETIC,
+						QueryFeature.STRING_FUNCTIONS));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_DIVISION_BY_ZERO));
 	}
 
 	@Test

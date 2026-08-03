@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.query.memory;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,9 @@ class MemoryQueryProcessorTest {
 	private EAttribute personName;
 	private EAttribute personNickname;
 	private EAttribute personAge;
+	private EAttribute personScore;
+	private EAttribute personSalary;
+	private EAttribute personRank;
 	private EReference personAddresses;
 	private EAttribute addressStreet;
 	private EPackage ePackage;
@@ -85,6 +89,15 @@ class MemoryQueryProcessorTest {
 		personAge = ecore.createEAttribute();
 		personAge.setName("age");
 		personAge.setEType(EcorePackage.Literals.EINT);
+		personScore = ecore.createEAttribute();
+		personScore.setName("score");
+		personScore.setEType(EcorePackage.Literals.EDOUBLE);
+		personSalary = ecore.createEAttribute();
+		personSalary.setName("salary");
+		personSalary.setEType(EcorePackage.Literals.EBIG_DECIMAL);
+		personRank = ecore.createEAttribute();
+		personRank.setName("rank");
+		personRank.setEType(EcorePackage.Literals.EINTEGER_OBJECT);
 		personAddresses = ecore.createEReference();
 		personAddresses.setName("addresses");
 		personAddresses.setEType(addressClass);
@@ -93,6 +106,9 @@ class MemoryQueryProcessorTest {
 		personClass.getEStructuralFeatures().add(personName);
 		personClass.getEStructuralFeatures().add(personNickname);
 		personClass.getEStructuralFeatures().add(personAge);
+		personClass.getEStructuralFeatures().add(personScore);
+		personClass.getEStructuralFeatures().add(personSalary);
+		personClass.getEStructuralFeatures().add(personRank);
 		personClass.getEStructuralFeatures().add(personAddresses);
 
 		ePackage = ecore.createEPackage();
@@ -102,14 +118,25 @@ class MemoryQueryProcessorTest {
 		ePackage.getEClassifiers().add(addressClass);
 		ePackage.getEClassifiers().add(personClass);
 
-		// the TCK query fixture: Alice 30, Bob 40 with two addresses, Carol 50
+		// the TCK query fixture: Alice 30, Bob 40 with two addresses, Carol 50 —
+		// extended with score (double), salary (BigDecimal) and the nullable rank
+		// for the arithmetic semantics tests
 		persons.clear();
-		persons.add(person("Alice", 30));
+		EObject alice = person("Alice", 30);
+		alice.eSet(personScore, 7.5d);
+		alice.eSet(personSalary, new BigDecimal("1000.10"));
+		persons.add(alice);
 		EObject bob = person("Bob", 40);
 		address(bob, "Main Street 5");
 		address(bob, "Side Road 9");
+		bob.eSet(personScore, 3.0d);
+		bob.eSet(personSalary, new BigDecimal("2000.20"));
+		bob.eSet(personRank, 1);
 		persons.add(bob);
-		persons.add(person("Carol", 50));
+		EObject carol = person("Carol", 50);
+		carol.eSet(personScore, 12.5d);
+		carol.eSet(personSalary, new BigDecimal("3000.30"));
+		persons.add(carol);
 	}
 
 	private EObject person(String name, int age) {
@@ -229,6 +256,89 @@ class MemoryQueryProcessorTest {
 		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("wanted");
+	}
+
+	@Test
+	void arithmeticDivisionIsFloatingPointOnIntegers() throws QueryException {
+		// 30 / 4 = 7.5 — integer truncation (7) would match nobody
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).eq(7.5))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+	}
+
+	@Test
+	void arithmeticWidensMixedIntAndDoubleOperands() throws QueryException {
+		// score(double) + age(int): Alice 37.5, Bob 43.0, Carol 62.5
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personScore).plus(Expressions.path(personAge)).eq(37.5))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+	}
+
+	@Test
+	void arithmeticComputesOnBigDecimal() throws QueryException {
+		// salary(BigDecimal) * 2 = 2000.20 — the decimal branch computes, comparisons
+		// are numeric across boxed types (the IR has no decimal literal yet, see #83)
+		Query multiply = QueryBuilder.from(personClass)
+				.where(Expressions.path(personSalary).times(2).eq(2000.20))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(multiply, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		// salary / 3 divides with DECIMAL64 precision: only Alice stays below 334
+		Query divide = QueryBuilder.from(personClass)
+				.where(Expressions.path(personSalary).dividedBy(3).lt(334))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(divide, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+	}
+
+	@Test
+	void arithmeticRuntimeZeroDivisorMatchesNothing() throws QueryException {
+		// a zero divisor bound at runtime yields null — every comparison is false
+		// (the database backends surface their own division error instead, see the TCK)
+		Query division = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(Expressions.param("divisor")).gt(-1000))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(division, persons, Map.of("divisor", 0))) {
+			assertThat(result.objects()).isEmpty();
+		}
+		try (QueryResult result = MemoryQueries.execute(division, persons, Map.of("divisor", 4))) {
+			assertThat(result.objects()).hasSize(3);
+		}
+		Query modulo = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).mod(Expressions.param("divisor")).ge(0))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(modulo, persons, Map.of("divisor", 0))) {
+			assertThat(result.objects()).isEmpty();
+		}
+	}
+
+	@Test
+	void arithmeticNullOperandMatchesNothing() throws QueryException {
+		// rank is null for Alice and Carol — null propagates, the comparison is false
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personRank).plus(1).gt(0))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
+	void negateWorksOnFloatingValues() throws QueryException {
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personScore).negated().lt(-10))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Carol");
+		}
 	}
 
 	@Test

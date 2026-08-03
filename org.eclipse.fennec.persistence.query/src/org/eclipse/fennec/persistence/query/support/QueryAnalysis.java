@@ -32,6 +32,7 @@ public final class QueryAnalysis {
 	private final Set<QueryFeature> features;
 	private final int maxFeaturePathDepth;
 	private final QueryShape shape;
+	private final boolean divisionByLiteralZero;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -42,11 +43,25 @@ public final class QueryAnalysis {
 	 * @param shape the result shape
 	 */
 	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape) {
+		this(features, maxFeaturePathDepth, shape, false);
+	}
+
+	/**
+	 * Creates an analysis result including the static division-by-zero verdict.
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 * @param divisionByLiteralZero whether any DIV/MOD divides by a literal zero
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
+			boolean divisionByLiteralZero) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
 		this.maxFeaturePathDepth = maxFeaturePathDepth;
 		this.shape = shape;
+		this.divisionByLiteralZero = divisionByLiteralZero;
 	}
 
 	/**
@@ -79,8 +94,17 @@ public final class QueryAnalysis {
 		return shape;
 	}
 
+	/**
+	 * @return {@code true} if any arithmetic DIV/MOD in the query divides by a literal
+	 *         zero — statically refusable, see issue #76
+	 */
+	public boolean divisionByLiteralZero() {
+		return divisionByLiteralZero;
+	}
+
 	@Override
 	public String toString() {
-		return "QueryAnalysis[shape=" + shape + ", maxDepth=" + maxFeaturePathDepth + ", features=" + features + "]";
+		return "QueryAnalysis[shape=" + shape + ", maxDepth=" + maxFeaturePathDepth + ", features=" + features
+				+ (divisionByLiteralZero ? ", divisionByLiteralZero" : "") + "]";
 	}
 }

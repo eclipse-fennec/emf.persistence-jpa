@@ -23,6 +23,8 @@ import java.util.function.Function;
 import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
@@ -36,6 +38,7 @@ import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.Or;
 import org.eclipse.fennec.model.expression.ParameterRef;
@@ -300,6 +303,9 @@ public final class Expressions {
 		if (value instanceof FunctionStep step) {
 			return step.toExpression();
 		}
+		if (value instanceof ArithmeticStep step) {
+			return step.toExpression();
+		}
 		return value instanceof Expression expression ? expression : literal(value);
 	}
 
@@ -316,6 +322,60 @@ public final class Expressions {
 		function.setKind(kind);
 		function.setSource(source);
 		return function;
+	}
+
+	// ==================== arithmetic ====================
+
+	/** @param left the left operand (auto-boxed)
+	 *  @param right the right operand (auto-boxed)
+	 *  @return a comparable step over {@code left + right} */
+	public static ArithmeticStep add(Object left, Object right) {
+		return new ArithmeticStep(arithmetic(ArithmeticOperator.ADD, left, right));
+	}
+
+	/** @param left the left operand (auto-boxed)
+	 *  @param right the right operand (auto-boxed)
+	 *  @return a comparable step over {@code left - right} */
+	public static ArithmeticStep sub(Object left, Object right) {
+		return new ArithmeticStep(arithmetic(ArithmeticOperator.SUB, left, right));
+	}
+
+	/** @param left the left operand (auto-boxed)
+	 *  @param right the right operand (auto-boxed)
+	 *  @return a comparable step over {@code left * right} */
+	public static ArithmeticStep mul(Object left, Object right) {
+		return new ArithmeticStep(arithmetic(ArithmeticOperator.MUL, left, right));
+	}
+
+	/** Floating-point division — integer truncation is deliberately not modelled.
+	 *  @param left the dividend (auto-boxed)
+	 *  @param right the divisor (auto-boxed)
+	 *  @return a comparable step over {@code left / right} */
+	public static ArithmeticStep div(Object left, Object right) {
+		return new ArithmeticStep(arithmetic(ArithmeticOperator.DIV, left, right));
+	}
+
+	/** @param left the dividend (auto-boxed)
+	 *  @param right the divisor (auto-boxed)
+	 *  @return a comparable step over {@code left mod right} */
+	public static ArithmeticStep mod(Object left, Object right) {
+		return new ArithmeticStep(arithmetic(ArithmeticOperator.MOD, left, right));
+	}
+
+	/** @param operand the numeric operand to negate (auto-boxed)
+	 *  @return a comparable step over {@code -operand} */
+	public static ArithmeticStep neg(Object operand) {
+		Negate negate = FACTORY.createNegate();
+		negate.setOperand(value(operand));
+		return new ArithmeticStep(negate);
+	}
+
+	private static Arithmetic arithmetic(ArithmeticOperator operator, Object left, Object right) {
+		Arithmetic arithmetic = FACTORY.createArithmetic();
+		arithmetic.setOperator(operator);
+		arithmetic.setLeft(value(Objects.requireNonNull(left, "left operand must not be null")));
+		arithmetic.setRight(value(Objects.requireNonNull(right, "right operand must not be null")));
+		return arithmetic;
 	}
 
 	// ==================== the path step ====================
@@ -417,6 +477,44 @@ public final class Expressions {
 		/** @return a comparable step over {@code LENGTH(path)} — compares numerically */
 		public FunctionStep length() {
 			return new FunctionStep(function(StringFunctionKind.LENGTH, path));
+		}
+
+		// --- arithmetic ---
+
+		/** @param value the right operand (auto-boxed)
+		 *  @return a comparable step over {@code path + value} */
+		public ArithmeticStep plus(Object value) {
+			return add(path, value);
+		}
+
+		/** @param value the right operand (auto-boxed)
+		 *  @return a comparable step over {@code path - value} */
+		public ArithmeticStep minus(Object value) {
+			return sub(path, value);
+		}
+
+		/** @param value the right operand (auto-boxed)
+		 *  @return a comparable step over {@code path * value} */
+		public ArithmeticStep times(Object value) {
+			return mul(path, value);
+		}
+
+		/** Floating-point division.
+		 *  @param value the divisor (auto-boxed)
+		 *  @return a comparable step over {@code path / value} */
+		public ArithmeticStep dividedBy(Object value) {
+			return div(path, value);
+		}
+
+		/** @param value the divisor (auto-boxed)
+		 *  @return a comparable step over {@code path mod value} */
+		public ArithmeticStep mod(Object value) {
+			return Expressions.mod(path, value);
+		}
+
+		/** @return a comparable step over {@code -path} */
+		public ArithmeticStep negated() {
+			return neg(path);
 		}
 
 		// --- null / range / membership ---
@@ -625,6 +723,102 @@ public final class Expressions {
 		 *  @return the comparison */
 		public Comparison ge(Object value) {
 			return compare(function, ComparisonOperator.GE, value);
+		}
+	}
+
+	/**
+	 * An arithmetic value expression with the comparison vocabulary — created via
+	 * {@link Expressions#add(Object, Object)} and friends or the {@link PathStep}
+	 * arithmetic methods; operations chain ({@code path(age).plus(1).times(2)}).
+	 * Values are auto-boxed like on {@link PathStep}.
+	 */
+	public static final class ArithmeticStep {
+
+		private final Expression expression;
+
+		private ArithmeticStep(Expression expression) {
+			this.expression = expression;
+		}
+
+		/** @return the underlying arithmetic expression */
+		public Expression toExpression() {
+			return expression;
+		}
+
+		// --- chaining ---
+
+		/** @param value the right operand (auto-boxed)
+		 *  @return a step over {@code this + value} */
+		public ArithmeticStep plus(Object value) {
+			return add(expression, value);
+		}
+
+		/** @param value the right operand (auto-boxed)
+		 *  @return a step over {@code this - value} */
+		public ArithmeticStep minus(Object value) {
+			return sub(expression, value);
+		}
+
+		/** @param value the right operand (auto-boxed)
+		 *  @return a step over {@code this * value} */
+		public ArithmeticStep times(Object value) {
+			return mul(expression, value);
+		}
+
+		/** Floating-point division.
+		 *  @param value the divisor (auto-boxed)
+		 *  @return a step over {@code this / value} */
+		public ArithmeticStep dividedBy(Object value) {
+			return div(expression, value);
+		}
+
+		/** @param value the divisor (auto-boxed)
+		 *  @return a step over {@code this mod value} */
+		public ArithmeticStep mod(Object value) {
+			return Expressions.mod(expression, value);
+		}
+
+		/** @return a step over {@code -this} */
+		public ArithmeticStep negated() {
+			return neg(expression);
+		}
+
+		// --- comparisons ---
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison eq(Object value) {
+			return compare(expression, ComparisonOperator.EQ, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison ne(Object value) {
+			return compare(expression, ComparisonOperator.NE, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison lt(Object value) {
+			return compare(expression, ComparisonOperator.LT, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison le(Object value) {
+			return compare(expression, ComparisonOperator.LE, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison gt(Object value) {
+			return compare(expression, ComparisonOperator.GT, value);
+		}
+
+		/** @param value the value to compare against
+		 *  @return the comparison */
+		public Comparison ge(Object value) {
+			return compare(expression, ComparisonOperator.GE, value);
 		}
 	}
 }

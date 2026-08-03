@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.mongo.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.eclipse.fennec.model.query.builder.Expressions.add;
 import static org.eclipse.fennec.model.query.builder.Expressions.all;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
@@ -178,6 +179,33 @@ class MongoQueryProcessorTest {
 				.build());
 		assertThat(render(forAll.filter())).isEqualTo(BsonDocument.parse(
 				"{'$nor': [{'addresses': {'$elemMatch': {'$nor': [{'street': {'$ne': null}}]}}}]}"));
+	}
+
+	@Test
+	void arithmeticBecomesExprWithNullGuards() throws QueryException {
+		MongoQueryPlan plan = translate(QueryBuilder.from(person)
+				.where(path(age).plus(10).times(2).gt(90))
+				.build());
+		String json = render(plan.filter()).toJson();
+		assertThat(json).contains("$expr").contains("$multiply").contains("$add").contains("$gt");
+		// the referenced field carries a $ne null guard like FIELD_TO_FIELD
+		assertThat(json).contains("\"$ne\": [\"$age\", null]");
+
+		MongoQueryPlan negate = translate(QueryBuilder.from(person)
+				.where(path(age).negated().lt(0))
+				.build());
+		assertThat(render(negate.filter()).toJson()).contains("$multiply").contains("-1");
+	}
+
+	@Test
+	void arithmeticInsideQuantifierIsRefused() {
+		Query query = QueryBuilder.from(person)
+				.where(any(propertyPath(addresses),
+						a -> add(a.path(street).length(), 1).gt(3)))
+				.build();
+		assertThatThrownBy(() -> translate(query))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("quantifier");
 	}
 
 	@Test

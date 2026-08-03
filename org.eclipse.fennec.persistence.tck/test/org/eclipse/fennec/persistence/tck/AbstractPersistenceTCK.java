@@ -568,6 +568,68 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryArithmetic() throws Exception {
+		saveQueryFixture();
+		// (age + 10) * 2 > 90 — Alice 80, Bob 100, Carol 120
+		Query addMul = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).plus(10).times(2).gt(90))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(addMul)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactlyInAnyOrder("Bob", "Carol");
+		}
+		// DIV is floating-point: 30 / 4 = 7.5 — integer truncation would find nobody
+		Query fpDivision = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).eq(7.5))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(fpDivision)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+		// age mod 20 = 0 — only Bob (40); 30 and 50 leave 10
+		Query modulo = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).mod(20).eq(0))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(modulo)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		// -age < -45 — only Carol (50)
+		Query negated = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).negated().lt(-45))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(negated)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+	}
+
+	@Test
+	public void queryDivisionByLiteralZeroIsRefused() throws Exception {
+		saveQueryFixture();
+		Query zeroDivision = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(0).gt(1))
+				.build();
+		QueryableResource resource = queryable(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.query(zeroDivision).close())
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("zero");
+	}
+
+	@Test
+	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
+		saveQueryFixture();
+		// a literal zero is refused statically; a zero bound at runtime is the backend's
+		// division error (the memory oracle yields null/no match instead — see its tests)
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(Expressions.param("divisor")).gt(1))
+				.build();
+		QueryableResource resource = queryable(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.query(query, Map.of("divisor", 0), null).close())
+				.isInstanceOf(IOException.class);
+	}
+
+	@Test
 	public void queryFieldToFieldComparison() throws Exception {
 		saveQueryFixture();
 		Query same = QueryBuilder.from(personClass)
@@ -855,6 +917,18 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		corpus.put("field-to-field", QueryBuilder.from(personClass)
 				.where(Expressions.path(personName).eq(Expressions.path(personName)))
+				.build());
+		corpus.put("arithmetic add/mul", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).plus(10).times(2).gt(90))
+				.build());
+		corpus.put("arithmetic fp division", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).eq(7.5))
+				.build());
+		corpus.put("arithmetic mod", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).mod(20).eq(0))
+				.build());
+		corpus.put("arithmetic negate", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).negated().lt(-45))
 				.build());
 
 		for (Map.Entry<String, Query> entry : corpus.entrySet()) {

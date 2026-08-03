@@ -254,6 +254,11 @@
         <details key="documentation" value="String functions applied to values (v2 IR StringFunction: toLower/toUpper/trim/length)."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="ARITHMETIC" value="64">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Arithmetic value expressions (v2 IR Arithmetic ADD/SUB/MUL/DIV/MOD and Negate). DIV is floating-point division; division by a literal zero is refused by the validator."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>

@@ -16,6 +16,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
+import static org.eclipse.fennec.model.query.builder.Expressions.div;
+import static org.eclipse.fennec.model.query.builder.Expressions.mod;
+import static org.eclipse.fennec.model.query.builder.Expressions.mul;
+import static org.eclipse.fennec.model.query.builder.Expressions.neg;
 import static org.eclipse.fennec.model.query.builder.Expressions.or;
 import static org.eclipse.fennec.model.query.builder.Expressions.param;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
@@ -142,6 +146,38 @@ class ExpressionOclBridgeTest {
 		OperationCallExp call = (OperationCallExp) bound;
 		assertThat(((org.eclipse.fennec.m2x.model.ocl.IntegerLiteralExp) call.getOwnedArguments().get(0))
 				.getIntegerSymbol()).isEqualTo(21L);
+	}
+
+	@Test
+	void arithmeticRoundTripsStructurally() throws QueryException {
+		// (age + 2) * 3 mod 7 > age / 2 — every operator once
+		Expression original = mod(mul(path(age).plus(2), 3), 7).gt(div(path(age), 2));
+		Expression back = roundTrip(original);
+		assertThat(EcoreUtil.equals(original, back))
+				.as("arithmetic expr → ocl → expr must be structurally identical")
+				.isTrue();
+	}
+
+	@Test
+	void negateRoundTripsAsSourceOnlyMinus() throws QueryException {
+		Expression original = neg(path(age)).lt(0);
+		OclExpression ocl = ExprToOcl.toOcl(original);
+		OperationCallExp compare = (OperationCallExp) ocl;
+		OperationCallExp minus = (OperationCallExp) compare.getOwnedSource();
+		assertThat(minus.getName()).isEqualTo("-");
+		assertThat(minus.getOwnedArguments()).isEmpty();
+
+		Expression back = OclToExpr.toExpr(ocl);
+		assertThat(EcoreUtil.equals(original, back)).isTrue();
+	}
+
+	@Test
+	void integerDivisionStaysRefused() {
+		OperationCallExp div = OclFactory.eINSTANCE.createOperationCallExp();
+		div.setName("div");
+		assertThatThrownBy(() -> OclToExpr.toExpr(div))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("div");
 	}
 
 	@Test

@@ -22,6 +22,7 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Exists;
@@ -30,6 +31,7 @@ import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -92,7 +94,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.STRING_FUNCTIONS, QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
@@ -443,6 +445,21 @@ public class JpaQueryProcessor implements QueryProcessor {
 				case LENGTH -> "LENGTH(" + inner + ")";
 				};
 			}
+			if (expression instanceof Arithmetic arithmetic) {
+				String left = operand(arithmetic.getLeft(), target);
+				String right = operand(arithmetic.getRight(), target);
+				return switch (arithmetic.getOperator()) {
+				case ADD -> "(" + left + " + " + right + ")";
+				case SUB -> "(" + left + " - " + right + ")";
+				case MUL -> "(" + left + " * " + right + ")";
+				// DIV is floating-point by contract — * 1.0 defeats SQL integer division
+				case DIV -> "(" + left + " * 1.0 / " + right + ")";
+				case MOD -> "MOD(" + left + ", " + right + ")";
+				};
+			}
+			if (expression instanceof Negate negate) {
+				return "(-" + operand(negate.getOperand(), target) + ")";
+			}
 			return bind(ExpressionValues.resolve(expression, target, context.parameters(), context.converter()));
 		}
 
@@ -464,7 +481,23 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (left instanceof StringFunction function && function.getSource() instanceof PropertyPath path) {
 				return ExpressionValues.targetFeature(path);
 			}
-			return null;
+			PropertyPath numericPath = firstPath(left);
+			if (numericPath == null) {
+				numericPath = firstPath(right);
+			}
+			return numericPath == null ? null : ExpressionValues.targetFeature(numericPath);
+		}
+
+		/** The first navigated path inside an arithmetic tree — types its literal peers. */
+		private PropertyPath firstPath(Expression expression) {
+			if (expression instanceof Arithmetic arithmetic) {
+				PropertyPath left = firstPath(arithmetic.getLeft());
+				return left != null ? left : firstPath(arithmetic.getRight());
+			}
+			if (expression instanceof Negate negate) {
+				return firstPath(negate.getOperand());
+			}
+			return expression instanceof PropertyPath path ? path : null;
 		}
 
 		private String text(Expression pattern) throws QueryException {

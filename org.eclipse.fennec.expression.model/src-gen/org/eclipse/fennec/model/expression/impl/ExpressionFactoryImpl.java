@@ -89,6 +89,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.ENUM_LITERAL: return createEnumLiteral();
 			case ExpressionPackage.TEMPORAL_LITERAL: return createTemporalLiteral();
 			case ExpressionPackage.STRING_FUNCTION: return createStringFunction();
+			case ExpressionPackage.ARITHMETIC: return createArithmetic();
+			case ExpressionPackage.NEGATE: return createNegate();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -108,6 +110,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 				return createStringMatchKindFromString(eDataType, initialValue);
 			case ExpressionPackage.STRING_FUNCTION_KIND:
 				return createStringFunctionKindFromString(eDataType, initialValue);
+			case ExpressionPackage.ARITHMETIC_OPERATOR:
+				return createArithmeticOperatorFromString(eDataType, initialValue);
 			case ExpressionPackage.TEMPORAL_KIND:
 				return createTemporalKindFromString(eDataType, initialValue);
 			default:
@@ -129,6 +133,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 				return convertStringMatchKindToString(eDataType, instanceValue);
 			case ExpressionPackage.STRING_FUNCTION_KIND:
 				return convertStringFunctionKindToString(eDataType, instanceValue);
+			case ExpressionPackage.ARITHMETIC_OPERATOR:
+				return convertArithmeticOperatorToString(eDataType, instanceValue);
 			case ExpressionPackage.TEMPORAL_KIND:
 				return convertTemporalKindToString(eDataType, instanceValue);
 			default:
@@ -383,6 +389,28 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	@Override
+	public Arithmetic createArithmetic() {
+		ArithmeticImpl arithmetic = new ArithmeticImpl();
+		return arithmetic;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Negate createNegate() {
+		NegateImpl negate = new NegateImpl();
+		return negate;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public ComparisonOperator createComparisonOperatorFromString(EDataType eDataType, String initialValue) {
 		ComparisonOperator result = ComparisonOperator.get(initialValue);
 		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
@@ -435,6 +463,26 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	public String convertStringFunctionKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ArithmeticOperator createArithmeticOperatorFromString(EDataType eDataType, String initialValue) {
+		ArithmeticOperator result = ArithmeticOperator.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertArithmeticOperatorToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

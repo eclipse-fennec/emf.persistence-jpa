@@ -182,6 +182,14 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createStringFunctionAdapter();
 			}
 			@Override
+			public Adapter caseArithmetic(Arithmetic object) {
+				return createArithmeticAdapter();
+			}
+			@Override
+			public Adapter caseNegate(Negate object) {
+				return createNegateAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -562,6 +570,34 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createStringFunctionAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Arithmetic <em>Arithmetic</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.Arithmetic
+	 * @generated
+	 */
+	public Adapter createArithmeticAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Negate <em>Negate</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.Negate
+	 * @generated
+	 */
+	public Adapter createNegateAdapter() {
 		return null;
 	}
 

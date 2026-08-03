@@ -30,6 +30,7 @@ import org.eclipse.fennec.m2x.model.ocl.RealLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.VariableExp;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
@@ -41,8 +42,9 @@ import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
-import org.eclipse.fennec.model.expression.NullLiteral;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NullLiteral;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -199,6 +201,20 @@ public final class ExprToOcl {
 				case LENGTH -> "size";
 				};
 				return call(operation, map(function.getSource(), null));
+			}
+			if (expression instanceof Arithmetic arithmetic) {
+				String operation = switch (arithmetic.getOperator()) {
+				case ADD -> "+";
+				case SUB -> "-";
+				case MUL -> "*";
+				case DIV -> "/";
+				case MOD -> "mod";
+				};
+				return call(operation, map(arithmetic.getLeft(), null), map(arithmetic.getRight(), null));
+			}
+			if (expression instanceof Negate negate) {
+				// source-only '-' is the OCL unary minus — OclToExpr recognizes it back
+				return call("-", map(negate.getOperand(), null));
 			}
 			if (expression instanceof PropertyPath path) {
 				return propertyChain(path);

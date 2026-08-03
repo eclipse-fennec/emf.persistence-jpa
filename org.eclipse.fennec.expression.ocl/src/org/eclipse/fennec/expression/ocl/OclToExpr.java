@@ -28,6 +28,8 @@ import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.RealLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.VariableExp;
+import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Expression;
@@ -35,6 +37,7 @@ import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -56,8 +59,11 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * {@code oclIsUndefined} (→ IsNull), {@code includes} over a collection literal (→ In),
  * {@code contains/startsWith/endsWith/like} (→ StringMatch, a {@code toLowerCase} pair
  * on both sides folds into the case-insensitive flag),
- * {@code toLowerCase/toUpperCase/trim/size} (→ StringFunction), {@code exists/forAll}
- * iterators (→ quantifiers), property-call chains (→ PropertyPath) and the literal set.
+ * {@code toLowerCase/toUpperCase/trim/size} (→ StringFunction),
+ * {@code + - * / mod} (→ Arithmetic; a source-only {@code -} → Negate; the integer
+ * division {@code div} stays refused — truncation is deliberately not modelled),
+ * {@code exists/forAll} iterators (→ quantifiers), property-call chains
+ * (→ PropertyPath) and the literal set.
  *
  * @author Mark Hoffmann
  * @since 24.07.2026
@@ -232,6 +238,27 @@ public final class OclToExpr {
 				});
 				function.setSource(map(call.getOwnedSource()));
 				return function;
+			}
+			case "+", "-", "*", "/", "mod" -> {
+				if (call.getOwnedArguments().isEmpty()) {
+					if (!"-".equals(name)) {
+						throw refuse("operation '" + name + "' without arguments");
+					}
+					Negate negate = EXPR.createNegate();
+					negate.setOperand(map(call.getOwnedSource()));
+					return negate;
+				}
+				Arithmetic arithmetic = EXPR.createArithmetic();
+				arithmetic.setOperator(switch (name) {
+				case "+" -> ArithmeticOperator.ADD;
+				case "-" -> ArithmeticOperator.SUB;
+				case "*" -> ArithmeticOperator.MUL;
+				case "/" -> ArithmeticOperator.DIV;
+				default -> ArithmeticOperator.MOD;
+				});
+				arithmetic.setLeft(map(call.getOwnedSource()));
+				arithmetic.setRight(map(argument(call, 0)));
+				return arithmetic;
 			}
 			default -> throw refuse("operation '" + name + "'");
 			}

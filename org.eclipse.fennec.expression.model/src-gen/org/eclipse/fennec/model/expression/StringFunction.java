@@ -20,7 +20,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Minimal v1 string function set applied to a value expression. Further functions (concat, substring, date parts, arithmetic) are additive later — see the deliberately-absent list in the redesign concept §3.1.
+ * Minimal v1 string function set applied to a value expression. Further functions (concat, substring, date parts) are additive later — see the deliberately-absent list in the redesign concept §3.1.
  * <!-- end-model-doc -->
  *
  * <p>

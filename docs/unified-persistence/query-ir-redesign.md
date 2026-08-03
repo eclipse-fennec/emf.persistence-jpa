@@ -86,12 +86,16 @@ reference for each construct.
 | `ParameterRef` | `name: String` | **first-class parameters** — retires the `":name"` string convention |
 | Literals | `StringLiteral`, `IntegerLiteral(long)`, `RealLiteral(double)`, `BooleanLiteral`, `NullLiteral`, `EnumLiteral(name)`, `TemporalLiteral(iso8601, kind: {DATE, TIME, DATE_TIME, INSTANT})` | typed values — retires string-typed comparator values |
 | `StringFunction` | `kind: {TO_LOWER, TO_UPPER, TRIM, LENGTH}`, `source` | v1 minimal set |
+| `Arithmetic` | `left`, `right: Expression`, `operator: {ADD, SUB, MUL, DIV, MOD}` | issue #76 (OData pushdown migration). Type-preserving Java promotion — except `DIV`, which is **always floating-point** (integer truncation deliberately not modelled; JPQL renders `* 1.0 /`, Mongo `$divide` is FP anyway). Division by a **literal zero** is refused statically (`QueryValidator.CODE_DIVISION_BY_ZERO`); a runtime zero surfaces the backend's error — the memory oracle yields `null` (comparison false) instead. OCL `+ - * / mod`; the truncating OCL `div` stays outside the subset |
+| `Negate` | `operand: Expression` | OCL unary minus |
 
 **Deliberately absent in v1** (decision list — add only with a driving use case):
-arithmetic (`+ - * /`, Mongo needs `$expr`), `Concat`/`Substring`/`IndexOf`, date part
+`Concat`/`Substring`/`IndexOf`, date part
 extraction (`year(…)`), type test/cast (`TypeCheck`), `If`/`Let`, collection operations
 beyond `In`/`Exists`/`ForAll` (`Select`/`Collect`/`IterateExp`), tuple/map literals.
 The model can grow additively; the capability mechanism covers backend divergence.
+Arithmetic left this list with issue #76 — the remaining OData-gap constructs are
+tracked in issues #77–#84.
 
 ### 3.2 Capability vocabulary (new `QueryFeature` terms)
 
@@ -105,6 +109,7 @@ Sketch of the new vocabulary and the expected initial matrix:
 | IS_NULL, BETWEEN, IN | ✅ | ✅ | `$exists`/`$in` |
 | STRING_MATCH (+CASE_INSENSITIVE) | ✅ | ✅ regex | |
 | STRING_FUNCTIONS | ✅ | ⚠️ partial | LENGTH needs `$expr` |
+| ARITHMETIC | ✅ | ✅ `$expr` | `$add/$subtract/$multiply/$divide/$mod`; root paths only (like FIELD_TO_FIELD) |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
 | PARAMETERS | ✅ | ✅ | now model-level |

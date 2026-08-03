@@ -22,6 +22,8 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Exists;
@@ -29,7 +31,9 @@ import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
+import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Or;
+import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.StringFunction;
@@ -275,6 +279,61 @@ class ExpressionAnalyzerTest {
 				QueryFeature.AGG_COUNT_DISTINCT);
 		assertThat(analysis.features()).doesNotContain(QueryFeature.PIPELINE);
 		assertThat(analysis.shape()).isEqualTo(QueryShape.AGGREGATION);
+	}
+
+	@Test
+	void arithmeticIsDetected() {
+		Arithmetic plus = expr.createArithmetic();
+		plus.setOperator(ArithmeticOperator.ADD);
+		plus.setLeft(path(age));
+		plus.setRight(intLit(2));
+		Comparison comparison = expr.createComparison();
+		comparison.setOperator(ComparisonOperator.GT);
+		comparison.setLeft(plus);
+		comparison.setRight(intLit(50));
+
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query(comparison));
+		assertThat(analysis.features()).contains(QueryFeature.ARITHMETIC, QueryFeature.WHERE_COMPARISON);
+		assertThat(analysis.divisionByLiteralZero()).isFalse();
+	}
+
+	@Test
+	void negateIsDetected() {
+		Negate negate = expr.createNegate();
+		negate.setOperand(path(age));
+		Comparison comparison = expr.createComparison();
+		comparison.setOperator(ComparisonOperator.LT);
+		comparison.setLeft(negate);
+		comparison.setRight(intLit(0));
+
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query(comparison));
+		assertThat(analysis.features()).contains(QueryFeature.ARITHMETIC);
+	}
+
+	@Test
+	void literalZeroDivisorIsFlagged() {
+		assertThat(ExpressionAnalyzer.analyze(query(divides(ArithmeticOperator.DIV, intLit(0))))
+				.divisionByLiteralZero()).isTrue();
+
+		RealLiteral realZero = expr.createRealLiteral();
+		realZero.setValue(0.0d);
+		assertThat(ExpressionAnalyzer.analyze(query(divides(ArithmeticOperator.MOD, realZero)))
+				.divisionByLiteralZero()).isTrue();
+
+		assertThat(ExpressionAnalyzer.analyze(query(divides(ArithmeticOperator.DIV, intLit(2))))
+				.divisionByLiteralZero()).isFalse();
+	}
+
+	private Comparison divides(ArithmeticOperator operator, Expression divisor) {
+		Arithmetic arithmetic = expr.createArithmetic();
+		arithmetic.setOperator(operator);
+		arithmetic.setLeft(path(age));
+		arithmetic.setRight(divisor);
+		Comparison comparison = expr.createComparison();
+		comparison.setOperator(ComparisonOperator.GT);
+		comparison.setLeft(arithmetic);
+		comparison.setRight(intLit(1));
+		return comparison;
 	}
 
 	@Test
