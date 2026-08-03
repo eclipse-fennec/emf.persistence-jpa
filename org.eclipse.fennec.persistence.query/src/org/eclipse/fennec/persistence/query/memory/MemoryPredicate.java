@@ -34,6 +34,7 @@ import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
@@ -49,6 +50,7 @@ import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
+import org.eclipse.fennec.model.expression.NumericFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -58,6 +60,7 @@ import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
+import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 
 /**
  * Interprets an expression tree against candidate {@link EObject}s. All values of
@@ -293,17 +296,7 @@ final class MemoryPredicate {
 			};
 		}
 		if (expression instanceof NumericFunction function) {
-			Object inner = operand(function.getSource(), candidate, bindings);
-			if (!(inner instanceof Number number)) {
-				return null;
-			}
-			BigDecimal value = decimal(number);
-			// ROUND is half away from zero (OData semantics); the result is integral
-			return switch (function.getKind()) {
-			case ROUND -> value.setScale(0, RoundingMode.HALF_UP).longValue();
-			case FLOOR -> value.setScale(0, RoundingMode.FLOOR).longValue();
-			case CEILING -> value.setScale(0, RoundingMode.CEILING).longValue();
-			};
+			return rounded(function.getKind(), operand(function.getSource(), candidate, bindings));
 		}
 		return values.get(expression);
 	}
@@ -333,6 +326,109 @@ final class MemoryPredicate {
 		int end = (int) Math.min(value.length(),
 				Math.max(effectiveStart, (long) effectiveStart + clampToInt(bound)));
 		return value.substring(effectiveStart, end);
+	}
+
+	/** ROUND is half away from zero (OData semantics); the result is integral (issue #78). */
+	private static Object rounded(NumericFunctionKind kind, Object inner) {
+		if (!(inner instanceof Number number)) {
+			return null;
+		}
+		BigDecimal value = decimal(number);
+		return switch (kind) {
+		case ROUND -> value.setScale(0, RoundingMode.HALF_UP).longValue();
+		case FLOOR -> value.setScale(0, RoundingMode.FLOOR).longValue();
+		case CEILING -> value.setScale(0, RoundingMode.CEILING).longValue();
+		};
+	}
+
+	// ------------------------------------------------------------- row space (issue #82)
+
+	/** Evaluates a post-grouping pipeline predicate against a result row. */
+	boolean testRow(Expression expression, QueryResultRow row) {
+		if (expression instanceof Junction junction) {
+			boolean and = junction instanceof And;
+			for (Expression operand : junction.getOperands()) {
+				if (testRow(operand, row) != and) {
+					return !and;
+				}
+			}
+			return and;
+		}
+		if (expression instanceof Not not) {
+			return !testRow(not.getOperand(), row);
+		}
+		if (expression instanceof Comparison comparison) {
+			Object left = rowValue(comparison.getLeft(), row);
+			Object right = rowValue(comparison.getRight(), row);
+			if (left == null || right == null) {
+				return false;
+			}
+			return switch (comparison.getOperator()) {
+			case EQ -> equal(left, right);
+			case NE -> !equal(left, right);
+			case LT -> lessThan(left, right, false);
+			case LE -> lessThan(left, right, true);
+			case GT -> lessThan(right, left, false);
+			case GE -> lessThan(right, left, true);
+			};
+		}
+		if (expression instanceof IsNull isNull) {
+			Object value = rowValue(isNull.getSource(), row);
+			return isNull.isNegated() ? value != null : value == null;
+		}
+		if (expression instanceof Between between) {
+			Object value = rowValue(between.getSource(), row);
+			Object lower = rowValue(between.getLower(), row);
+			Object upper = rowValue(between.getUpper(), row);
+			if (value == null || lower == null || upper == null) {
+				return false;
+			}
+			return lessThan(lower, value, between.isLowerIncluded())
+					&& lessThan(value, upper, between.isUpperIncluded());
+		}
+		if (expression instanceof In in) {
+			Object value = rowValue(in.getSource(), row);
+			if (value == null) {
+				return false;
+			}
+			return in.getValues().stream()
+					.map(option -> rowValue(option, row))
+					.anyMatch(option -> option != null && equal(value, option));
+		}
+		// unreachable: the row-space translation refused everything else
+		return false;
+	}
+
+	/**
+	 * Evaluates a row-space value expression: AliasRef and PropertyPath address output
+	 * columns, arithmetic/numeric functions compute over them, literals and bound
+	 * parameters come from the translation-time value map.
+	 */
+	Object rowValue(Expression expression, QueryResultRow row) {
+		if (expression instanceof AliasRef aliasRef) {
+			return row.get(aliasRef.getAlias());
+		}
+		if (expression instanceof PropertyPath path) {
+			StringBuilder key = new StringBuilder();
+			path.getSegments().forEach(segment -> {
+				if (key.length() > 0) {
+					key.append('_');
+				}
+				key.append(segment.getName());
+			});
+			return row.get(key.toString());
+		}
+		if (expression instanceof Arithmetic arithmetic) {
+			return arithmetic(arithmetic.getOperator(),
+					rowValue(arithmetic.getLeft(), row), rowValue(arithmetic.getRight(), row));
+		}
+		if (expression instanceof Negate negate) {
+			return negate(rowValue(negate.getOperand(), row));
+		}
+		if (expression instanceof NumericFunction function) {
+			return rounded(function.getKind(), rowValue(function.getSource(), row));
+		}
+		return values.get(expression);
 	}
 
 	/** Views any supported temporal value as a UTC instant; local values are UTC wall-clock. */

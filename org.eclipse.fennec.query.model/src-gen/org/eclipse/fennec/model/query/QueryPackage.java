@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:e0c258f24911a9d115b1eb8599da36b94c8a53f97401167558d107ee607da642", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:2a8fccbe8895164a96f67968a2fcdb540c03b92f75ecc013fc5b02e3116e69dd", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -638,6 +638,89 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int SKIP_STAGE_OPERATION_COUNT = STAGE_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.ComputeStageImpl <em>Compute Stage</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.ComputeStageImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputeStage()
+	 * @generated
+	 */
+	int COMPUTE_STAGE = 11;
+
+	/**
+	 * The feature id for the '<em><b>Computations</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTE_STAGE__COMPUTATIONS = STAGE_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Compute Stage</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTE_STAGE_FEATURE_COUNT = STAGE_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Compute Stage</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTE_STAGE_OPERATION_COUNT = STAGE_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.ComputationImpl <em>Computation</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.ComputationImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputation()
+	 * @generated
+	 */
+	int COMPUTATION = 12;
+
+	/**
+	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTATION__EXPRESSION = 0;
+
+	/**
+	 * The feature id for the '<em><b>Alias</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTATION__ALIAS = 1;
+
+	/**
+	 * The number of structural features of the '<em>Computation</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTATION_FEATURE_COUNT = 2;
+
+	/**
+	 * The number of operations of the '<em>Computation</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMPUTATION_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.SortDirection <em>Sort Direction</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -645,7 +728,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSortDirection()
 	 * @generated
 	 */
-	int SORT_DIRECTION = 11;
+	int SORT_DIRECTION = 13;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}' enum.
@@ -655,7 +738,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregateMethod()
 	 * @generated
 	 */
-	int AGGREGATE_METHOD = 12;
+	int AGGREGATE_METHOD = 14;
 
 
 	/**
@@ -1077,6 +1160,59 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getSkipStage_Count();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.ComputeStage <em>Compute Stage</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Compute Stage</em>'.
+	 * @see org.eclipse.fennec.model.query.ComputeStage
+	 * @generated
+	 */
+	EClass getComputeStage();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.ComputeStage#getComputations <em>Computations</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Computations</em>'.
+	 * @see org.eclipse.fennec.model.query.ComputeStage#getComputations()
+	 * @see #getComputeStage()
+	 * @generated
+	 */
+	EReference getComputeStage_Computations();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Computation <em>Computation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Computation</em>'.
+	 * @see org.eclipse.fennec.model.query.Computation
+	 * @generated
+	 */
+	EClass getComputation();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.Computation#getExpression <em>Expression</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Expression</em>'.
+	 * @see org.eclipse.fennec.model.query.Computation#getExpression()
+	 * @see #getComputation()
+	 * @generated
+	 */
+	EReference getComputation_Expression();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.Computation#getAlias <em>Alias</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Alias</em>'.
+	 * @see org.eclipse.fennec.model.query.Computation#getAlias()
+	 * @see #getComputation()
+	 * @generated
+	 */
+	EAttribute getComputation_Alias();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.query.SortDirection <em>Sort Direction</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1452,6 +1588,50 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute SKIP_STAGE__COUNT = eINSTANCE.getSkipStage_Count();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.ComputeStageImpl <em>Compute Stage</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.ComputeStageImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputeStage()
+		 * @generated
+		 */
+		EClass COMPUTE_STAGE = eINSTANCE.getComputeStage();
+
+		/**
+		 * The meta object literal for the '<em><b>Computations</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference COMPUTE_STAGE__COMPUTATIONS = eINSTANCE.getComputeStage_Computations();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.ComputationImpl <em>Computation</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.ComputationImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputation()
+		 * @generated
+		 */
+		EClass COMPUTATION = eINSTANCE.getComputation();
+
+		/**
+		 * The meta object literal for the '<em><b>Expression</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference COMPUTATION__EXPRESSION = eINSTANCE.getComputation_Expression();
+
+		/**
+		 * The meta object literal for the '<em><b>Alias</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute COMPUTATION__ALIAS = eINSTANCE.getComputation_Alias();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.SortDirection <em>Sort Direction</em>}' enum.

@@ -156,6 +156,9 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//AliasRef">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//AliasRef/alias"/>
+    </genClasses>
     <genClasses ecoreClass="expression.ecore#//CollectionCount">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/variable"/>

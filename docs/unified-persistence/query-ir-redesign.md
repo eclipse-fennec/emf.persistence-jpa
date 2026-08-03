@@ -96,6 +96,7 @@ reference for each construct.
 | `TypeCheck` | `source: PropertyPath[0..1]`, `type: EClass` | issue #80 (OData isof, OCL oclIsKindOf). **Kind-of semantics**; unset source tests the query root. JPQL `TYPE(x) IN (concrete subtypes by entity name)` — the dynamic Java classes are deliberately flat, entity names sidestep Java assignability. Mongo refuses until documents carry a type discriminator (`_eType` is reserved but unwritten) |
 | `PropertyPath.castBase` | `EClass[0..1]` on PropertyPath | issue #80, the v1 cut matching OData's `Ns.SubType/prop` limit (full cast segments stay additive). JPQL `TREAT(e AS Sub).…`; non-instances yield null (verified EclipseLink three-valued behaviour inside OR); memory mirrors with a null short-circuit |
 | `CollectionCount` | `source: PropertyPath`, `variable: Variable[0..1]`, `predicate: Expression[0..1]` | issue #81 (OData `reviews/$count($filter=…)`). Value expression; a missing/empty collection counts 0. JPQL `SIZE(path)` resp. a correlated `SELECT COUNT` subquery (the JPQL text path avoids the criteria SubQueryImpl comparison gotcha); Mongo `$size($ifNull)` for the plain form — the filtered form is refused until `$filter` rendering lands, cross-document counts are refused by the embedded-path validation |
+| `AliasRef` | `alias: EString` | issue #82. References a pipeline output column (group key, aggregate or compute alias) in post-grouping stages. Memory resolves against row keys, JPQL re-renders the column (result variables are not addressable in HAVING), Mongo uses the flattened field. **Documented totality exception**: no OCL form — `ExprToOcl` refuses it (the bridge covers predicate expressions, not pipeline stages) |
 
 **Deliberately absent in v1** (decision list — add only with a driving use case):
 `If`/`Let`, collection operations
@@ -124,6 +125,8 @@ Sketch of the new vocabulary and the expected initial matrix:
 | TYPE_CAST / TYPE_CHECK | ✅ TREAT / TYPE IN | ❌ refused | Mongo needs a stored type discriminator first (`_eType` reserved) |
 | COLLECTION_COUNT | ✅ SIZE | ✅ `$size` | embedded collections only on Mongo (existing path validation) |
 | COLLECTION_COUNT_FILTERED | ✅ COUNT subquery | ❌ refused | Mongo `$filter` rendering is a follow-up |
+| PIPELINE | ✅ (issue #82) | ✅ | JPA: pre-group filters → WHERE, one GroupBy, post-group filters → HAVING; pipeline Top/Skip stay refused on JPA (use the envelope) |
+| PIPELINE_COMPUTE | ✅ | ✅ `$set` | ComputeStage terminal or post-group (revisits D3); a compute **before** GroupBy is refused — group paths/aggregate sources cannot address aliases yet (additive follow-up) |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
 | PARAMETERS | ✅ | ✅ | now model-level |

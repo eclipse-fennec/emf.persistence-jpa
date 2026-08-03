@@ -21,8 +21,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.CollectionCount;
@@ -47,6 +49,8 @@ import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
@@ -136,7 +140,7 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 		}
 		if (query.getApply() != null) {
-			resolution.walkPipeline(query.getApply().getStages(), rowKeys, rowAliases);
+			resolution.walkPipeline(query, rowKeys, rowAliases);
 		}
 		for (PropertyPath expand : query.getExpand()) {
 			resolution.rootPath(expand); // objects are in memory — expand is a no-op
@@ -286,15 +290,17 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			values.put(expression, ExpressionValues.resolve(expression, target, context.parameters(), null));
 		}
 
-		private void walkPipeline(List<Stage> stages, List<String> rowKeys, List<String> rowAliases)
+		private void walkPipeline(Query query, List<String> rowKeys, List<String> rowAliases)
 				throws QueryException {
-			boolean grouped = false;
+			List<Stage> stages = query.getApply().getStages();
+			boolean groupsSomewhere = stages.stream().anyMatch(GroupByStage.class::isInstance);
+			boolean rowSpace = false;
 			for (Stage stage : stages) {
 				if (stage instanceof GroupByStage groupBy) {
-					if (grouped) {
+					if (rowSpace) {
 						throw new QueryException("Multiple GroupBy stages are not supported");
 					}
-					grouped = true;
+					rowSpace = true;
 					for (PropertyPath path : groupBy.getPaths()) {
 						rootPath(path);
 						String key = outputKey(null, path);
@@ -307,14 +313,77 @@ public class MemoryQueryProcessor implements QueryProcessor {
 						registerKey(aggregate.getAlias(), aggregate.getAlias(), rowKeys, rowAliases);
 					}
 				} else if (stage instanceof FilterStage filter) {
-					if (grouped) {
-						throw new QueryException(
-								"A filter stage after GroupBy would address aggregated rows — not supported in memory");
+					if (rowSpace) {
+						// HAVING / post-compute filter — row-space vocabulary (issue #82)
+						rowExpression(filter.getPredicate());
+					} else {
+						walk(filter.getPredicate(), Set.of());
 					}
-					walk(filter.getPredicate(), Set.of());
+				} else if (stage instanceof ComputeStage compute) {
+					if (!rowSpace && groupsSomewhere) {
+						throw new QueryException("A compute before GroupBy cannot be addressed by"
+								+ " group paths or aggregate sources yet — move it after the"
+								+ " grouping (issue #82)");
+					}
+					if (!rowSpace) {
+						// terminal computes: one row per entity, attributes first
+						for (EAttribute attribute : query.getFrom().getEAllAttributes()) {
+							if (!attribute.isMany()) {
+								registerKey(attribute.getName(), attribute.getName(), rowKeys, rowAliases);
+							}
+						}
+						rowSpace = true;
+					}
+					for (Computation computation : compute.getComputations()) {
+						rowExpression(computation.getExpression());
+						registerKey(computation.getAlias(), computation.getAlias(), rowKeys, rowAliases);
+					}
 				} else if (!(stage instanceof TopStage) && !(stage instanceof SkipStage)) {
 					throw new QueryException("Unsupported pipeline stage " + stage.eClass().getName());
 				}
+			}
+		}
+
+		/**
+		 * Validates a row-space expression (HAVING / compute, issue #82) and resolves its
+		 * literals: alias references and paths address output columns, arithmetic and
+		 * numeric functions compute over them — everything else is refused.
+		 */
+		private void rowExpression(Expression expression) throws QueryException {
+			if (expression instanceof Junction junction) {
+				for (Expression operand : junction.getOperands()) {
+					rowExpression(operand);
+				}
+			} else if (expression instanceof Not not) {
+				rowExpression(not.getOperand());
+			} else if (expression instanceof Comparison comparison) {
+				rowExpression(comparison.getLeft());
+				rowExpression(comparison.getRight());
+			} else if (expression instanceof IsNull isNull) {
+				rowExpression(isNull.getSource());
+			} else if (expression instanceof Between between) {
+				rowExpression(between.getSource());
+				rowExpression(between.getLower());
+				rowExpression(between.getUpper());
+			} else if (expression instanceof In in) {
+				rowExpression(in.getSource());
+				for (Expression option : in.getValues()) {
+					rowExpression(option);
+				}
+			} else if (expression instanceof Arithmetic arithmetic) {
+				rowExpression(arithmetic.getLeft());
+				rowExpression(arithmetic.getRight());
+			} else if (expression instanceof Negate negate) {
+				rowExpression(negate.getOperand());
+			} else if (expression instanceof NumericFunction numericFunction) {
+				rowExpression(numericFunction.getSource());
+			} else if (expression instanceof AliasRef || expression instanceof PropertyPath) {
+				// resolved against the row keys at execution
+			} else if (expression instanceof Literal || expression instanceof ParameterRef) {
+				values.put(expression, ExpressionValues.resolve(expression, null, context.parameters(), null));
+			} else {
+				throw new QueryException("Unsupported row-space expression " + expression.eClass().getName()
+						+ " — HAVING/compute expressions address pipeline output columns");
 			}
 		}
 

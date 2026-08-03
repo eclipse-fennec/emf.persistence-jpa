@@ -168,6 +168,12 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="variable" lowerBound="1"
         eType="#//Variable"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AliasRef" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Reference to a pipeline output column by alias — a group key, an aggregate alias or a compute alias (issue #82). Only meaningful in post-grouping pipeline stages (HAVING filters, post-group computes) and pipeline orderBy; the memory backend resolves it against the row keys, JPA re-renders the aliased column (JPQL result variables are not addressable in HAVING), Mongo uses the flattened field."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alias" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ParameterRef" eSuperTypes="#//Expression">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="First-class named parameter, bound at execution time — retires the v1 &quot;:name&quot; string convention. Unbound parameters fail translation with a diagnostic."/>

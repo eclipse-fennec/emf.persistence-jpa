@@ -77,6 +77,8 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 			case QueryPackage.AGGREGATE: return createAggregate();
 			case QueryPackage.TOP_STAGE: return createTopStage();
 			case QueryPackage.SKIP_STAGE: return createSkipStage();
+			case QueryPackage.COMPUTE_STAGE: return createComputeStage();
+			case QueryPackage.COMPUTATION: return createComputation();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -224,6 +226,28 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 	public SkipStage createSkipStage() {
 		SkipStageImpl skipStage = new SkipStageImpl();
 		return skipStage;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ComputeStage createComputeStage() {
+		ComputeStageImpl computeStage = new ComputeStageImpl();
+		return computeStage;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Computation createComputation() {
+		ComputationImpl computation = new ComputationImpl();
+		return computation;
 	}
 
 	/**

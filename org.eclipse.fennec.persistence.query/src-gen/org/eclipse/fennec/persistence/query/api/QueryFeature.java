@@ -542,6 +542,19 @@ public enum QueryFeature implements Enumerator {
 	COLLECTION_COUNT_FILTERED(71, "COLLECTION_COUNT_FILTERED", "COLLECTION_COUNT_FILTERED"),
 
 	/**
+	 * The '<em><b>PIPELINE COMPUTE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Alias-bound computed pipeline columns (v2 query ComputeStage — issue #82): terminal or after grouping, addressed via AliasRef; a trailing FilterStage after GroupBy is HAVING.
+	 * <!-- end-model-doc -->
+	 * @see #PIPELINE_COMPUTE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	PIPELINE_COMPUTE(72, "PIPELINE_COMPUTE", "PIPELINE_COMPUTE"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1153,6 +1166,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int COLLECTION_COUNT_FILTERED_VALUE = 71;
 
 	/**
+	 * The '<em><b>PIPELINE COMPUTE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Alias-bound computed pipeline columns (v2 query ComputeStage — issue #82): terminal or after grouping, addressed via AliasRef; a trailing FilterStage after GroupBy is HAVING.
+	 * <!-- end-model-doc -->
+	 * @see #PIPELINE_COMPUTE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int PIPELINE_COMPUTE_VALUE = 72;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1269,6 +1296,7 @@ public enum QueryFeature implements Enumerator {
 			TYPE_CHECK,
 			COLLECTION_COUNT,
 			COLLECTION_COUNT_FILTERED,
+			PIPELINE_COMPUTE,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1369,6 +1397,7 @@ public enum QueryFeature implements Enumerator {
 			case TYPE_CHECK_VALUE: return TYPE_CHECK;
 			case COLLECTION_COUNT_VALUE: return COLLECTION_COUNT;
 			case COLLECTION_COUNT_FILTERED_VALUE: return COLLECTION_COUNT_FILTERED;
+			case PIPELINE_COMPUTE_VALUE: return PIPELINE_COMPUTE;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

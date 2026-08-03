@@ -287,6 +287,15 @@ public interface ExpressionFactory extends EFactory {
 	IndexOf createIndexOf();
 
 	/**
+	 * Returns a new object of class '<em>Alias Ref</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Alias Ref</em>'.
+	 * @generated
+	 */
+	AliasRef createAliasRef();
+
+	/**
 	 * Returns a new object of class '<em>Collection Count</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

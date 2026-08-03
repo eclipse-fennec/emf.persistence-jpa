@@ -24,6 +24,8 @@ import org.eclipse.fennec.model.expression.ExpressionPackage;
 
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
@@ -121,6 +123,20 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	private EClass skipStageEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass computeStageEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass computationEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -595,6 +611,56 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EClass getComputeStage() {
+		return computeStageEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getComputeStage_Computations() {
+		return (EReference)computeStageEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getComputation() {
+		return computationEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getComputation_Expression() {
+		return (EReference)computationEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getComputation_Alias() {
+		return (EAttribute)computationEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getSortDirection() {
 		return sortDirectionEEnum;
 	}
@@ -688,6 +754,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		skipStageEClass = createEClass(SKIP_STAGE);
 		createEAttribute(skipStageEClass, SKIP_STAGE__COUNT);
 
+		computeStageEClass = createEClass(COMPUTE_STAGE);
+		createEReference(computeStageEClass, COMPUTE_STAGE__COMPUTATIONS);
+
+		computationEClass = createEClass(COMPUTATION);
+		createEReference(computationEClass, COMPUTATION__EXPRESSION);
+		createEAttribute(computationEClass, COMPUTATION__ALIAS);
+
 		// Create enums
 		sortDirectionEEnum = createEEnum(SORT_DIRECTION);
 		aggregateMethodEEnum = createEEnum(AGGREGATE_METHOD);
@@ -728,6 +801,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		groupByStageEClass.getESuperTypes().add(this.getStage());
 		topStageEClass.getESuperTypes().add(this.getStage());
 		skipStageEClass.getESuperTypes().add(this.getStage());
+		computeStageEClass.getESuperTypes().add(this.getStage());
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(queryEClass, Query.class, "Query", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -779,6 +853,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		initEClass(skipStageEClass, SkipStage.class, "SkipStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getSkipStage_Count(), ecorePackage.getEInt(), "count", null, 1, 1, SkipStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(computeStageEClass, ComputeStage.class, "ComputeStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getComputeStage_Computations(), this.getComputation(), null, "computations", null, 1, -1, ComputeStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(computationEClass, Computation.class, "Computation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getComputation_Expression(), theExpressionPackage.getExpression(), null, "expression", null, 1, 1, Computation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getComputation_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, Computation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		// Initialize enums and add enum literals
 		initEEnum(sortDirectionEEnum, SortDirection.class, "SortDirection");

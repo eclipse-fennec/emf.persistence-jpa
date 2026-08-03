@@ -122,6 +122,14 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 				return createSkipStageAdapter();
 			}
 			@Override
+			public Adapter caseComputeStage(ComputeStage object) {
+				return createComputeStageAdapter();
+			}
+			@Override
+			public Adapter caseComputation(Computation object) {
+				return createComputationAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -292,6 +300,34 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createSkipStageAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.ComputeStage <em>Compute Stage</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.ComputeStage
+	 * @generated
+	 */
+	public Adapter createComputeStageAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Computation <em>Computation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.Computation
+	 * @generated
+	 */
+	public Adapter createComputationAdapter() {
 		return null;
 	}
 

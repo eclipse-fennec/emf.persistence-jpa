@@ -42,6 +42,8 @@ import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.OrderBy;
@@ -158,6 +160,14 @@ public final class ExpressionAnalyzer {
 			} else if (stage instanceof FilterStage filter) {
 				beyondSingleGroupBy = true;
 				walk(filter.getPredicate(), features, maxDepth, zeroDivision);
+			} else if (stage instanceof ComputeStage compute) {
+				// computed columns produce rows like an aggregation (issue #82)
+				aggregating = true;
+				beyondSingleGroupBy = true;
+				features.add(QueryFeature.PIPELINE_COMPUTE);
+				for (Computation computation : compute.getComputations()) {
+					walk(computation.getExpression(), features, maxDepth, zeroDivision);
+				}
 			} else {
 				beyondSingleGroupBy = true;
 			}

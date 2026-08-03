@@ -743,21 +743,66 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
-	void filterStageAfterGroupByIsRefused() {
+	void computeBeforeGroupByIsRefused() {
 		Query query = QueryBuilder.from(personClass)
+				.computeAs("doubled", Expressions.path(personAge).times(2).toExpression())
 				.groupBy(personName)
 				.countOf("cnt")
 				.build();
-		FilterStage filter = QueryFactory.eINSTANCE.createFilterStage();
-		Comparison always = ExpressionFactory.eINSTANCE.createComparison();
-		always.setOperator(ComparisonOperator.GE);
-		always.setLeft(Expressions.propertyPath(personAge));
-		always.setRight(Expressions.literal(0));
-		filter.setPredicate(always);
-		query.getApply().getStages().add(filter);
-
 		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
 				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("after GroupBy");
+				.hasMessageContaining("before GroupBy");
+	}
+
+	@Test
+	void havingFiltersGroupedRows() throws QueryException {
+		// two persons share age 30 once Dave joins — HAVING keeps only that group
+		persons.add(person("Dave", 30));
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.sum("total", personAge)
+				.having(Expressions.aliasRef("cnt").ge(2))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(1);
+			assertThat(((Number) rows.get(0).get("age")).intValue()).isEqualTo(30);
+			assertThat(((Number) rows.get(0).get("cnt")).longValue()).isEqualTo(2);
+			assertThat(((Number) rows.get(0).get("total")).longValue()).isEqualTo(60);
+		}
+	}
+
+	@Test
+	void postGroupComputeDerivesColumns() throws QueryException {
+		// whole-set: total 120, cnt 3 → avg = total / cnt = 40.0 (FP division)
+		Query query = QueryBuilder.from(personClass)
+				.sum("total", personAge)
+				.countOf("cnt")
+				.computeAs("avgAge", Expressions.div(Expressions.aliasRef("total"),
+						Expressions.aliasRef("cnt")).toExpression())
+				.having(Expressions.aliasRef("avgAge").ge(30))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(1);
+			assertThat(((Number) rows.get(0).get("avgAge")).doubleValue()).isEqualTo(40.0);
+		}
+	}
+
+	@Test
+	void terminalComputeYieldsOneRowPerEntity() throws QueryException {
+		Query query = QueryBuilder.from(personClass)
+				.computeAs("doubled", Expressions.path(personAge).times(2).toExpression())
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(3);
+			assertThat(rows.stream().map(row -> ((Number) row.get("doubled")).longValue()))
+					.containsExactlyInAnyOrder(60L, 80L, 100L);
+			// single-valued attributes ride along
+			assertThat(rows.stream().map(row -> row.get("name")))
+					.containsExactlyInAnyOrder("Alice", "Bob", "Carol");
+		}
 	}
 }

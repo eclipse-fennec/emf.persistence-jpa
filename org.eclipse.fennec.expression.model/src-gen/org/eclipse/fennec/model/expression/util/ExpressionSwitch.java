@@ -311,6 +311,13 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.ALIAS_REF: {
+				AliasRef aliasRef = (AliasRef)theEObject;
+				T result = caseAliasRef(aliasRef);
+				if (result == null) result = caseExpression(aliasRef);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.COLLECTION_COUNT: {
 				CollectionCount collectionCount = (CollectionCount)theEObject;
 				T result = caseCollectionCount(collectionCount);
@@ -827,6 +834,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseIndexOf(IndexOf object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Alias Ref</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Alias Ref</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseAliasRef(AliasRef object) {
 		return null;
 	}
 

@@ -54,6 +54,13 @@ Query query = QueryBuilder.from(personClass)
   `round/floor/ceiling` on paths and arithmetic steps (statics too). **`round` is half
   away from zero** (OData semantics; Mongo's half-to-even `$round` is emulated via
   `$cond`), the result is integral.
+- **Pipeline compute + HAVING** (#82): `.computeAs("avgAge", div(aliasRef("total"),
+  aliasRef("cnt")).toExpression())` adds alias-bound computed columns (terminal without
+  a grouping — one row per entity, attributes first — or after the grouping over
+  aggregate aliases/group keys via `aliasRef(...)`); `.having(aliasRef("cnt").ge(2))`
+  filters grouped rows. JPA renders GROUP BY/HAVING (columns re-rendered — JPQL result
+  variables are not addressable there), Mongo `$set`/`$match`, memory evaluates in row
+  space. A compute **before** the grouping is refused for now.
 - **Collection counts** (#81): `count(propertyPath(addresses)).ge(2)` and the filtered
   `count(propertyPath(reviews), r -> r.path(rating).gt(3)).ge(2)` — value expressions,
   missing/empty collections count 0. JPA renders `SIZE` resp. a correlated

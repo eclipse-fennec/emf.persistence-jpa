@@ -25,6 +25,7 @@ import java.util.function.Function;
 import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
@@ -273,6 +274,20 @@ public final class Expressions {
 	}
 
 	// ==================== values ====================
+
+	/**
+	 * Reference to a pipeline output column — a group key, aggregate alias or compute
+	 * alias (issue #82). Only meaningful in post-grouping pipeline stages; comparable
+	 * and arithmetic-chainable like any value step.
+	 *
+	 * @param alias the output column alias
+	 * @return a comparable step over the referenced column
+	 */
+	public static ArithmeticStep aliasRef(String alias) {
+		AliasRef ref = FACTORY.createAliasRef();
+		ref.setAlias(Objects.requireNonNull(alias, "alias must not be null"));
+		return new ArithmeticStep(ref);
+	}
 
 	/**
 	 * @param name the parameter name

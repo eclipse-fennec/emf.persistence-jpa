@@ -30,9 +30,11 @@ import org.bson.conversions.Bson;
 import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.Enumerator;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.CollectionCount;
@@ -58,6 +60,8 @@ import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
@@ -134,7 +138,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
-					QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.PIPELINE_COMPUTE, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -226,8 +230,21 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return Filters.nor(predicate(not.getOperand(), context));
 		}
 		if (expression instanceof Comparison comparison) {
-			boolean plain = comparison.getLeft() instanceof PropertyPath
-					&& (comparison.getRight() instanceof Literal || comparison.getRight() instanceof ParameterRef);
+			boolean rightIsValue = comparison.getRight() instanceof Literal
+					|| comparison.getRight() instanceof ParameterRef;
+			if (comparison.getLeft() instanceof AliasRef aliasRef && rightIsValue) {
+				// pipeline output columns are plain top-level fields after the flatten
+				Object bound = value(comparison.getRight(), null, context);
+				return switch (comparison.getOperator()) {
+				case EQ -> Filters.eq(aliasRef.getAlias(), bound);
+				case NE -> Filters.ne(aliasRef.getAlias(), bound);
+				case LT -> Filters.lt(aliasRef.getAlias(), bound);
+				case LE -> Filters.lte(aliasRef.getAlias(), bound);
+				case GT -> Filters.gt(aliasRef.getAlias(), bound);
+				case GE -> Filters.gte(aliasRef.getAlias(), bound);
+				};
+			}
+			boolean plain = comparison.getLeft() instanceof PropertyPath && rightIsValue;
 			if (!plain) {
 				return exprComparison(comparison, context);
 			}
@@ -368,6 +385,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 			case FLOOR -> new Document("$floor", inner);
 			case CEILING -> new Document("$ceil", inner);
 			};
+		}
+		if (expression instanceof AliasRef aliasRef) {
+			// a pipeline output column — plain field, no null guard (issue #82)
+			return "$" + aliasRef.getAlias();
 		}
 		if (expression instanceof CollectionCount count) {
 			if (count.getPredicate() != null) {
@@ -596,11 +617,39 @@ public class MongoQueryProcessor implements QueryProcessor {
 
 	private void aggregationStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
 			QueryContext context) throws QueryException {
+		boolean groupsSomewhere = query.getApply().getStages().stream()
+				.anyMatch(GroupByStage.class::isInstance);
+		boolean rowSpace = false;
 		for (Stage stage : query.getApply().getStages()) {
 			if (stage instanceof FilterStage filterStage) {
 				pipeline.add(Aggregates.match(filter(filterStage.getPredicate(), context)));
 			} else if (stage instanceof GroupByStage groupBy) {
 				groupStage(groupBy, pipeline, rowKeys, rowAliases);
+				rowSpace = true;
+			} else if (stage instanceof ComputeStage compute) {
+				// computed columns via $set (issue #82); after $group the flatten
+				// $project lifted every alias to a plain top-level field
+				if (!rowSpace && groupsSomewhere) {
+					throw new QueryException("A compute before GroupBy cannot be addressed by"
+							+ " group paths or aggregate sources yet — move it after the"
+							+ " grouping (issue #82)");
+				}
+				if (!rowSpace) {
+					// terminal computes: one row per entity, single-valued attributes first
+					for (EAttribute attribute : query.getFrom().getEAllAttributes()) {
+						if (!attribute.isMany()) {
+							register(attribute.getName(), attribute.getName(), rowKeys, rowAliases);
+						}
+					}
+					rowSpace = true;
+				}
+				Document fields = new Document();
+				for (Computation computation : compute.getComputations()) {
+					fields.put(computation.getAlias(),
+							exprOperand(computation.getExpression(), null, context, new ArrayList<>()));
+					register(computation.getAlias(), computation.getAlias(), rowKeys, rowAliases);
+				}
+				pipeline.add(new Document("$set", fields));
 			} else if (stage instanceof TopStage top) {
 				pipeline.add(Aggregates.limit(top.getCount()));
 			} else if (stage instanceof SkipStage skip) {

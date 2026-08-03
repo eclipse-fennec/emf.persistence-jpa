@@ -36,6 +36,7 @@ import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
@@ -266,6 +267,12 @@ public final class ExprToOcl {
 							map(substring.getStart(), null), map(substring.getLength(), null));
 				}
 				return call("substring", map(substring.getSource(), null), map(substring.getStart(), null));
+			}
+			if (expression instanceof AliasRef aliasRef) {
+				// the documented totality exception (issue #82): pipeline alias references
+				// address query-envelope output columns — OCL has no pipeline concept
+				throw new QueryException("Alias reference '" + aliasRef.getAlias()
+						+ "' has no OCL form — the bridge covers predicate expressions, not pipeline stages");
 			}
 			if (expression instanceof CollectionCount count) {
 				// plain: path->size(); filtered: path->select(v | pred)->size() (issue #81)

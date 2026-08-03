@@ -897,6 +897,43 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryPipelineComputeAndHaving() throws Exception {
+		saveQueryFixture();
+		// Dora shares age 30 with Alice — the HAVING keeps only that group
+		ResourceSet extraSet = createBackendResourceSet();
+		save(extraSet, "Person", newPerson(4, "Dora", 30));
+
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.sum("total", personAge)
+				.countOf("cnt")
+				.computeAs("avgAge", Expressions.div(Expressions.aliasRef("total"),
+						Expressions.aliasRef("cnt")).toExpression())
+				.having(Expressions.aliasRef("cnt").ge(2))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(1);
+			QueryResultRow row = rows.get(0);
+			assertThat(((Number) row.get("age")).intValue()).isEqualTo(30);
+			assertThat(((Number) row.get("total")).longValue()).isEqualTo(60);
+			assertThat(((Number) row.get("cnt")).longValue()).isEqualTo(2);
+			assertThat(((Number) row.get("avgAge")).doubleValue()).isEqualTo(30.0);
+		}
+
+		// differential: the memory oracle computes the same row
+		List<EObject> oracle = List.of(
+				newPerson(1, "Alice", 30), newPerson(2, "Bob", 40),
+				newPerson(3, "Carol", 50), newPerson(4, "Dora", 30));
+		try (QueryResult memory = MemoryQueries.execute(query, oracle, null)) {
+			List<QueryResultRow> rows = memory.rows().toList();
+			assertThat(rows).hasSize(1);
+			assertThat(((Number) rows.get(0).get("avgAge")).doubleValue()).isEqualTo(30.0);
+			assertThat(((Number) rows.get(0).get("cnt")).longValue()).isEqualTo(2);
+		}
+	}
+
+	@Test
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();
 		// a literal zero is refused statically; a zero bound at runtime is the backend's

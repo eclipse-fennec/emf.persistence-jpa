@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.model.query.builder;
 
+import java.util.List;
 import java.util.Objects;
 
 import org.eclipse.emf.ecore.EClass;
@@ -20,6 +21,9 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
+import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
@@ -28,6 +32,7 @@ import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SortDirection;
+import org.eclipse.fennec.model.query.Stage;
 
 /**
  * Fluent builder for the query envelope; predicates come from the composable
@@ -243,11 +248,57 @@ public final class QueryBuilder {
 	private GroupByStage groupByStage() {
 		if (groupByStage == null) {
 			groupByStage = factory.createGroupByStage();
-			Pipeline pipeline = factory.createPipeline();
-			pipeline.getStages().add(groupByStage);
-			query.setApply(pipeline);
+			pipeline().getStages().add(groupByStage);
 		}
 		return groupByStage;
+	}
+
+	private Pipeline pipeline() {
+		if (query.getApply() == null) {
+			query.setApply(factory.createPipeline());
+		}
+		return query.getApply();
+	}
+
+	/**
+	 * Appends an alias-bound computed column to the pipeline (issue #82): after the
+	 * grouping it computes over aggregate aliases and group keys
+	 * ({@link Expressions#aliasRef(String)}); without a grouping it is terminal — one
+	 * row per entity, single-valued attributes plus the computed columns.
+	 *
+	 * @param alias the column alias
+	 * @param expression the computation
+	 * @return this builder
+	 */
+	public QueryBuilder computeAs(String alias, Expression expression) {
+		ComputeStage stage;
+		List<Stage> stages = pipeline().getStages();
+		if (!stages.isEmpty() && stages.get(stages.size() - 1) instanceof ComputeStage last) {
+			stage = last;
+		} else {
+			stage = factory.createComputeStage();
+			stages.add(stage);
+		}
+		Computation computation = factory.createComputation();
+		computation.setAlias(Objects.requireNonNull(alias, "compute alias must not be null"));
+		computation.setExpression(Objects.requireNonNull(expression, "computation must not be null"));
+		stage.getComputations().add(computation);
+		return this;
+	}
+
+	/**
+	 * Appends a post-grouping filter (HAVING, issue #82) — the predicate addresses
+	 * pipeline output columns via {@link Expressions#aliasRef(String)} or group-key
+	 * paths.
+	 *
+	 * @param predicate the row predicate
+	 * @return this builder
+	 */
+	public QueryBuilder having(Expression predicate) {
+		FilterStage stage = factory.createFilterStage();
+		stage.setPredicate(Objects.requireNonNull(predicate, "having predicate must not be null"));
+		pipeline().getStages().add(stage);
+		return this;
 	}
 
 	// ==================== shaping / parameters / persistence ====================

@@ -294,6 +294,11 @@
         <details key="documentation" value="Predicate-filtered element count (v2 IR CollectionCount with predicate — issue #81). JPA correlated SELECT COUNT, Mongo $size($filter) over embedded collections."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="PIPELINE_COMPUTE" value="72">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Alias-bound computed pipeline columns (v2 query ComputeStage — issue #82): terminal or after grouping, addressed via AliasRef; a trailing FilterStage after GroupBy is HAVING."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>

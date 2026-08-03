@@ -45,6 +45,7 @@ import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -392,6 +393,21 @@ class ExpressionAnalyzerTest {
 				Expressions.count(Expressions.propertyPath(addresses),
 						a -> a.path(street).startsWith("Main")).ge(1)));
 		assertThat(filtered.features()).contains(QueryFeature.COLLECTION_COUNT_FILTERED);
+	}
+
+	@Test
+	void computeStagesAreDetected() {
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.sum("total", age)
+						.countOf("cnt")
+						.computeAs("avgAge", Expressions.div(Expressions.aliasRef("total"),
+								Expressions.aliasRef("cnt")).toExpression())
+						.having(Expressions.aliasRef("avgAge").ge(30))
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE,
+				QueryFeature.GROUP_BY);
+		assertThat(analysis.shape()).isEqualTo(QueryShape.AGGREGATION);
 	}
 
 	@Test

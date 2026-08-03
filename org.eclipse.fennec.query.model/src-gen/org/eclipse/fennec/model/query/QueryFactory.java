@@ -125,6 +125,24 @@ public interface QueryFactory extends EFactory {
 	SkipStage createSkipStage();
 
 	/**
+	 * Returns a new object of class '<em>Compute Stage</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Compute Stage</em>'.
+	 * @generated
+	 */
+	ComputeStage createComputeStage();
+
+	/**
+	 * Returns a new object of class '<em>Computation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Computation</em>'.
+	 * @generated
+	 */
+	Computation createComputation();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

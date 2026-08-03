@@ -206,6 +206,10 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createIndexOfAdapter();
 			}
 			@Override
+			public Adapter caseAliasRef(AliasRef object) {
+				return createAliasRefAdapter();
+			}
+			@Override
 			public Adapter caseCollectionCount(CollectionCount object) {
 				return createCollectionCountAdapter();
 			}
@@ -690,6 +694,20 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createIndexOfAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.AliasRef <em>Alias Ref</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.AliasRef
+	 * @generated
+	 */
+	public Adapter createAliasRefAdapter() {
 		return null;
 	}
 

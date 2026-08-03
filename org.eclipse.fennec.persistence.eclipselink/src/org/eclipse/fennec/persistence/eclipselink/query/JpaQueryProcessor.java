@@ -17,12 +17,16 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.CollectionCount;
@@ -48,6 +52,9 @@ import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
+import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -106,6 +113,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
 					QueryFeature.COLLECTION_COUNT, QueryFeature.COLLECTION_COUNT_FILTERED,
+					QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE,
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
@@ -151,6 +159,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 		List<String> rowAliases = new ArrayList<>();
 		String entity = query.getFrom().getName();
 
+		TranslatedPipeline pipeline = shape == QueryShape.AGGREGATION
+				? translation.translatePipeline(query, rowKeys, rowAliases)
+				: null;
 		switch (shape) {
 		case COUNT -> jpql.append("COUNT(").append(ALIAS).append(')');
 		case OBJECTS -> {
@@ -165,21 +176,34 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			jpql.append(projectionColumns(query, rowKeys, rowAliases));
 		}
-		case AGGREGATION -> jpql.append(aggregationColumns(query, rowKeys, rowAliases));
+		case AGGREGATION -> jpql.append(pipeline.columns);
 		}
 		jpql.append(" FROM ").append(entity).append(' ').append(ALIAS);
 		appendFetchJoins(jpql, query);
-		if (!where.isEmpty()) {
-			jpql.append(" WHERE ").append(where);
+		String conjuncts = pipeline == null ? where
+				: Stream.concat(where.isEmpty() ? Stream.empty() : Stream.of(where),
+						pipeline.preFilters.stream())
+					.map(conjunct -> "(" + conjunct + ")")
+					.collect(Collectors.joining(" AND "));
+		if (!conjuncts.isEmpty()) {
+			jpql.append(" WHERE ").append(conjuncts);
 		}
-		if (shape == QueryShape.AGGREGATION) {
-			appendGroupBy(jpql, query);
+		if (pipeline != null) {
+			jpql.append(pipeline.groupBy).append(pipeline.having);
 		}
 		if (shape != QueryShape.COUNT) {
 			appendOrderBy(jpql, query, shape, rowKeys);
 		}
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
 				Math.max(0, query.getSkip()), Math.max(0, query.getTop()), rowKeys, rowAliases);
+	}
+
+	/** The JPQL fragments of a translated pipeline (issue #82). */
+	private static final class TranslatedPipeline {
+		String columns = "";
+		final List<String> preFilters = new ArrayList<>();
+		String groupBy = "";
+		String having = "";
 	}
 
 	// -------------------------------------------------- select / group / order
@@ -198,67 +222,16 @@ public class JpaQueryProcessor implements QueryProcessor {
 		return columns.toString();
 	}
 
-	private String aggregationColumns(Query query, List<String> rowKeys, List<String> rowAliases)
-			throws QueryException {
-		GroupByStage stage = singleGroupByStage(query.getApply());
-		StringBuilder columns = new StringBuilder();
-		for (PropertyPath path : stage.getPaths()) {
-			String key = outputKey(null, path);
-			// group keys are alias-addressable under their derived name
-			registerKey(key, key, rowKeys, rowAliases);
-			if (columns.length() > 0) {
-				columns.append(", ");
-			}
-			columns.append(rootPath(path)).append(" AS ").append(key);
-		}
-		for (Aggregate aggregate : stage.getAggregates()) {
-			String key = aggregate.getAlias();
-			registerKey(key, key, rowKeys, rowAliases);
-			if (columns.length() > 0) {
-				columns.append(", ");
-			}
-			String argument = aggregate.getPath() == null ? ALIAS : rootPath(aggregate.getPath());
-			String function = switch (aggregate.getMethod()) {
-			case SUM -> "SUM(" + argument + ")";
-			case MIN -> "MIN(" + argument + ")";
-			case MAX -> "MAX(" + argument + ")";
-			case AVG -> "AVG(" + argument + ")";
-			case COUNT -> "COUNT(" + argument + ")";
-			case COUNT_DISTINCT -> "COUNT(DISTINCT " + argument + ")";
-			};
-			columns.append(function).append(" AS ").append(key);
-		}
-		return columns.toString();
-	}
-
-	private GroupByStage singleGroupByStage(Pipeline pipeline) throws QueryException {
-		GroupByStage found = null;
-		for (Stage stage : pipeline.getStages()) {
-			if (stage instanceof GroupByStage groupBy && found == null) {
-				found = groupBy;
-			} else {
-				throw new QueryException(
-						"Multi-stage pipelines are not yet served by the JPA processor (feature PIPELINE)");
-			}
-		}
-		if (found == null) {
-			throw new QueryException("The pipeline carries no GroupBy stage");
-		}
-		return found;
-	}
-
-	private void appendGroupBy(StringBuilder jpql, Query query) throws QueryException {
-		GroupByStage stage = singleGroupByStage(query.getApply());
-		if (stage.getPaths().isEmpty()) {
-			return; // whole-set aggregation
-		}
-		jpql.append(" GROUP BY ");
-		for (int i = 0; i < stage.getPaths().size(); i++) {
-			if (i > 0) {
-				jpql.append(", ");
-			}
-			jpql.append(rootPath(stage.getPaths().get(i)));
-		}
+	private static String aggregateFunction(Aggregate aggregate) throws QueryException {
+		String argument = aggregate.getPath() == null ? ALIAS : rootPath(aggregate.getPath());
+		return switch (aggregate.getMethod()) {
+		case SUM -> "SUM(" + argument + ")";
+		case MIN -> "MIN(" + argument + ")";
+		case MAX -> "MAX(" + argument + ")";
+		case AVG -> "AVG(" + argument + ")";
+		case COUNT -> "COUNT(" + argument + ")";
+		case COUNT_DISTINCT -> "COUNT(DISTINCT " + argument + ")";
+		};
 	}
 
 	private void appendFetchJoins(StringBuilder jpql, Query query) throws QueryException {
@@ -354,8 +327,121 @@ public class JpaQueryProcessor implements QueryProcessor {
 		private final Map<Variable, String> aliases = new HashMap<>();
 		private int aliasCounter = 0;
 
+		/** Pipeline output columns (alias → rendered JPQL) for AliasRef resolution (issue #82). */
+		private final Map<String, String> columnExpressions = new LinkedHashMap<>();
+
 		private Translation(QueryContext context) {
 			this.context = context;
+		}
+
+		/**
+		 * Translates the stage pipeline: pre-group filters fold into WHERE, one GroupBy
+		 * renders keys + aggregates, post-group computes render over the named columns
+		 * (AliasRef), trailing filters become HAVING with the columns re-rendered —
+		 * JPQL result variables are not addressable there. Without a GroupBy the
+		 * computes are terminal: one row per entity, single-valued attributes first.
+		 */
+		private TranslatedPipeline translatePipeline(Query query, List<String> rowKeys,
+				List<String> rowAliases) throws QueryException {
+			TranslatedPipeline result = new TranslatedPipeline();
+			List<Stage> stages = query.getApply().getStages();
+			boolean groupsSomewhere = stages.stream().anyMatch(GroupByStage.class::isInstance);
+			GroupByStage group = null;
+			List<Computation> computations = new ArrayList<>();
+			List<Expression> havingPredicates = new ArrayList<>();
+			for (Stage stage : stages) {
+				if (stage instanceof GroupByStage groupBy) {
+					if (group != null) {
+						throw new QueryException("Multiple GroupBy stages are not supported");
+					}
+					group = groupBy;
+				} else if (stage instanceof FilterStage filter) {
+					if (group == null) {
+						result.preFilters.add(render(filter.getPredicate()));
+					} else {
+						havingPredicates.add(filter.getPredicate());
+					}
+				} else if (stage instanceof ComputeStage compute) {
+					if (group == null && groupsSomewhere) {
+						throw new QueryException("A compute before GroupBy cannot be addressed by"
+								+ " group paths or aggregate sources yet — move it after the"
+								+ " grouping (issue #82)");
+					}
+					computations.addAll(compute.getComputations());
+				} else {
+					throw new QueryException("Unsupported pipeline stage " + stage.eClass().getName()
+							+ " on the JPA processor — page with the envelope top/skip");
+				}
+			}
+			StringBuilder columns = new StringBuilder();
+			if (group != null) {
+				for (PropertyPath path : group.getPaths()) {
+					String key = outputKey(null, path);
+					// group keys are alias-addressable under their derived name
+					registerKey(key, key, rowKeys, rowAliases);
+					String rendered = rootPath(path);
+					columnExpressions.put(key, rendered);
+					appendColumn(columns, rendered + " AS " + key);
+				}
+				for (Aggregate aggregate : group.getAggregates()) {
+					String key = aggregate.getAlias();
+					registerKey(key, key, rowKeys, rowAliases);
+					String rendered = aggregateFunction(aggregate);
+					columnExpressions.put(key, rendered);
+					appendColumn(columns, rendered + " AS " + key);
+				}
+				if (!group.getPaths().isEmpty()) {
+					StringBuilder groupBy = new StringBuilder(" GROUP BY ");
+					for (int i = 0; i < group.getPaths().size(); i++) {
+						if (i > 0) {
+							groupBy.append(", ");
+						}
+						groupBy.append(rootPath(group.getPaths().get(i)));
+					}
+					result.groupBy = groupBy.toString();
+				}
+			} else {
+				if (computations.isEmpty()) {
+					throw new QueryException("The pipeline carries neither a GroupBy nor a Compute stage");
+				}
+				// terminal compute: one row per entity, single-valued attributes first
+				for (EAttribute attribute : query.getFrom().getEAllAttributes()) {
+					if (attribute.isMany()) {
+						continue;
+					}
+					String key = attribute.getName();
+					registerKey(key, key, rowKeys, rowAliases);
+					String rendered = ALIAS + "." + key;
+					columnExpressions.put(key, rendered);
+					appendColumn(columns, rendered + " AS " + key);
+				}
+			}
+			for (Computation computation : computations) {
+				String key = computation.getAlias();
+				String rendered = operand(computation.getExpression(), null);
+				registerKey(key, key, rowKeys, rowAliases);
+				columnExpressions.put(key, rendered);
+				appendColumn(columns, rendered + " AS " + key);
+			}
+			result.columns = columns.toString();
+			if (!havingPredicates.isEmpty()) {
+				StringBuilder having = new StringBuilder(" HAVING ");
+				for (int i = 0; i < havingPredicates.size(); i++) {
+					if (i > 0) {
+						having.append(" AND ");
+					}
+					having.append('(').append(render(havingPredicates.get(i))).append(')');
+				}
+				result.having = having.toString();
+			}
+			return result;
+		}
+
+		private static void appendColumn(StringBuilder columns, String column) {
+			if (columns.length() > 0) {
+				columns.append(", ");
+			}
+			columns.append(column);
 		}
 
 		private String render(Expression expression) throws QueryException {
@@ -499,6 +585,15 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				return "(-" + operand(negate.getOperand(), target) + ")";
+			}
+			if (expression instanceof AliasRef aliasRef) {
+				String column = columnExpressions.get(aliasRef.getAlias());
+				if (column == null) {
+					throw new QueryException("Alias '" + aliasRef.getAlias()
+							+ "' does not address a pipeline output column (available: "
+							+ columnExpressions.keySet() + ")");
+				}
+				return "(" + column + ")";
 			}
 			if (expression instanceof CollectionCount count) {
 				// plain: JPQL SIZE; filtered: a correlated COUNT subquery — the JPQL

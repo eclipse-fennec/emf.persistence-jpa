@@ -22,9 +22,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.Computation;
+import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
@@ -195,26 +198,64 @@ public final class MemoryQueryPlan implements QueryPlan {
 			} else if (stage instanceof SkipStage skip) {
 				current = current.skip(skip.getCount());
 			} else if (stage instanceof GroupByStage groupBy) {
-				return rows(pageRowsAfterGroup(aggregate(groupBy, current), stages, i + 1));
+				int width = groupBy.getPaths().size() + groupBy.getAggregates().size();
+				return rows(rowStages(aggregate(groupBy, current), width, stages, i + 1));
+			} else if (stage instanceof ComputeStage) {
+				// terminal computes (a compute before GroupBy is refused at translation):
+				// one row per entity, single-valued attributes first (issue #82)
+				int width = (int) source.getFrom().getEAllAttributes().stream()
+						.filter(attribute -> !attribute.isMany()).count();
+				return rows(rowStages(current.map(object -> terminalRow(object, width)),
+						width, stages, i));
 			}
 		}
 		// no GroupBy stage: the pipeline stayed in object space
 		return QueryResults.objects(page(sortObjects(current).filter(distinctObjects())));
 	}
 
-	private Stream<QueryResultRow> pageRowsAfterGroup(Stream<QueryResultRow> rows,
+	/** Row-space stages after the grouping/terminal switch: HAVING filters, computes, paging. */
+	private Stream<QueryResultRow> rowStages(Stream<QueryResultRow> rows, int initialWidth,
 			List<Stage> stages, int fromIndex) {
 		Stream<QueryResultRow> current = rows;
+		int width = initialWidth;
 		for (int i = fromIndex; i < stages.size(); i++) {
 			Stage stage = stages.get(i);
 			if (stage instanceof TopStage top) {
 				current = current.limit(top.getCount());
 			} else if (stage instanceof SkipStage skip) {
 				current = current.skip(skip.getCount());
+			} else if (stage instanceof FilterStage filter) {
+				current = current.filter(row -> predicate.testRow(filter.getPredicate(), row));
+			} else if (stage instanceof ComputeStage compute) {
+				int base = width;
+				current = current.map(row -> extendRow(row, compute, base));
+				width += compute.getComputations().size();
 			}
-			// FilterStage after GroupBy was refused at translation
 		}
 		return page(sortRows(current));
+	}
+
+	private QueryResultRow terminalRow(EObject object, int width) {
+		List<Object> values = new ArrayList<>(width);
+		for (EAttribute attribute : source.getFrom().getEAllAttributes()) {
+			if (attribute.isMany()) {
+				continue;
+			}
+			values.add(object.eGet(attribute));
+		}
+		return QueryResultRows.of(rowAliases.subList(0, width), values);
+	}
+
+	/** Appends the computed columns — the aliases were registered at translation. */
+	private QueryResultRow extendRow(QueryResultRow row, ComputeStage compute, int width) {
+		List<Object> values = new ArrayList<>(width + compute.getComputations().size());
+		for (int i = 0; i < width; i++) {
+			values.add(row.get(i));
+		}
+		for (Computation computation : compute.getComputations()) {
+			values.add(predicate.rowValue(computation.getExpression(), row));
+		}
+		return QueryResultRows.of(rowAliases.subList(0, values.size()), values);
 	}
 
 	private Stream<QueryResultRow> aggregate(GroupByStage groupBy, Stream<EObject> objects) {
@@ -236,7 +277,8 @@ public final class MemoryQueryPlan implements QueryPlan {
 			for (Aggregate aggregate : groupBy.getAggregates()) {
 				values.add(aggregateValue(aggregate, group.getValue()));
 			}
-			return QueryResultRows.of(rowAliases, values);
+			// later compute stages extend the row — the aliases beyond this width are theirs
+			return QueryResultRows.of(rowAliases.subList(0, values.size()), values);
 		});
 	}
 

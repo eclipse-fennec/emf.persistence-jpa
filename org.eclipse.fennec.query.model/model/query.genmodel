@@ -57,6 +57,13 @@
     <genClasses ecoreClass="query.ecore#//SkipStage">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//SkipStage/count"/>
     </genClasses>
+    <genClasses ecoreClass="query.ecore#//ComputeStage">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//ComputeStage/computations"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//Computation">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Computation/expression"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Computation/alias"/>
+    </genClasses>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//SortDirection">
       <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/ASC"/>
       <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/DESC"/>

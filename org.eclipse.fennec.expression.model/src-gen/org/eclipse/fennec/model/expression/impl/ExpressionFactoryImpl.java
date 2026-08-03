@@ -95,6 +95,7 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.NEGATE: return createNegate();
 			case ExpressionPackage.CONCAT: return createConcat();
 			case ExpressionPackage.INDEX_OF: return createIndexOf();
+			case ExpressionPackage.ALIAS_REF: return createAliasRef();
 			case ExpressionPackage.COLLECTION_COUNT: return createCollectionCount();
 			case ExpressionPackage.TYPE_CHECK: return createTypeCheck();
 			case ExpressionPackage.NUMERIC_FUNCTION: return createNumericFunction();
@@ -465,6 +466,17 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	public IndexOf createIndexOf() {
 		IndexOfImpl indexOf = new IndexOfImpl();
 		return indexOf;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public AliasRef createAliasRef() {
+		AliasRefImpl aliasRef = new AliasRefImpl();
+		return aliasRef;
 	}
 
 	/**
