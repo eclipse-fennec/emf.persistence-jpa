@@ -46,6 +46,7 @@ import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -129,7 +130,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
-					QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -351,6 +352,18 @@ public class MongoQueryProcessor implements QueryProcessor {
 		if (expression instanceof Negate negate) {
 			Object operand = exprOperand(negate.getOperand(), target, context, guards);
 			return new Document("$multiply", Arrays.asList(-1, operand));
+		}
+		if (expression instanceof NumericFunction numericFunction) {
+			Object inner = exprOperand(numericFunction.getSource(), target, context, guards);
+			return switch (numericFunction.getKind()) {
+			// $round rounds half to even — emulate the contracted half-away-from-zero
+			case ROUND -> new Document("$cond", Arrays.asList(
+					new Document("$gte", Arrays.asList(inner, 0)),
+					new Document("$floor", new Document("$add", Arrays.asList(inner, 0.5d))),
+					new Document("$ceil", new Document("$subtract", Arrays.asList(inner, 0.5d)))));
+			case FLOOR -> new Document("$floor", inner);
+			case CEILING -> new Document("$ceil", inner);
+			};
 		}
 		if (expression instanceof Concat concatenation) {
 			List<Object> parts = new ArrayList<>(concatenation.getParts().size());

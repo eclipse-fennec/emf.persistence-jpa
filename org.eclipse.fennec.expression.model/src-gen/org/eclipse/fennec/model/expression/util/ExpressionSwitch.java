@@ -295,6 +295,13 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.NUMERIC_FUNCTION: {
+				NumericFunction numericFunction = (NumericFunction)theEObject;
+				T result = caseNumericFunction(numericFunction);
+				if (result == null) result = caseExpression(numericFunction);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.SUBSTRING: {
 				Substring substring = (Substring)theEObject;
 				T result = caseSubstring(substring);
@@ -753,6 +760,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseIndexOf(IndexOf object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Numeric Function</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Numeric Function</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseNumericFunction(NumericFunction object) {
 		return null;
 	}
 

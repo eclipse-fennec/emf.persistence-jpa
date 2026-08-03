@@ -41,6 +41,8 @@ import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
+import org.eclipse.fennec.model.expression.NumericFunctionKind;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
@@ -65,6 +67,7 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * {@code toLowerCase/toUpperCase/trim/size} (→ StringFunction),
  * {@code concat/indexOf/substring} (→ Concat/IndexOf/Substring — OData-flavoured
  * 0-based semantics, binary concat chains flatten into the n-ary Concat),
+ * {@code round/floor/ceiling} (→ NumericFunction; round is half away from zero),
  * {@code + - * / mod} (→ Arithmetic; a source-only {@code -} → Negate; the integer
  * division {@code div} stays refused — truncation is deliberately not modelled),
  * {@code exists/forAll} iterators (→ quantifiers), property-call chains
@@ -240,6 +243,16 @@ public final class OclToExpr {
 				case "toUpperCase" -> StringFunctionKind.TO_UPPER;
 				case "trim" -> StringFunctionKind.TRIM;
 				default -> StringFunctionKind.LENGTH;
+				});
+				function.setSource(map(call.getOwnedSource()));
+				return function;
+			}
+			case "round", "floor", "ceiling" -> {
+				NumericFunction function = EXPR.createNumericFunction();
+				function.setKind(switch (name) {
+				case "round" -> NumericFunctionKind.ROUND;
+				case "floor" -> NumericFunctionKind.FLOOR;
+				default -> NumericFunctionKind.CEILING;
 				});
 				function.setSource(map(call.getOwnedSource()));
 				return function;

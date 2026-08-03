@@ -253,6 +253,14 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="search" lowerBound="1"
         eType="#//Expression" containment="true"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NumericFunction" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Numeric rounding function over a value expression (issue #78; OData round/floor/ceiling). ROUND rounds half away from zero (OData semantics; Mongo's half-to-even $round is emulated). The result is integral."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//NumericFunctionKind"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Substring" eSuperTypes="#//Expression">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Substring of source from start (0-based), optionally length-bounded (issue #77; [OData-URL] 5.1.1.7): a negative start counts from the end of the string (clamped to position 0), a start beyond the end yields the empty string, a negative length yields the empty string."/>
@@ -284,6 +292,14 @@
     <eLiterals name="TO_UPPER" value="1"/>
     <eLiterals name="TRIM" value="2"/>
     <eLiterals name="LENGTH" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="NumericFunctionKind">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="ROUND is half away from zero."/>
+    </eAnnotations>
+    <eLiterals name="ROUND"/>
+    <eLiterals name="FLOOR" value="1"/>
+    <eLiterals name="CEILING" value="2"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="ArithmeticOperator">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

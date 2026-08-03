@@ -400,6 +400,47 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void roundIsHalfAwayFromZero() throws QueryException {
+		// score: Alice 7.5 → 8, Bob 3.0 → 3, Carol 12.5 → 13 (banker's would give 12)
+		Query round = QueryBuilder.from(personClass)
+				.where(Expressions.path(personScore).round().eq(13))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(round, persons, null)) {
+			assertThat(names(result)).containsExactly("Carol");
+		}
+		// negative values round away from zero too: -7.5 → -8
+		Query negative = QueryBuilder.from(personClass)
+				.where(Expressions.path(personScore).negated().round().eq(-8))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(negative, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+	}
+
+	@Test
+	void floorAndCeilingClampToIntegral() throws QueryException {
+		Query floor = QueryBuilder.from(personClass)
+				.where(Expressions.path(personScore).floor().eq(7))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(floor, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		Query ceiling = QueryBuilder.from(personClass)
+				.where(Expressions.path(personScore).ceiling().eq(8))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(ceiling, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		// null operand (rank is null for Alice/Carol) propagates — no match
+		Query nullSource = QueryBuilder.from(personClass)
+				.where(Expressions.path(personRank).round().ge(0))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(nullSource, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
 	void negateWorksOnFloatingValues() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personScore).negated().lt(-10))

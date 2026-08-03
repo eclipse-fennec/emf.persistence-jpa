@@ -269,6 +269,15 @@ public interface ExpressionFactory extends EFactory {
 	IndexOf createIndexOf();
 
 	/**
+	 * Returns a new object of class '<em>Numeric Function</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Numeric Function</em>'.
+	 * @generated
+	 */
+	NumericFunction createNumericFunction();
+
+	/**
 	 * Returns a new object of class '<em>Substring</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

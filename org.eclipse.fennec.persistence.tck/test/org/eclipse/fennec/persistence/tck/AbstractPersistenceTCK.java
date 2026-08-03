@@ -660,6 +660,34 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryNumericFunctions() throws Exception {
+		saveQueryFixture();
+		// age / 4 → Alice 7.5, Bob 10, Carol 12.5. ROUND is half away from zero:
+		// 12.5 → 13 — the banker's rounding of Mongo's $round would yield 12
+		Query round = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).round().eq(13))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(round)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+		Query floor = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).floor().eq(7))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(floor)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+		Query ceiling = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).ceiling().eq(8))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(ceiling)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+	}
+
+	@Test
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();
 		// a literal zero is refused statically; a zero bound at runtime is the backend's
@@ -990,6 +1018,15 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		corpus.put("substring beyond end", QueryBuilder.from(personClass)
 				.where(Expressions.path(personName).substring(99).eq(""))
+				.build());
+		corpus.put("round half away from zero", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).round().eq(13))
+				.build());
+		corpus.put("floor", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).floor().eq(7))
+				.build());
+		corpus.put("ceiling", QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).ceiling().eq(8))
 				.build());
 
 		for (Map.Entry<String, Query> entry : corpus.entrySet()) {

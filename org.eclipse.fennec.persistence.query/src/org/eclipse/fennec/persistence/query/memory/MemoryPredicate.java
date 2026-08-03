@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.query.memory;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -239,6 +241,19 @@ final class MemoryPredicate {
 		}
 		if (expression instanceof Substring substring) {
 			return substring(substring, candidate, bindings);
+		}
+		if (expression instanceof NumericFunction function) {
+			Object inner = operand(function.getSource(), candidate, bindings);
+			if (!(inner instanceof Number number)) {
+				return null;
+			}
+			BigDecimal value = decimal(number);
+			// ROUND is half away from zero (OData semantics); the result is integral
+			return switch (function.getKind()) {
+			case ROUND -> value.setScale(0, RoundingMode.HALF_UP).longValue();
+			case FLOOR -> value.setScale(0, RoundingMode.FLOOR).longValue();
+			case CEILING -> value.setScale(0, RoundingMode.CEILING).longValue();
+			};
 		}
 		return values.get(expression);
 	}

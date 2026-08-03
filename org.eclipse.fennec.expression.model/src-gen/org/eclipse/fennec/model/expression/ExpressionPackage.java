@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:f7606f455f7a663fdbe43f8be9411e55119d2bb7446c677da67a55e558d0e175", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:5d4d93df2f631d736170d49cf3717e1c0657cd378e930b3f915c11a1bb526256", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1368,6 +1368,52 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int INDEX_OF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.NumericFunctionImpl <em>Numeric Function</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.NumericFunctionImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
+	 * @generated
+	 */
+	int NUMERIC_FUNCTION = 30;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NUMERIC_FUNCTION__KIND = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NUMERIC_FUNCTION__SOURCE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Numeric Function</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NUMERIC_FUNCTION_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Numeric Function</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int NUMERIC_FUNCTION_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.SubstringImpl <em>Substring</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1375,7 +1421,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 30;
+	int SUBSTRING = 31;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1430,7 +1476,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 31;
+	int COMPARISON_OPERATOR = 32;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1440,7 +1486,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 32;
+	int STRING_MATCH_KIND = 33;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1450,7 +1496,17 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 33;
+	int STRING_FUNCTION_KIND = 34;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.NumericFunctionKind
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
+	 * @generated
+	 */
+	int NUMERIC_FUNCTION_KIND = 35;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1460,7 +1516,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 34;
+	int ARITHMETIC_OPERATOR = 36;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1470,7 +1526,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 35;
+	int TEMPORAL_KIND = 37;
 
 
 	/**
@@ -2236,6 +2292,38 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getIndexOf_Search();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.NumericFunction <em>Numeric Function</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Numeric Function</em>'.
+	 * @see org.eclipse.fennec.model.expression.NumericFunction
+	 * @generated
+	 */
+	EClass getNumericFunction();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.NumericFunction#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.NumericFunction#getKind()
+	 * @see #getNumericFunction()
+	 * @generated
+	 */
+	EAttribute getNumericFunction_Kind();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.NumericFunction#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.NumericFunction#getSource()
+	 * @see #getNumericFunction()
+	 * @generated
+	 */
+	EReference getNumericFunction_Source();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Substring <em>Substring</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -2307,6 +2395,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getStringFunctionKind();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Numeric Function Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.NumericFunctionKind
+	 * @generated
+	 */
+	EEnum getNumericFunctionKind();
 
 	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}'.
@@ -2988,6 +3086,32 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference INDEX_OF__SEARCH = eINSTANCE.getIndexOf_Search();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.NumericFunctionImpl <em>Numeric Function</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.NumericFunctionImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
+		 * @generated
+		 */
+		EClass NUMERIC_FUNCTION = eINSTANCE.getNumericFunction();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute NUMERIC_FUNCTION__KIND = eINSTANCE.getNumericFunction_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference NUMERIC_FUNCTION__SOURCE = eINSTANCE.getNumericFunction_Source();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.SubstringImpl <em>Substring</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -3050,6 +3174,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum STRING_FUNCTION_KIND = eINSTANCE.getStringFunctionKind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.NumericFunctionKind
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
+		 * @generated
+		 */
+		EEnum NUMERIC_FUNCTION_KIND = eINSTANCE.getNumericFunctionKind();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.

@@ -50,6 +50,10 @@ Query query = QueryBuilder.from(personClass)
   (`path(age).dividedBy(4).eq(7.5)` matches age 30). Division by a literal zero is
   refused at validation; a runtime zero surfaces the backend's error. JPA renders JPQL
   operators (`* 1.0 /` for div), Mongo `$expr` (`$add`…`$mod`, root paths only).
+- **Numeric functions** (#78): `path(age).dividedBy(4).round().eq(13)`,
+  `round/floor/ceiling` on paths and arithmetic steps (statics too). **`round` is half
+  away from zero** (OData semantics; Mongo's half-to-even `$round` is emulated via
+  `$cond`), the result is integral.
 - **Extended string functions** (#77): `concat(path(name), "!")`,
   `path(name).indexOf("o")` (**0-based**, `-1` when absent),
   `path(name).substring(start[, length])` (**0-based**; a negative start counts from

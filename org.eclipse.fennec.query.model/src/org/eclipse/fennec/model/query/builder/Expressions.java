@@ -42,6 +42,8 @@ import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
+import org.eclipse.fennec.model.expression.NumericFunctionKind;
 import org.eclipse.fennec.model.expression.Or;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -381,6 +383,33 @@ public final class Expressions {
 		return arithmetic;
 	}
 
+	// ==================== numeric functions ====================
+
+	/** @param source the numeric operand (auto-boxed)
+	 *  @return a comparable step over the value rounded half away from zero */
+	public static ArithmeticStep round(Object source) {
+		return new ArithmeticStep(numericFunction(NumericFunctionKind.ROUND, source));
+	}
+
+	/** @param source the numeric operand (auto-boxed)
+	 *  @return a comparable step over the largest integral value below or equal */
+	public static ArithmeticStep floor(Object source) {
+		return new ArithmeticStep(numericFunction(NumericFunctionKind.FLOOR, source));
+	}
+
+	/** @param source the numeric operand (auto-boxed)
+	 *  @return a comparable step over the smallest integral value above or equal */
+	public static ArithmeticStep ceiling(Object source) {
+		return new ArithmeticStep(numericFunction(NumericFunctionKind.CEILING, source));
+	}
+
+	private static NumericFunction numericFunction(NumericFunctionKind kind, Object source) {
+		NumericFunction function = FACTORY.createNumericFunction();
+		function.setKind(kind);
+		function.setSource(value(Objects.requireNonNull(source, "source must not be null")));
+		return function;
+	}
+
 	// ==================== extended string functions ====================
 
 	/**
@@ -573,6 +602,21 @@ public final class Expressions {
 		/** @return a comparable step over {@code -path} */
 		public ArithmeticStep negated() {
 			return neg(path);
+		}
+
+		/** @return a comparable step over the value rounded half away from zero */
+		public ArithmeticStep round() {
+			return Expressions.round(path);
+		}
+
+		/** @return a comparable step over the largest integral value below or equal */
+		public ArithmeticStep floor() {
+			return Expressions.floor(path);
+		}
+
+		/** @return a comparable step over the smallest integral value above or equal */
+		public ArithmeticStep ceiling() {
+			return Expressions.ceiling(path);
 		}
 
 		// --- null / range / membership ---
@@ -860,6 +904,21 @@ public final class Expressions {
 		/** @return a step over {@code -this} */
 		public ArithmeticStep negated() {
 			return neg(expression);
+		}
+
+		/** @return a step over this value rounded half away from zero */
+		public ArithmeticStep round() {
+			return Expressions.round(expression);
+		}
+
+		/** @return a step over the largest integral value below or equal */
+		public ArithmeticStep floor() {
+			return Expressions.floor(expression);
+		}
+
+		/** @return a step over the smallest integral value above or equal */
+		public ArithmeticStep ceiling() {
+			return Expressions.ceiling(expression);
 		}
 
 		// --- comparisons ---

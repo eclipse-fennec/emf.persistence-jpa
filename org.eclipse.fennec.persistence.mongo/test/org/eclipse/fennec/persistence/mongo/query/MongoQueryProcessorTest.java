@@ -218,6 +218,21 @@ class MongoQueryProcessorTest {
 	}
 
 	@Test
+	void roundEmulatesHalfAwayFromZero() throws QueryException {
+		// ROUND must not use $round (half to even) — the contract is half away from zero
+		MongoQueryPlan round = translate(QueryBuilder.from(person)
+				.where(path(age).dividedBy(4).round().eq(13))
+				.build());
+		String json = render(round.filter()).toJson();
+		assertThat(json).contains("$cond").contains("$floor").contains("$ceil").doesNotContain("$round");
+
+		MongoQueryPlan floor = translate(QueryBuilder.from(person)
+				.where(path(age).dividedBy(4).floor().eq(7))
+				.build());
+		assertThat(render(floor.filter()).toJson()).contains("$floor");
+	}
+
+	@Test
 	void arithmeticInsideQuantifierIsRefused() {
 		Query query = QueryBuilder.from(person)
 				.where(any(propertyPath(addresses),

@@ -464,6 +464,19 @@ public enum QueryFeature implements Enumerator {
 	STRING_FUNCTIONS_EXTENDED(65, "STRING_FUNCTIONS_EXTENDED", "STRING_FUNCTIONS_EXTENDED"),
 
 	/**
+	 * The '<em><b>NUMERIC FUNCTIONS</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Numeric rounding functions (v2 IR NumericFunction ROUND/FLOOR/CEILING — issue #78). ROUND is half away from zero.
+	 * <!-- end-model-doc -->
+	 * @see #NUMERIC_FUNCTIONS_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	NUMERIC_FUNCTIONS(66, "NUMERIC_FUNCTIONS", "NUMERIC_FUNCTIONS"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -991,6 +1004,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int STRING_FUNCTIONS_EXTENDED_VALUE = 65;
 
 	/**
+	 * The '<em><b>NUMERIC FUNCTIONS</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Numeric rounding functions (v2 IR NumericFunction ROUND/FLOOR/CEILING — issue #78). ROUND is half away from zero.
+	 * <!-- end-model-doc -->
+	 * @see #NUMERIC_FUNCTIONS
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int NUMERIC_FUNCTIONS_VALUE = 66;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1101,6 +1128,7 @@ public enum QueryFeature implements Enumerator {
 			STRING_FUNCTIONS,
 			ARITHMETIC,
 			STRING_FUNCTIONS_EXTENDED,
+			NUMERIC_FUNCTIONS,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1195,6 +1223,7 @@ public enum QueryFeature implements Enumerator {
 			case STRING_FUNCTIONS_VALUE: return STRING_FUNCTIONS;
 			case ARITHMETIC_VALUE: return ARITHMETIC;
 			case STRING_FUNCTIONS_EXTENDED_VALUE: return STRING_FUNCTIONS_EXTENDED;
+			case NUMERIC_FUNCTIONS_VALUE: return NUMERIC_FUNCTIONS;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

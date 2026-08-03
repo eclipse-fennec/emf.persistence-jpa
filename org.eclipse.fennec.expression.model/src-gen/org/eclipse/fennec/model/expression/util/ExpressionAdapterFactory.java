@@ -198,6 +198,10 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createIndexOfAdapter();
 			}
 			@Override
+			public Adapter caseNumericFunction(NumericFunction object) {
+				return createNumericFunctionAdapter();
+			}
+			@Override
 			public Adapter caseSubstring(Substring object) {
 				return createSubstringAdapter();
 			}
@@ -638,6 +642,20 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createIndexOfAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.NumericFunction <em>Numeric Function</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.NumericFunction
+	 * @generated
+	 */
+	public Adapter createNumericFunctionAdapter() {
 		return null;
 	}
 

@@ -35,6 +35,7 @@ import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -235,6 +236,10 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				operand(negate.getOperand(), target, scope);
+				return;
+			}
+			if (expression instanceof NumericFunction numericFunction) {
+				operand(numericFunction.getSource(), target, scope);
 				return;
 			}
 			if (expression instanceof Concat concatenation) {

@@ -91,14 +91,16 @@ reference for each construct.
 | `Concat` | `parts: Expression[2..*]` | issue #77 (OData concat). N-ary; binary OCL chains flatten on the bridge. A null part poisons the result (Mongo `$concat` semantics) |
 | `IndexOf` | `source`, `search: Expression` | issue #77. **0-based, -1 when absent** (OData/Java) — JPQL renders `LOCATE(…) - 1`, Mongo `$indexOfCP` matches natively |
 | `Substring` | `source`, `start: Expression`, `length: Expression[0..1]` | issue #77, [OData-URL] 5.1.1.7: 0-based; negative start counts from the end (clamped to 0), start beyond the end and negative length yield `""`. JPQL clamps with one flat CASE over LENGTH (EclipseLink mistranslates nested CASE), Mongo via `$substrCP` + `$cond` clamping |
+| `NumericFunction` | `kind: {ROUND, FLOOR, CEILING}`, `source` | issue #78. **ROUND is half away from zero** (OData); result integral. JPQL `ROUND(x, 0)`/`FLOOR`/`CEILING`; Mongo `$floor`/`$ceil` — `$round` rounds half to even, so ROUND is emulated via `$cond` + `$floor(x+0.5)`/`$ceil(x-0.5)` |
 
 **Deliberately absent in v1** (decision list — add only with a driving use case):
 date part
 extraction (`year(…)`), type test/cast (`TypeCheck`), `If`/`Let`, collection operations
 beyond `In`/`Exists`/`ForAll` (`Select`/`Collect`/`IterateExp`), tuple/map literals.
 The model can grow additively; the capability mechanism covers backend divergence.
-Arithmetic left this list with issue #76, the extended string set with #77 — the
-remaining OData-gap constructs are tracked in issues #78–#84.
+Arithmetic left this list with issue #76, the extended string set with #77, the
+numeric functions with #78 — the remaining OData-gap constructs are tracked in
+issues #79–#84.
 
 ### 3.2 Capability vocabulary (new `QueryFeature` terms)
 
@@ -114,6 +116,7 @@ Sketch of the new vocabulary and the expected initial matrix:
 | STRING_FUNCTIONS | ✅ | ⚠️ partial | LENGTH needs `$expr` |
 | ARITHMETIC | ✅ | ✅ `$expr` | `$add/$subtract/$multiply/$divide/$mod`; root paths only (like FIELD_TO_FIELD) |
 | STRING_FUNCTIONS_EXTENDED | ✅ | ✅ `$expr` | Concat/IndexOf/Substring — `$concat/$indexOfCP/$substrCP`; root paths only |
+| NUMERIC_FUNCTIONS | ✅ | ✅ `$expr` | ROUND/FLOOR/CEILING — ROUND emulated half-away-from-zero (`$round` is half-to-even); root paths only |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
 | PARAMETERS | ✅ | ✅ | now model-level |

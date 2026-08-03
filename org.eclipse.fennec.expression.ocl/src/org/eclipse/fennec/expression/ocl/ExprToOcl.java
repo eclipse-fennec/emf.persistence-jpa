@@ -47,6 +47,7 @@ import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NullLiteral;
+import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -218,6 +219,14 @@ public final class ExprToOcl {
 			if (expression instanceof Negate negate) {
 				// source-only '-' is the OCL unary minus — OclToExpr recognizes it back
 				return call("-", map(negate.getOperand(), null));
+			}
+			if (expression instanceof NumericFunction numericFunction) {
+				String operation = switch (numericFunction.getKind()) {
+				case ROUND -> "round";
+				case FLOOR -> "floor";
+				case CEILING -> "ceiling";
+				};
+				return call(operation, map(numericFunction.getSource(), null));
 			}
 			if (expression instanceof Concat concatenation) {
 				// the n-ary Concat unrolls into a left-deep binary chain; the partial

@@ -43,6 +43,8 @@ import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NullLiteral;
+import org.eclipse.fennec.model.expression.NumericFunction;
+import org.eclipse.fennec.model.expression.NumericFunctionKind;
 import org.eclipse.fennec.model.expression.Or;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -281,6 +283,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass numericFunctionEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass substringEClass = null;
 
 	/**
@@ -303,6 +312,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EEnum stringFunctionKindEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum numericFunctionKindEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1104,6 +1120,36 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getNumericFunction() {
+		return numericFunctionEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getNumericFunction_Kind() {
+		return (EAttribute)numericFunctionEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getNumericFunction_Source() {
+		return (EReference)numericFunctionEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getSubstring() {
 		return substringEClass;
 	}
@@ -1166,6 +1212,16 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	@Override
 	public EEnum getStringFunctionKind() {
 		return stringFunctionKindEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getNumericFunctionKind() {
+		return numericFunctionKindEEnum;
 	}
 
 	/**
@@ -1319,6 +1375,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEReference(indexOfEClass, INDEX_OF__SOURCE);
 		createEReference(indexOfEClass, INDEX_OF__SEARCH);
 
+		numericFunctionEClass = createEClass(NUMERIC_FUNCTION);
+		createEAttribute(numericFunctionEClass, NUMERIC_FUNCTION__KIND);
+		createEReference(numericFunctionEClass, NUMERIC_FUNCTION__SOURCE);
+
 		substringEClass = createEClass(SUBSTRING);
 		createEReference(substringEClass, SUBSTRING__SOURCE);
 		createEReference(substringEClass, SUBSTRING__START);
@@ -1328,6 +1388,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		comparisonOperatorEEnum = createEEnum(COMPARISON_OPERATOR);
 		stringMatchKindEEnum = createEEnum(STRING_MATCH_KIND);
 		stringFunctionKindEEnum = createEEnum(STRING_FUNCTION_KIND);
+		numericFunctionKindEEnum = createEEnum(NUMERIC_FUNCTION_KIND);
 		arithmeticOperatorEEnum = createEEnum(ARITHMETIC_OPERATOR);
 		temporalKindEEnum = createEEnum(TEMPORAL_KIND);
 	}
@@ -1388,6 +1449,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		negateEClass.getESuperTypes().add(this.getExpression());
 		concatEClass.getESuperTypes().add(this.getExpression());
 		indexOfEClass.getESuperTypes().add(this.getExpression());
+		numericFunctionEClass.getESuperTypes().add(this.getExpression());
 		substringEClass.getESuperTypes().add(this.getExpression());
 
 		// Initialize classes, features, and operations; add parameters
@@ -1493,6 +1555,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEReference(getIndexOf_Source(), this.getExpression(), null, "source", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getIndexOf_Search(), this.getExpression(), null, "search", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(numericFunctionEClass, NumericFunction.class, "NumericFunction", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getNumericFunction_Kind(), this.getNumericFunctionKind(), "kind", null, 1, 1, NumericFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getNumericFunction_Source(), this.getExpression(), null, "source", null, 1, 1, NumericFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(substringEClass, Substring.class, "Substring", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getSubstring_Source(), this.getExpression(), null, "source", null, 1, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getSubstring_Start(), this.getExpression(), null, "start", null, 1, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -1518,6 +1584,11 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TO_UPPER);
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TRIM);
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.LENGTH);
+
+		initEEnum(numericFunctionKindEEnum, NumericFunctionKind.class, "NumericFunctionKind");
+		addEEnumLiteral(numericFunctionKindEEnum, NumericFunctionKind.ROUND);
+		addEEnumLiteral(numericFunctionKindEEnum, NumericFunctionKind.FLOOR);
+		addEEnumLiteral(numericFunctionKindEEnum, NumericFunctionKind.CEILING);
 
 		initEEnum(arithmeticOperatorEEnum, ArithmeticOperator.class, "ArithmeticOperator");
 		addEEnumLiteral(arithmeticOperatorEEnum, ArithmeticOperator.ADD);

@@ -198,6 +198,18 @@ class ExpressionOclBridgeTest {
 	}
 
 	@Test
+	void numericFunctionsRoundTripStructurally() throws QueryException {
+		Expression original = and(
+				path(age).round().eq(8),
+				path(age).floor().ge(7),
+				path(age).ceiling().le(13));
+		Expression back = roundTrip(original);
+		assertThat(EcoreUtil.equals(original, back))
+				.as("round/floor/ceiling expr → ocl → expr must be structurally identical")
+				.isTrue();
+	}
+
+	@Test
 	void integerDivisionStaysRefused() {
 		OperationCallExp div = OclFactory.eINSTANCE.createOperationCallExp();
 		div.setName("div");

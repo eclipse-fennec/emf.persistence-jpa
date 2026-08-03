@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -247,6 +248,9 @@ public final class ExpressionAnalyzer {
 		} else if (expression instanceof Negate negate) {
 			features.add(QueryFeature.ARITHMETIC);
 			walk(negate.getOperand(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof NumericFunction numericFunction) {
+			features.add(QueryFeature.NUMERIC_FUNCTIONS);
+			walk(numericFunction.getSource(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof ParameterRef) {
 			features.add(QueryFeature.PARAMETERS);
 		} else if (expression instanceof PropertyPath propertyPath) {

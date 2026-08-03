@@ -358,6 +358,13 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void numericFunctionsAreDetected() {
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query(
+				Expressions.path(age).dividedBy(4).round().eq(8)));
+		assertThat(analysis.features()).contains(QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.ARITHMETIC);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();

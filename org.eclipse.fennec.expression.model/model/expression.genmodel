@@ -28,6 +28,11 @@
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/TRIM"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/LENGTH"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//NumericFunctionKind">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//NumericFunctionKind/ROUND"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//NumericFunctionKind/FLOOR"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//NumericFunctionKind/CEILING"/>
+    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//ArithmeticOperator">
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ArithmeticOperator/ADD"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//ArithmeticOperator/SUB"/>
@@ -135,6 +140,10 @@
     <genClasses ecoreClass="expression.ecore#//IndexOf">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//NumericFunction">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//NumericFunction/kind"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//NumericFunction/source"/>
     </genClasses>
     <genClasses ecoreClass="expression.ecore#//Substring">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Substring/source"/>

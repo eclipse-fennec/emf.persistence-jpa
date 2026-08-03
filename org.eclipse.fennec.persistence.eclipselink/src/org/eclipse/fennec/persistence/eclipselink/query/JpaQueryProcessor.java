@@ -35,6 +35,7 @@ import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
+import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
@@ -98,7 +99,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
-					QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
@@ -463,6 +464,15 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				return "(-" + operand(negate.getOperand(), target) + ")";
+			}
+			if (expression instanceof NumericFunction numericFunction) {
+				String inner = operand(numericFunction.getSource(), target);
+				return switch (numericFunction.getKind()) {
+				// H2 ROUND is half away from zero — the contract (OData semantics)
+				case ROUND -> "ROUND(" + inner + ", 0)";
+				case FLOOR -> "FLOOR(" + inner + ")";
+				case CEILING -> "CEILING(" + inner + ")";
+				};
 			}
 			if (expression instanceof Concat concatenation) {
 				StringBuilder rendered = new StringBuilder("CONCAT(");
