@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
 import static org.eclipse.fennec.model.query.builder.Expressions.concat;
+import static org.eclipse.fennec.model.query.builder.Expressions.count;
 import static org.eclipse.fennec.model.query.builder.Expressions.div;
 import static org.eclipse.fennec.model.query.builder.Expressions.isOf;
 import static org.eclipse.fennec.model.query.builder.Expressions.mod;
@@ -257,6 +258,24 @@ class ExpressionOclBridgeTest {
 		// the total direction emits oclIsKindOf / a chain rooted in oclAsType
 		OperationCallExp kindOf = (OperationCallExp) ExprToOcl.toOcl(isOf(personClass));
 		assertThat(kindOf.getName()).isEqualTo("oclIsKindOf");
+	}
+
+	@Test
+	void collectionCountsRoundTripStructurally() throws QueryException {
+		Expression plain = count(propertyPath(addresses)).ge(2);
+		assertThat(EcoreUtil.equals(plain, roundTrip(plain)))
+				.as("plain count expr → ocl → expr must be structurally identical")
+				.isTrue();
+
+		Expression filtered = count(propertyPath(addresses),
+				a -> a.path(street).startsWith("Main")).eq(1);
+		assertThat(EcoreUtil.equals(filtered, roundTrip(filtered)))
+				.as("filtered count expr → ocl → expr must be structurally identical")
+				.isTrue();
+
+		// size over a string path stays the string LENGTH
+		Expression length = path(name).length().gt(3);
+		assertThat(EcoreUtil.equals(length, roundTrip(length))).isTrue();
 	}
 
 	@Test

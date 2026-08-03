@@ -95,6 +95,7 @@ reference for each construct.
 | `TemporalFunction` | `kind: {YEAR, MONTH, DAY, HOUR, MINUTE, SECOND}`, `source` | issue #79. **UTC-normative**: parts are extracted from the value as a UTC instant (BSON dates are UTC natively; the zone-less SQL TIMESTAMP carries the writing session's wall-clock — run UTC). SECOND is integral (JPQL wraps `FLOOR(EXTRACT(SECOND …))` — EclipseLink types it Double); time parts of date-only values are 0. Deliberately without `date()`/`time()` (ISO-string divergence). Requires native BSON dates on Mongo (emf.codec#97) |
 | `TypeCheck` | `source: PropertyPath[0..1]`, `type: EClass` | issue #80 (OData isof, OCL oclIsKindOf). **Kind-of semantics**; unset source tests the query root. JPQL `TYPE(x) IN (concrete subtypes by entity name)` — the dynamic Java classes are deliberately flat, entity names sidestep Java assignability. Mongo refuses until documents carry a type discriminator (`_eType` is reserved but unwritten) |
 | `PropertyPath.castBase` | `EClass[0..1]` on PropertyPath | issue #80, the v1 cut matching OData's `Ns.SubType/prop` limit (full cast segments stay additive). JPQL `TREAT(e AS Sub).…`; non-instances yield null (verified EclipseLink three-valued behaviour inside OR); memory mirrors with a null short-circuit |
+| `CollectionCount` | `source: PropertyPath`, `variable: Variable[0..1]`, `predicate: Expression[0..1]` | issue #81 (OData `reviews/$count($filter=…)`). Value expression; a missing/empty collection counts 0. JPQL `SIZE(path)` resp. a correlated `SELECT COUNT` subquery (the JPQL text path avoids the criteria SubQueryImpl comparison gotcha); Mongo `$size($ifNull)` for the plain form — the filtered form is refused until `$filter` rendering lands, cross-document counts are refused by the embedded-path validation |
 
 **Deliberately absent in v1** (decision list — add only with a driving use case):
 `If`/`Let`, collection operations
@@ -121,6 +122,8 @@ Sketch of the new vocabulary and the expected initial matrix:
 | NUMERIC_FUNCTIONS | ✅ | ✅ `$expr` | ROUND/FLOOR/CEILING — ROUND emulated half-away-from-zero (`$round` is half-to-even); root paths only |
 | TEMPORAL_FUNCTIONS | ✅ EXTRACT | ✅ `$expr` | `$year..$second` on native BSON dates (emf.codec#97); UTC-normative; root paths only |
 | TYPE_CAST / TYPE_CHECK | ✅ TREAT / TYPE IN | ❌ refused | Mongo needs a stored type discriminator first (`_eType` reserved) |
+| COLLECTION_COUNT | ✅ SIZE | ✅ `$size` | embedded collections only on Mongo (existing path validation) |
+| COLLECTION_COUNT_FILTERED | ✅ COUNT subquery | ❌ refused | Mongo `$filter` rendering is a follow-up |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
 | PARAMETERS | ✅ | ✅ | now model-level |

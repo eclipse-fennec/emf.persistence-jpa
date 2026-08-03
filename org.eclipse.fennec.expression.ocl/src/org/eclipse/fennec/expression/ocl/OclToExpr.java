@@ -33,6 +33,7 @@ import org.eclipse.fennec.m2x.model.ocl.TypeExp;
 import org.eclipse.fennec.m2x.model.ocl.VariableExp;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
@@ -245,15 +246,48 @@ public final class OclToExpr {
 				match.setPattern(map(pattern));
 				return match;
 			}
-			case "toLowerCase", "toUpperCase", "trim", "size" -> {
+			case "toLowerCase", "toUpperCase", "trim" -> {
 				StringFunction function = EXPR.createStringFunction();
 				function.setKind(switch (name) {
 				case "toLowerCase" -> StringFunctionKind.TO_LOWER;
 				case "toUpperCase" -> StringFunctionKind.TO_UPPER;
-				case "trim" -> StringFunctionKind.TRIM;
-				default -> StringFunctionKind.LENGTH;
+				default -> StringFunctionKind.TRIM;
 				});
 				function.setSource(map(call.getOwnedSource()));
+				return function;
+			}
+			case "size" -> {
+				// AST-shape disambiguation (like the OData translator): size over a
+				// select iterator or a many-valued navigation is a CollectionCount
+				// (issue #81), anything else is the string LENGTH
+				OclExpression source = call.getOwnedSource();
+				if (source instanceof IteratorExp select && "select".equals(select.getName())) {
+					if (select.getOwnedIterators().size() != 1) {
+						throw refuse("select iterators with " + select.getOwnedIterators().size()
+								+ " variables");
+					}
+					if (!(map(select.getOwnedSource()) instanceof PropertyPath collection)) {
+						throw refuse("filtered counts over sources other than property paths");
+					}
+					CollectionCount count = EXPR.createCollectionCount();
+					count.setSource(collection);
+					Variable variable = EXPR.createVariable();
+					variable.setName(select.getOwnedIterators().get(0).getName());
+					count.setVariable(variable);
+					variables.put(select.getOwnedIterators().get(0), variable);
+					count.setPredicate(map(select.getOwnedBody()));
+					variables.remove(select.getOwnedIterators().get(0));
+					return count;
+				}
+				if (source instanceof PropertyCallExp property && property.getReferredProperty() != null
+						&& property.getReferredProperty().isMany()) {
+					CollectionCount count = EXPR.createCollectionCount();
+					count.setSource((PropertyPath) map(source));
+					return count;
+				}
+				StringFunction function = EXPR.createStringFunction();
+				function.setKind(StringFunctionKind.LENGTH);
+				function.setSource(map(source));
 				return function;
 			}
 			case "oclIsKindOf" -> {

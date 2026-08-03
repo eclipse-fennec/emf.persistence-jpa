@@ -54,6 +54,11 @@ Query query = QueryBuilder.from(personClass)
   `round/floor/ceiling` on paths and arithmetic steps (statics too). **`round` is half
   away from zero** (OData semantics; Mongo's half-to-even `$round` is emulated via
   `$cond`), the result is integral.
+- **Collection counts** (#81): `count(propertyPath(addresses)).ge(2)` and the filtered
+  `count(propertyPath(reviews), r -> r.path(rating).gt(3)).ge(2)` — value expressions,
+  missing/empty collections count 0. JPA renders `SIZE` resp. a correlated
+  `SELECT COUNT` subquery; Mongo supports the plain form over embedded collections
+  (`$size`) and refuses the filtered form for now.
 - **Type predicates** (#80): `isOf(carClass)` tests the root with **kind-of** semantics
   (type or subtype; `isOf(path, type)` for navigations), `pathAs(carClass, horsepower)`
   downcasts the root before navigating (JPA `TREAT`; non-instances yield null — the

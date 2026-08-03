@@ -19,6 +19,7 @@ import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
@@ -256,6 +257,11 @@ public final class ExpressionAnalyzer {
 		} else if (expression instanceof TemporalFunction temporalFunction) {
 			features.add(QueryFeature.TEMPORAL_FUNCTIONS);
 			walk(temporalFunction.getSource(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof CollectionCount count) {
+			features.add(count.getPredicate() == null ? QueryFeature.COLLECTION_COUNT
+					: QueryFeature.COLLECTION_COUNT_FILTERED);
+			path(count.getSource(), features, maxDepth);
+			walk(count.getPredicate(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof TypeCheck typeCheck) {
 			features.add(QueryFeature.TYPE_CHECK);
 			if (typeCheck.getSource() != null) {

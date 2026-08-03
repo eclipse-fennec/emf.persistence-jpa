@@ -25,6 +25,7 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
@@ -104,6 +105,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
+					QueryFeature.COLLECTION_COUNT, QueryFeature.COLLECTION_COUNT_FILTERED,
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
@@ -497,6 +499,20 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				return "(-" + operand(negate.getOperand(), target) + ")";
+			}
+			if (expression instanceof CollectionCount count) {
+				// plain: JPQL SIZE; filtered: a correlated COUNT subquery — the JPQL
+				// text path is free of the criteria-API SubQueryImpl comparison gotcha
+				if (count.getPredicate() == null) {
+					return "SIZE(" + rootPath(count.getSource()) + ")";
+				}
+				String alias = "it" + aliasCounter++;
+				aliases.put(count.getVariable(), alias);
+				String collection = pathFrom(ALIAS, count.getSource());
+				String predicate = render(count.getPredicate());
+				aliases.remove(count.getVariable());
+				return "(SELECT COUNT(" + alias + ") FROM " + collection + " " + alias
+						+ " WHERE " + predicate + ")";
 			}
 			if (expression instanceof NumericFunction numericFunction) {
 				String inner = operand(numericFunction.getSource(), target);

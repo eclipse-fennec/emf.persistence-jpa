@@ -382,6 +382,19 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void collectionCountsAreDetected() {
+		QueryAnalysis plain = ExpressionAnalyzer.analyze(query(
+				Expressions.count(Expressions.propertyPath(addresses)).ge(2)));
+		assertThat(plain.features()).contains(QueryFeature.COLLECTION_COUNT);
+		assertThat(plain.features()).doesNotContain(QueryFeature.COLLECTION_COUNT_FILTERED);
+
+		QueryAnalysis filtered = ExpressionAnalyzer.analyze(query(
+				Expressions.count(Expressions.propertyPath(addresses),
+						a -> a.path(street).startsWith("Main")).ge(1)));
+		assertThat(filtered.features()).contains(QueryFeature.COLLECTION_COUNT_FILTERED);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();

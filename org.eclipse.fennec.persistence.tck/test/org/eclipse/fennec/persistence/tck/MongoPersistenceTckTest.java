@@ -51,6 +51,12 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
+	/** Mongo refuses filtered counts until $filter rendering lands (issue #81). */
+	@Override
+	protected boolean supportsFilteredCollectionCounts() {
+		return false;
+	}
+
 	private MongoClient client;
 	private MongoDatabase database;
 	private MetadataWhiteboard metadataService;

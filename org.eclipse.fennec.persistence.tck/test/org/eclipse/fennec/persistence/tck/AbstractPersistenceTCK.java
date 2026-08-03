@@ -856,6 +856,47 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryCollectionCounts() throws Exception {
+		saveQueryFixture();
+		// plain: Bob has two addresses, Alice and Carol none
+		Query plain = QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).ge(2))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(plain)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		Query empty = QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).eq(0))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(empty)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactlyInAnyOrder("Alice", "Carol");
+		}
+		// filtered: exactly one Main-Street address — supported on JPA, refused on Mongo
+		Query filtered = QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("Main")).eq(1))
+				.build();
+		if (supportsFilteredCollectionCounts()) {
+			try (QueryResult result = queryable(createBackendResourceSet()).query(filtered)) {
+				assertThat(result.objects().map(person -> person.eGet(personName)))
+						.containsExactly("Bob");
+			}
+		} else {
+			QueryableResource resource = queryable(createBackendResourceSet());
+			assertThatThrownBy(() -> resource.query(filtered).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("COLLECTION_COUNT_FILTERED");
+		}
+	}
+
+	/** Whether the backend supports predicate-filtered collection counts (issue #81). */
+	protected boolean supportsFilteredCollectionCounts() {
+		return true;
+	}
+
+	@Test
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();
 		// a literal zero is refused statically; a zero bound at runtime is the backend's
@@ -1209,6 +1250,12 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		corpus.put("temporal second", QueryBuilder.from(personClass)
 				.where(Expressions.path(personBirthday).second().eq(45))
+				.build());
+		corpus.put("collection count plain", QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).ge(2))
+				.build());
+		corpus.put("collection count empty", QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).eq(0))
 				.build());
 
 		for (Map.Entry<String, Query> entry : corpus.entrySet()) {

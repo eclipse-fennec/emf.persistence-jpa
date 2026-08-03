@@ -521,6 +521,31 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void collectionCountsPlainAndFiltered() throws QueryException {
+		// Bob has two addresses, one on "Main Street 5"
+		Query plain = QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).ge(2))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(plain, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+		Query filtered = QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("Main")).eq(1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(filtered, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+		// empty collections count 0 — Alice and Carol have no addresses
+		Query none = QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).eq(0))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(none, persons, null)) {
+			assertThat(names(result)).containsExactlyInAnyOrder("Alice", "Carol");
+		}
+	}
+
+	@Test
 	void negateWorksOnFloatingValues() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personScore).negated().lt(-10))

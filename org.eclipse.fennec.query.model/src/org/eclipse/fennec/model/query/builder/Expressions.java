@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
@@ -441,6 +442,38 @@ public final class Expressions {
 		arithmetic.setLeft(value(Objects.requireNonNull(left, "left operand must not be null")));
 		arithmetic.setRight(value(Objects.requireNonNull(right, "right operand must not be null")));
 		return arithmetic;
+	}
+
+	// ==================== collection count ====================
+
+	/**
+	 * Element count of a multi-valued navigation as a comparable value (issue #81).
+	 *
+	 * @param source the multi-valued navigation
+	 * @return a numeric step over the element count
+	 */
+	public static ArithmeticStep count(PropertyPath source) {
+		CollectionCount count = FACTORY.createCollectionCount();
+		count.setSource(Objects.requireNonNull(source, "source path must not be null"));
+		return new ArithmeticStep(count);
+	}
+
+	/**
+	 * Predicate-filtered element count of a multi-valued navigation (issue #81;
+	 * OData {@code reviews/$count($filter=…)}).
+	 *
+	 * @param source the multi-valued navigation
+	 * @param body builds the filter predicate over the element variable
+	 * @return a numeric step over the count of matching elements
+	 */
+	public static ArithmeticStep count(PropertyPath source, Function<It, Expression> body) {
+		CollectionCount count = FACTORY.createCollectionCount();
+		count.setSource(Objects.requireNonNull(source, "source path must not be null"));
+		Variable variable = FACTORY.createVariable();
+		variable.setName("it");
+		count.setVariable(variable);
+		count.setPredicate(Objects.requireNonNull(body.apply(new It(variable)), "count body must not be null"));
+		return new ArithmeticStep(count);
 	}
 
 	// ==================== numeric functions ====================

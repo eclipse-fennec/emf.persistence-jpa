@@ -37,6 +37,7 @@ import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
@@ -227,6 +228,24 @@ final class MemoryPredicate {
 			case TRIM -> text.trim();
 			case LENGTH -> text.length();
 			};
+		}
+		if (expression instanceof CollectionCount count) {
+			Object value = pathValue(count.getSource(), candidate, bindings);
+			if (!(value instanceof Collection<?> elements)) {
+				return null;
+			}
+			if (count.getPredicate() == null) {
+				return elements.size();
+			}
+			int matches = 0;
+			for (Object element : elements) {
+				bindings.put(count.getVariable(), element);
+				if (eval(count.getPredicate(), candidate, bindings)) {
+					matches++;
+				}
+			}
+			bindings.remove(count.getVariable());
+			return matches;
 		}
 		if (expression instanceof Arithmetic arithmetic) {
 			Object left = operand(arithmetic.getLeft(), candidate, bindings);

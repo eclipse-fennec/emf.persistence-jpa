@@ -287,6 +287,15 @@ public interface ExpressionFactory extends EFactory {
 	IndexOf createIndexOf();
 
 	/**
+	 * Returns a new object of class '<em>Collection Count</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Collection Count</em>'.
+	 * @generated
+	 */
+	CollectionCount createCollectionCount();
+
+	/**
 	 * Returns a new object of class '<em>Type Check</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

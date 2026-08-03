@@ -516,6 +516,32 @@ public enum QueryFeature implements Enumerator {
 	TYPE_CHECK(69, "TYPE_CHECK", "TYPE_CHECK"),
 
 	/**
+	 * The '<em><b>COLLECTION COUNT</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Plain element count of a multi-valued navigation (v2 IR CollectionCount — issue #81). JPA SIZE, Mongo $size over embedded collections.
+	 * <!-- end-model-doc -->
+	 * @see #COLLECTION_COUNT_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	COLLECTION_COUNT(70, "COLLECTION_COUNT", "COLLECTION_COUNT"),
+
+	/**
+	 * The '<em><b>COLLECTION COUNT FILTERED</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Predicate-filtered element count (v2 IR CollectionCount with predicate — issue #81). JPA correlated SELECT COUNT, Mongo $size($filter) over embedded collections.
+	 * <!-- end-model-doc -->
+	 * @see #COLLECTION_COUNT_FILTERED_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	COLLECTION_COUNT_FILTERED(71, "COLLECTION_COUNT_FILTERED", "COLLECTION_COUNT_FILTERED"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1099,6 +1125,34 @@ public enum QueryFeature implements Enumerator {
 	public static final int TYPE_CHECK_VALUE = 69;
 
 	/**
+	 * The '<em><b>COLLECTION COUNT</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Plain element count of a multi-valued navigation (v2 IR CollectionCount — issue #81). JPA SIZE, Mongo $size over embedded collections.
+	 * <!-- end-model-doc -->
+	 * @see #COLLECTION_COUNT
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int COLLECTION_COUNT_VALUE = 70;
+
+	/**
+	 * The '<em><b>COLLECTION COUNT FILTERED</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Predicate-filtered element count (v2 IR CollectionCount with predicate — issue #81). JPA correlated SELECT COUNT, Mongo $size($filter) over embedded collections.
+	 * <!-- end-model-doc -->
+	 * @see #COLLECTION_COUNT_FILTERED
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int COLLECTION_COUNT_FILTERED_VALUE = 71;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1213,6 +1267,8 @@ public enum QueryFeature implements Enumerator {
 			TEMPORAL_FUNCTIONS,
 			TYPE_CAST,
 			TYPE_CHECK,
+			COLLECTION_COUNT,
+			COLLECTION_COUNT_FILTERED,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1311,6 +1367,8 @@ public enum QueryFeature implements Enumerator {
 			case TEMPORAL_FUNCTIONS_VALUE: return TEMPORAL_FUNCTIONS;
 			case TYPE_CAST_VALUE: return TYPE_CAST;
 			case TYPE_CHECK_VALUE: return TYPE_CHECK;
+			case COLLECTION_COUNT_VALUE: return COLLECTION_COUNT;
+			case COLLECTION_COUNT_FILTERED_VALUE: return COLLECTION_COUNT_FILTERED;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

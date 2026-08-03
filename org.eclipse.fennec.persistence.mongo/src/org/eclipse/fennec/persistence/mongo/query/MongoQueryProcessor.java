@@ -35,6 +35,7 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
@@ -132,7 +133,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
-					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
+					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -366,6 +368,20 @@ public class MongoQueryProcessor implements QueryProcessor {
 			case FLOOR -> new Document("$floor", inner);
 			case CEILING -> new Document("$ceil", inner);
 			};
+		}
+		if (expression instanceof CollectionCount count) {
+			if (count.getPredicate() != null) {
+				throw new QueryException("Filtered collection counts are not supported by the mongo"
+						+ " backend yet — declare COLLECTION_COUNT_FILTERED once $filter rendering lands");
+			}
+			if (count.getSource().getBase() != null) {
+				throw new QueryException("Collection counts inside quantifier predicates are not"
+						+ " supported by the mongo backend");
+			}
+			// a missing array is an empty EMF list (smart compression omits it) — count 0,
+			// so no $ne-null guard and an $ifNull fallback instead
+			String reference = "$" + MongoFieldNames.render(count.getSource());
+			return new Document("$size", new Document("$ifNull", Arrays.asList(reference, List.of())));
 		}
 		if (expression instanceof TemporalFunction temporalFunction) {
 			// BSON dates are UTC instants — the operators extract UTC parts natively,

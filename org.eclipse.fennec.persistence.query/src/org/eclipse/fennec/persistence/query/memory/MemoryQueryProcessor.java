@@ -25,6 +25,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Expression;
@@ -235,6 +236,15 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof StringFunction function) {
 				operand(function.getSource(), target, scope);
+				return;
+			}
+			if (expression instanceof CollectionCount count) {
+				collectionPath(count.getSource(), scope);
+				if (count.getPredicate() != null) {
+					Set<Variable> inner = new HashSet<>(scope);
+					inner.add(count.getVariable());
+					walk(count.getPredicate(), inner);
+				}
 				return;
 			}
 			if (expression instanceof Arithmetic arithmetic) {

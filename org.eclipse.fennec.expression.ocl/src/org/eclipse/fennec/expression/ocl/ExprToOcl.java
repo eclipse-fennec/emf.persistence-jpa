@@ -36,6 +36,7 @@ import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
+import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.DurationLiteral;
@@ -265,6 +266,23 @@ public final class ExprToOcl {
 							map(substring.getStart(), null), map(substring.getLength(), null));
 				}
 				return call("substring", map(substring.getSource(), null), map(substring.getStart(), null));
+			}
+			if (expression instanceof CollectionCount count) {
+				// plain: path->size(); filtered: path->select(v | pred)->size() (issue #81)
+				OclExpression source = propertyChain(count.getSource());
+				if (count.getPredicate() == null) {
+					return call("size", source);
+				}
+				IteratorExp select = OCL.createIteratorExp();
+				select.setName("select");
+				select.setOwnedSource(source);
+				org.eclipse.fennec.m2x.model.ocl.Variable iterator = OCL.createVariable();
+				iterator.setName(count.getVariable().getName());
+				select.getOwnedIterators().add(iterator);
+				variables.put(count.getVariable(), iterator);
+				select.setOwnedBody(map(count.getPredicate(), null));
+				variables.remove(count.getVariable());
+				return call("size", select);
 			}
 			if (expression instanceof TypeCheck typeCheck) {
 				// kind-of test — source-less form tests the implicit self (issue #80)
