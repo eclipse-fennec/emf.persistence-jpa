@@ -88,6 +88,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.NULL_LITERAL: return createNullLiteral();
 			case ExpressionPackage.ENUM_LITERAL: return createEnumLiteral();
 			case ExpressionPackage.TEMPORAL_LITERAL: return createTemporalLiteral();
+			case ExpressionPackage.GUID_LITERAL: return createGuidLiteral();
+			case ExpressionPackage.DURATION_LITERAL: return createDurationLiteral();
 			case ExpressionPackage.STRING_FUNCTION: return createStringFunction();
 			case ExpressionPackage.ARITHMETIC: return createArithmetic();
 			case ExpressionPackage.NEGATE: return createNegate();
@@ -384,6 +386,28 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	public TemporalLiteral createTemporalLiteral() {
 		TemporalLiteralImpl temporalLiteral = new TemporalLiteralImpl();
 		return temporalLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GuidLiteral createGuidLiteral() {
+		GuidLiteralImpl guidLiteral = new GuidLiteralImpl();
+		return guidLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public DurationLiteral createDurationLiteral() {
+		DurationLiteralImpl durationLiteral = new DurationLiteralImpl();
+		return durationLiteral;
 	}
 
 	/**

@@ -12,12 +12,14 @@
  ********************************************************************/
 package org.eclipse.fennec.model.query.builder;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Date;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Function;
 
 import org.eclipse.emf.common.util.Enumerator;
@@ -30,11 +32,13 @@ import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ForAll;
+import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
@@ -239,7 +243,8 @@ public final class Expressions {
 	/**
 	 * Boxes a Java value into its typed literal: strings, integral and floating numbers,
 	 * booleans, {@link Enumerator}s (by literal name), {@code java.time} temporals and
-	 * {@link Date} (as INSTANT), {@code null}.
+	 * {@link Date} (as INSTANT), {@link UUID} (as GuidLiteral), {@link Duration}
+	 * (as DurationLiteral), {@code null}.
 	 *
 	 * @param value the value to box
 	 * @return the literal
@@ -291,6 +296,16 @@ public final class Expressions {
 		}
 		if (value instanceof LocalTime localTime) {
 			return temporal(TemporalKind.TIME, localTime.toString());
+		}
+		if (value instanceof UUID uuid) {
+			GuidLiteral literal = FACTORY.createGuidLiteral();
+			literal.setValue(uuid.toString());
+			return literal;
+		}
+		if (value instanceof Duration duration) {
+			DurationLiteral literal = FACTORY.createDurationLiteral();
+			literal.setIso8601(duration.toString());
+			return literal;
 		}
 		throw new IllegalArgumentException("Cannot box value of type " + value.getClass().getName()
 				+ " into a literal — pass a Literal or ParameterRef explicitly");

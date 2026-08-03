@@ -28,12 +28,14 @@ import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 import org.eclipse.fennec.model.expression.ForAll;
+import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
@@ -244,6 +246,20 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass temporalLiteralEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass guidLiteralEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass durationLiteralEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -996,6 +1012,46 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getGuidLiteral() {
+		return guidLiteralEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getGuidLiteral_Value() {
+		return (EAttribute)guidLiteralEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getDurationLiteral() {
+		return durationLiteralEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getDurationLiteral_Iso8601() {
+		return (EAttribute)durationLiteralEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getStringFunction() {
 		return stringFunctionEClass;
 	}
@@ -1412,6 +1468,12 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEAttribute(temporalLiteralEClass, TEMPORAL_LITERAL__VALUE);
 		createEAttribute(temporalLiteralEClass, TEMPORAL_LITERAL__KIND);
 
+		guidLiteralEClass = createEClass(GUID_LITERAL);
+		createEAttribute(guidLiteralEClass, GUID_LITERAL__VALUE);
+
+		durationLiteralEClass = createEClass(DURATION_LITERAL);
+		createEAttribute(durationLiteralEClass, DURATION_LITERAL__ISO8601);
+
 		stringFunctionEClass = createEClass(STRING_FUNCTION);
 		createEAttribute(stringFunctionEClass, STRING_FUNCTION__KIND);
 		createEReference(stringFunctionEClass, STRING_FUNCTION__SOURCE);
@@ -1505,6 +1567,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		nullLiteralEClass.getESuperTypes().add(this.getLiteral());
 		enumLiteralEClass.getESuperTypes().add(this.getLiteral());
 		temporalLiteralEClass.getESuperTypes().add(this.getLiteral());
+		guidLiteralEClass.getESuperTypes().add(this.getLiteral());
+		durationLiteralEClass.getESuperTypes().add(this.getLiteral());
 		stringFunctionEClass.getESuperTypes().add(this.getExpression());
 		arithmeticEClass.getESuperTypes().add(this.getExpression());
 		negateEClass.getESuperTypes().add(this.getExpression());
@@ -1597,6 +1661,12 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(temporalLiteralEClass, TemporalLiteral.class, "TemporalLiteral", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getTemporalLiteral_Value(), ecorePackage.getEString(), "value", null, 1, 1, TemporalLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getTemporalLiteral_Kind(), this.getTemporalKind(), "kind", null, 1, 1, TemporalLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(guidLiteralEClass, GuidLiteral.class, "GuidLiteral", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getGuidLiteral_Value(), ecorePackage.getEString(), "value", null, 1, 1, GuidLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(durationLiteralEClass, DurationLiteral.class, "DurationLiteral", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getDurationLiteral_Iso8601(), ecorePackage.getEString(), "iso8601", null, 1, 1, DurationLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(stringFunctionEClass, StringFunction.class, "StringFunction", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getStringFunction_Kind(), this.getStringFunctionKind(), "kind", null, 1, 1, StringFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

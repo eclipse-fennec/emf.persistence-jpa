@@ -260,6 +260,22 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.GUID_LITERAL: {
+				GuidLiteral guidLiteral = (GuidLiteral)theEObject;
+				T result = caseGuidLiteral(guidLiteral);
+				if (result == null) result = caseLiteral(guidLiteral);
+				if (result == null) result = caseExpression(guidLiteral);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ExpressionPackage.DURATION_LITERAL: {
+				DurationLiteral durationLiteral = (DurationLiteral)theEObject;
+				T result = caseDurationLiteral(durationLiteral);
+				if (result == null) result = caseLiteral(durationLiteral);
+				if (result == null) result = caseExpression(durationLiteral);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.STRING_FUNCTION: {
 				StringFunction stringFunction = (StringFunction)theEObject;
 				T result = caseStringFunction(stringFunction);
@@ -692,6 +708,36 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseTemporalLiteral(TemporalLiteral object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Guid Literal</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Guid Literal</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseGuidLiteral(GuidLiteral object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Duration Literal</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Duration Literal</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseDurationLiteral(DurationLiteral object) {
 		return null;
 	}
 

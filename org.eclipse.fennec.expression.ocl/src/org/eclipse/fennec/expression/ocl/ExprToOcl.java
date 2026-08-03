@@ -35,9 +35,11 @@ import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
@@ -343,6 +345,14 @@ public final class ExprToOcl {
 			if (literal instanceof TemporalLiteral temporal) {
 				// OCL has no temporal literals — the ISO text is the canonical fallback
 				return stringLiteral(temporal.getValue());
+			}
+			if (literal instanceof GuidLiteral guid) {
+				// no OCL guid literal — the canonical text form (issue #83)
+				return stringLiteral(guid.getValue());
+			}
+			if (literal instanceof DurationLiteral duration) {
+				// no OCL duration literal — the ISO-8601 text form (issue #83)
+				return stringLiteral(duration.getIso8601());
 			}
 			throw new QueryException("Unsupported literal " + literal.eClass().getName());
 		}

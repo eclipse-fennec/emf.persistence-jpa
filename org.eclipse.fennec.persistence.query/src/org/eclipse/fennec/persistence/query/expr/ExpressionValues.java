@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.query.expr;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,14 +23,17 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.Literal;
 import org.eclipse.fennec.model.expression.NullLiteral;
@@ -128,7 +132,42 @@ public final class ExpressionValues {
 		if (literal instanceof TemporalLiteral temporal) {
 			return resolveTemporal(temporal, instanceClass(target));
 		}
+		if (literal instanceof GuidLiteral guid) {
+			return resolveGuid(guid, instanceClass(target));
+		}
+		if (literal instanceof DurationLiteral duration) {
+			return resolveDuration(duration, instanceClass(target));
+		}
 		throw new QueryException("Unsupported literal " + literal.eClass().getName());
+	}
+
+	/** Resolves a GUID literal against the target type: UUID by default, canonical text for String targets (issue #83). */
+	private static Object resolveGuid(GuidLiteral literal, Class<?> type) throws QueryException {
+		UUID uuid;
+		try {
+			uuid = UUID.fromString(literal.getValue());
+		} catch (IllegalArgumentException | NullPointerException e) {
+			throw new QueryException("Invalid GUID literal '" + literal.getValue() + "'", e);
+		}
+		return type == String.class ? uuid.toString() : uuid;
+	}
+
+	/**
+	 * Resolves a duration literal against the target type: {@link Duration} by default,
+	 * milliseconds for Long targets (the JPA column form), ISO text for String targets
+	 * (issue #83).
+	 */
+	private static Object resolveDuration(DurationLiteral literal, Class<?> type) throws QueryException {
+		Duration duration;
+		try {
+			duration = Duration.parse(literal.getIso8601());
+		} catch (DateTimeParseException | NullPointerException e) {
+			throw new QueryException("Invalid ISO-8601 duration literal '" + literal.getIso8601() + "'", e);
+		}
+		if (type == Long.class || type == long.class) {
+			return duration.toMillis();
+		}
+		return type == String.class ? duration.toString() : duration;
 	}
 
 	/**

@@ -130,6 +130,12 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//TemporalLiteral/value"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//TemporalLiteral/kind"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//GuidLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//GuidLiteral/value"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//DurationLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//DurationLiteral/iso8601"/>
+    </genClasses>
     <genClasses ecoreClass="expression.ecore#//StringFunction">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringFunction/kind"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//StringFunction/source"/>

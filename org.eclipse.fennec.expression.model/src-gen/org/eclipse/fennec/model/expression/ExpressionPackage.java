@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:12fb11e74385f8628ebc0b6b4e9edb2442877af07e62f5ab49bd0fde5efec039", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:0e33565d3fd3d4550d63f1a2bcde9fa68729fdd704ea2ede701ec6595d84bdaa", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1147,6 +1147,80 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int TEMPORAL_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GuidLiteralImpl <em>Guid Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GuidLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGuidLiteral()
+	 * @generated
+	 */
+	int GUID_LITERAL = 25;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GUID_LITERAL__VALUE = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Guid Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GUID_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Guid Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GUID_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.DurationLiteralImpl <em>Duration Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.DurationLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getDurationLiteral()
+	 * @generated
+	 */
+	int DURATION_LITERAL = 26;
+
+	/**
+	 * The feature id for the '<em><b>Iso8601</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int DURATION_LITERAL__ISO8601 = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Duration Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int DURATION_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Duration Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int DURATION_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.StringFunctionImpl <em>String Function</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1154,7 +1228,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunction()
 	 * @generated
 	 */
-	int STRING_FUNCTION = 25;
+	int STRING_FUNCTION = 27;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1200,7 +1274,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmetic()
 	 * @generated
 	 */
-	int ARITHMETIC = 26;
+	int ARITHMETIC = 28;
 
 	/**
 	 * The feature id for the '<em><b>Operator</b></em>' attribute.
@@ -1255,7 +1329,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNegate()
 	 * @generated
 	 */
-	int NEGATE = 27;
+	int NEGATE = 29;
 
 	/**
 	 * The feature id for the '<em><b>Operand</b></em>' containment reference.
@@ -1292,7 +1366,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getConcat()
 	 * @generated
 	 */
-	int CONCAT = 28;
+	int CONCAT = 30;
 
 	/**
 	 * The feature id for the '<em><b>Parts</b></em>' containment reference list.
@@ -1329,7 +1403,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIndexOf()
 	 * @generated
 	 */
-	int INDEX_OF = 29;
+	int INDEX_OF = 31;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1375,7 +1449,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION = 30;
+	int NUMERIC_FUNCTION = 32;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1421,7 +1495,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION = 31;
+	int TEMPORAL_FUNCTION = 33;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1467,7 +1541,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 32;
+	int SUBSTRING = 34;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1522,7 +1596,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 33;
+	int COMPARISON_OPERATOR = 35;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1532,7 +1606,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 34;
+	int STRING_MATCH_KIND = 36;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1542,7 +1616,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 35;
+	int STRING_FUNCTION_KIND = 37;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
@@ -1552,7 +1626,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION_KIND = 36;
+	int TEMPORAL_FUNCTION_KIND = 38;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -1562,7 +1636,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 37;
+	int NUMERIC_FUNCTION_KIND = 39;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1572,7 +1646,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 38;
+	int ARITHMETIC_OPERATOR = 40;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1582,7 +1656,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 39;
+	int TEMPORAL_KIND = 41;
 
 
 	/**
@@ -2197,6 +2271,48 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getTemporalLiteral_Kind();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GuidLiteral <em>Guid Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Guid Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.GuidLiteral
+	 * @generated
+	 */
+	EClass getGuidLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.GuidLiteral#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.GuidLiteral#getValue()
+	 * @see #getGuidLiteral()
+	 * @generated
+	 */
+	EAttribute getGuidLiteral_Value();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.DurationLiteral <em>Duration Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Duration Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.DurationLiteral
+	 * @generated
+	 */
+	EClass getDurationLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.DurationLiteral#getIso8601 <em>Iso8601</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Iso8601</em>'.
+	 * @see org.eclipse.fennec.model.expression.DurationLiteral#getIso8601()
+	 * @see #getDurationLiteral()
+	 * @generated
+	 */
+	EAttribute getDurationLiteral_Iso8601();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.StringFunction <em>String Function</em>}'.
@@ -3060,6 +3176,42 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute TEMPORAL_LITERAL__KIND = eINSTANCE.getTemporalLiteral_Kind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GuidLiteralImpl <em>Guid Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GuidLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGuidLiteral()
+		 * @generated
+		 */
+		EClass GUID_LITERAL = eINSTANCE.getGuidLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute GUID_LITERAL__VALUE = eINSTANCE.getGuidLiteral_Value();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.DurationLiteralImpl <em>Duration Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.DurationLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getDurationLiteral()
+		 * @generated
+		 */
+		EClass DURATION_LITERAL = eINSTANCE.getDurationLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Iso8601</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute DURATION_LITERAL__ISO8601 = eINSTANCE.getDurationLiteral_Iso8601();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.StringFunctionImpl <em>String Function</em>}' class.

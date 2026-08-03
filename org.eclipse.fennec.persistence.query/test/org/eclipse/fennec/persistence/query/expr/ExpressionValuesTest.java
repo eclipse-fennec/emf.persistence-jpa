@@ -15,8 +15,10 @@ package org.eclipse.fennec.persistence.query.expr;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClassifier;
@@ -24,8 +26,10 @@ import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
+import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -97,6 +101,51 @@ class ExpressionValuesTest {
 		assertThatThrownBy(() -> ExpressionValues.resolve(bad, null, null, null))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("not-a-date");
+	}
+
+	@Test
+	void guidLiteralResolvesAgainstTargetType() throws QueryException {
+		GuidLiteral guid = expr.createGuidLiteral();
+		guid.setValue("123e4567-e89b-12d3-a456-426614174000");
+
+		// no/typed target → UUID (the OData coercion)
+		Object asUuid = ExpressionValues.resolve(guid, null, null, null);
+		assertThat(asUuid).isEqualTo(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
+
+		// String-typed feature → canonical text
+		Object asText = ExpressionValues.resolve(guid, attribute("id", EcorePackage.Literals.ESTRING),
+				null, null);
+		assertThat(asText).isEqualTo("123e4567-e89b-12d3-a456-426614174000");
+
+		GuidLiteral bad = expr.createGuidLiteral();
+		bad.setValue("not-a-guid");
+		assertThatThrownBy(() -> ExpressionValues.resolve(bad, null, null, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("not-a-guid");
+	}
+
+	@Test
+	void durationLiteralResolvesAgainstTargetType() throws QueryException {
+		DurationLiteral duration = expr.createDurationLiteral();
+		duration.setIso8601("PT1H30M");
+
+		Object asDuration = ExpressionValues.resolve(duration, null, null, null);
+		assertThat(asDuration).isEqualTo(Duration.ofMinutes(90));
+
+		// Long-typed feature → milliseconds (the JPA column form)
+		Object asMillis = ExpressionValues.resolve(duration,
+				attribute("timeout", EcorePackage.Literals.ELONG_OBJECT), null, null);
+		assertThat(asMillis).isEqualTo(5_400_000L);
+
+		Object asText = ExpressionValues.resolve(duration,
+				attribute("timeout", EcorePackage.Literals.ESTRING), null, null);
+		assertThat(asText).isEqualTo("PT1H30M");
+
+		DurationLiteral bad = expr.createDurationLiteral();
+		bad.setIso8601("90 minutes");
+		assertThatThrownBy(() -> ExpressionValues.resolve(bad, null, null, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("90 minutes");
 	}
 
 	@Test

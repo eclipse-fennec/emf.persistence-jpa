@@ -210,6 +210,20 @@
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//TemporalKind"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GuidLiteral" eSuperTypes="#//Literal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="GUID/UUID value as canonical text (issue #83, analogous to D1) — resolved to java.util.UUID (or kept as String) against the target feature's type at translation. OData coerces guid literals to UUID today."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DurationLiteral" eSuperTypes="#//Literal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Duration as ISO-8601 text (issue #83, analogous to D1) — resolved to java.time.Duration, epoch-milliseconds Long or kept as String against the target feature's type at translation."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="iso8601" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <!-- ==================== Functions ==================== -->
   <eClassifiers xsi:type="ecore:EClass" name="StringFunction" eSuperTypes="#//Expression">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

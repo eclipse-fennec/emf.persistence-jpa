@@ -26,7 +26,9 @@ import static org.eclipse.fennec.model.query.builder.Expressions.param;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
 import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -38,6 +40,7 @@ import org.eclipse.fennec.m2x.model.ocl.IteratorExp;
 import org.eclipse.fennec.m2x.model.ocl.OclExpression;
 import org.eclipse.fennec.m2x.model.ocl.OclFactory;
 import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
+import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.junit.jupiter.api.BeforeEach;
@@ -222,6 +225,20 @@ class ExpressionOclBridgeTest {
 		assertThat(EcoreUtil.equals(original, back))
 				.as("year..second expr → ocl → expr must be structurally identical")
 				.isTrue();
+	}
+
+	@Test
+	void guidAndDurationLiteralsMapToOclStrings() throws QueryException {
+		// no OCL guid/duration literals — the canonical text is the total form (issue #83)
+		OperationCallExp guid = (OperationCallExp) ExprToOcl.toOcl(
+				path(name).eq(UUID.fromString("123e4567-e89b-12d3-a456-426614174000")));
+		assertThat(((StringLiteralExp) guid.getOwnedArguments().get(0)).getStringSymbol())
+				.isEqualTo("123e4567-e89b-12d3-a456-426614174000");
+
+		OperationCallExp duration = (OperationCallExp) ExprToOcl.toOcl(
+				path(name).eq(Duration.ofMinutes(90)));
+		assertThat(((StringLiteralExp) duration.getOwnedArguments().get(0)).getStringSymbol())
+				.isEqualTo("PT1H30M");
 	}
 
 	@Test

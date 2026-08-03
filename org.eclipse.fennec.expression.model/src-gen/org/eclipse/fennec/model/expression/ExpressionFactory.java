@@ -224,6 +224,24 @@ public interface ExpressionFactory extends EFactory {
 	TemporalLiteral createTemporalLiteral();
 
 	/**
+	 * Returns a new object of class '<em>Guid Literal</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Guid Literal</em>'.
+	 * @generated
+	 */
+	GuidLiteral createGuidLiteral();
+
+	/**
+	 * Returns a new object of class '<em>Duration Literal</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Duration Literal</em>'.
+	 * @generated
+	 */
+	DurationLiteral createDurationLiteral();
+
+	/**
 	 * Returns a new object of class '<em>String Function</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

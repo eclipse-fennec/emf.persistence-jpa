@@ -178,6 +178,14 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createTemporalLiteralAdapter();
 			}
 			@Override
+			public Adapter caseGuidLiteral(GuidLiteral object) {
+				return createGuidLiteralAdapter();
+			}
+			@Override
+			public Adapter caseDurationLiteral(DurationLiteral object) {
+				return createDurationLiteralAdapter();
+			}
+			@Override
 			public Adapter caseStringFunction(StringFunction object) {
 				return createStringFunctionAdapter();
 			}
@@ -576,6 +584,34 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createTemporalLiteralAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GuidLiteral <em>Guid Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GuidLiteral
+	 * @generated
+	 */
+	public Adapter createGuidLiteralAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.DurationLiteral <em>Duration Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.DurationLiteral
+	 * @generated
+	 */
+	public Adapter createDurationLiteralAdapter() {
 		return null;
 	}
 
