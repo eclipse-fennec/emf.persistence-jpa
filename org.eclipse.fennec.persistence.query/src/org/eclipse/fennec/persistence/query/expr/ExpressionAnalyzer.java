@@ -20,9 +20,11 @@ import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
@@ -34,6 +36,7 @@ import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -220,6 +223,18 @@ public final class ExpressionAnalyzer {
 		} else if (expression instanceof StringFunction function) {
 			features.add(QueryFeature.STRING_FUNCTIONS);
 			walk(function.getSource(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof Concat concatenation) {
+			features.add(QueryFeature.STRING_FUNCTIONS_EXTENDED);
+			concatenation.getParts().forEach(part -> walk(part, features, maxDepth, zeroDivision));
+		} else if (expression instanceof IndexOf indexOf) {
+			features.add(QueryFeature.STRING_FUNCTIONS_EXTENDED);
+			walk(indexOf.getSource(), features, maxDepth, zeroDivision);
+			walk(indexOf.getSearch(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof Substring substring) {
+			features.add(QueryFeature.STRING_FUNCTIONS_EXTENDED);
+			walk(substring.getSource(), features, maxDepth, zeroDivision);
+			walk(substring.getStart(), features, maxDepth, zeroDivision);
+			walk(substring.getLength(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof Arithmetic arithmetic) {
 			features.add(QueryFeature.ARITHMETIC);
 			if ((arithmetic.getOperator() == ArithmeticOperator.DIV
@@ -258,6 +273,12 @@ public final class ExpressionAnalyzer {
 		}
 		if (expression instanceof StringFunction function) {
 			return navigates(function.getSource());
+		}
+		if (expression instanceof Substring substring) {
+			return navigates(substring.getSource());
+		}
+		if (expression instanceof Concat concatenation) {
+			return concatenation.getParts().stream().anyMatch(ExpressionAnalyzer::navigates);
 		}
 		return false;
 	}

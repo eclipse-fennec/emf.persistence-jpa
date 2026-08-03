@@ -237,6 +237,33 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="operand" lowerBound="1"
         eType="#//Expression" containment="true"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Concat" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="String concatenation of all parts, in order (issue #77; OData concat). Deliberately n-ary — the binary OCL concat chains flatten on the bridge like the junctions."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parts" lowerBound="2"
+        upperBound="-1" eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IndexOf" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Position of the first occurrence of search inside source — 0-based, -1 when absent (issue #77; OData/Java semantics — the 1-based JPQL LOCATE translation compensates, Mongo $indexOfCP matches natively)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="search" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Substring" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Substring of source from start (0-based), optionally length-bounded (issue #77; [OData-URL] 5.1.1.7): a negative start counts from the end of the string (clamped to position 0), a start beyond the end yields the empty string, a negative length yields the empty string."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="start" lowerBound="1"
+        eType="#//Expression" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="length" eType="#//Expression"
+        containment="true"/>
+  </eClassifiers>
   <!-- ==================== Enums ==================== -->
   <eClassifiers xsi:type="ecore:EEnum" name="ComparisonOperator">
     <eLiterals name="EQ"/>

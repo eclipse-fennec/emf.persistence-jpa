@@ -32,9 +32,11 @@ import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
@@ -45,6 +47,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
 
@@ -60,6 +63,8 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * {@code contains/startsWith/endsWith/like} (→ StringMatch, a {@code toLowerCase} pair
  * on both sides folds into the case-insensitive flag),
  * {@code toLowerCase/toUpperCase/trim/size} (→ StringFunction),
+ * {@code concat/indexOf/substring} (→ Concat/IndexOf/Substring — OData-flavoured
+ * 0-based semantics, binary concat chains flatten into the n-ary Concat),
  * {@code + - * / mod} (→ Arithmetic; a source-only {@code -} → Negate; the integer
  * division {@code div} stays refused — truncation is deliberately not modelled),
  * {@code exists/forAll} iterators (→ quantifiers), property-call chains
@@ -239,6 +244,27 @@ public final class OclToExpr {
 				function.setSource(map(call.getOwnedSource()));
 				return function;
 			}
+			case "concat" -> {
+				Concat concat = EXPR.createConcat();
+				concatFlattened(concat, map(call.getOwnedSource()));
+				concatFlattened(concat, map(argument(call, 0)));
+				return concat;
+			}
+			case "indexOf" -> {
+				IndexOf indexOf = EXPR.createIndexOf();
+				indexOf.setSource(map(call.getOwnedSource()));
+				indexOf.setSearch(map(argument(call, 0)));
+				return indexOf;
+			}
+			case "substring" -> {
+				Substring substring = EXPR.createSubstring();
+				substring.setSource(map(call.getOwnedSource()));
+				substring.setStart(map(argument(call, 0)));
+				if (call.getOwnedArguments().size() > 1) {
+					substring.setLength(map(call.getOwnedArguments().get(1)));
+				}
+				return substring;
+			}
 			case "+", "-", "*", "/", "mod" -> {
 				if (call.getOwnedArguments().isEmpty()) {
 					if (!"-".equals(name)) {
@@ -320,6 +346,14 @@ public final class OclToExpr {
 						+ "'");
 			}
 			return variable;
+		}
+
+		private static void concatFlattened(Concat concat, Expression part) {
+			if (part instanceof Concat nested) {
+				concat.getParts().addAll(nested.getParts());
+			} else {
+				concat.getParts().add(part);
+			}
 		}
 
 		private static void addFlattened(Junction junction, Expression operand) {

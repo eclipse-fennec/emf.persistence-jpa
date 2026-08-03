@@ -617,6 +617,49 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryExtendedStringFunctions() throws Exception {
+		saveQueryFixture();
+		// CONCAT — "Bob" + "!" = "Bob!"
+		Query concatenated = QueryBuilder.from(personClass)
+				.where(Expressions.concat(Expressions.path(personName), "!").eq("Bob!"))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(concatenated)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		// INDEX_OF is 0-based with -1 when absent: "Bob"=1, "Carol"=3, "Alice"=-1
+		Query position = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("o").eq(1))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(position)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		Query absent = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("o").eq(-1))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(absent)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+		// SUBSTRING is 0-based; a negative start counts from the end of the string
+		Query window = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(1, 3).eq("aro"))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(window)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+		Query fromEnd = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(-2).eq("ce"))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(fromEnd)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+	}
+
+	@Test
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();
 		// a literal zero is refused statically; a zero bound at runtime is the backend's
@@ -929,6 +972,24 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		corpus.put("arithmetic negate", QueryBuilder.from(personClass)
 				.where(Expressions.path(personAge).negated().lt(-45))
+				.build());
+		corpus.put("concat", QueryBuilder.from(personClass)
+				.where(Expressions.concat(Expressions.path(personName), "!").eq("Bob!"))
+				.build());
+		corpus.put("indexOf found", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("o").eq(1))
+				.build());
+		corpus.put("indexOf absent", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("o").eq(-1))
+				.build());
+		corpus.put("substring window", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(1, 3).eq("aro"))
+				.build());
+		corpus.put("substring negative start", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(-2).eq("ce"))
+				.build());
+		corpus.put("substring beyond end", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(99).eq(""))
 				.build());
 
 		for (Map.Entry<String, Query> entry : corpus.entrySet()) {

@@ -27,6 +27,7 @@ import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
@@ -34,6 +35,7 @@ import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 import org.eclipse.fennec.model.expression.ForAll;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
@@ -51,6 +53,7 @@ import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.Variable;
@@ -258,6 +261,27 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass negateEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass concatEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass indexOfEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass substringEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1030,6 +1054,96 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getConcat() {
+		return concatEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getConcat_Parts() {
+		return (EReference)concatEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getIndexOf() {
+		return indexOfEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIndexOf_Source() {
+		return (EReference)indexOfEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIndexOf_Search() {
+		return (EReference)indexOfEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getSubstring() {
+		return substringEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getSubstring_Source() {
+		return (EReference)substringEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getSubstring_Start() {
+		return (EReference)substringEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getSubstring_Length() {
+		return (EReference)substringEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getComparisonOperator() {
 		return comparisonOperatorEEnum;
 	}
@@ -1198,6 +1312,18 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		negateEClass = createEClass(NEGATE);
 		createEReference(negateEClass, NEGATE__OPERAND);
 
+		concatEClass = createEClass(CONCAT);
+		createEReference(concatEClass, CONCAT__PARTS);
+
+		indexOfEClass = createEClass(INDEX_OF);
+		createEReference(indexOfEClass, INDEX_OF__SOURCE);
+		createEReference(indexOfEClass, INDEX_OF__SEARCH);
+
+		substringEClass = createEClass(SUBSTRING);
+		createEReference(substringEClass, SUBSTRING__SOURCE);
+		createEReference(substringEClass, SUBSTRING__START);
+		createEReference(substringEClass, SUBSTRING__LENGTH);
+
 		// Create enums
 		comparisonOperatorEEnum = createEEnum(COMPARISON_OPERATOR);
 		stringMatchKindEEnum = createEEnum(STRING_MATCH_KIND);
@@ -1260,6 +1386,9 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		stringFunctionEClass.getESuperTypes().add(this.getExpression());
 		arithmeticEClass.getESuperTypes().add(this.getExpression());
 		negateEClass.getESuperTypes().add(this.getExpression());
+		concatEClass.getESuperTypes().add(this.getExpression());
+		indexOfEClass.getESuperTypes().add(this.getExpression());
+		substringEClass.getESuperTypes().add(this.getExpression());
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(expressionEClass, Expression.class, "Expression", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -1356,6 +1485,18 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 
 		initEClass(negateEClass, Negate.class, "Negate", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getNegate_Operand(), this.getExpression(), null, "operand", null, 1, 1, Negate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(concatEClass, Concat.class, "Concat", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getConcat_Parts(), this.getExpression(), null, "parts", null, 2, -1, Concat.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(indexOfEClass, IndexOf.class, "IndexOf", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getIndexOf_Source(), this.getExpression(), null, "source", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIndexOf_Search(), this.getExpression(), null, "search", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(substringEClass, Substring.class, "Substring", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getSubstring_Source(), this.getExpression(), null, "source", null, 1, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getSubstring_Start(), this.getExpression(), null, "start", null, 1, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getSubstring_Length(), this.getExpression(), null, "length", null, 0, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		// Initialize enums and add enum literals
 		initEEnum(comparisonOperatorEEnum, ComparisonOperator.class, "ComparisonOperator");

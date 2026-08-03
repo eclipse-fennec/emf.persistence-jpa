@@ -332,6 +332,74 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void concatJoinsPartsAndNullPoisons() throws QueryException {
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.concat(Expressions.path(personName), "!").eq("Bob!"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+		// nickname is null everywhere — a null part poisons the concatenation,
+		// so even NE against an unrelated value matches nothing
+		Query poisoned = QueryBuilder.from(personClass)
+				.where(Expressions.concat(Expressions.path(personName), Expressions.path(personNickname))
+						.ne("nonexistent"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(poisoned, persons, null)) {
+			assertThat(result.objects()).isEmpty();
+		}
+	}
+
+	@Test
+	void indexOfIsZeroBasedWithMinusOneWhenAbsent() throws QueryException {
+		// "Bob".indexOf("o") = 1, "Carol" = 3, "Alice" = -1
+		Query found = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("o").eq(1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(found, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+		Query absent = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("o").eq(-1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(absent, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+	}
+
+	@Test
+	void substringFollowsODataClamping() throws QueryException {
+		// plain 0-based window
+		Query window = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(0, 3).eq("Bob"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(window, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+		// negative start counts from the end of the string
+		Query fromEnd = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(-2).eq("ol"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(fromEnd, persons, null)) {
+			assertThat(names(result)).containsExactly("Carol");
+		}
+		// start beyond the end yields the empty string
+		Query beyond = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(99).eq(""))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(beyond, persons, null)) {
+			assertThat(result.objects()).hasSize(3);
+		}
+		// negative length yields the empty string
+		Query negativeLength = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).substring(1, -1).eq(""))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(negativeLength, persons, null)) {
+			assertThat(result.objects()).hasSize(3);
+		}
+	}
+
+	@Test
 	void negateWorksOnFloatingValues() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personScore).negated().lt(-10))

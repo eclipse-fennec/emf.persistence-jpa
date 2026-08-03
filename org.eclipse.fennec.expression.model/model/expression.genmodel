@@ -129,5 +129,17 @@
     <genClasses ecoreClass="expression.ecore#//Negate">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Negate/operand"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//Concat">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Concat/parts"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//IndexOf">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//Substring">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Substring/source"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Substring/start"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Substring/length"/>
+    </genClasses>
   </genPackages>
 </genmodel:GenModel>

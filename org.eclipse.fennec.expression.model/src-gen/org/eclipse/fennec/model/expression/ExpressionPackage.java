@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:6293434815e24960bab428c509f26cec4e536ffdf9f07773dc0215abff07df78", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:f7606f455f7a663fdbe43f8be9411e55119d2bb7446c677da67a55e558d0e175", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1285,6 +1285,144 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int NEGATE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ConcatImpl <em>Concat</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ConcatImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getConcat()
+	 * @generated
+	 */
+	int CONCAT = 28;
+
+	/**
+	 * The feature id for the '<em><b>Parts</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int CONCAT__PARTS = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Concat</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int CONCAT_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Concat</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int CONCAT_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.IndexOfImpl <em>Index Of</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.IndexOfImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIndexOf()
+	 * @generated
+	 */
+	int INDEX_OF = 29;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INDEX_OF__SOURCE = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Search</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INDEX_OF__SEARCH = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Index Of</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INDEX_OF_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Index Of</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INDEX_OF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.SubstringImpl <em>Substring</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.SubstringImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
+	 * @generated
+	 */
+	int SUBSTRING = 30;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUBSTRING__SOURCE = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Start</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUBSTRING__START = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Length</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUBSTRING__LENGTH = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of structural features of the '<em>Substring</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUBSTRING_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The number of operations of the '<em>Substring</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SUBSTRING_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1292,7 +1430,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 28;
+	int COMPARISON_OPERATOR = 31;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1302,7 +1440,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 29;
+	int STRING_MATCH_KIND = 32;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1312,7 +1450,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 30;
+	int STRING_FUNCTION_KIND = 33;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1322,7 +1460,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 31;
+	int ARITHMETIC_OPERATOR = 34;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1332,7 +1470,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 32;
+	int TEMPORAL_KIND = 35;
 
 
 	/**
@@ -2045,6 +2183,102 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getNegate_Operand();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Concat <em>Concat</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Concat</em>'.
+	 * @see org.eclipse.fennec.model.expression.Concat
+	 * @generated
+	 */
+	EClass getConcat();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.expression.Concat#getParts <em>Parts</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Parts</em>'.
+	 * @see org.eclipse.fennec.model.expression.Concat#getParts()
+	 * @see #getConcat()
+	 * @generated
+	 */
+	EReference getConcat_Parts();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.IndexOf <em>Index Of</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Index Of</em>'.
+	 * @see org.eclipse.fennec.model.expression.IndexOf
+	 * @generated
+	 */
+	EClass getIndexOf();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IndexOf#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.IndexOf#getSource()
+	 * @see #getIndexOf()
+	 * @generated
+	 */
+	EReference getIndexOf_Source();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IndexOf#getSearch <em>Search</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Search</em>'.
+	 * @see org.eclipse.fennec.model.expression.IndexOf#getSearch()
+	 * @see #getIndexOf()
+	 * @generated
+	 */
+	EReference getIndexOf_Search();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Substring <em>Substring</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Substring</em>'.
+	 * @see org.eclipse.fennec.model.expression.Substring
+	 * @generated
+	 */
+	EClass getSubstring();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Substring#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.Substring#getSource()
+	 * @see #getSubstring()
+	 * @generated
+	 */
+	EReference getSubstring_Source();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Substring#getStart <em>Start</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Start</em>'.
+	 * @see org.eclipse.fennec.model.expression.Substring#getStart()
+	 * @see #getSubstring()
+	 * @generated
+	 */
+	EReference getSubstring_Start();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.Substring#getLength <em>Length</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Length</em>'.
+	 * @see org.eclipse.fennec.model.expression.Substring#getLength()
+	 * @see #getSubstring()
+	 * @generated
+	 */
+	EReference getSubstring_Length();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -2708,6 +2942,84 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference NEGATE__OPERAND = eINSTANCE.getNegate_Operand();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ConcatImpl <em>Concat</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ConcatImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getConcat()
+		 * @generated
+		 */
+		EClass CONCAT = eINSTANCE.getConcat();
+
+		/**
+		 * The meta object literal for the '<em><b>Parts</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference CONCAT__PARTS = eINSTANCE.getConcat_Parts();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.IndexOfImpl <em>Index Of</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.IndexOfImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIndexOf()
+		 * @generated
+		 */
+		EClass INDEX_OF = eINSTANCE.getIndexOf();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INDEX_OF__SOURCE = eINSTANCE.getIndexOf_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Search</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INDEX_OF__SEARCH = eINSTANCE.getIndexOf_Search();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.SubstringImpl <em>Substring</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.SubstringImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
+		 * @generated
+		 */
+		EClass SUBSTRING = eINSTANCE.getSubstring();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference SUBSTRING__SOURCE = eINSTANCE.getSubstring_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Start</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference SUBSTRING__START = eINSTANCE.getSubstring_Start();
+
+		/**
+		 * The meta object literal for the '<em><b>Length</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference SUBSTRING__LENGTH = eINSTANCE.getSubstring_Length();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.ComparisonOperator <em>Comparison Operator</em>}' enum.

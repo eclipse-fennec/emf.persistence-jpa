@@ -26,8 +26,10 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -38,6 +40,7 @@ import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -232,6 +235,25 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				operand(negate.getOperand(), target, scope);
+				return;
+			}
+			if (expression instanceof Concat concatenation) {
+				for (Expression part : concatenation.getParts()) {
+					operand(part, target, scope);
+				}
+				return;
+			}
+			if (expression instanceof IndexOf indexOf) {
+				operand(indexOf.getSource(), target, scope);
+				operand(indexOf.getSearch(), target, scope);
+				return;
+			}
+			if (expression instanceof Substring substring) {
+				operand(substring.getSource(), target, scope);
+				operand(substring.getStart(), target, scope);
+				if (substring.getLength() != null) {
+					operand(substring.getLength(), target, scope);
+				}
 				return;
 			}
 			values.put(expression, ExpressionValues.resolve(expression, target, context.parameters(), null));

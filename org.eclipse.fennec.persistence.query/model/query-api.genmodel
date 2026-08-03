@@ -48,6 +48,7 @@
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_COUNT_DISTINCT"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/STRING_FUNCTIONS"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/ARITHMETIC"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/STRING_FUNCTIONS_EXTENDED"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PARAMETERS"/>

@@ -29,9 +29,11 @@ import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
@@ -41,6 +43,7 @@ import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.Variable;
 
 /**
@@ -215,7 +218,68 @@ final class MemoryPredicate {
 		if (expression instanceof Negate negate) {
 			return negate(operand(negate.getOperand(), candidate, bindings));
 		}
+		if (expression instanceof Concat concatenation) {
+			StringBuilder text = new StringBuilder();
+			for (Expression part : concatenation.getParts()) {
+				Object value = operand(part, candidate, bindings);
+				if (value == null) {
+					return null; // null parts poison the concatenation (Mongo/|| semantics)
+				}
+				text.append(value);
+			}
+			return text.toString();
+		}
+		if (expression instanceof IndexOf indexOf) {
+			Object source = operand(indexOf.getSource(), candidate, bindings);
+			Object search = operand(indexOf.getSearch(), candidate, bindings);
+			if (source == null || search == null) {
+				return null;
+			}
+			return String.valueOf(source).indexOf(String.valueOf(search));
+		}
+		if (expression instanceof Substring substring) {
+			return substring(substring, candidate, bindings);
+		}
 		return values.get(expression);
+	}
+
+	/**
+	 * Substring per [OData-URL] 5.1.1.7: 0-based; a negative start counts from the end
+	 * (clamped to 0), a start beyond the end and a negative length yield the empty
+	 * string. Mirrors the OData in-memory reference and the {@code $substrCP} clamping.
+	 */
+	private Object substring(Substring substring, EObject candidate, Map<Variable, Object> bindings) {
+		Object source = operand(substring.getSource(), candidate, bindings);
+		Object start = operand(substring.getStart(), candidate, bindings);
+		if (!(source instanceof String value) || !(start instanceof Number requested)) {
+			return null;
+		}
+		int startIndex = clampToInt(requested);
+		int effectiveStart = startIndex < 0
+				? Math.max(0, value.length() + startIndex)
+				: Math.min(startIndex, value.length());
+		if (substring.getLength() == null) {
+			return value.substring(effectiveStart);
+		}
+		Object length = operand(substring.getLength(), candidate, bindings);
+		if (!(length instanceof Number bound)) {
+			return null;
+		}
+		int end = (int) Math.min(value.length(),
+				Math.max(effectiveStart, (long) effectiveStart + clampToInt(bound)));
+		return value.substring(effectiveStart, end);
+	}
+
+	/** Saturates a numeric offset/length to the int range (no silent overflow wrap). */
+	private static int clampToInt(Number number) {
+		long value = number.longValue();
+		if (value > Integer.MAX_VALUE) {
+			return Integer.MAX_VALUE;
+		}
+		if (value < Integer.MIN_VALUE) {
+			return Integer.MIN_VALUE;
+		}
+		return (int) value;
 	}
 
 	/**

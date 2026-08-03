@@ -281,6 +281,27 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.CONCAT: {
+				Concat concat = (Concat)theEObject;
+				T result = caseConcat(concat);
+				if (result == null) result = caseExpression(concat);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ExpressionPackage.INDEX_OF: {
+				IndexOf indexOf = (IndexOf)theEObject;
+				T result = caseIndexOf(indexOf);
+				if (result == null) result = caseExpression(indexOf);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ExpressionPackage.SUBSTRING: {
+				Substring substring = (Substring)theEObject;
+				T result = caseSubstring(substring);
+				if (result == null) result = caseExpression(substring);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			default: return defaultCase(theEObject);
 		}
 	}
@@ -702,6 +723,51 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseNegate(Negate object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Concat</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Concat</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseConcat(Concat object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Index Of</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Index Of</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseIndexOf(IndexOf object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Substring</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Substring</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseSubstring(Substring object) {
 		return null;
 	}
 

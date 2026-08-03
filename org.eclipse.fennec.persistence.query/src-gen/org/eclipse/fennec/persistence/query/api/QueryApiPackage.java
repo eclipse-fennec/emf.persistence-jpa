@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:e8c213c46e8699cecfe2a96e0903a30c4d239434a288effcccd4814a0fd3806c", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
+@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:bc499098c2c17b04802e8fed0a6aa304b87c5aff02a924928c2d4558ad7cb5f9", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
 public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.

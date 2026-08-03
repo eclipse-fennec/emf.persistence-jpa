@@ -50,6 +50,13 @@ Query query = QueryBuilder.from(personClass)
   (`path(age).dividedBy(4).eq(7.5)` matches age 30). Division by a literal zero is
   refused at validation; a runtime zero surfaces the backend's error. JPA renders JPQL
   operators (`* 1.0 /` for div), Mongo `$expr` (`$add`…`$mod`, root paths only).
+- **Extended string functions** (#77): `concat(path(name), "!")`,
+  `path(name).indexOf("o")` (**0-based**, `-1` when absent),
+  `path(name).substring(start[, length])` (**0-based**; a negative start counts from
+  the end, start beyond the end or a negative length yield `""` —
+  [OData-URL] 5.1.1.7). All chainable with the v1 string functions; a null concat part
+  poisons the result. JPA renders `CONCAT`/`LOCATE(…)-1`/`SUBSTRING` with CASE
+  clamping, Mongo `$concat`/`$indexOfCP`/`$substrCP` (root paths only).
 - **Field-to-field**: `path(a).eq(path(b))` compares two features of the root type;
   either side may wrap string functions. Comparisons involving null/missing values are
   false on every backend (SQL semantics).

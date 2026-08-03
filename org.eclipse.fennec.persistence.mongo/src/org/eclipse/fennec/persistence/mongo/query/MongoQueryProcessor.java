@@ -36,9 +36,11 @@ import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -50,6 +52,7 @@ import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -125,7 +128,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
+					QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -348,10 +352,51 @@ public class MongoQueryProcessor implements QueryProcessor {
 			Object operand = exprOperand(negate.getOperand(), target, context, guards);
 			return new Document("$multiply", Arrays.asList(-1, operand));
 		}
+		if (expression instanceof Concat concatenation) {
+			List<Object> parts = new ArrayList<>(concatenation.getParts().size());
+			for (Expression part : concatenation.getParts()) {
+				parts.add(exprOperand(part, target, context, guards));
+			}
+			return new Document("$concat", parts);
+		}
+		if (expression instanceof IndexOf indexOf) {
+			// $indexOfCP is 0-based with -1 for absent — the IR semantics natively
+			return new Document("$indexOfCP", Arrays.asList(
+					exprOperand(indexOf.getSource(), target, context, guards),
+					exprOperand(indexOf.getSearch(), target, context, guards)));
+		}
+		if (expression instanceof Substring substring) {
+			return exprSubstring(substring, target, context, guards);
+		}
 		// $literal keeps values (notably strings starting with '$') out of path interpretation
 		Object value = mongoValue(ExpressionValues.resolve(expression, target, context.parameters(),
 				context.converter()));
 		return new Document("$literal", value);
+	}
+
+	/**
+	 * Substring per [OData-URL] 5.1.1.7 over {@code $substrCP}: the effective start is
+	 * {@code start < 0 ? max(0, strlen + start) : min(start, strlen)}, the effective
+	 * length is clamped into {@code [0, strlen - effectiveStart]} ({@code $substrCP}
+	 * refuses negative arguments). Mirrors the memory oracle exactly.
+	 */
+	private Object exprSubstring(Substring substring, EStructuralFeature target, QueryContext context,
+			List<Object> guards) throws QueryException {
+		Object source = exprOperand(substring.getSource(), target, context, guards);
+		Object start = exprOperand(substring.getStart(), target, context, guards);
+		Object strlen = new Document("$strLenCP", source);
+		Object effectiveStart = new Document("$cond", Arrays.asList(
+				new Document("$lt", Arrays.asList(start, 0)),
+				new Document("$max", Arrays.asList(0, new Document("$add", Arrays.asList(strlen, start)))),
+				new Document("$min", Arrays.asList(start, strlen))));
+		Object remaining = new Document("$subtract", Arrays.asList(strlen, effectiveStart));
+		Object effectiveLength = remaining;
+		if (substring.getLength() != null) {
+			Object length = exprOperand(substring.getLength(), target, context, guards);
+			effectiveLength = new Document("$min", Arrays.asList(
+					new Document("$max", Arrays.asList(0, length)), remaining));
+		}
+		return new Document("$substrCP", Arrays.asList(source, effectiveStart, effectiveLength));
 	}
 
 	/** The feature that types literal operands: the path side's target — unless LENGTH shifts the domain to numbers. */

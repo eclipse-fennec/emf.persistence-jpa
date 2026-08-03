@@ -451,6 +451,19 @@ public enum QueryFeature implements Enumerator {
 	ARITHMETIC(64, "ARITHMETIC", "ARITHMETIC"),
 
 	/**
+	 * The '<em><b>STRING FUNCTIONS EXTENDED</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Extended string vocabulary (v2 IR Concat, IndexOf, Substring — issue #77). Separate from STRING_FUNCTIONS so backends can opt in independently; IndexOf is 0-based/-1, Substring follows [OData-URL] 5.1.1.7.
+	 * <!-- end-model-doc -->
+	 * @see #STRING_FUNCTIONS_EXTENDED_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	STRING_FUNCTIONS_EXTENDED(65, "STRING_FUNCTIONS_EXTENDED", "STRING_FUNCTIONS_EXTENDED"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -964,6 +977,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int ARITHMETIC_VALUE = 64;
 
 	/**
+	 * The '<em><b>STRING FUNCTIONS EXTENDED</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Extended string vocabulary (v2 IR Concat, IndexOf, Substring — issue #77). Separate from STRING_FUNCTIONS so backends can opt in independently; IndexOf is 0-based/-1, Substring follows [OData-URL] 5.1.1.7.
+	 * <!-- end-model-doc -->
+	 * @see #STRING_FUNCTIONS_EXTENDED
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int STRING_FUNCTIONS_EXTENDED_VALUE = 65;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1073,6 +1100,7 @@ public enum QueryFeature implements Enumerator {
 			AGG_COUNT_DISTINCT,
 			STRING_FUNCTIONS,
 			ARITHMETIC,
+			STRING_FUNCTIONS_EXTENDED,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1166,6 +1194,7 @@ public enum QueryFeature implements Enumerator {
 			case AGG_COUNT_DISTINCT_VALUE: return AGG_COUNT_DISTINCT;
 			case STRING_FUNCTIONS_VALUE: return STRING_FUNCTIONS;
 			case ARITHMETIC_VALUE: return ARITHMETIC;
+			case STRING_FUNCTIONS_EXTENDED_VALUE: return STRING_FUNCTIONS_EXTENDED;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

@@ -251,6 +251,33 @@ public interface ExpressionFactory extends EFactory {
 	Negate createNegate();
 
 	/**
+	 * Returns a new object of class '<em>Concat</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Concat</em>'.
+	 * @generated
+	 */
+	Concat createConcat();
+
+	/**
+	 * Returns a new object of class '<em>Index Of</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Index Of</em>'.
+	 * @generated
+	 */
+	IndexOf createIndexOf();
+
+	/**
+	 * Returns a new object of class '<em>Substring</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Substring</em>'.
+	 * @generated
+	 */
+	Substring createSubstring();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

@@ -25,9 +25,11 @@ import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -38,6 +40,7 @@ import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
@@ -94,7 +97,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
+					QueryFeature.ARITHMETIC, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
@@ -459,6 +463,38 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				return "(-" + operand(negate.getOperand(), target) + ")";
+			}
+			if (expression instanceof Concat concatenation) {
+				StringBuilder rendered = new StringBuilder("CONCAT(");
+				for (int i = 0; i < concatenation.getParts().size(); i++) {
+					if (i > 0) {
+						rendered.append(", ");
+					}
+					rendered.append(operand(concatenation.getParts().get(i), target));
+				}
+				return rendered.append(')').toString();
+			}
+			if (expression instanceof IndexOf indexOf) {
+				// the IR is 0-based with -1 for absent, JPQL LOCATE 1-based with 0
+				return "(LOCATE(" + operand(indexOf.getSearch(), target) + ", "
+						+ operand(indexOf.getSource(), target) + ") - 1)";
+			}
+			if (expression instanceof Substring substring) {
+				String source = operand(substring.getSource(), target);
+				String start = operand(substring.getStart(), target);
+				// [OData-URL] 5.1.1.7: 0-based; a negative start counts from the end of
+				// the string, clamped to position 1. One flat CASE (first match wins) —
+				// EclipseLink mistranslates a CASE nested inside ELSE
+				String position = "CASE"
+						+ " WHEN " + start + " >= 0 THEN (" + start + " + 1)"
+						+ " WHEN (LENGTH(" + source + ") + " + start + " + 1) > 0"
+						+ " THEN (LENGTH(" + source + ") + " + start + " + 1)"
+						+ " ELSE 1 END";
+				if (substring.getLength() != null) {
+					return "SUBSTRING(" + source + ", " + position + ", "
+							+ operand(substring.getLength(), target) + ")";
+				}
+				return "SUBSTRING(" + source + ", " + position + ")";
 			}
 			return bind(ExpressionValues.resolve(expression, target, context.parameters(), context.converter()));
 		}

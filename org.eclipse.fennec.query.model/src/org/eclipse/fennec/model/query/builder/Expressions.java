@@ -29,12 +29,14 @@ import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ForAll;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Literal;
@@ -50,6 +52,7 @@ import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.Variable;
@@ -378,6 +381,42 @@ public final class Expressions {
 		return arithmetic;
 	}
 
+	// ==================== extended string functions ====================
+
+	/**
+	 * String concatenation of all parts, in order.
+	 *
+	 * @param parts at least two parts (auto-boxed)
+	 * @return a comparable step over the concatenation
+	 */
+	public static FunctionStep concat(Object... parts) {
+		if (parts.length < 2) {
+			throw new IllegalArgumentException("concat() needs at least two parts");
+		}
+		Concat concat = FACTORY.createConcat();
+		for (Object part : parts) {
+			concat.getParts().add(value(Objects.requireNonNull(part, "concat part must not be null")));
+		}
+		return new FunctionStep(concat);
+	}
+
+	private static IndexOf indexOf(Expression source, Object search) {
+		IndexOf indexOf = FACTORY.createIndexOf();
+		indexOf.setSource(source);
+		indexOf.setSearch(value(Objects.requireNonNull(search, "search must not be null")));
+		return indexOf;
+	}
+
+	private static Substring substring(Expression source, Object start, Object length) {
+		Substring substring = FACTORY.createSubstring();
+		substring.setSource(source);
+		substring.setStart(value(Objects.requireNonNull(start, "start must not be null")));
+		if (length != null) {
+			substring.setLength(value(length));
+		}
+		return substring;
+	}
+
 	// ==================== the path step ====================
 
 	/**
@@ -477,6 +516,25 @@ public final class Expressions {
 		/** @return a comparable step over {@code LENGTH(path)} — compares numerically */
 		public FunctionStep length() {
 			return new FunctionStep(function(StringFunctionKind.LENGTH, path));
+		}
+
+		/** @param search the substring to locate (auto-boxed)
+		 *  @return a numeric step over the 0-based position, -1 when absent */
+		public ArithmeticStep indexOf(Object search) {
+			return new ArithmeticStep(Expressions.indexOf(path, search));
+		}
+
+		/** @param start the 0-based start (auto-boxed; negative counts from the end)
+		 *  @return a comparable step over the substring from start */
+		public FunctionStep substring(Object start) {
+			return new FunctionStep(Expressions.substring(path, start, null));
+		}
+
+		/** @param start the 0-based start (auto-boxed; negative counts from the end)
+		 *  @param length the maximum length (auto-boxed)
+		 *  @return a comparable step over the length-bounded substring */
+		public FunctionStep substring(Object start, Object length) {
+			return new FunctionStep(Expressions.substring(path, start, length));
 		}
 
 		// --- arithmetic ---
@@ -647,44 +705,65 @@ public final class Expressions {
 	}
 
 	/**
-	 * A string-function application with the comparison vocabulary — created via
-	 * {@link PathStep#toLower()}, {@link PathStep#toUpper()}, {@link PathStep#trim()} and
-	 * {@link PathStep#length()}; functions chain ({@code path(name).trim().toLower()}).
-	 * Values are auto-boxed like on {@link PathStep}.
+	 * A string-valued function application with the comparison vocabulary — created via
+	 * {@link PathStep#toLower()}, {@link PathStep#toUpper()}, {@link PathStep#trim()},
+	 * {@link PathStep#length()}, {@link PathStep#substring(Object)} and
+	 * {@link Expressions#concat(Object...)}; functions chain
+	 * ({@code path(name).trim().toLower()}). Values are auto-boxed like on
+	 * {@link PathStep}.
 	 */
 	public static final class FunctionStep {
 
-		private final StringFunction function;
+		private final Expression expression;
 
-		private FunctionStep(StringFunction function) {
-			this.function = function;
+		private FunctionStep(Expression expression) {
+			this.expression = expression;
 		}
 
 		/** @return the underlying function expression */
-		public StringFunction toExpression() {
-			return function;
+		public Expression toExpression() {
+			return expression;
 		}
 
 		// --- chaining ---
 
 		/** @return a step over {@code LOWER(this)} */
 		public FunctionStep toLower() {
-			return new FunctionStep(function(StringFunctionKind.TO_LOWER, function));
+			return new FunctionStep(function(StringFunctionKind.TO_LOWER, expression));
 		}
 
 		/** @return a step over {@code UPPER(this)} */
 		public FunctionStep toUpper() {
-			return new FunctionStep(function(StringFunctionKind.TO_UPPER, function));
+			return new FunctionStep(function(StringFunctionKind.TO_UPPER, expression));
 		}
 
 		/** @return a step over {@code TRIM(this)} */
 		public FunctionStep trim() {
-			return new FunctionStep(function(StringFunctionKind.TRIM, function));
+			return new FunctionStep(function(StringFunctionKind.TRIM, expression));
 		}
 
 		/** @return a step over {@code LENGTH(this)} — compares numerically */
 		public FunctionStep length() {
-			return new FunctionStep(function(StringFunctionKind.LENGTH, function));
+			return new FunctionStep(function(StringFunctionKind.LENGTH, expression));
+		}
+
+		/** @param search the substring to locate (auto-boxed)
+		 *  @return a numeric step over the 0-based position, -1 when absent */
+		public ArithmeticStep indexOf(Object search) {
+			return new ArithmeticStep(Expressions.indexOf(expression, search));
+		}
+
+		/** @param start the 0-based start (auto-boxed; negative counts from the end)
+		 *  @return a step over the substring from start */
+		public FunctionStep substring(Object start) {
+			return new FunctionStep(Expressions.substring(expression, start, null));
+		}
+
+		/** @param start the 0-based start (auto-boxed; negative counts from the end)
+		 *  @param length the maximum length (auto-boxed)
+		 *  @return a step over the length-bounded substring */
+		public FunctionStep substring(Object start, Object length) {
+			return new FunctionStep(Expressions.substring(expression, start, length));
 		}
 
 		// --- comparisons ---
@@ -692,37 +771,37 @@ public final class Expressions {
 		/** @param value the value to compare against
 		 *  @return the comparison */
 		public Comparison eq(Object value) {
-			return compare(function, ComparisonOperator.EQ, value);
+			return compare(expression, ComparisonOperator.EQ, value);
 		}
 
 		/** @param value the value to compare against
 		 *  @return the comparison */
 		public Comparison ne(Object value) {
-			return compare(function, ComparisonOperator.NE, value);
+			return compare(expression, ComparisonOperator.NE, value);
 		}
 
 		/** @param value the value to compare against
 		 *  @return the comparison */
 		public Comparison lt(Object value) {
-			return compare(function, ComparisonOperator.LT, value);
+			return compare(expression, ComparisonOperator.LT, value);
 		}
 
 		/** @param value the value to compare against
 		 *  @return the comparison */
 		public Comparison le(Object value) {
-			return compare(function, ComparisonOperator.LE, value);
+			return compare(expression, ComparisonOperator.LE, value);
 		}
 
 		/** @param value the value to compare against
 		 *  @return the comparison */
 		public Comparison gt(Object value) {
-			return compare(function, ComparisonOperator.GT, value);
+			return compare(expression, ComparisonOperator.GT, value);
 		}
 
 		/** @param value the value to compare against
 		 *  @return the comparison */
 		public Comparison ge(Object value) {
-			return compare(function, ComparisonOperator.GE, value);
+			return compare(expression, ComparisonOperator.GE, value);
 		}
 	}
 

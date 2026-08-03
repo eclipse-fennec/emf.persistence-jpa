@@ -259,6 +259,11 @@
         <details key="documentation" value="Arithmetic value expressions (v2 IR Arithmetic ADD/SUB/MUL/DIV/MOD and Negate). DIV is floating-point division; division by a literal zero is refused by the validator."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="STRING_FUNCTIONS_EXTENDED" value="65">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Extended string vocabulary (v2 IR Concat, IndexOf, Substring — issue #77). Separate from STRING_FUNCTIONS so backends can opt in independently; IndexOf is 0-based/-1, Substring follows [OData-URL] 5.1.1.7."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>

@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
+import static org.eclipse.fennec.model.query.builder.Expressions.concat;
 import static org.eclipse.fennec.model.query.builder.Expressions.div;
 import static org.eclipse.fennec.model.query.builder.Expressions.mod;
 import static org.eclipse.fennec.model.query.builder.Expressions.mul;
@@ -166,6 +167,31 @@ class ExpressionOclBridgeTest {
 		OperationCallExp minus = (OperationCallExp) compare.getOwnedSource();
 		assertThat(minus.getName()).isEqualTo("-");
 		assertThat(minus.getOwnedArguments()).isEmpty();
+
+		Expression back = OclToExpr.toExpr(ocl);
+		assertThat(EcoreUtil.equals(original, back)).isTrue();
+	}
+
+	@Test
+	void extendedStringFunctionsRoundTripStructurally() throws QueryException {
+		Expression original = and(
+				path(name).substring(1, 3).eq("lic"),
+				path(name).indexOf("o").ge(0));
+		Expression back = roundTrip(original);
+		assertThat(EcoreUtil.equals(original, back))
+				.as("substring/indexOf expr → ocl → expr must be structurally identical")
+				.isTrue();
+	}
+
+	@Test
+	void concatUnrollsBinaryAndFlattensBack() throws QueryException {
+		// three parts → left-deep binary concat chain in OCL → flattened n-ary again
+		Expression original = concat(path(name), " ", path(street)).eq("x y");
+		OclExpression ocl = ExprToOcl.toOcl(original);
+		OperationCallExp compare = (OperationCallExp) ocl;
+		OperationCallExp outer = (OperationCallExp) compare.getOwnedSource();
+		assertThat(outer.getName()).isEqualTo("concat");
+		assertThat(((OperationCallExp) outer.getOwnedSource()).getName()).isEqualTo("concat");
 
 		Expression back = OclToExpr.toExpr(ocl);
 		assertThat(EcoreUtil.equals(original, back)).isTrue();

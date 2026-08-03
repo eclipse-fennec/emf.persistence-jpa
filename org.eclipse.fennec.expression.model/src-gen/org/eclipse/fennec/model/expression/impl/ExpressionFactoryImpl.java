@@ -91,6 +91,9 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.STRING_FUNCTION: return createStringFunction();
 			case ExpressionPackage.ARITHMETIC: return createArithmetic();
 			case ExpressionPackage.NEGATE: return createNegate();
+			case ExpressionPackage.CONCAT: return createConcat();
+			case ExpressionPackage.INDEX_OF: return createIndexOf();
+			case ExpressionPackage.SUBSTRING: return createSubstring();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -404,6 +407,39 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	public Negate createNegate() {
 		NegateImpl negate = new NegateImpl();
 		return negate;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Concat createConcat() {
+		ConcatImpl concat = new ConcatImpl();
+		return concat;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public IndexOf createIndexOf() {
+		IndexOfImpl indexOf = new IndexOfImpl();
+		return indexOf;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Substring createSubstring() {
+		SubstringImpl substring = new SubstringImpl();
+		return substring;
 	}
 
 	/**

@@ -190,6 +190,18 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createNegateAdapter();
 			}
 			@Override
+			public Adapter caseConcat(Concat object) {
+				return createConcatAdapter();
+			}
+			@Override
+			public Adapter caseIndexOf(IndexOf object) {
+				return createIndexOfAdapter();
+			}
+			@Override
+			public Adapter caseSubstring(Substring object) {
+				return createSubstringAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -598,6 +610,48 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createNegateAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Concat <em>Concat</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.Concat
+	 * @generated
+	 */
+	public Adapter createConcatAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.IndexOf <em>Index Of</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.IndexOf
+	 * @generated
+	 */
+	public Adapter createIndexOfAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Substring <em>Substring</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.Substring
+	 * @generated
+	 */
+	public Adapter createSubstringAdapter() {
 		return null;
 	}
 

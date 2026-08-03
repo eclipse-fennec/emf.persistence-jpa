@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.fennec.model.query.builder.Expressions.add;
 import static org.eclipse.fennec.model.query.builder.Expressions.all;
+import static org.eclipse.fennec.model.query.builder.Expressions.concat;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
 import static org.eclipse.fennec.model.query.builder.Expressions.literal;
@@ -195,6 +196,25 @@ class MongoQueryProcessorTest {
 				.where(path(age).negated().lt(0))
 				.build());
 		assertThat(render(negate.filter()).toJson()).contains("$multiply").contains("-1");
+	}
+
+	@Test
+	void extendedStringFunctionsRenderCpOperators() throws QueryException {
+		MongoQueryPlan concat = translate(QueryBuilder.from(person)
+				.where(concat(path(name), "!").eq("Bob!"))
+				.build());
+		assertThat(render(concat.filter()).toJson()).contains("$concat");
+
+		MongoQueryPlan indexOf = translate(QueryBuilder.from(person)
+				.where(path(name).indexOf("o").eq(1))
+				.build());
+		assertThat(render(indexOf.filter()).toJson()).contains("$indexOfCP");
+
+		MongoQueryPlan substring = translate(QueryBuilder.from(person)
+				.where(path(name).substring(-2).eq("ol"))
+				.build());
+		String json = render(substring.filter()).toJson();
+		assertThat(json).contains("$substrCP").contains("$strLenCP").contains("$cond");
 	}
 
 	@Test

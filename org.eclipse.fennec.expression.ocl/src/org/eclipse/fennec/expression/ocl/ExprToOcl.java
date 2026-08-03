@@ -34,10 +34,12 @@ import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
+import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
@@ -52,6 +54,7 @@ import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -215,6 +218,26 @@ public final class ExprToOcl {
 			if (expression instanceof Negate negate) {
 				// source-only '-' is the OCL unary minus — OclToExpr recognizes it back
 				return call("-", map(negate.getOperand(), null));
+			}
+			if (expression instanceof Concat concatenation) {
+				// the n-ary Concat unrolls into a left-deep binary chain; the partial
+				// direction flattens it back
+				List<Expression> parts = concatenation.getParts();
+				OclExpression result = map(parts.get(0), null);
+				for (int i = 1; i < parts.size(); i++) {
+					result = call("concat", result, map(parts.get(i), null));
+				}
+				return result;
+			}
+			if (expression instanceof IndexOf indexOf) {
+				return call("indexOf", map(indexOf.getSource(), null), map(indexOf.getSearch(), null));
+			}
+			if (expression instanceof Substring substring) {
+				if (substring.getLength() != null) {
+					return call("substring", map(substring.getSource(), null),
+							map(substring.getStart(), null), map(substring.getLength(), null));
+				}
+				return call("substring", map(substring.getSource(), null), map(substring.getStart(), null));
 			}
 			if (expression instanceof PropertyPath path) {
 				return propertyChain(path);

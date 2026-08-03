@@ -44,6 +44,7 @@ import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -334,6 +335,26 @@ class ExpressionAnalyzerTest {
 		comparison.setLeft(arithmetic);
 		comparison.setRight(intLit(1));
 		return comparison;
+	}
+
+	@Test
+	void extendedStringFunctionsAreDetected() {
+		QueryAnalysis concat = ExpressionAnalyzer.analyze(query(
+				Expressions.concat(Expressions.path(name), "!").eq("Alice!")));
+		assertThat(concat.features()).contains(QueryFeature.STRING_FUNCTIONS_EXTENDED);
+
+		QueryAnalysis indexOf = ExpressionAnalyzer.analyze(query(
+				Expressions.path(name).indexOf("o").ge(0)));
+		assertThat(indexOf.features()).contains(QueryFeature.STRING_FUNCTIONS_EXTENDED);
+
+		QueryAnalysis substring = ExpressionAnalyzer.analyze(query(
+				Expressions.path(name).substring(0, 3).eq("Ali")));
+		assertThat(substring.features()).contains(QueryFeature.STRING_FUNCTIONS_EXTENDED);
+
+		// substring/concat over paths count as navigating for FIELD_TO_FIELD
+		QueryAnalysis fieldToField = ExpressionAnalyzer.analyze(query(
+				Expressions.path(name).substring(0, 3).eq(Expressions.path(name))));
+		assertThat(fieldToField.features()).contains(QueryFeature.FIELD_TO_FIELD);
 	}
 
 	@Test
