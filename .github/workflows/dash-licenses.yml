@@ -1,0 +1,47 @@
+name: License Check (IP Dash)
+
+# Automatic triggers (push/pull_request) are disabled until the 3 remaining
+# restricted dependencies (SODS, fastcsv, servicemix POI — injected by the
+# fennecCodec workspace library, not used by this repo) have passed IP review
+# or the codec library has split its Maven index: with the restricted baseline
+# the check is structurally red on every push and only adds noise. Run manually
+# via workflow_dispatch when preparing the release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  dash:
+    name: Eclipse Dash license check
+    runs-on: ubuntu-latest
+    # TODO: remove once the 3 restricted dependencies have passed IP review
+    # (tools/dash-licenses.sh --review --project modeling.fennec) or have been
+    # dropped from the fennecCodec library index. Until then the check runs
+    # informationally and must not fail the build.
+    continue-on-error: true
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: 21
+      - name: Generate DEPENDENCIES and check licenses
+        # Exits non-zero (number of "restricted" artifacts) when any dependency
+        # has not been vetted yet, which fails the job. Regenerate and review
+        # locally with: tools/dash-licenses.sh [--review]
+        run: bash tools/dash-licenses.sh
+      - name: Upload DEPENDENCIES
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DEPENDENCIES
+          path: DEPENDENCIES
+          if-no-files-found: warn

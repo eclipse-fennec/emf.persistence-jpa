@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Eclipse Fennec Persistence JPA — an OSGi-based persistence framework bridging EMF (Eclipse Modeling Framework) with Jakarta Persistence (JPA) via EclipseLink. It maps ECore metamodels (EClass, EAttribute, EReference) to JPA entities through a processor-based transformation pipeline.
 
-**Java version**: 17 (source and target)
+**Java version**: 21 (source and target)
 **Build tool**: Gradle with bnd workspace plugin (OSGi)
 **License**: EPL-2.0
 

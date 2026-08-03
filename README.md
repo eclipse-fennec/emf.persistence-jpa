@@ -58,7 +58,7 @@ See [docs/ci.md](docs/ci.md) for the full CI / publishing pipeline.
 
 ### Prerequisites
 
-- Java 17+
+- Java 21+
 - OSGi runtime with Declarative Services (e.g., Apache Felix, Eclipse Equinox)
 - An Ecore model (`.ecore` file)
 

@@ -54,6 +54,7 @@ header:
     - '**/.gitkeep'
     - '**/.classpath'
     - 'LICENSE'
+    - 'DEPENDENCIES'
     - 'Jenkinsfile'
     - 'NOTICE'
     - 'cnf/**'

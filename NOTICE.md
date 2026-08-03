@@ -2,7 +2,7 @@
 
 This content is produced and maintained by the Eclipse Fennec project.
 
-* Project home: https://projects.eclipse.org/projects/technology.fennec
+* Project home: https://projects.eclipse.org/projects/modeling.fennec
 
 ## Trademarks
 
@@ -41,6 +41,8 @@ Notable runtime dependencies include:
 * Eclipse Modeling Framework (EMF) — Eclipse Public License 2.0
 * EclipseLink (JPA provider) — Eclipse Public License 2.0 / Eclipse Distribution License 1.0
 * Jakarta Persistence API — Eclipse Public License 2.0 / Eclipse Distribution License 1.0
+* MongoDB Java Driver (MongoDB backend) — Apache License 2.0
+* Jackson Core / Databind (codec support) — Apache License 2.0
 * H2 Database (test only) — MPL 2.0 / EPL 1.0 dual licence
 * PostgreSQL JDBC driver (optional) — BSD 2-Clause
 * Apache Felix Service Component Runtime — Apache License 2.0

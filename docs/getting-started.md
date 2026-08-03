@@ -22,7 +22,7 @@ standard `Resource` API over a `jpa://` URI scheme.
 
 ## Prerequisites
 
-- Java 17 or newer
+- Java 21 or newer
 - A relational database (examples use in-memory H2)
 - An Ecore model (shown below)
 - For the OSGi path: a runtime with Declarative Services and Configuration Admin
