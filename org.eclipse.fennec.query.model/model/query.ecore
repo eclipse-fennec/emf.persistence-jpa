@@ -75,10 +75,16 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="OrderBy">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="One ordering entry. For row-shaped queries the path must address an output key (alias)."/>
+      <details key="documentation" value="One ordering entry — exactly one of path and key is set (issue #84). For row-shaped queries the path must address an output key (alias). key sorts by an arbitrary value expression (JPQL renders it inline; Mongo find-sorts refuse it via capability)."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="path" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+    <eStructuralFeatures xsi:type="ecore:EReference" name="path" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
         containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="key" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//Expression"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Sort by an arbitrary value expression (issue #84) — set instead of path."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" lowerBound="1"
         eType="#//SortDirection" defaultValueLiteral="ASC"/>
   </eClassifiers>

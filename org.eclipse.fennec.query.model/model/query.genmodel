@@ -25,6 +25,7 @@
     </genClasses>
     <genClasses ecoreClass="query.ecore#//OrderBy">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//OrderBy/path"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//OrderBy/key"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//OrderBy/direction"/>
     </genClasses>
     <genClasses ecoreClass="query.ecore#//Selection">

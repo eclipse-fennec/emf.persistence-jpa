@@ -411,6 +411,16 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void sortExpressionsAreDetected() {
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.orderByAsc(Expressions.neg(Expressions.path(age)).toExpression())
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.SORT_EXPRESSION,
+				QueryFeature.ARITHMETIC);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();

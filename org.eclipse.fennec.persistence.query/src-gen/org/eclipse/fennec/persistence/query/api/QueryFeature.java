@@ -555,6 +555,19 @@ public enum QueryFeature implements Enumerator {
 	PIPELINE_COMPUTE(72, "PIPELINE_COMPUTE", "PIPELINE_COMPUTE"),
 
 	/**
+	 * The '<em><b>SORT EXPRESSION</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Ordering by an arbitrary value expression (v2 query OrderBy.key — issue #84). JPQL renders the expression inline; Mongo find-sorts refuse it.
+	 * <!-- end-model-doc -->
+	 * @see #SORT_EXPRESSION_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	SORT_EXPRESSION(73, "SORT_EXPRESSION", "SORT_EXPRESSION"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1180,6 +1193,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int PIPELINE_COMPUTE_VALUE = 72;
 
 	/**
+	 * The '<em><b>SORT EXPRESSION</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Ordering by an arbitrary value expression (v2 query OrderBy.key — issue #84). JPQL renders the expression inline; Mongo find-sorts refuse it.
+	 * <!-- end-model-doc -->
+	 * @see #SORT_EXPRESSION
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int SORT_EXPRESSION_VALUE = 73;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1297,6 +1324,7 @@ public enum QueryFeature implements Enumerator {
 			COLLECTION_COUNT,
 			COLLECTION_COUNT_FILTERED,
 			PIPELINE_COMPUTE,
+			SORT_EXPRESSION,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1398,6 +1426,7 @@ public enum QueryFeature implements Enumerator {
 			case COLLECTION_COUNT_VALUE: return COLLECTION_COUNT;
 			case COLLECTION_COUNT_FILTERED_VALUE: return COLLECTION_COUNT_FILTERED;
 			case PIPELINE_COMPUTE_VALUE: return PIPELINE_COMPUTE;
+			case SORT_EXPRESSION_VALUE: return SORT_EXPRESSION;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

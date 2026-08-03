@@ -57,6 +57,12 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
+	/** Mongo find-sorts cannot order by expressions (issue #84). */
+	@Override
+	protected boolean supportsSortExpressions() {
+		return false;
+	}
+
 	private MongoClient client;
 	private MongoDatabase database;
 	private MetadataWhiteboard metadataService;

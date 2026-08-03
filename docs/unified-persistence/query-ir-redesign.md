@@ -127,6 +127,7 @@ Sketch of the new vocabulary and the expected initial matrix:
 | COLLECTION_COUNT_FILTERED | ✅ COUNT subquery | ❌ refused | Mongo `$filter` rendering is a follow-up |
 | PIPELINE | ✅ (issue #82) | ✅ | JPA: pre-group filters → WHERE, one GroupBy, post-group filters → HAVING; pipeline Top/Skip stay refused on JPA (use the envelope) |
 | PIPELINE_COMPUTE | ✅ | ✅ `$set` | ComputeStage terminal or post-group (revisits D3); a compute **before** GroupBy is refused — group paths/aggregate sources cannot address aliases yet (additive follow-up) |
+| SORT_EXPRESSION | ✅ inline | ❌ refused | `OrderBy.key: Expression[0..1]` (issue #84, additive next to `path`); Mongo find-sorts cannot order by expressions — a `$addFields`+`$sort` pipeline route is a follow-up |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
 | PARAMETERS | ✅ | ✅ | now model-level |

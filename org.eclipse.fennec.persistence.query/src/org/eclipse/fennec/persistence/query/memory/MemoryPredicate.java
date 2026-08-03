@@ -544,6 +544,11 @@ final class MemoryPredicate {
 		return pathValue(path, candidate, Map.of());
 	}
 
+	/** Evaluates a value expression against a candidate (used for sort keys, issue #84). */
+	Object value(Expression expression, EObject candidate) {
+		return operand(expression, candidate, Map.of());
+	}
+
 	private Object pathValue(PropertyPath path, EObject candidate, Map<Variable, Object> bindings) {
 		Object current = path.getBase() == null ? candidate : bindings.get(path.getBase());
 		if (path.getCastBase() != null) {

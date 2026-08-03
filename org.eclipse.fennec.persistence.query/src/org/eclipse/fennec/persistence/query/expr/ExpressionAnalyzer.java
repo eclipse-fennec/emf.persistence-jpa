@@ -91,7 +91,13 @@ public final class ExpressionAnalyzer {
 		}
 		for (OrderBy orderBy : query.getOrderBy()) {
 			features.add(QueryFeature.SORT);
-			path(orderBy.getPath(), features, maxDepth);
+			if (orderBy.getKey() != null) {
+				// ordering by an arbitrary value expression (issue #84)
+				features.add(QueryFeature.SORT_EXPRESSION);
+				walk(orderBy.getKey(), features, maxDepth, zeroDivision);
+			} else {
+				path(orderBy.getPath(), features, maxDepth);
+			}
 		}
 		for (Selection selection : query.getSelect()) {
 			features.add(QueryFeature.PROJECTION);

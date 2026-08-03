@@ -543,13 +543,18 @@ public class MongoQueryProcessor implements QueryProcessor {
 
 	// -------------------------------------------------- sorting
 
-	private Bson objectSort(Query query) {
+	private Bson objectSort(Query query) throws QueryException {
 		if (query.getOrderBy().isEmpty()) {
 			return null;
 		}
 		Bson[] entries = new Bson[query.getOrderBy().size()];
 		for (int i = 0; i < query.getOrderBy().size(); i++) {
 			OrderBy orderBy = query.getOrderBy().get(i);
+			if (orderBy.getKey() != null) {
+				// backstop — SORT_EXPRESSION is not declared, validation refuses first
+				throw new QueryException("Sort expressions are not supported by the mongo backend"
+						+ " (feature SORT_EXPRESSION)");
+			}
 			String field = MongoFieldNames.render(orderBy.getPath());
 			entries[i] = orderBy.getDirection() == SortDirection.DESC ? Sorts.descending(field)
 					: Sorts.ascending(field);
@@ -716,6 +721,11 @@ public class MongoQueryProcessor implements QueryProcessor {
 		Bson[] entries = new Bson[query.getOrderBy().size()];
 		for (int i = 0; i < query.getOrderBy().size(); i++) {
 			OrderBy orderBy = query.getOrderBy().get(i);
+			if (orderBy.getKey() != null) {
+				// backstop — SORT_EXPRESSION is not declared, validation refuses first
+				throw new QueryException("Sort expressions are not supported by the mongo backend"
+						+ " (feature SORT_EXPRESSION)");
+			}
 			String candidate = MongoFieldNames.render(orderBy.getPath()).replace('.', '_');
 			if (!keys.contains(candidate)) {
 				throw new QueryException("Sort path '" + candidate

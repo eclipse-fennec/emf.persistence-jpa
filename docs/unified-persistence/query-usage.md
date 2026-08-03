@@ -54,6 +54,10 @@ Query query = QueryBuilder.from(personClass)
   `round/floor/ceiling` on paths and arithmetic steps (statics too). **`round` is half
   away from zero** (OData semantics; Mongo's half-to-even `$round` is emulated via
   `$cond`), the result is integral.
+- **Sort by expression** (#84): `.orderByAsc(neg(path(age)).toExpression())` orders by
+  an arbitrary value expression (`OrderBy.key`, additive next to `path`); on row shapes
+  `aliasRef(...)` addresses output columns. JPA renders the expression inline; Mongo
+  refuses via capability (find-sorts are field-based).
 - **Pipeline compute + HAVING** (#82): `.computeAs("avgAge", div(aliasRef("total"),
   aliasRef("cnt")).toExpression())` adds alias-bound computed columns (terminal without
   a grouping — one row per entity, attributes first — or after the grouping over

@@ -21,6 +21,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 
 import org.eclipse.fennec.model.query.OrderBy;
@@ -36,6 +37,7 @@ import org.eclipse.fennec.model.query.SortDirection;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getPath <em>Path</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getKey <em>Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getDirection <em>Direction</em>}</li>
  * </ul>
  *
@@ -51,6 +53,16 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 	 * @ordered
 	 */
 	protected PropertyPath path;
+
+	/**
+	 * The cached value of the '{@link #getKey() <em>Key</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getKey()
+	 * @generated
+	 * @ordered
+	 */
+	protected Expression key;
 
 	/**
 	 * The default value of the '{@link #getDirection() <em>Direction</em>}' attribute.
@@ -142,6 +154,51 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 	 * @generated
 	 */
 	@Override
+	public Expression getKey() {
+		return key;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NotificationChain basicSetKey(Expression newKey, NotificationChain msgs) {
+		Expression oldKey = key;
+		key = newKey;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, QueryPackage.ORDER_BY__KEY, oldKey, newKey);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
+		}
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setKey(Expression newKey) {
+		if (newKey != key) {
+			NotificationChain msgs = null;
+			if (key != null)
+				msgs = ((InternalEObject)key).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - QueryPackage.ORDER_BY__KEY, null, msgs);
+			if (newKey != null)
+				msgs = ((InternalEObject)newKey).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - QueryPackage.ORDER_BY__KEY, null, msgs);
+			msgs = basicSetKey(newKey, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, QueryPackage.ORDER_BY__KEY, newKey, newKey));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public SortDirection getDirection() {
 		return direction;
 	}
@@ -169,6 +226,8 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 		switch (featureID) {
 			case QueryPackage.ORDER_BY__PATH:
 				return basicSetPath(null, msgs);
+			case QueryPackage.ORDER_BY__KEY:
+				return basicSetKey(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -183,6 +242,8 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 		switch (featureID) {
 			case QueryPackage.ORDER_BY__PATH:
 				return getPath();
+			case QueryPackage.ORDER_BY__KEY:
+				return getKey();
 			case QueryPackage.ORDER_BY__DIRECTION:
 				return getDirection();
 		}
@@ -199,6 +260,9 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 		switch (featureID) {
 			case QueryPackage.ORDER_BY__PATH:
 				setPath((PropertyPath)newValue);
+				return;
+			case QueryPackage.ORDER_BY__KEY:
+				setKey((Expression)newValue);
 				return;
 			case QueryPackage.ORDER_BY__DIRECTION:
 				setDirection((SortDirection)newValue);
@@ -218,6 +282,9 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 			case QueryPackage.ORDER_BY__PATH:
 				setPath((PropertyPath)null);
 				return;
+			case QueryPackage.ORDER_BY__KEY:
+				setKey((Expression)null);
+				return;
 			case QueryPackage.ORDER_BY__DIRECTION:
 				setDirection(DIRECTION_EDEFAULT);
 				return;
@@ -235,6 +302,8 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 		switch (featureID) {
 			case QueryPackage.ORDER_BY__PATH:
 				return path != null;
+			case QueryPackage.ORDER_BY__KEY:
+				return key != null;
 			case QueryPackage.ORDER_BY__DIRECTION:
 				return direction != DIRECTION_EDEFAULT;
 		}

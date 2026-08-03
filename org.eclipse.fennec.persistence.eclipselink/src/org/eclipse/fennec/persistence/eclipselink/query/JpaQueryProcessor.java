@@ -113,7 +113,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
 					QueryFeature.COLLECTION_COUNT, QueryFeature.COLLECTION_COUNT_FILTERED,
-					QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE,
+					QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE, QueryFeature.SORT_EXPRESSION,
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
@@ -192,7 +192,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			jpql.append(pipeline.groupBy).append(pipeline.having);
 		}
 		if (shape != QueryShape.COUNT) {
-			appendOrderBy(jpql, query, shape, rowKeys);
+			appendOrderBy(jpql, query, shape, rowKeys, translation);
 		}
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
 				Math.max(0, query.getSkip()), Math.max(0, query.getTop()), rowKeys, rowAliases);
@@ -245,8 +245,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 		}
 	}
 
-	private void appendOrderBy(StringBuilder jpql, Query query, QueryShape shape, List<String> rowKeys)
-			throws QueryException {
+	private void appendOrderBy(StringBuilder jpql, Query query, QueryShape shape, List<String> rowKeys,
+			Translation translation) throws QueryException {
 		if (query.getOrderBy().isEmpty()) {
 			return;
 		}
@@ -256,7 +256,11 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (i > 0) {
 				jpql.append(", ");
 			}
-			if (shape == QueryShape.OBJECTS) {
+			if (orderBy.getKey() != null) {
+				// arbitrary sort expressions render inline (issue #84); AliasRef
+				// re-renders the pipeline column
+				jpql.append(translation.operand(orderBy.getKey(), null));
+			} else if (shape == QueryShape.OBJECTS) {
 				jpql.append(rootPath(orderBy.getPath()));
 			} else {
 				jpql.append(rowKey(orderBy.getPath(), rowKeys));

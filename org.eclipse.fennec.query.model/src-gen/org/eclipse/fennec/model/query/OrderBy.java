@@ -14,6 +14,7 @@ package org.eclipse.fennec.model.query;
 
 import org.eclipse.emf.ecore.EObject;
 
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 
 import org.osgi.annotation.versioning.ProviderType;
@@ -24,7 +25,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * One ordering entry. For row-shaped queries the path must address an output key (alias).
+ * One ordering entry — exactly one of path and key is set (issue #84). For row-shaped queries the path must address an output key (alias). key sorts by an arbitrary value expression (JPQL renders it inline; Mongo find-sorts refuse it via capability).
  * <!-- end-model-doc -->
  *
  * <p>
@@ -32,6 +33,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getPath <em>Path</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getKey <em>Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getDirection <em>Direction</em>}</li>
  * </ul>
  *
@@ -48,7 +50,7 @@ public interface OrderBy extends EObject {
 	 * @return the value of the '<em>Path</em>' containment reference.
 	 * @see #setPath(PropertyPath)
 	 * @see org.eclipse.fennec.model.query.QueryPackage#getOrderBy_Path()
-	 * @model containment="true" required="true"
+	 * @model containment="true"
 	 * @generated
 	 */
 	PropertyPath getPath();
@@ -62,6 +64,31 @@ public interface OrderBy extends EObject {
 	 * @generated
 	 */
 	void setPath(PropertyPath value);
+
+	/**
+	 * Returns the value of the '<em><b>Key</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Sort by an arbitrary value expression (issue #84) — set instead of path.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Key</em>' containment reference.
+	 * @see #setKey(Expression)
+	 * @see org.eclipse.fennec.model.query.QueryPackage#getOrderBy_Key()
+	 * @model containment="true"
+	 * @generated
+	 */
+	Expression getKey();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.query.OrderBy#getKey <em>Key</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Key</em>' containment reference.
+	 * @see #getKey()
+	 * @generated
+	 */
+	void setKey(Expression value);
 
 	/**
 	 * Returns the value of the '<em><b>Direction</b></em>' attribute.

@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:2a8fccbe8895164a96f67968a2fcdb540c03b92f75ecc013fc5b02e3116e69dd", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:a21e4bafdd607b9e3e4b6a45989f9b188b2a8a0abebdf8b92b9f83b2a28e0303", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -242,13 +242,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int ORDER_BY__PATH = 0;
 
 	/**
+	 * The feature id for the '<em><b>Key</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ORDER_BY__KEY = 1;
+
+	/**
 	 * The feature id for the '<em><b>Direction</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int ORDER_BY__DIRECTION = 1;
+	int ORDER_BY__DIRECTION = 2;
 
 	/**
 	 * The number of structural features of the '<em>Order By</em>' class.
@@ -257,7 +266,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int ORDER_BY_FEATURE_COUNT = 2;
+	int ORDER_BY_FEATURE_COUNT = 3;
 
 	/**
 	 * The number of operations of the '<em>Order By</em>' class.
@@ -916,6 +925,17 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getOrderBy_Path();
 
 	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.OrderBy#getKey <em>Key</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Key</em>'.
+	 * @see org.eclipse.fennec.model.query.OrderBy#getKey()
+	 * @see #getOrderBy()
+	 * @generated
+	 */
+	EReference getOrderBy_Key();
+
+	/**
 	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.OrderBy#getDirection <em>Direction</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1386,6 +1406,14 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference ORDER_BY__PATH = eINSTANCE.getOrderBy_Path();
+
+		/**
+		 * The meta object literal for the '<em><b>Key</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference ORDER_BY__KEY = eINSTANCE.getOrderBy_Key();
 
 		/**
 		 * The meta object literal for the '<em><b>Direction</b></em>' attribute feature.

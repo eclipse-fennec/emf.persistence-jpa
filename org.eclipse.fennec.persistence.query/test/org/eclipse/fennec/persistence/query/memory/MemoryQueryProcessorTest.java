@@ -546,6 +546,27 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void sortByExpressionOrdersObjectsAndRows() throws QueryException {
+		// -age ascending = age descending: Carol, Bob, Alice
+		Query objects = QueryBuilder.from(personClass)
+				.orderByAsc(Expressions.neg(Expressions.path(personAge)).toExpression())
+				.build();
+		try (QueryResult result = MemoryQueries.execute(objects, persons, null)) {
+			assertThat(names(result)).containsExactly("Carol", "Bob", "Alice");
+		}
+		// row space: sort grouped rows by a computed expression over the aggregate alias
+		Query rows = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.orderByDesc(Expressions.aliasRef("age").toExpression())
+				.build();
+		try (QueryResult result = MemoryQueries.execute(rows, persons, null)) {
+			assertThat(result.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.containsExactly(50, 40, 30);
+		}
+	}
+
+	@Test
 	void negateWorksOnFloatingValues() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personScore).negated().lt(-10))

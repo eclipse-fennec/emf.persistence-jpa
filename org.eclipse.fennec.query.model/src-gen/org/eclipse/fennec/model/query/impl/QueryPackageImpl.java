@@ -381,8 +381,18 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EReference getOrderBy_Key() {
+		return (EReference)orderByEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EAttribute getOrderBy_Direction() {
-		return (EAttribute)orderByEClass.getEStructuralFeatures().get(1);
+		return (EAttribute)orderByEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -721,6 +731,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		orderByEClass = createEClass(ORDER_BY);
 		createEReference(orderByEClass, ORDER_BY__PATH);
+		createEReference(orderByEClass, ORDER_BY__KEY);
 		createEAttribute(orderByEClass, ORDER_BY__DIRECTION);
 
 		selectionEClass = createEClass(SELECTION);
@@ -820,7 +831,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEAttribute(getQuery_SaveQuery(), ecorePackage.getEBoolean(), "saveQuery", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(orderByEClass, OrderBy.class, "OrderBy", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getOrderBy_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getOrderBy_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 0, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getOrderBy_Key(), theExpressionPackage.getExpression(), null, "key", null, 0, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getOrderBy_Direction(), this.getSortDirection(), "direction", "ASC", 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(selectionEClass, Selection.class, "Selection", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);

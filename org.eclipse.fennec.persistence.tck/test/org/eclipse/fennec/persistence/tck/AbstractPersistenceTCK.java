@@ -934,6 +934,31 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void querySortByExpression() throws Exception {
+		saveQueryFixture();
+		// -age ascending = age descending: Carol, Bob, Alice (issue #84)
+		Query query = QueryBuilder.from(personClass)
+				.orderByAsc(Expressions.neg(Expressions.path(personAge)).toExpression())
+				.build();
+		if (!supportsSortExpressions()) {
+			QueryableResource resource = queryable(createBackendResourceSet());
+			assertThatThrownBy(() -> resource.query(query).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("SORT_EXPRESSION");
+			return;
+		}
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol", "Bob", "Alice");
+		}
+	}
+
+	/** Whether the backend supports ordering by arbitrary value expressions (issue #84). */
+	protected boolean supportsSortExpressions() {
+		return true;
+	}
+
+	@Test
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();
 		// a literal zero is refused statically; a zero bound at runtime is the backend's

@@ -146,7 +146,15 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			resolution.rootPath(expand); // objects are in memory — expand is a no-op
 		}
 		for (OrderBy orderBy : query.getOrderBy()) {
-			if (shape == QueryShape.OBJECTS) {
+			if (orderBy.getKey() != null) {
+				// arbitrary sort expressions (issue #84): object space uses the operand
+				// vocabulary, row space the alias-addressing one
+				if (shape == QueryShape.OBJECTS) {
+					resolution.operand(orderBy.getKey(), null, Set.of());
+				} else if (shape != QueryShape.COUNT) {
+					resolution.rowExpression(orderBy.getKey());
+				}
+			} else if (shape == QueryShape.OBJECTS) {
 				resolution.rootPath(orderBy.getPath());
 			} else if (shape != QueryShape.COUNT) {
 				rowKey(orderBy.getPath(), rowKeys);

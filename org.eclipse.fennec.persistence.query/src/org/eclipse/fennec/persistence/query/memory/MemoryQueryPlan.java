@@ -135,9 +135,12 @@ public final class MemoryQueryPlan implements QueryPlan {
 		}
 		Comparator<EObject> comparator = null;
 		for (OrderBy orderBy : source.getOrderBy()) {
-			Comparator<EObject> next = Comparator.comparing(
-					object -> predicate.pathValue(orderBy.getPath(), object),
-					MemoryPredicate.VALUE_ORDER);
+			Comparator<EObject> next = orderBy.getKey() != null
+					// arbitrary sort expressions evaluate per object (issue #84)
+					? Comparator.comparing(object -> predicate.value(orderBy.getKey(), object),
+							MemoryPredicate.VALUE_ORDER)
+					: Comparator.comparing(object -> predicate.pathValue(orderBy.getPath(), object),
+							MemoryPredicate.VALUE_ORDER);
 			if (orderBy.getDirection() == SortDirection.DESC) {
 				next = next.reversed();
 			}
@@ -323,9 +326,15 @@ public final class MemoryQueryPlan implements QueryPlan {
 		}
 		Comparator<QueryResultRow> comparator = null;
 		for (OrderBy orderBy : source.getOrderBy()) {
-			int index = rowIndex(orderBy);
-			Comparator<QueryResultRow> next = Comparator.comparing(
-					row -> row.get(index), MemoryPredicate.VALUE_ORDER);
+			Comparator<QueryResultRow> next;
+			if (orderBy.getKey() != null) {
+				// arbitrary sort expressions evaluate in row space (issue #84)
+				next = Comparator.comparing(
+						row -> predicate.rowValue(orderBy.getKey(), row), MemoryPredicate.VALUE_ORDER);
+			} else {
+				int index = rowIndex(orderBy);
+				next = Comparator.comparing(row -> row.get(index), MemoryPredicate.VALUE_ORDER);
+			}
 			if (orderBy.getDirection() == SortDirection.DESC) {
 				next = next.reversed();
 			}

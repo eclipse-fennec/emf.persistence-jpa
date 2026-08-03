@@ -119,6 +119,34 @@ public final class QueryBuilder {
 	}
 
 	/**
+	 * Adds an ascending ordering over an arbitrary value expression (issue #84).
+	 *
+	 * @param key the sort expression
+	 * @return this builder
+	 */
+	public QueryBuilder orderByAsc(Expression key) {
+		return orderByKey(SortDirection.ASC, key);
+	}
+
+	/**
+	 * Adds a descending ordering over an arbitrary value expression (issue #84).
+	 *
+	 * @param key the sort expression
+	 * @return this builder
+	 */
+	public QueryBuilder orderByDesc(Expression key) {
+		return orderByKey(SortDirection.DESC, key);
+	}
+
+	private QueryBuilder orderByKey(SortDirection direction, Expression key) {
+		OrderBy orderBy = factory.createOrderBy();
+		orderBy.setKey(Objects.requireNonNull(key, "sort expression must not be null"));
+		orderBy.setDirection(direction);
+		query.getOrderBy().add(orderBy);
+		return this;
+	}
+
+	/**
 	 * Adds a projection subject (ordinal access only).
 	 *
 	 * @param segments the path segments, root feature first
