@@ -21,6 +21,7 @@ maven/mavencentral/jakarta.xml.bind/jakarta.xml.bind-api/4.0.0, BSD-3-Clause, ap
 maven/mavencentral/javax.json/javax.json-api/1.1.4, CDDL-1.0 OR GPL-2.0-only WITH Classpath-exception-2.0, approved, #1827
 maven/mavencentral/net.bytebuddy/byte-buddy-agent/1.18.4, Apache-2.0, approved, #24657
 maven/mavencentral/net.bytebuddy/byte-buddy/1.18.4, Apache-2.0 AND BSD-3-Clause, approved, #24658
+maven/mavencentral/org.antlr/antlr4-runtime/4.13.2, BSD-3-Clause, approved, #10767
 maven/mavencentral/org.apache.aries.spifly/org.apache.aries.spifly.dynamic.bundle/1.3.7, Apache-2.0, approved, #15243
 maven/mavencentral/org.apache.aries.spifly/org.apache.aries.spifly.dynamic.framework.extension/1.3.6, Apache-2.0 AND BSD-3-Clause, approved, #9183
 maven/mavencentral/org.apache.commons/commons-compress/1.28.0, Apache-2.0 AND (Apache-2.0 AND BSD-3-Clause), approved, #22677
@@ -99,20 +100,21 @@ maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.codec.xlsx/0.1.0-
 maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.codec.yaml/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.codec/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.openapi.model/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.gecko.compatibility.api/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.api/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.bnd.library.project/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.bnd.library.workspace/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.bnd.templates.project/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.codegen/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.component.minimal/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.component/0.1.2, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.gecko.compatibility.api/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.api/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.bnd.library.project/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.bnd.library.workspace/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.bnd.templates.project/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.codegen/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.component.minimal/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.component/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.example.model.basic/0.1.0, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.extender/0.1.2, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.model.info/0.1.2, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.extender/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.metadata/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.model.info/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.ocl.api/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.ocl.model/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.metadata/org.eclipse.fennec.model.metadata.api/1.0.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
-maven/mavencentral/org.eclipse.fennec.metadata/org.eclipse.fennec.model.metadata/1.0.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.ocl.parser/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.models/de.adv-online.aaa.model/6.0.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.models/de.dwd.cdc.common.model/1.0.1-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.models/de.dwd.cdc.forecast.model/1.0.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
