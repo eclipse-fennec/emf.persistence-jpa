@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:0e33565d3fd3d4550d63f1a2bcde9fa68729fdd704ea2ede701ec6595d84bdaa", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:c9c7305d816055affac90126cde7d6880805d3fd2f4f68ca7f28bcc9ebc46424", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -731,13 +731,22 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int PROPERTY_PATH__BASE = EXPRESSION_FEATURE_COUNT + 1;
 
 	/**
+	 * The feature id for the '<em><b>Cast Base</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PROPERTY_PATH__CAST_BASE = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
 	 * The number of structural features of the '<em>Property Path</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int PROPERTY_PATH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+	int PROPERTY_PATH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 3;
 
 	/**
 	 * The number of operations of the '<em>Property Path</em>' class.
@@ -1442,6 +1451,52 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int INDEX_OF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.TypeCheckImpl <em>Type Check</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.TypeCheckImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTypeCheck()
+	 * @generated
+	 */
+	int TYPE_CHECK = 32;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_CHECK__SOURCE = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Type</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_CHECK__TYPE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Type Check</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_CHECK_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Type Check</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_CHECK_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.NumericFunctionImpl <em>Numeric Function</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1449,7 +1504,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION = 32;
+	int NUMERIC_FUNCTION = 33;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1495,7 +1550,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION = 33;
+	int TEMPORAL_FUNCTION = 34;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1541,7 +1596,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 34;
+	int SUBSTRING = 35;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1596,7 +1651,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 35;
+	int COMPARISON_OPERATOR = 36;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1606,7 +1661,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 36;
+	int STRING_MATCH_KIND = 37;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1616,7 +1671,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 37;
+	int STRING_FUNCTION_KIND = 38;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
@@ -1626,7 +1681,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION_KIND = 38;
+	int TEMPORAL_FUNCTION_KIND = 39;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -1636,7 +1691,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 39;
+	int NUMERIC_FUNCTION_KIND = 40;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1646,7 +1701,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 40;
+	int ARITHMETIC_OPERATOR = 41;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1656,7 +1711,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 41;
+	int TEMPORAL_KIND = 42;
 
 
 	/**
@@ -2051,6 +2106,17 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getPropertyPath_Base();
+
+	/**
+	 * Returns the meta object for the reference '{@link org.eclipse.fennec.model.expression.PropertyPath#getCastBase <em>Cast Base</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference '<em>Cast Base</em>'.
+	 * @see org.eclipse.fennec.model.expression.PropertyPath#getCastBase()
+	 * @see #getPropertyPath()
+	 * @generated
+	 */
+	EReference getPropertyPath_CastBase();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Variable <em>Variable</em>}'.
@@ -2462,6 +2528,38 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getIndexOf_Search();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.TypeCheck <em>Type Check</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Type Check</em>'.
+	 * @see org.eclipse.fennec.model.expression.TypeCheck
+	 * @generated
+	 */
+	EClass getTypeCheck();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.TypeCheck#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.TypeCheck#getSource()
+	 * @see #getTypeCheck()
+	 * @generated
+	 */
+	EReference getTypeCheck_Source();
+
+	/**
+	 * Returns the meta object for the reference '{@link org.eclipse.fennec.model.expression.TypeCheck#getType <em>Type</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference '<em>Type</em>'.
+	 * @see org.eclipse.fennec.model.expression.TypeCheck#getType()
+	 * @see #getTypeCheck()
+	 * @generated
+	 */
+	EReference getTypeCheck_Type();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.NumericFunction <em>Numeric Function</em>}'.
@@ -2988,6 +3086,14 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference PROPERTY_PATH__BASE = eINSTANCE.getPropertyPath_Base();
 
 		/**
+		 * The meta object literal for the '<em><b>Cast Base</b></em>' reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference PROPERTY_PATH__CAST_BASE = eINSTANCE.getPropertyPath_CastBase();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.VariableImpl <em>Variable</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -3334,6 +3440,32 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference INDEX_OF__SEARCH = eINSTANCE.getIndexOf_Search();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.TypeCheckImpl <em>Type Check</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.TypeCheckImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTypeCheck()
+		 * @generated
+		 */
+		EClass TYPE_CHECK = eINSTANCE.getTypeCheck();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference TYPE_CHECK__SOURCE = eINSTANCE.getTypeCheck_Source();
+
+		/**
+		 * The meta object literal for the '<em><b>Type</b></em>' reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference TYPE_CHECK__TYPE = eINSTANCE.getTypeCheck_Type();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.NumericFunctionImpl <em>Numeric Function</em>}' class.

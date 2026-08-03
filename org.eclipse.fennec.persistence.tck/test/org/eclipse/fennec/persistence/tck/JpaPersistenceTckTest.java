@@ -47,6 +47,9 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		eClasses.add(tckPackage.getEClassifier("Person"));
 		eClasses.add(tckPackage.getEClassifier("Address"));
 		eClasses.add(tckPackage.getEClassifier("Company"));
+		eClasses.add(tckPackage.getEClassifier("Vehicle"));
+		eClasses.add(tckPackage.getEClassifier("Car"));
+		eClasses.add(tckPackage.getEClassifier("Motorcycle"));
 		emf = JpaTckSupport.bootstrap(PU_NAME, eClasses);
 	}
 

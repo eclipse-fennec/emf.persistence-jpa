@@ -18,12 +18,14 @@ import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
 import static org.eclipse.fennec.model.query.builder.Expressions.concat;
 import static org.eclipse.fennec.model.query.builder.Expressions.div;
+import static org.eclipse.fennec.model.query.builder.Expressions.isOf;
 import static org.eclipse.fennec.model.query.builder.Expressions.mod;
 import static org.eclipse.fennec.model.query.builder.Expressions.mul;
 import static org.eclipse.fennec.model.query.builder.Expressions.neg;
 import static org.eclipse.fennec.model.query.builder.Expressions.or;
 import static org.eclipse.fennec.model.query.builder.Expressions.param;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
+import static org.eclipse.fennec.model.query.builder.Expressions.pathAs;
 import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
 
 import java.time.Duration;
@@ -239,6 +241,22 @@ class ExpressionOclBridgeTest {
 				path(name).eq(Duration.ofMinutes(90)));
 		assertThat(((StringLiteralExp) duration.getOwnedArguments().get(0)).getStringSymbol())
 				.isEqualTo("PT1H30M");
+	}
+
+	@Test
+	void typePredicatesRoundTripStructurally() throws QueryException {
+		EClass personClass = name.getEContainingClass();
+		Expression original = and(
+				isOf(personClass),
+				pathAs(personClass, age).gt(18));
+		Expression back = roundTrip(original);
+		assertThat(EcoreUtil.equals(original, back))
+				.as("isOf/castBase expr → ocl → expr must be structurally identical")
+				.isTrue();
+
+		// the total direction emits oclIsKindOf / a chain rooted in oclAsType
+		OperationCallExp kindOf = (OperationCallExp) ExprToOcl.toOcl(isOf(personClass));
+		assertThat(kindOf.getName()).isEqualTo("oclIsKindOf");
 	}
 
 	@Test

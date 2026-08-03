@@ -55,6 +55,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 
 /**
@@ -162,6 +163,12 @@ final class MemoryPredicate {
 		}
 		if (expression instanceof Quantifier quantifier) {
 			return evalQuantifier(quantifier, candidate, bindings);
+		}
+		if (expression instanceof TypeCheck typeCheck) {
+			// kind-of semantics (issue #80): the subject's EClass is the type or a subtype
+			Object subject = typeCheck.getSource() == null ? candidate
+					: pathValue(typeCheck.getSource(), candidate, bindings);
+			return subject instanceof EObject object && typeCheck.getType().isSuperTypeOf(object.eClass());
 		}
 		// unreachable: translation refused everything else
 		return false;
@@ -424,6 +431,12 @@ final class MemoryPredicate {
 
 	private Object pathValue(PropertyPath path, EObject candidate, Map<Variable, Object> bindings) {
 		Object current = path.getBase() == null ? candidate : bindings.get(path.getBase());
+		if (path.getCastBase() != null) {
+			// treat semantics (issue #80): a non-instance yields null, comparisons are false
+			if (!(current instanceof EObject origin) || !path.getCastBase().isSuperTypeOf(origin.eClass())) {
+				return null;
+			}
+		}
 		for (EStructuralFeature segment : path.getSegments()) {
 			if (!(current instanceof EObject object)) {
 				return null;

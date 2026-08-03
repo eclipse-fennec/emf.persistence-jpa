@@ -15,7 +15,9 @@ package org.eclipse.fennec.expression.ocl;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.m2x.model.ocl.BooleanLiteralExp;
+import org.eclipse.fennec.m2x.model.ocl.ClassifierType;
 import org.eclipse.fennec.m2x.model.ocl.CollectionItem;
 import org.eclipse.fennec.m2x.model.ocl.CollectionLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.EnumLiteralExp;
@@ -27,6 +29,7 @@ import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
 import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.RealLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
+import org.eclipse.fennec.m2x.model.ocl.TypeExp;
 import org.eclipse.fennec.m2x.model.ocl.VariableExp;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
@@ -52,6 +55,7 @@ import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TemporalFunctionKind;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
 
@@ -71,6 +75,8 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * 0-based semantics, binary concat chains flatten into the n-ary Concat),
  * {@code round/floor/ceiling} (→ NumericFunction; round is half away from zero),
  * {@code year/month/day/hour/minute/second} (→ TemporalFunction; UTC-normative),
+ * {@code oclIsKindOf} (→ TypeCheck) and property chains rooted in {@code oclAsType}
+ * on the implicit self (→ PropertyPath.castBase — issue #80),
  * {@code + - * / mod} (→ Arithmetic; a source-only {@code -} → Negate; the integer
  * division {@code div} stays refused — truncation is deliberately not modelled),
  * {@code exists/forAll} iterators (→ quantifiers), property-call chains
@@ -250,6 +256,18 @@ public final class OclToExpr {
 				function.setSource(map(call.getOwnedSource()));
 				return function;
 			}
+			case "oclIsKindOf" -> {
+				TypeCheck check = EXPR.createTypeCheck();
+				check.setType(classifierArgument(call));
+				OclExpression subject = call.getOwnedSource();
+				if (subject != null) {
+					if (!(map(subject) instanceof PropertyPath subjectPath)) {
+						throw refuse("oclIsKindOf on subjects other than property paths or the implicit self");
+					}
+					check.setSource(subjectPath);
+				}
+				return check;
+			}
 			case "year", "month", "day", "hour", "minute", "second" -> {
 				TemporalFunction function = EXPR.createTemporalFunction();
 				function.setKind(switch (name) {
@@ -351,6 +369,11 @@ public final class OclToExpr {
 				current = link.getOwnedSource();
 			}
 			PropertyPath path = EXPR.createPropertyPath();
+			if (current instanceof OperationCallExp cast && "oclAsType".equals(cast.getName())) {
+				// origin downcast Ns.SubType/prop (issue #80) — only on the (implicit) self
+				path.setCastBase(classifierArgument(cast));
+				current = cast.getOwnedSource();
+			}
 			if (current instanceof VariableExp variableExp) {
 				path.setBase(scoped(variableExp));
 			} else if (current != null) {
@@ -396,6 +419,16 @@ public final class OclToExpr {
 
 		private static boolean isToLower(OclExpression expression) {
 			return expression instanceof OperationCallExp call && "toLowerCase".equals(call.getName());
+		}
+
+		/** Unwraps the type argument: TypeExp → ClassifierType → EClass (issue #80). */
+		private static EClass classifierArgument(OperationCallExp call) throws QueryException {
+			if (argument(call, 0) instanceof TypeExp typeExp
+					&& typeExp.getReferredType() instanceof ClassifierType classifierType
+					&& classifierType.getReferredClassifier() instanceof EClass eClass) {
+				return eClass;
+			}
+			throw refuse("operation '" + call.getName() + "' without an EClass type argument");
 		}
 
 		private static OclExpression argument(OperationCallExp call, int index) throws QueryException {

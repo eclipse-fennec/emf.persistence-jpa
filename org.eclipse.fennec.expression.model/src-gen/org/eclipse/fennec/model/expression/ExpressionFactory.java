@@ -287,6 +287,15 @@ public interface ExpressionFactory extends EFactory {
 	IndexOf createIndexOf();
 
 	/**
+	 * Returns a new object of class '<em>Type Check</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Type Check</em>'.
+	 * @generated
+	 */
+	TypeCheck createTypeCheck();
+
+	/**
 	 * Returns a new object of class '<em>Numeric Function</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

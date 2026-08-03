@@ -23,6 +23,7 @@ import java.util.UUID;
 import java.util.function.Function;
 
 import org.eclipse.emf.common.util.Enumerator;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
@@ -63,6 +64,7 @@ import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 
 /**
@@ -112,6 +114,47 @@ public final class Expressions {
 	 */
 	public static PropertyPath propertyPath(EStructuralFeature... segments) {
 		return propertyPath(null, segments);
+	}
+
+	// ==================== type operations ====================
+
+	/**
+	 * Starts a predicate on a path that first downcasts the query root to a subtype
+	 * (issue #80; JPA TREAT). On objects that are not instances of the subtype the
+	 * path yields null — enclosing comparisons are false.
+	 *
+	 * @param subtype the subtype to cast the query root to
+	 * @param segments the path segments relative to the subtype, first segment first
+	 * @return the path step exposing the comparison methods
+	 */
+	public static PathStep pathAs(EClass subtype, EStructuralFeature... segments) {
+		PropertyPath path = propertyPath(null, segments);
+		path.setCastBase(Objects.requireNonNull(subtype, "subtype must not be null"));
+		return new PathStep(path);
+	}
+
+	/**
+	 * Type test on the query root with kind-of semantics (issue #80; OData isof).
+	 *
+	 * @param type the type to test against (matches the type and its subtypes)
+	 * @return the type check
+	 */
+	public static TypeCheck isOf(EClass type) {
+		return isOf((PropertyPath) null, type);
+	}
+
+	/**
+	 * Type test on a navigated subject with kind-of semantics.
+	 *
+	 * @param source the navigated subject; {@code null} tests the query root
+	 * @param type the type to test against (matches the type and its subtypes)
+	 * @return the type check
+	 */
+	public static TypeCheck isOf(PropertyPath source, EClass type) {
+		TypeCheck check = FACTORY.createTypeCheck();
+		check.setSource(source);
+		check.setType(Objects.requireNonNull(type, "type must not be null"));
+		return check;
 	}
 
 	private static PropertyPath propertyPath(Variable base, EStructuralFeature... segments) {

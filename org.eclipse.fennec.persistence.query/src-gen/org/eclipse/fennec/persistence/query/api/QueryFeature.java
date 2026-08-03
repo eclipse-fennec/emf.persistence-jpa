@@ -490,6 +490,32 @@ public enum QueryFeature implements Enumerator {
 	TEMPORAL_FUNCTIONS(67, "TEMPORAL_FUNCTIONS", "TEMPORAL_FUNCTIONS"),
 
 	/**
+	 * The '<em><b>TYPE CAST</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Downcast of a navigation origin (v2 IR PropertyPath.castBase — issue #80). JPA TREAT; non-instances yield null.
+	 * <!-- end-model-doc -->
+	 * @see #TYPE_CAST_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	TYPE_CAST(68, "TYPE_CAST", "TYPE_CAST"),
+
+	/**
+	 * The '<em><b>TYPE CHECK</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Kind-of type test (v2 IR TypeCheck — issue #80). JPA TYPE(x) IN (concrete subtypes); Mongo refuses until a type discriminator is stored.
+	 * <!-- end-model-doc -->
+	 * @see #TYPE_CHECK_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	TYPE_CHECK(69, "TYPE_CHECK", "TYPE_CHECK"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1045,6 +1071,34 @@ public enum QueryFeature implements Enumerator {
 	public static final int TEMPORAL_FUNCTIONS_VALUE = 67;
 
 	/**
+	 * The '<em><b>TYPE CAST</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Downcast of a navigation origin (v2 IR PropertyPath.castBase — issue #80). JPA TREAT; non-instances yield null.
+	 * <!-- end-model-doc -->
+	 * @see #TYPE_CAST
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int TYPE_CAST_VALUE = 68;
+
+	/**
+	 * The '<em><b>TYPE CHECK</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Kind-of type test (v2 IR TypeCheck — issue #80). JPA TYPE(x) IN (concrete subtypes); Mongo refuses until a type discriminator is stored.
+	 * <!-- end-model-doc -->
+	 * @see #TYPE_CHECK
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int TYPE_CHECK_VALUE = 69;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1157,6 +1211,8 @@ public enum QueryFeature implements Enumerator {
 			STRING_FUNCTIONS_EXTENDED,
 			NUMERIC_FUNCTIONS,
 			TEMPORAL_FUNCTIONS,
+			TYPE_CAST,
+			TYPE_CHECK,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1253,6 +1309,8 @@ public enum QueryFeature implements Enumerator {
 			case STRING_FUNCTIONS_EXTENDED_VALUE: return STRING_FUNCTIONS_EXTENDED;
 			case NUMERIC_FUNCTIONS_VALUE: return NUMERIC_FUNCTIONS;
 			case TEMPORAL_FUNCTIONS_VALUE: return TEMPORAL_FUNCTIONS;
+			case TYPE_CAST_VALUE: return TYPE_CAST;
+			case TYPE_CHECK_VALUE: return TYPE_CHECK;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

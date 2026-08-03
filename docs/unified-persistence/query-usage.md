@@ -54,6 +54,11 @@ Query query = QueryBuilder.from(personClass)
   `round/floor/ceiling` on paths and arithmetic steps (statics too). **`round` is half
   away from zero** (OData semantics; Mongo's half-to-even `$round` is emulated via
   `$cond`), the result is integral.
+- **Type predicates** (#80): `isOf(carClass)` tests the root with **kind-of** semantics
+  (type or subtype; `isOf(path, type)` for navigations), `pathAs(carClass, horsepower)`
+  downcasts the root before navigating (JPA `TREAT`; non-instances yield null — the
+  comparison is false, not an error). JPA only for now — Mongo refuses via capability
+  until documents carry a type discriminator.
 - **Temporal part extraction** (#79): `path(birthday).year().eq(1996)`,
   `year/month/day/hour/minute/second` on paths — **UTC-normative** (BSON dates are UTC
   natively; the zone-less SQL TIMESTAMP carries the writing session's wall-clock, so

@@ -757,6 +757,104 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
+	/**
+	 * Whether the backend supports type predicates (TYPE_CHECK/TYPE_CAST, issue #80).
+	 * Mongo refuses until documents carry a type discriminator.
+	 */
+	protected boolean supportsTypePredicates() {
+		return true;
+	}
+
+	@Test
+	public void queryTypeCheckAndTreat() throws Exception {
+		EClass vehicleClass = (EClass) tckPackage.getEClassifier("Vehicle");
+		EClass carClass = (EClass) tckPackage.getEClassifier("Car");
+		EClass motorcycleClass = (EClass) tckPackage.getEClassifier("Motorcycle");
+		EStructuralFeature horsepower = carClass.getEStructuralFeature("horsepower");
+		EStructuralFeature label = vehicleClass.getEStructuralFeature("label");
+
+		Query isCar = QueryBuilder.from(vehicleClass)
+				.where(Expressions.isOf(carClass))
+				.build();
+		Query strongCar = QueryBuilder.from(vehicleClass)
+				.where(Expressions.pathAs(carClass, horsepower).gt(100))
+				.build();
+
+		if (!supportsTypePredicates()) {
+			// documented capability refusal — never silent (issue #80)
+			ResourceSet refusalSet = createBackendResourceSet();
+			QueryableResource resource = (QueryableResource) refusalSet.createResource(uriFor("Vehicle"));
+			assertThatThrownBy(() -> resource.query(isCar).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("TYPE_CHECK");
+			assertThatThrownBy(() -> resource.query(strongCar).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("TYPE_CAST");
+			return;
+		}
+
+		EObject beetle = newVehicle(carClass, 1, "Beetle");
+		beetle.eSet(horsepower, 50);
+		EObject brutus = newVehicle(carClass, 2, "Brutus");
+		brutus.eSet(horsepower, 300);
+		EObject bonnie = newVehicle(motorcycleClass, 3, "Bonnie");
+		bonnie.eSet(motorcycleClass.getEStructuralFeature("cc"), 900);
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Car", beetle, brutus);
+		save(writeSet, "Motorcycle", bonnie);
+
+		ResourceSet readSet = createBackendResourceSet();
+		QueryableResource vehicles = (QueryableResource) readSet.createResource(uriFor("Vehicle"));
+		try (QueryResult result = vehicles.query(isCar)) {
+			assertThat(result.objects().map(vehicle -> vehicle.eGet(label)))
+					.containsExactlyInAnyOrder("Beetle", "Brutus");
+		}
+		// treat: motorcycles yield null on the cast path — excluded, not an error
+		try (QueryResult result = vehicles.query(strongCar)) {
+			assertThat(result.objects().map(vehicle -> vehicle.eGet(label)))
+					.containsExactly("Brutus");
+		}
+		Query notCar = QueryBuilder.from(vehicleClass)
+				.where(Expressions.not(Expressions.isOf(carClass)))
+				.build();
+		try (QueryResult result = vehicles.query(notCar)) {
+			assertThat(result.objects().map(vehicle -> vehicle.eGet(label)))
+					.containsExactly("Bonnie");
+		}
+
+		// differential against the memory oracle (kind-of semantics is normative)
+		List<EObject> oracle = List.of(
+				copyVehicle(carClass, 1, "Beetle", horsepower, 50),
+				copyVehicle(carClass, 2, "Brutus", horsepower, 300),
+				copyVehicle(motorcycleClass, 3, "Bonnie", motorcycleClass.getEStructuralFeature("cc"), 900));
+		for (Query query : List.of(isCar, strongCar, notCar)) {
+			List<Object> backendLabels;
+			try (QueryResult result = vehicles.query(query)) {
+				backendLabels = result.objects().map(vehicle -> vehicle.eGet(label))
+						.map(Object.class::cast).toList();
+			}
+			try (QueryResult result = MemoryQueries.execute(query, oracle, null)) {
+				assertThat(backendLabels)
+						.as("backend and memory oracle must agree on type predicates")
+						.containsExactlyInAnyOrderElementsOf(result.objects()
+								.map(vehicle -> vehicle.eGet(label)).map(Object.class::cast).toList());
+			}
+		}
+	}
+
+	private EObject newVehicle(EClass type, int id, String label) {
+		EObject vehicle = EcoreUtil.create(type);
+		vehicle.eSet(type.getEStructuralFeature("vid"), idValue(type, id));
+		vehicle.eSet(type.getEStructuralFeature("label"), label);
+		return vehicle;
+	}
+
+	private EObject copyVehicle(EClass type, int id, String label, EStructuralFeature extra, int value) {
+		EObject vehicle = newVehicle(type, id, label);
+		vehicle.eSet(extra, value);
+		return vehicle;
+	}
+
 	@Test
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();

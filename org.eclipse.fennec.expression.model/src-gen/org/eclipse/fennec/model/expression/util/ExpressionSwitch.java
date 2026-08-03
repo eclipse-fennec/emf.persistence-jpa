@@ -311,6 +311,13 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.TYPE_CHECK: {
+				TypeCheck typeCheck = (TypeCheck)theEObject;
+				T result = caseTypeCheck(typeCheck);
+				if (result == null) result = caseExpression(typeCheck);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.NUMERIC_FUNCTION: {
 				NumericFunction numericFunction = (NumericFunction)theEObject;
 				T result = caseNumericFunction(numericFunction);
@@ -813,6 +820,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseIndexOf(IndexOf object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Type Check</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Type Check</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseTypeCheck(TypeCheck object) {
 		return null;
 	}
 

@@ -45,6 +45,12 @@ import com.mongodb.client.MongoDatabase;
  */
 class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 
+	/** Mongo refuses type predicates until documents carry a type discriminator (issue #80). */
+	@Override
+	protected boolean supportsTypePredicates() {
+		return false;
+	}
+
 	private MongoClient client;
 	private MongoDatabase database;
 	private MetadataWhiteboard metadataService;

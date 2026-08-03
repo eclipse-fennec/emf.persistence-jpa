@@ -16,10 +16,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.m2x.model.ocl.BooleanLiteralExp;
+import org.eclipse.fennec.m2x.model.ocl.ClassifierType;
 import org.eclipse.fennec.m2x.model.ocl.IntegerLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.IteratorExp;
 import org.eclipse.fennec.m2x.model.ocl.OclExpression;
@@ -28,6 +30,7 @@ import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
 import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.RealLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
+import org.eclipse.fennec.m2x.model.ocl.TypeExp;
 import org.eclipse.fennec.m2x.model.ocl.VariableExp;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
@@ -60,6 +63,7 @@ import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
 
@@ -262,6 +266,12 @@ public final class ExprToOcl {
 				}
 				return call("substring", map(substring.getSource(), null), map(substring.getStart(), null));
 			}
+			if (expression instanceof TypeCheck typeCheck) {
+				// kind-of test — source-less form tests the implicit self (issue #80)
+				OclExpression subject = typeCheck.getSource() == null ? null
+						: propertyChain(typeCheck.getSource());
+				return call("oclIsKindOf", subject, typeExp(typeCheck.getType()));
+			}
 			if (expression instanceof PropertyPath path) {
 				return propertyChain(path);
 			}
@@ -290,6 +300,10 @@ public final class ExprToOcl {
 				variableExp.setReferredVariable(scoped(path.getBase()));
 				source = variableExp;
 			}
+			if (path.getCastBase() != null) {
+				// the origin downcast is the OCL oclAsType on the (implicit) self (issue #80)
+				source = call("oclAsType", source, typeExp(path.getCastBase()));
+			}
 			for (EStructuralFeature segment : path.getSegments()) {
 				PropertyCallExp property = OCL.createPropertyCallExp();
 				property.setReferredProperty(segment);
@@ -299,6 +313,14 @@ public final class ExprToOcl {
 				source = property;
 			}
 			return source;
+		}
+
+		private TypeExp typeExp(EClass type) {
+			ClassifierType classifierType = OCL.createClassifierType();
+			classifierType.setReferredClassifier(type);
+			TypeExp typeExp = OCL.createTypeExp();
+			typeExp.setReferredType(classifierType);
+			return typeExp;
 		}
 
 		private org.eclipse.fennec.m2x.model.ocl.Variable scoped(Variable variable) throws QueryException {

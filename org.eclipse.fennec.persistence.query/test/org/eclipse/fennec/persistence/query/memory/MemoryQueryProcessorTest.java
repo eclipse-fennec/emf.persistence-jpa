@@ -480,6 +480,47 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void typeCheckUsesKindOfSemanticsAndTreatYieldsNull() throws QueryException {
+		// VipPerson extends Person, nickname reused as its own attribute domain
+		EcoreFactory ecore = EcoreFactory.eINSTANCE;
+		EClass vipClass = ecore.createEClass();
+		vipClass.setName("VipPerson");
+		vipClass.getESuperTypes().add(personClass);
+		EAttribute vipLevel = ecore.createEAttribute();
+		vipLevel.setName("level");
+		vipLevel.setEType(EcorePackage.Literals.EINT);
+		vipClass.getEStructuralFeatures().add(vipLevel);
+		ePackage.getEClassifiers().add(vipClass);
+
+		EObject vip = ePackage.getEFactoryInstance().create(vipClass);
+		vip.eSet(personName, "Vera");
+		vip.eSet(personAge, 35);
+		vip.eSet(vipLevel, 3);
+		persons.add(vip);
+
+		// kind-of: every person (including the subtype) matches Person
+		Query kindOf = QueryBuilder.from(personClass)
+				.where(Expressions.isOf(personClass))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(kindOf, persons, null)) {
+			assertThat(result.objects()).hasSize(4);
+		}
+		Query onlyVip = QueryBuilder.from(personClass)
+				.where(Expressions.isOf(vipClass))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(onlyVip, persons, null)) {
+			assertThat(names(result)).containsExactly("Vera");
+		}
+		// treat: non-instances yield null on the cast path — excluded, not an error
+		Query treat = QueryBuilder.from(personClass)
+				.where(Expressions.pathAs(vipClass, vipLevel).ge(1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(treat, persons, null)) {
+			assertThat(names(result)).containsExactly("Vera");
+		}
+	}
+
+	@Test
 	void negateWorksOnFloatingValues() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personScore).negated().lt(-10))

@@ -38,4 +38,15 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="employees" upperBound="-1"
         eType="#//Person" eOpposite="#//Person/employer"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Vehicle">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="vid" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Car" eSuperTypes="#//Vehicle">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="horsepower" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Motorcycle" eSuperTypes="#//Vehicle">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cc" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
 </ecore:EPackage>

@@ -14,6 +14,7 @@ package org.eclipse.fennec.model.expression;
 
 import org.eclipse.emf.common.util.EList;
 
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
 import org.osgi.annotation.versioning.ProviderType;
@@ -33,6 +34,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.expression.PropertyPath#getSegments <em>Segments</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.PropertyPath#getBase <em>Base</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.expression.PropertyPath#getCastBase <em>Cast Base</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.model.expression.ExpressionPackage#getPropertyPath()
@@ -77,5 +79,30 @@ public interface PropertyPath extends Expression {
 	 * @generated
 	 */
 	void setBase(Variable value);
+
+	/**
+	 * Returns the value of the '<em><b>Cast Base</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Optional downcast of the navigation origin to a subtype before the first segment (issue #80, the v1 cut matching OData's Ns.SubType/prop limit — full cast-capable segments stay additive). JPA renders TREAT(e AS Sub); on objects that are not instances of the subtype the path yields null (three-valued exclusion, verified EclipseLink behaviour inside OR).
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Cast Base</em>' reference.
+	 * @see #setCastBase(EClass)
+	 * @see org.eclipse.fennec.model.expression.ExpressionPackage#getPropertyPath_CastBase()
+	 * @model
+	 * @generated
+	 */
+	EClass getCastBase();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.expression.PropertyPath#getCastBase <em>Cast Base</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Cast Base</em>' reference.
+	 * @see #getCastBase()
+	 * @generated
+	 */
+	void setCastBase(EClass value);
 
 } // PropertyPath

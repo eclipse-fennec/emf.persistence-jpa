@@ -99,6 +99,7 @@
     <genClasses ecoreClass="expression.ecore#//PropertyPath">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//PropertyPath/segments"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//PropertyPath/base"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//PropertyPath/castBase"/>
     </genClasses>
     <genClasses ecoreClass="expression.ecore#//Variable">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//Variable/name"/>
@@ -154,6 +155,10 @@
     <genClasses ecoreClass="expression.ecore#//IndexOf">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//TypeCheck">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//TypeCheck/source"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//TypeCheck/type"/>
     </genClasses>
     <genClasses ecoreClass="expression.ecore#//NumericFunction">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//NumericFunction/kind"/>

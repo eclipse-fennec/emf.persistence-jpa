@@ -93,14 +93,16 @@ reference for each construct.
 | `Substring` | `source`, `start: Expression`, `length: Expression[0..1]` | issue #77, [OData-URL] 5.1.1.7: 0-based; negative start counts from the end (clamped to 0), start beyond the end and negative length yield `""`. JPQL clamps with one flat CASE over LENGTH (EclipseLink mistranslates nested CASE), Mongo via `$substrCP` + `$cond` clamping |
 | `NumericFunction` | `kind: {ROUND, FLOOR, CEILING}`, `source` | issue #78. **ROUND is half away from zero** (OData); result integral. JPQL `ROUND(x, 0)`/`FLOOR`/`CEILING`; Mongo `$floor`/`$ceil` — `$round` rounds half to even, so ROUND is emulated via `$cond` + `$floor(x+0.5)`/`$ceil(x-0.5)` |
 | `TemporalFunction` | `kind: {YEAR, MONTH, DAY, HOUR, MINUTE, SECOND}`, `source` | issue #79. **UTC-normative**: parts are extracted from the value as a UTC instant (BSON dates are UTC natively; the zone-less SQL TIMESTAMP carries the writing session's wall-clock — run UTC). SECOND is integral (JPQL wraps `FLOOR(EXTRACT(SECOND …))` — EclipseLink types it Double); time parts of date-only values are 0. Deliberately without `date()`/`time()` (ISO-string divergence). Requires native BSON dates on Mongo (emf.codec#97) |
+| `TypeCheck` | `source: PropertyPath[0..1]`, `type: EClass` | issue #80 (OData isof, OCL oclIsKindOf). **Kind-of semantics**; unset source tests the query root. JPQL `TYPE(x) IN (concrete subtypes by entity name)` — the dynamic Java classes are deliberately flat, entity names sidestep Java assignability. Mongo refuses until documents carry a type discriminator (`_eType` is reserved but unwritten) |
+| `PropertyPath.castBase` | `EClass[0..1]` on PropertyPath | issue #80, the v1 cut matching OData's `Ns.SubType/prop` limit (full cast segments stay additive). JPQL `TREAT(e AS Sub).…`; non-instances yield null (verified EclipseLink three-valued behaviour inside OR); memory mirrors with a null short-circuit |
 
 **Deliberately absent in v1** (decision list — add only with a driving use case):
-type test/cast (`TypeCheck`), `If`/`Let`, collection operations
+`If`/`Let`, collection operations
 beyond `In`/`Exists`/`ForAll` (`Select`/`Collect`/`IterateExp`), tuple/map literals.
 The model can grow additively; the capability mechanism covers backend divergence.
 Arithmetic left this list with issue #76, the extended string set with #77, the
-numeric functions with #78, the temporal parts with #79 — the remaining OData-gap
-constructs are tracked in issues #80–#84.
+numeric functions with #78, the temporal parts with #79, type test/cast with #80 —
+the remaining OData-gap constructs are tracked in issues #81–#84.
 
 ### 3.2 Capability vocabulary (new `QueryFeature` terms)
 
@@ -118,6 +120,7 @@ Sketch of the new vocabulary and the expected initial matrix:
 | STRING_FUNCTIONS_EXTENDED | ✅ | ✅ `$expr` | Concat/IndexOf/Substring — `$concat/$indexOfCP/$substrCP`; root paths only |
 | NUMERIC_FUNCTIONS | ✅ | ✅ `$expr` | ROUND/FLOOR/CEILING — ROUND emulated half-away-from-zero (`$round` is half-to-even); root paths only |
 | TEMPORAL_FUNCTIONS | ✅ EXTRACT | ✅ `$expr` | `$year..$second` on native BSON dates (emf.codec#97); UTC-normative; root paths only |
+| TYPE_CAST / TYPE_CHECK | ✅ TREAT / TYPE IN | ❌ refused | Mongo needs a stored type discriminator first (`_eType` reserved) |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
 | PARAMETERS | ✅ | ✅ | now model-level |

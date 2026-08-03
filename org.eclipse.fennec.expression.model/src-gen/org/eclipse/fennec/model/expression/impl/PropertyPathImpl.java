@@ -40,6 +40,7 @@ import org.eclipse.fennec.model.expression.Variable;
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.expression.impl.PropertyPathImpl#getSegments <em>Segments</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.impl.PropertyPathImpl#getBase <em>Base</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.expression.impl.PropertyPathImpl#getCastBase <em>Cast Base</em>}</li>
  * </ul>
  *
  * @generated
@@ -64,6 +65,16 @@ public class PropertyPathImpl extends ExpressionImpl implements PropertyPath {
 	 * @ordered
 	 */
 	protected Variable base;
+
+	/**
+	 * The cached value of the '{@link #getCastBase() <em>Cast Base</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getCastBase()
+	 * @generated
+	 * @ordered
+	 */
+	protected EClass castBase;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -143,6 +154,46 @@ public class PropertyPathImpl extends ExpressionImpl implements PropertyPath {
 	 * @generated
 	 */
 	@Override
+	public EClass getCastBase() {
+		if (castBase != null && castBase.eIsProxy()) {
+			InternalEObject oldCastBase = (InternalEObject)castBase;
+			castBase = (EClass)eResolveProxy(oldCastBase);
+			if (castBase != oldCastBase) {
+				if (eNotificationRequired())
+					eNotify(new ENotificationImpl(this, Notification.RESOLVE, ExpressionPackage.PROPERTY_PATH__CAST_BASE, oldCastBase, castBase));
+			}
+		}
+		return castBase;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public EClass basicGetCastBase() {
+		return castBase;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setCastBase(EClass newCastBase) {
+		EClass oldCastBase = castBase;
+		castBase = newCastBase;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ExpressionPackage.PROPERTY_PATH__CAST_BASE, oldCastBase, castBase));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
 			case ExpressionPackage.PROPERTY_PATH__SEGMENTS:
@@ -150,6 +201,9 @@ public class PropertyPathImpl extends ExpressionImpl implements PropertyPath {
 			case ExpressionPackage.PROPERTY_PATH__BASE:
 				if (resolve) return getBase();
 				return basicGetBase();
+			case ExpressionPackage.PROPERTY_PATH__CAST_BASE:
+				if (resolve) return getCastBase();
+				return basicGetCastBase();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -170,6 +224,9 @@ public class PropertyPathImpl extends ExpressionImpl implements PropertyPath {
 			case ExpressionPackage.PROPERTY_PATH__BASE:
 				setBase((Variable)newValue);
 				return;
+			case ExpressionPackage.PROPERTY_PATH__CAST_BASE:
+				setCastBase((EClass)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -188,6 +245,9 @@ public class PropertyPathImpl extends ExpressionImpl implements PropertyPath {
 			case ExpressionPackage.PROPERTY_PATH__BASE:
 				setBase((Variable)null);
 				return;
+			case ExpressionPackage.PROPERTY_PATH__CAST_BASE:
+				setCastBase((EClass)null);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -204,6 +264,8 @@ public class PropertyPathImpl extends ExpressionImpl implements PropertyPath {
 				return segments != null && !segments.isEmpty();
 			case ExpressionPackage.PROPERTY_PATH__BASE:
 				return base != null;
+			case ExpressionPackage.PROPERTY_PATH__CAST_BASE:
+				return castBase != null;
 		}
 		return super.eIsSet(featureID);
 	}

@@ -372,6 +372,16 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void typePredicatesAreDetected() {
+		QueryAnalysis check = ExpressionAnalyzer.analyze(query(Expressions.isOf(person)));
+		assertThat(check.features()).contains(QueryFeature.TYPE_CHECK);
+
+		QueryAnalysis cast = ExpressionAnalyzer.analyze(query(
+				Expressions.pathAs(person, age).gt(18)));
+		assertThat(cast.features()).contains(QueryFeature.TYPE_CAST);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();

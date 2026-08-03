@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
@@ -43,6 +44,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
@@ -101,7 +103,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
-					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
+					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
@@ -331,7 +334,10 @@ public class JpaQueryProcessor implements QueryProcessor {
 	}
 
 	private static String pathFrom(String alias, PropertyPath path) {
-		StringBuilder rendered = new StringBuilder(alias);
+		// castBase downcasts the navigation origin (issue #80) — JPQL TREAT resolves
+		// by entity name, sidestepping the deliberately flat dynamic Java classes
+		StringBuilder rendered = new StringBuilder(path.getCastBase() == null ? alias
+				: "TREAT(" + alias + " AS " + path.getCastBase().getName() + ")");
 		path.getSegments().forEach(segment -> rendered.append('.').append(segment.getName()));
 		return rendered.toString();
 	}
@@ -405,7 +411,32 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (expression instanceof Quantifier quantifier) {
 				return renderQuantifier(quantifier);
 			}
+			if (expression instanceof TypeCheck typeCheck) {
+				return renderTypeCheck(typeCheck);
+			}
 			throw new QueryException("Unsupported predicate " + expression.eClass().getName());
+		}
+
+		/**
+		 * Kind-of type test (issue #80): {@code TYPE(x) IN (concrete subtypes)} by
+		 * entity name — the dynamic Java classes are deliberately flat, so Java
+		 * assignability cannot identify subtypes; the EClass hierarchy can.
+		 */
+		private String renderTypeCheck(TypeCheck typeCheck) throws QueryException {
+			String subject = typeCheck.getSource() == null ? ALIAS
+					: operand(typeCheck.getSource(), null);
+			List<String> concrete = new ArrayList<>();
+			for (EClassifier classifier : typeCheck.getType().getEPackage().getEClassifiers()) {
+				if (classifier instanceof EClass candidate && !candidate.isAbstract()
+						&& typeCheck.getType().isSuperTypeOf(candidate)) {
+					concrete.add(candidate.getName());
+				}
+			}
+			if (concrete.isEmpty()) {
+				// no concrete subtype can ever match (abstract-only hierarchy)
+				return "1 = 0";
+			}
+			return "TYPE(" + subject + ") IN (" + String.join(", ", concrete) + ")";
 		}
 
 		private String renderMatch(StringMatch match) throws QueryException {

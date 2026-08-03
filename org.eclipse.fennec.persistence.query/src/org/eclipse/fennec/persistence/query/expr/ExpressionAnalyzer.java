@@ -39,6 +39,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -255,9 +256,17 @@ public final class ExpressionAnalyzer {
 		} else if (expression instanceof TemporalFunction temporalFunction) {
 			features.add(QueryFeature.TEMPORAL_FUNCTIONS);
 			walk(temporalFunction.getSource(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof TypeCheck typeCheck) {
+			features.add(QueryFeature.TYPE_CHECK);
+			if (typeCheck.getSource() != null) {
+				walk(typeCheck.getSource(), features, maxDepth, zeroDivision);
+			}
 		} else if (expression instanceof ParameterRef) {
 			features.add(QueryFeature.PARAMETERS);
 		} else if (expression instanceof PropertyPath propertyPath) {
+			if (propertyPath.getCastBase() != null) {
+				features.add(QueryFeature.TYPE_CAST);
+			}
 			path(propertyPath, features, maxDepth);
 		}
 		// literals and variable refs carry no features

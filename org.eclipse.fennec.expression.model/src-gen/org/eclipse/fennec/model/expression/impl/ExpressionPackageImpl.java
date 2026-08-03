@@ -62,6 +62,7 @@ import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.expression.VariableRef;
 
@@ -295,6 +296,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass indexOfEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass typeCheckEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -802,6 +810,16 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EReference getPropertyPath_CastBase() {
+		return (EReference)propertyPathEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getVariable() {
 		return variableEClass;
 	}
@@ -1192,6 +1210,36 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getTypeCheck() {
+		return typeCheckEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getTypeCheck_Source() {
+		return (EReference)typeCheckEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getTypeCheck_Type() {
+		return (EReference)typeCheckEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getNumericFunction() {
 		return numericFunctionEClass;
 	}
@@ -1435,6 +1483,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		propertyPathEClass = createEClass(PROPERTY_PATH);
 		createEReference(propertyPathEClass, PROPERTY_PATH__SEGMENTS);
 		createEReference(propertyPathEClass, PROPERTY_PATH__BASE);
+		createEReference(propertyPathEClass, PROPERTY_PATH__CAST_BASE);
 
 		variableEClass = createEClass(VARIABLE);
 		createEAttribute(variableEClass, VARIABLE__NAME);
@@ -1492,6 +1541,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		indexOfEClass = createEClass(INDEX_OF);
 		createEReference(indexOfEClass, INDEX_OF__SOURCE);
 		createEReference(indexOfEClass, INDEX_OF__SEARCH);
+
+		typeCheckEClass = createEClass(TYPE_CHECK);
+		createEReference(typeCheckEClass, TYPE_CHECK__SOURCE);
+		createEReference(typeCheckEClass, TYPE_CHECK__TYPE);
 
 		numericFunctionEClass = createEClass(NUMERIC_FUNCTION);
 		createEAttribute(numericFunctionEClass, NUMERIC_FUNCTION__KIND);
@@ -1574,6 +1627,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		negateEClass.getESuperTypes().add(this.getExpression());
 		concatEClass.getESuperTypes().add(this.getExpression());
 		indexOfEClass.getESuperTypes().add(this.getExpression());
+		typeCheckEClass.getESuperTypes().add(this.getExpression());
 		numericFunctionEClass.getESuperTypes().add(this.getExpression());
 		temporalFunctionEClass.getESuperTypes().add(this.getExpression());
 		substringEClass.getESuperTypes().add(this.getExpression());
@@ -1629,6 +1683,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(propertyPathEClass, PropertyPath.class, "PropertyPath", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getPropertyPath_Segments(), ecorePackage.getEStructuralFeature(), null, "segments", null, 1, -1, PropertyPath.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getPropertyPath_Base(), this.getVariable(), null, "base", null, 0, 1, PropertyPath.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getPropertyPath_CastBase(), ecorePackage.getEClass(), null, "castBase", null, 0, 1, PropertyPath.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(variableEClass, Variable.class, "Variable", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getVariable_Name(), ecorePackage.getEString(), "name", null, 1, 1, Variable.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -1686,6 +1741,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(indexOfEClass, IndexOf.class, "IndexOf", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getIndexOf_Source(), this.getExpression(), null, "source", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getIndexOf_Search(), this.getExpression(), null, "search", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(typeCheckEClass, TypeCheck.class, "TypeCheck", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getTypeCheck_Source(), this.getPropertyPath(), null, "source", null, 0, 1, TypeCheck.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getTypeCheck_Type(), ecorePackage.getEClass(), null, "type", null, 1, 1, TypeCheck.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(numericFunctionEClass, NumericFunction.class, "NumericFunction", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getNumericFunction_Kind(), this.getNumericFunctionKind(), "kind", null, 1, 1, NumericFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

@@ -43,6 +43,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -215,6 +216,12 @@ public class MemoryQueryProcessor implements QueryProcessor {
 				Set<Variable> inner = new HashSet<>(scope);
 				inner.add(quantifier.getVariable());
 				walk(quantifier.getPredicate(), inner);
+				return;
+			}
+			if (expression instanceof TypeCheck typeCheck) {
+				if (typeCheck.getSource() != null) {
+					path(typeCheck.getSource(), scope);
+				}
 				return;
 			}
 			throw new QueryException("Unsupported predicate " + expression.eClass().getName());
