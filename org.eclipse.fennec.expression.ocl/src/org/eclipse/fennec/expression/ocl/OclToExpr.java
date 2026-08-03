@@ -50,6 +50,8 @@ import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
 
@@ -68,6 +70,7 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * {@code concat/indexOf/substring} (→ Concat/IndexOf/Substring — OData-flavoured
  * 0-based semantics, binary concat chains flatten into the n-ary Concat),
  * {@code round/floor/ceiling} (→ NumericFunction; round is half away from zero),
+ * {@code year/month/day/hour/minute/second} (→ TemporalFunction; UTC-normative),
  * {@code + - * / mod} (→ Arithmetic; a source-only {@code -} → Negate; the integer
  * division {@code div} stays refused — truncation is deliberately not modelled),
  * {@code exists/forAll} iterators (→ quantifiers), property-call chains
@@ -243,6 +246,19 @@ public final class OclToExpr {
 				case "toUpperCase" -> StringFunctionKind.TO_UPPER;
 				case "trim" -> StringFunctionKind.TRIM;
 				default -> StringFunctionKind.LENGTH;
+				});
+				function.setSource(map(call.getOwnedSource()));
+				return function;
+			}
+			case "year", "month", "day", "hour", "minute", "second" -> {
+				TemporalFunction function = EXPR.createTemporalFunction();
+				function.setKind(switch (name) {
+				case "year" -> TemporalFunctionKind.YEAR;
+				case "month" -> TemporalFunctionKind.MONTH;
+				case "day" -> TemporalFunctionKind.DAY;
+				case "hour" -> TemporalFunctionKind.HOUR;
+				case "minute" -> TemporalFunctionKind.MINUTE;
+				default -> TemporalFunctionKind.SECOND;
 				});
 				function.setSource(map(call.getOwnedSource()));
 				return function;

@@ -15,7 +15,15 @@ package org.eclipse.fennec.persistence.query.memory;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,6 +54,7 @@ import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.Variable;
 
 /**
@@ -242,6 +251,21 @@ final class MemoryPredicate {
 		if (expression instanceof Substring substring) {
 			return substring(substring, candidate, bindings);
 		}
+		if (expression instanceof TemporalFunction function) {
+			ZonedDateTime value = toUtc(operand(function.getSource(), candidate, bindings));
+			if (value == null) {
+				return null;
+			}
+			// UTC-normative part extraction (issue #79); SECOND is integral
+			return switch (function.getKind()) {
+			case YEAR -> value.getYear();
+			case MONTH -> value.getMonthValue();
+			case DAY -> value.getDayOfMonth();
+			case HOUR -> value.getHour();
+			case MINUTE -> value.getMinute();
+			case SECOND -> value.getSecond();
+			};
+		}
 		if (expression instanceof NumericFunction function) {
 			Object inner = operand(function.getSource(), candidate, bindings);
 			if (!(inner instanceof Number number)) {
@@ -283,6 +307,32 @@ final class MemoryPredicate {
 		int end = (int) Math.min(value.length(),
 				Math.max(effectiveStart, (long) effectiveStart + clampToInt(bound)));
 		return value.substring(effectiveStart, end);
+	}
+
+	/** Views any supported temporal value as a UTC instant; local values are UTC wall-clock. */
+	private static ZonedDateTime toUtc(Object value) {
+		if (value instanceof Date date) {
+			return date.toInstant().atZone(ZoneOffset.UTC);
+		}
+		if (value instanceof Instant instant) {
+			return instant.atZone(ZoneOffset.UTC);
+		}
+		if (value instanceof LocalDate localDate) {
+			return localDate.atStartOfDay(ZoneOffset.UTC);
+		}
+		if (value instanceof LocalDateTime localDateTime) {
+			return localDateTime.atZone(ZoneOffset.UTC);
+		}
+		if (value instanceof LocalTime localTime) {
+			return localTime.atDate(LocalDate.EPOCH).atZone(ZoneOffset.UTC);
+		}
+		if (value instanceof ZonedDateTime zoned) {
+			return zoned.withZoneSameInstant(ZoneOffset.UTC);
+		}
+		if (value instanceof OffsetDateTime offset) {
+			return offset.atZoneSameInstant(ZoneOffset.UTC);
+		}
+		return null;
 	}
 
 	/** Saturates a numeric offset/length to the int range (no silent overflow wrap). */

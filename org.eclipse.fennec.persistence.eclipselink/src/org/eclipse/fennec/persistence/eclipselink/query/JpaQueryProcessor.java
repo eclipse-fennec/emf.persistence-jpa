@@ -42,6 +42,7 @@ import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
@@ -99,7 +100,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
-					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
+					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
@@ -472,6 +474,19 @@ public class JpaQueryProcessor implements QueryProcessor {
 				case ROUND -> "ROUND(" + inner + ", 0)";
 				case FLOOR -> "FLOOR(" + inner + ")";
 				case CEILING -> "CEILING(" + inner + ")";
+				};
+			}
+			if (expression instanceof TemporalFunction temporalFunction) {
+				String inner = operand(temporalFunction.getSource(), target);
+				return switch (temporalFunction.getKind()) {
+				case YEAR -> "EXTRACT(YEAR FROM " + inner + ")";
+				case MONTH -> "EXTRACT(MONTH FROM " + inner + ")";
+				case DAY -> "EXTRACT(DAY FROM " + inner + ")";
+				case HOUR -> "EXTRACT(HOUR FROM " + inner + ")";
+				case MINUTE -> "EXTRACT(MINUTE FROM " + inner + ")";
+				// EXTRACT(SECOND) is fractional (EclipseLink types it Double) — the
+				// contract is the integral second
+				case SECOND -> "FLOOR(EXTRACT(SECOND FROM " + inner + "))";
 				};
 			}
 			if (expression instanceof Concat concatenation) {

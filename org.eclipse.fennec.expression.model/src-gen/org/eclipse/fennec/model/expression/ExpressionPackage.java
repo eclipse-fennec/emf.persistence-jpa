@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:5d4d93df2f631d736170d49cf3717e1c0657cd378e930b3f915c11a1bb526256", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:12fb11e74385f8628ebc0b6b4e9edb2442877af07e62f5ab49bd0fde5efec039", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1414,6 +1414,52 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int NUMERIC_FUNCTION_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.TemporalFunctionImpl <em>Temporal Function</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.TemporalFunctionImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
+	 * @generated
+	 */
+	int TEMPORAL_FUNCTION = 31;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_FUNCTION__KIND = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_FUNCTION__SOURCE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Temporal Function</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_FUNCTION_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Temporal Function</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TEMPORAL_FUNCTION_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.SubstringImpl <em>Substring</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1421,7 +1467,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 31;
+	int SUBSTRING = 32;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1476,7 +1522,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 32;
+	int COMPARISON_OPERATOR = 33;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1486,7 +1532,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 33;
+	int STRING_MATCH_KIND = 34;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1496,7 +1542,17 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 34;
+	int STRING_FUNCTION_KIND = 35;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.TemporalFunctionKind
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
+	 * @generated
+	 */
+	int TEMPORAL_FUNCTION_KIND = 36;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -1506,7 +1562,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 35;
+	int NUMERIC_FUNCTION_KIND = 37;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1516,7 +1572,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 36;
+	int ARITHMETIC_OPERATOR = 38;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1526,7 +1582,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 37;
+	int TEMPORAL_KIND = 39;
 
 
 	/**
@@ -2324,6 +2380,38 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getNumericFunction_Source();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.TemporalFunction <em>Temporal Function</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Temporal Function</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalFunction
+	 * @generated
+	 */
+	EClass getTemporalFunction();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.TemporalFunction#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalFunction#getKind()
+	 * @see #getTemporalFunction()
+	 * @generated
+	 */
+	EAttribute getTemporalFunction_Kind();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.TemporalFunction#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalFunction#getSource()
+	 * @see #getTemporalFunction()
+	 * @generated
+	 */
+	EReference getTemporalFunction_Source();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Substring <em>Substring</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -2395,6 +2483,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getStringFunctionKind();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Temporal Function Kind</em>'.
+	 * @see org.eclipse.fennec.model.expression.TemporalFunctionKind
+	 * @generated
+	 */
+	EEnum getTemporalFunctionKind();
 
 	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}'.
@@ -3112,6 +3210,32 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference NUMERIC_FUNCTION__SOURCE = eINSTANCE.getNumericFunction_Source();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.TemporalFunctionImpl <em>Temporal Function</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.TemporalFunctionImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
+		 * @generated
+		 */
+		EClass TEMPORAL_FUNCTION = eINSTANCE.getTemporalFunction();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TEMPORAL_FUNCTION__KIND = eINSTANCE.getTemporalFunction_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference TEMPORAL_FUNCTION__SOURCE = eINSTANCE.getTemporalFunction_Source();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.SubstringImpl <em>Substring</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -3174,6 +3298,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum STRING_FUNCTION_KIND = eINSTANCE.getStringFunctionKind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.TemporalFunctionKind
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
+		 * @generated
+		 */
+		EEnum TEMPORAL_FUNCTION_KIND = eINSTANCE.getTemporalFunctionKind();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.

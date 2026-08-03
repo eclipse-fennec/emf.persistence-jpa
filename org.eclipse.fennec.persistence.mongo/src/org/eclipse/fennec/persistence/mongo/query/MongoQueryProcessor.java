@@ -54,6 +54,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -130,7 +131,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
 					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
-					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
+					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -363,6 +365,19 @@ public class MongoQueryProcessor implements QueryProcessor {
 					new Document("$ceil", new Document("$subtract", Arrays.asList(inner, 0.5d)))));
 			case FLOOR -> new Document("$floor", inner);
 			case CEILING -> new Document("$ceil", inner);
+			};
+		}
+		if (expression instanceof TemporalFunction temporalFunction) {
+			// BSON dates are UTC instants — the operators extract UTC parts natively,
+			// matching the UTC-normative contract (issue #79)
+			Object inner = exprOperand(temporalFunction.getSource(), target, context, guards);
+			return switch (temporalFunction.getKind()) {
+			case YEAR -> new Document("$year", inner);
+			case MONTH -> new Document("$month", inner);
+			case DAY -> new Document("$dayOfMonth", inner);
+			case HOUR -> new Document("$hour", inner);
+			case MINUTE -> new Document("$minute", inner);
+			case SECOND -> new Document("$second", inner);
 			};
 		}
 		if (expression instanceof Concat concatenation) {

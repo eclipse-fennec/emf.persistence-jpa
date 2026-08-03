@@ -477,6 +477,19 @@ public enum QueryFeature implements Enumerator {
 	NUMERIC_FUNCTIONS(66, "NUMERIC_FUNCTIONS", "NUMERIC_FUNCTIONS"),
 
 	/**
+	 * The '<em><b>TEMPORAL FUNCTIONS</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Temporal part extraction (v2 IR TemporalFunction YEAR/MONTH/DAY/HOUR/MINUTE/SECOND — issue #79). UTC-normative; SECOND is integral.
+	 * <!-- end-model-doc -->
+	 * @see #TEMPORAL_FUNCTIONS_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	TEMPORAL_FUNCTIONS(67, "TEMPORAL_FUNCTIONS", "TEMPORAL_FUNCTIONS"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1018,6 +1031,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int NUMERIC_FUNCTIONS_VALUE = 66;
 
 	/**
+	 * The '<em><b>TEMPORAL FUNCTIONS</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Temporal part extraction (v2 IR TemporalFunction YEAR/MONTH/DAY/HOUR/MINUTE/SECOND — issue #79). UTC-normative; SECOND is integral.
+	 * <!-- end-model-doc -->
+	 * @see #TEMPORAL_FUNCTIONS
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int TEMPORAL_FUNCTIONS_VALUE = 67;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1129,6 +1156,7 @@ public enum QueryFeature implements Enumerator {
 			ARITHMETIC,
 			STRING_FUNCTIONS_EXTENDED,
 			NUMERIC_FUNCTIONS,
+			TEMPORAL_FUNCTIONS,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1224,6 +1252,7 @@ public enum QueryFeature implements Enumerator {
 			case ARITHMETIC_VALUE: return ARITHMETIC;
 			case STRING_FUNCTIONS_EXTENDED_VALUE: return STRING_FUNCTIONS_EXTENDED;
 			case NUMERIC_FUNCTIONS_VALUE: return NUMERIC_FUNCTIONS;
+			case TEMPORAL_FUNCTIONS_VALUE: return TEMPORAL_FUNCTIONS;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

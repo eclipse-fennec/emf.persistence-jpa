@@ -269,6 +269,11 @@
         <details key="documentation" value="Numeric rounding functions (v2 IR NumericFunction ROUND/FLOOR/CEILING — issue #78). ROUND is half away from zero."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="TEMPORAL_FUNCTIONS" value="67">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Temporal part extraction (v2 IR TemporalFunction YEAR/MONTH/DAY/HOUR/MINUTE/SECOND — issue #79). UTC-normative; SECOND is integral."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>

@@ -55,6 +55,8 @@ import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.Variable;
@@ -410,6 +412,15 @@ public final class Expressions {
 		return function;
 	}
 
+	// ==================== temporal functions ====================
+
+	private static TemporalFunction temporalFunction(TemporalFunctionKind kind, Expression source) {
+		TemporalFunction function = FACTORY.createTemporalFunction();
+		function.setKind(kind);
+		function.setSource(source);
+		return function;
+	}
+
 	// ==================== extended string functions ====================
 
 	/**
@@ -617,6 +628,38 @@ public final class Expressions {
 		/** @return a comparable step over the smallest integral value above or equal */
 		public ArithmeticStep ceiling() {
 			return Expressions.ceiling(path);
+		}
+
+		// --- temporal part extraction (UTC-normative) ---
+
+		/** @return a comparable step over the UTC year of the temporal value */
+		public ArithmeticStep year() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.YEAR, path));
+		}
+
+		/** @return a comparable step over the UTC month (1-12) */
+		public ArithmeticStep month() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.MONTH, path));
+		}
+
+		/** @return a comparable step over the UTC day of month (1-31) */
+		public ArithmeticStep day() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.DAY, path));
+		}
+
+		/** @return a comparable step over the UTC hour (0-23) */
+		public ArithmeticStep hour() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.HOUR, path));
+		}
+
+		/** @return a comparable step over the UTC minute (0-59) */
+		public ArithmeticStep minute() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.MINUTE, path));
+		}
+
+		/** @return a comparable step over the integral UTC second (0-59) */
+		public ArithmeticStep second() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.SECOND, path));
 		}
 
 		// --- null / range / membership ---

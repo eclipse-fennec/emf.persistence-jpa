@@ -233,6 +233,19 @@ class MongoQueryProcessorTest {
 	}
 
 	@Test
+	void temporalFunctionsRenderNativeDateOperators() throws QueryException {
+		MongoQueryPlan year = translate(QueryBuilder.from(person)
+				.where(path(age).year().eq(1990))
+				.build());
+		assertThat(render(year.filter()).toJson()).contains("$year");
+
+		MongoQueryPlan second = translate(QueryBuilder.from(person)
+				.where(path(age).second().eq(30))
+				.build());
+		assertThat(render(second.filter()).toJson()).contains("$second");
+	}
+
+	@Test
 	void arithmeticInsideQuantifierIsRefused() {
 		Query query = QueryBuilder.from(person)
 				.where(any(propertyPath(addresses),

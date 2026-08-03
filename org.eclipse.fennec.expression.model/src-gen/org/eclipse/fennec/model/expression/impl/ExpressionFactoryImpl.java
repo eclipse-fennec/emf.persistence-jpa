@@ -94,6 +94,7 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.CONCAT: return createConcat();
 			case ExpressionPackage.INDEX_OF: return createIndexOf();
 			case ExpressionPackage.NUMERIC_FUNCTION: return createNumericFunction();
+			case ExpressionPackage.TEMPORAL_FUNCTION: return createTemporalFunction();
 			case ExpressionPackage.SUBSTRING: return createSubstring();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
@@ -114,6 +115,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 				return createStringMatchKindFromString(eDataType, initialValue);
 			case ExpressionPackage.STRING_FUNCTION_KIND:
 				return createStringFunctionKindFromString(eDataType, initialValue);
+			case ExpressionPackage.TEMPORAL_FUNCTION_KIND:
+				return createTemporalFunctionKindFromString(eDataType, initialValue);
 			case ExpressionPackage.NUMERIC_FUNCTION_KIND:
 				return createNumericFunctionKindFromString(eDataType, initialValue);
 			case ExpressionPackage.ARITHMETIC_OPERATOR:
@@ -139,6 +142,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 				return convertStringMatchKindToString(eDataType, instanceValue);
 			case ExpressionPackage.STRING_FUNCTION_KIND:
 				return convertStringFunctionKindToString(eDataType, instanceValue);
+			case ExpressionPackage.TEMPORAL_FUNCTION_KIND:
+				return convertTemporalFunctionKindToString(eDataType, instanceValue);
 			case ExpressionPackage.NUMERIC_FUNCTION_KIND:
 				return convertNumericFunctionKindToString(eDataType, instanceValue);
 			case ExpressionPackage.ARITHMETIC_OPERATOR:
@@ -453,6 +458,17 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	@Override
+	public TemporalFunction createTemporalFunction() {
+		TemporalFunctionImpl temporalFunction = new TemporalFunctionImpl();
+		return temporalFunction;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Substring createSubstring() {
 		SubstringImpl substring = new SubstringImpl();
 		return substring;
@@ -515,6 +531,26 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	public String convertStringFunctionKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public TemporalFunctionKind createTemporalFunctionKindFromString(EDataType eDataType, String initialValue) {
+		TemporalFunctionKind result = TemporalFunctionKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertTemporalFunctionKindToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

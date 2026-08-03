@@ -28,6 +28,14 @@
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/TRIM"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/LENGTH"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//TemporalFunctionKind">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/YEAR"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/MONTH"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/DAY"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/HOUR"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/MINUTE"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/SECOND"/>
+    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//NumericFunctionKind">
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//NumericFunctionKind/ROUND"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//NumericFunctionKind/FLOOR"/>
@@ -144,6 +152,10 @@
     <genClasses ecoreClass="expression.ecore#//NumericFunction">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//NumericFunction/kind"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//NumericFunction/source"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//TemporalFunction">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//TemporalFunction/kind"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//TemporalFunction/source"/>
     </genClasses>
     <genClasses ecoreClass="expression.ecore#//Substring">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Substring/source"/>

@@ -16,7 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +31,7 @@ import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
@@ -62,6 +65,7 @@ class MemoryQueryProcessorTest {
 	private EAttribute personScore;
 	private EAttribute personSalary;
 	private EAttribute personRank;
+	private EAttribute personHired;
 	private EReference personAddresses;
 	private EAttribute addressStreet;
 	private EPackage ePackage;
@@ -98,6 +102,9 @@ class MemoryQueryProcessorTest {
 		personRank = ecore.createEAttribute();
 		personRank.setName("rank");
 		personRank.setEType(EcorePackage.Literals.EINTEGER_OBJECT);
+		personHired = ecore.createEAttribute();
+		personHired.setName("hired");
+		personHired.setEType(EcorePackage.Literals.EDATE);
 		personAddresses = ecore.createEReference();
 		personAddresses.setName("addresses");
 		personAddresses.setEType(addressClass);
@@ -109,6 +116,7 @@ class MemoryQueryProcessorTest {
 		personClass.getEStructuralFeatures().add(personScore);
 		personClass.getEStructuralFeatures().add(personSalary);
 		personClass.getEStructuralFeatures().add(personRank);
+		personClass.getEStructuralFeatures().add(personHired);
 		personClass.getEStructuralFeatures().add(personAddresses);
 
 		ePackage = ecore.createEPackage();
@@ -437,6 +445,37 @@ class MemoryQueryProcessorTest {
 				.build();
 		try (QueryResult result = MemoryQueries.execute(nullSource, persons, null)) {
 			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
+	void temporalPartsExtractInUtc() throws QueryException {
+		// hired: 2020-06-15T22:45:30Z — set only for Bob; extraction is UTC-normative
+		persons.get(1).eSet(personHired, Date.from(Instant.parse("2020-06-15T22:45:30Z")));
+
+		assertTemporal(Expressions.path(personHired).year().eq(2020), "Bob");
+		assertTemporal(Expressions.path(personHired).month().eq(6), "Bob");
+		assertTemporal(Expressions.path(personHired).day().eq(15), "Bob");
+		assertTemporal(Expressions.path(personHired).hour().eq(22), "Bob");
+		assertTemporal(Expressions.path(personHired).minute().eq(45), "Bob");
+		assertTemporal(Expressions.path(personHired).second().eq(30), "Bob");
+	}
+
+	private void assertTemporal(Expression predicate, String expected) throws QueryException {
+		Query query = QueryBuilder.from(personClass).where(predicate).build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly(expected);
+		}
+	}
+
+	@Test
+	void temporalNullSourceMatchesNothing() throws QueryException {
+		// hired is unset everywhere — null propagates, no person matches
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personHired).year().ge(0))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(result.objects()).isEmpty();
 		}
 	}
 

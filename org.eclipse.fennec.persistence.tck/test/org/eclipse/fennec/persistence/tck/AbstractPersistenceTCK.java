@@ -17,11 +17,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -87,6 +90,7 @@ public abstract class AbstractPersistenceTCK {
 
 	protected EStructuralFeature personName;
 	protected EStructuralFeature personAge;
+	protected EStructuralFeature personBirthday;
 	protected EStructuralFeature personAddresses;
 	protected EStructuralFeature personBestFriend;
 	protected EStructuralFeature personFriends;
@@ -119,6 +123,7 @@ public abstract class AbstractPersistenceTCK {
 		companyClass = (EClass) tckPackage.getEClassifier("Company");
 		personName = personClass.getEStructuralFeature("name");
 		personAge = personClass.getEStructuralFeature("age");
+		personBirthday = personClass.getEStructuralFeature("birthday");
 		personAddresses = personClass.getEStructuralFeature("addresses");
 		personBestFriend = personClass.getEStructuralFeature("bestFriend");
 		personFriends = personClass.getEStructuralFeature("friends");
@@ -460,16 +465,32 @@ public abstract class AbstractPersistenceTCK {
 
 	// ------------------------------------------------------------ query TCK (v2 IR)
 
-	/** Saves the standard query fixture: three persons, Bob with two addresses. */
+	/** The fixture birthdays — fixed UTC instants (see the temporal contract, issue #79). */
+	static final Instant ALICE_BIRTHDAY = Instant.parse("1996-03-15T10:30:45Z");
+	static final Instant BOB_BIRTHDAY = Instant.parse("1986-07-01T23:59:59Z");
+	static final Instant CAROL_BIRTHDAY = Instant.parse("1976-12-31T00:00:05Z");
+
+	static {
+		// The temporal contract (issue #79) is UTC-normative. The zone-less H2
+		// TIMESTAMP carries the wall-clock of the writing session, and H2 fixes the
+		// session zone when the connection opens — so the whole TCK JVM is pinned to
+		// UTC before any backend connects (CI runners are UTC anyway; production
+		// deployments should run UTC or accept local-wall-clock extraction on SQL).
+		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+	}
+
+	/** Saves the standard query fixture: three persons with UTC birthdays, Bob with two addresses. */
 	private void saveQueryFixture() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
 		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBirthday, Date.from(BOB_BIRTHDAY));
 		listOf(bob, personAddresses).add(newAddress(21, "Main Street 5", "Jena"));
 		listOf(bob, personAddresses).add(newAddress(22, "Side Road 9", "Gera"));
+		EObject carol = newPerson(3, "Carol", 50);
+		carol.eSet(personBirthday, Date.from(CAROL_BIRTHDAY));
 		ResourceSet writeSet = createBackendResourceSet();
-		save(writeSet, "Person",
-				newPerson(1, "Alice", 30),
-				bob,
-				newPerson(3, "Carol", 50));
+		save(writeSet, "Person", alice, bob, carol);
 	}
 
 	private QueryableResource queryable(ResourceSet resourceSet) {
@@ -684,6 +705,55 @@ public abstract class AbstractPersistenceTCK {
 		try (QueryResult result = queryable(createBackendResourceSet()).query(ceiling)) {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Alice");
+		}
+	}
+
+	@Test
+	public void queryTemporalFunctions() throws Exception {
+		saveQueryFixture();
+		// Alice 1996-03-15T10:30:45Z, Bob 1986-07-01T23:59:59Z, Carol 1976-12-31T00:00:05Z
+		Query year = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).year().eq(1996))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(year)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+		Query month = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).month().eq(7))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(month)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		Query day = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).day().eq(31))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(day)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
+		}
+		// time parts are UTC-normative: 23h only holds in UTC wall-clock
+		Query hour = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).hour().eq(23))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(hour)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+		Query minute = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).minute().eq(30))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(minute)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+		Query second = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).second().eq(5))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(second)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Carol");
 		}
 	}
 
@@ -940,12 +1010,17 @@ public abstract class AbstractPersistenceTCK {
 	public void queryDifferentialAgainstMemoryOracle() throws Exception {
 		saveQueryFixture();
 		List<EObject> oracle = new ArrayList<>();
-		oracle.add(newPerson(1, "Alice", 30));
+		EObject alice = newPerson(1, "Alice", 30);
+		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
+		oracle.add(alice);
 		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBirthday, Date.from(BOB_BIRTHDAY));
 		listOf(bob, personAddresses).add(newAddress(21, "Main Street 5", "Jena"));
 		listOf(bob, personAddresses).add(newAddress(22, "Side Road 9", "Gera"));
 		oracle.add(bob);
-		oracle.add(newPerson(3, "Carol", 50));
+		EObject carol = newPerson(3, "Carol", 50);
+		carol.eSet(personBirthday, Date.from(CAROL_BIRTHDAY));
+		oracle.add(carol);
 
 		Map<String, Query> corpus = new LinkedHashMap<>();
 		corpus.put("grouped tree", QueryBuilder.from(personClass)
@@ -1027,6 +1102,15 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		corpus.put("ceiling", QueryBuilder.from(personClass)
 				.where(Expressions.path(personAge).dividedBy(4).ceiling().eq(8))
+				.build());
+		corpus.put("temporal year", QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).year().eq(1986))
+				.build());
+		corpus.put("temporal hour utc", QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).hour().eq(23))
+				.build());
+		corpus.put("temporal second", QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).second().eq(45))
 				.build());
 
 		for (Map.Entry<String, Query> entry : corpus.entrySet()) {

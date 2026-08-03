@@ -210,6 +210,21 @@ class ExpressionOclBridgeTest {
 	}
 
 	@Test
+	void temporalFunctionsRoundTripStructurally() throws QueryException {
+		Expression original = and(
+				path(age).year().eq(1990),
+				path(age).month().le(6),
+				path(age).day().ge(1),
+				path(age).hour().eq(12),
+				path(age).minute().eq(30),
+				path(age).second().eq(0));
+		Expression back = roundTrip(original);
+		assertThat(EcoreUtil.equals(original, back))
+				.as("year..second expr → ocl → expr must be structurally identical")
+				.isTrue();
+	}
+
+	@Test
 	void integerDivisionStaysRefused() {
 		OperationCallExp div = OclFactory.eINSTANCE.createOperationCallExp();
 		div.setName("div");

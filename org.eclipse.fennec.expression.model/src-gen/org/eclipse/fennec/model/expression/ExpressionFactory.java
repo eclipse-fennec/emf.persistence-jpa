@@ -278,6 +278,15 @@ public interface ExpressionFactory extends EFactory {
 	NumericFunction createNumericFunction();
 
 	/**
+	 * Returns a new object of class '<em>Temporal Function</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Temporal Function</em>'.
+	 * @generated
+	 */
+	TemporalFunction createTemporalFunction();
+
+	/**
 	 * Returns a new object of class '<em>Substring</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

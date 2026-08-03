@@ -42,6 +42,7 @@ import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -240,6 +241,10 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof NumericFunction numericFunction) {
 				operand(numericFunction.getSource(), target, scope);
+				return;
+			}
+			if (expression instanceof TemporalFunction temporalFunction) {
+				operand(temporalFunction.getSource(), target, scope);
 				return;
 			}
 			if (expression instanceof Concat concatenation) {

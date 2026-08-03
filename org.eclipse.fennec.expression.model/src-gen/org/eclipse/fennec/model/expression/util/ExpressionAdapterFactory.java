@@ -202,6 +202,10 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createNumericFunctionAdapter();
 			}
 			@Override
+			public Adapter caseTemporalFunction(TemporalFunction object) {
+				return createTemporalFunctionAdapter();
+			}
+			@Override
 			public Adapter caseSubstring(Substring object) {
 				return createSubstringAdapter();
 			}
@@ -656,6 +660,20 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createNumericFunctionAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.TemporalFunction <em>Temporal Function</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.TemporalFunction
+	 * @generated
+	 */
+	public Adapter createTemporalFunctionAdapter() {
 		return null;
 	}
 

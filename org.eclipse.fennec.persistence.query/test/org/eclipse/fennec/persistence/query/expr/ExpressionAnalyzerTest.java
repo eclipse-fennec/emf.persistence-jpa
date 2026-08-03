@@ -365,6 +365,13 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void temporalFunctionsAreDetected() {
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query(
+				Expressions.path(age).year().eq(1990)));
+		assertThat(analysis.features()).contains(QueryFeature.TEMPORAL_FUNCTIONS);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();

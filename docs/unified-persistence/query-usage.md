@@ -54,6 +54,12 @@ Query query = QueryBuilder.from(personClass)
   `round/floor/ceiling` on paths and arithmetic steps (statics too). **`round` is half
   away from zero** (OData semantics; Mongo's half-to-even `$round` is emulated via
   `$cond`), the result is integral.
+- **Temporal part extraction** (#79): `path(birthday).year().eq(1996)`,
+  `year/month/day/hour/minute/second` on paths — **UTC-normative** (BSON dates are UTC
+  natively; the zone-less SQL TIMESTAMP carries the writing session's wall-clock, so
+  run your JVM/DB sessions in UTC). `second` is integral; time parts of date-only
+  values are 0; null propagates. Mongo requires native BSON dates (emf.codec#97 —
+  temporal attributes without a configured `dateFormat` now store as `BsonDateTime`).
 - **Extended string functions** (#77): `concat(path(name), "!")`,
   `path(name).indexOf("o")` (**0-based**, `-1` when absent),
   `path(name).substring(start[, length])` (**0-based**; a negative start counts from

@@ -56,6 +56,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -219,6 +220,17 @@ public final class ExprToOcl {
 			if (expression instanceof Negate negate) {
 				// source-only '-' is the OCL unary minus — OclToExpr recognizes it back
 				return call("-", map(negate.getOperand(), null));
+			}
+			if (expression instanceof TemporalFunction temporalFunction) {
+				String operation = switch (temporalFunction.getKind()) {
+				case YEAR -> "year";
+				case MONTH -> "month";
+				case DAY -> "day";
+				case HOUR -> "hour";
+				case MINUTE -> "minute";
+				case SECOND -> "second";
+				};
+				return call(operation, map(temporalFunction.getSource(), null));
 			}
 			if (expression instanceof NumericFunction numericFunction) {
 				String operation = switch (numericFunction.getKind()) {

@@ -38,6 +38,7 @@ import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.FilterStage;
@@ -251,6 +252,9 @@ public final class ExpressionAnalyzer {
 		} else if (expression instanceof NumericFunction numericFunction) {
 			features.add(QueryFeature.NUMERIC_FUNCTIONS);
 			walk(numericFunction.getSource(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof TemporalFunction temporalFunction) {
+			features.add(QueryFeature.TEMPORAL_FUNCTIONS);
+			walk(temporalFunction.getSource(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof ParameterRef) {
 			features.add(QueryFeature.PARAMETERS);
 		} else if (expression instanceof PropertyPath propertyPath) {

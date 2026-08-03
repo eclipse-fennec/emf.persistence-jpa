@@ -302,6 +302,13 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.TEMPORAL_FUNCTION: {
+				TemporalFunction temporalFunction = (TemporalFunction)theEObject;
+				T result = caseTemporalFunction(temporalFunction);
+				if (result == null) result = caseExpression(temporalFunction);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.SUBSTRING: {
 				Substring substring = (Substring)theEObject;
 				T result = caseSubstring(substring);
@@ -775,6 +782,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseNumericFunction(NumericFunction object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Temporal Function</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Temporal Function</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseTemporalFunction(TemporalFunction object) {
 		return null;
 	}
 

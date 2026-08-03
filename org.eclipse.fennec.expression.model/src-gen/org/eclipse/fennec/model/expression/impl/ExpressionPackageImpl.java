@@ -56,6 +56,8 @@ import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
+import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.Variable;
@@ -290,6 +292,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass temporalFunctionEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass substringEClass = null;
 
 	/**
@@ -312,6 +321,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EEnum stringFunctionKindEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum temporalFunctionKindEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1150,6 +1166,36 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getTemporalFunction() {
+		return temporalFunctionEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTemporalFunction_Kind() {
+		return (EAttribute)temporalFunctionEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getTemporalFunction_Source() {
+		return (EReference)temporalFunctionEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getSubstring() {
 		return substringEClass;
 	}
@@ -1212,6 +1258,16 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	@Override
 	public EEnum getStringFunctionKind() {
 		return stringFunctionKindEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getTemporalFunctionKind() {
+		return temporalFunctionKindEEnum;
 	}
 
 	/**
@@ -1379,6 +1435,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEAttribute(numericFunctionEClass, NUMERIC_FUNCTION__KIND);
 		createEReference(numericFunctionEClass, NUMERIC_FUNCTION__SOURCE);
 
+		temporalFunctionEClass = createEClass(TEMPORAL_FUNCTION);
+		createEAttribute(temporalFunctionEClass, TEMPORAL_FUNCTION__KIND);
+		createEReference(temporalFunctionEClass, TEMPORAL_FUNCTION__SOURCE);
+
 		substringEClass = createEClass(SUBSTRING);
 		createEReference(substringEClass, SUBSTRING__SOURCE);
 		createEReference(substringEClass, SUBSTRING__START);
@@ -1388,6 +1448,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		comparisonOperatorEEnum = createEEnum(COMPARISON_OPERATOR);
 		stringMatchKindEEnum = createEEnum(STRING_MATCH_KIND);
 		stringFunctionKindEEnum = createEEnum(STRING_FUNCTION_KIND);
+		temporalFunctionKindEEnum = createEEnum(TEMPORAL_FUNCTION_KIND);
 		numericFunctionKindEEnum = createEEnum(NUMERIC_FUNCTION_KIND);
 		arithmeticOperatorEEnum = createEEnum(ARITHMETIC_OPERATOR);
 		temporalKindEEnum = createEEnum(TEMPORAL_KIND);
@@ -1450,6 +1511,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		concatEClass.getESuperTypes().add(this.getExpression());
 		indexOfEClass.getESuperTypes().add(this.getExpression());
 		numericFunctionEClass.getESuperTypes().add(this.getExpression());
+		temporalFunctionEClass.getESuperTypes().add(this.getExpression());
 		substringEClass.getESuperTypes().add(this.getExpression());
 
 		// Initialize classes, features, and operations; add parameters
@@ -1559,6 +1621,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEAttribute(getNumericFunction_Kind(), this.getNumericFunctionKind(), "kind", null, 1, 1, NumericFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getNumericFunction_Source(), this.getExpression(), null, "source", null, 1, 1, NumericFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(temporalFunctionEClass, TemporalFunction.class, "TemporalFunction", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getTemporalFunction_Kind(), this.getTemporalFunctionKind(), "kind", null, 1, 1, TemporalFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getTemporalFunction_Source(), this.getExpression(), null, "source", null, 1, 1, TemporalFunction.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(substringEClass, Substring.class, "Substring", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getSubstring_Source(), this.getExpression(), null, "source", null, 1, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getSubstring_Start(), this.getExpression(), null, "start", null, 1, 1, Substring.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -1584,6 +1650,14 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TO_UPPER);
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TRIM);
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.LENGTH);
+
+		initEEnum(temporalFunctionKindEEnum, TemporalFunctionKind.class, "TemporalFunctionKind");
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.YEAR);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.MONTH);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.DAY);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.HOUR);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.MINUTE);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.SECOND);
 
 		initEEnum(numericFunctionKindEEnum, NumericFunctionKind.class, "NumericFunctionKind");
 		addEEnumLiteral(numericFunctionKindEEnum, NumericFunctionKind.ROUND);
