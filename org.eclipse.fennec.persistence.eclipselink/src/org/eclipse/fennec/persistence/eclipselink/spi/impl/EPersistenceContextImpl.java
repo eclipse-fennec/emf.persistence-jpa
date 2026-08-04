@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.eclipselink.spi;
+package org.eclipse.fennec.persistence.eclipselink.spi.impl;
 
 import static java.util.Objects.isNull;
 
@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.eclipselink.spi.EPersistenceContext;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.epersistence.EPersistenceFactory;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
@@ -72,7 +73,7 @@ public class EPersistenceContextImpl implements EPersistenceContext {
 	 * Sets the metadataURL.
 	 * @param metadataURL the metadataURL to set
 	 */
-	void setMetadataURL(URL metadataURL) {
+	public void setMetadataURL(URL metadataURL) {
 		this.metadataURL = metadataURL;
 	}
 

@@ -10,4 +10,10 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.mongo.query;
+/**
+ * Implementation part of the persistence-unit SPI (issue #65): the DS configurator
+ * components and the {@code EPersistenceContext} implementation. Deliberately not
+ * exported — consumers bind the registered services and extend the exported
+ * {@code spi} package types only.
+ */
+package org.eclipse.fennec.persistence.eclipselink.spi.impl;

@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.eclipselink.spi;
+package org.eclipse.fennec.persistence.eclipselink.spi.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

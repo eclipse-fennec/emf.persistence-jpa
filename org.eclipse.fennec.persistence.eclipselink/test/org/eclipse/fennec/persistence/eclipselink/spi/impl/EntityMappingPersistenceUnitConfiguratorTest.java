@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.eclipselink.spi;
+package org.eclipse.fennec.persistence.eclipselink.spi.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,7 +25,7 @@ import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.fennec.persistence.eclipselink.spi.EntityMappingPersistenceUnitConfigurator.PUConfig;
+import org.eclipse.fennec.persistence.eclipselink.spi.impl.EntityMappingPersistenceUnitConfigurator.PUConfig;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.junit.jupiter.api.Test;
