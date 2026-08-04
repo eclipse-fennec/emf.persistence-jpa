@@ -19,11 +19,13 @@ import static org.eclipse.fennec.model.query.builder.Expressions.all;
 import static org.eclipse.fennec.model.query.builder.Expressions.concat;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
+import static org.eclipse.fennec.model.query.builder.Expressions.isOf;
 import static org.eclipse.fennec.model.query.builder.Expressions.literal;
 import static org.eclipse.fennec.model.query.builder.Expressions.not;
 import static org.eclipse.fennec.model.query.builder.Expressions.or;
 import static org.eclipse.fennec.model.query.builder.Expressions.param;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
+import static org.eclipse.fennec.model.query.builder.Expressions.pathAs;
 import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
 
 import java.util.Map;
@@ -31,11 +33,16 @@ import java.util.Map;
 import org.bson.BsonDocument;
 import org.bson.conversions.Bson;
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
+import org.eclipse.fennec.codec.config.ConfigurationResolver;
+import org.eclipse.fennec.codec.constants.CodecOptions;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
@@ -44,6 +51,7 @@ import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
@@ -243,6 +251,66 @@ class MongoQueryProcessorTest {
 				.where(path(age).second().eq(30))
 				.build());
 		assertThat(render(second.filter()).toJson()).contains("$second");
+	}
+
+	@Test
+	void typePredicatesTranslateAgainstTheCodecDiscriminator() throws QueryException {
+		EcoreFactory ecore = EcoreFactory.eINSTANCE;
+		EClass vehicle = ecore.createEClass();
+		vehicle.setName("Vehicle");
+		EClass car = ecore.createEClass();
+		car.setName("Car");
+		car.getESuperTypes().add(vehicle);
+		EPackage pkg = ecore.createEPackage();
+		pkg.setName("garage");
+		pkg.setNsURI("urn:mongo:type:test");
+		pkg.getEClassifiers().add(vehicle);
+		pkg.getEClassifiers().add(car);
+		// packages attached to their nsURI resource yield the full nsURI#//Car form —
+		// like generated production models
+		new ResourceImpl(URI.createURI(pkg.getNsURI())).getContents().add(pkg);
+		EPackage.Registry.INSTANCE.put(pkg.getNsURI(), pkg);
+		try {
+
+		// default config: closure over the concrete subtypes, URI values on _type
+		Query isCar = QueryBuilder.from(vehicle).where(isOf(car)).build();
+		MongoQueryPlan closure = (MongoQueryPlan) processor.translate(isCar,
+				QueryContexts.of(vehicle, null));
+		String closureJson = render(closure.filter()).toJson();
+		assertThat(closureJson).contains("_type").contains("urn:mongo:type:test#//Car");
+
+		// serialized supertypes: direct match on _type or the _supertype array
+		ConfigurationResolver withSupertypes = ConfigurationResolver.builder()
+				.optionsProperties(Map.of(CodecOptions.CODEC_SUPERTYPE_SERIALIZE, true))
+				.build();
+		MongoQueryPlan supertype = (MongoQueryPlan) processor.translate(isCar,
+				QueryContexts.of(vehicle, null, null,
+						Map.of(MongoPersistenceConstants.OPTION_CODEC_RESOLVER, withSupertypes)));
+		assertThat(render(supertype.filter()).toJson()).contains("_supertype");
+
+		// treat: the cast path guards the field predicate with the type filter
+		EAttribute horsepower = ecore.createEAttribute();
+		horsepower.setName("horsepower");
+		horsepower.setEType(EcorePackage.Literals.EINT);
+		car.getEStructuralFeatures().add(horsepower);
+		MongoQueryPlan treat = (MongoQueryPlan) processor.translate(
+				QueryBuilder.from(vehicle).where(pathAs(car, horsepower).gt(100)).build(),
+				QueryContexts.of(vehicle, null));
+		String treatJson = render(treat.filter()).toJson();
+		assertThat(treatJson).contains("_type").contains("horsepower");
+
+		// a configuration without a stored discriminator is refused
+		ConfigurationResolver withoutType = ConfigurationResolver.builder()
+				.optionsProperties(Map.of(CodecOptions.CODEC_TYPE_INCLUDE, false))
+				.build();
+		assertThatThrownBy(() -> processor.translate(isCar,
+				QueryContexts.of(vehicle, null, null,
+						Map.of(MongoPersistenceConstants.OPTION_CODEC_RESOLVER, withoutType))))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("discriminator");
+		} finally {
+			EPackage.Registry.INSTANCE.remove(pkg.getNsURI());
+		}
 	}
 
 	@Test

@@ -37,4 +37,11 @@ public interface MongoPersistenceConstants {
 
 	/** The MongoDB document identifier field. */
 	String ID_FIELD = "_id";
+
+	/**
+	 * Query option carrying the codec {@code ConfigurationResolver} the documents were
+	 * written with — the type-predicate translation resolves the effective type
+	 * discriminator configuration through it (issue #88).
+	 */
+	String OPTION_CODEC_RESOLVER = "mongo.codec.configuration.resolver";
 }

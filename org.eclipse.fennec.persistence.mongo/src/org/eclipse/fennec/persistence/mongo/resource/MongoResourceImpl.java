@@ -161,10 +161,26 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * The Jackson mapper for the BsonDocument-direct paths. {@code CodecResource} builds
 	 * its mapper per save/load operation through private machinery; this mirrors that
 	 * construction with the public codec API ({@link CodecModule#builder()}) using the
-	 * resolver's global configuration. No explicit type-discriminator service is set —
-	 * every decode passes an {@code EXPECTED_TYPE} hint instead (the published
-	 * codec.metadata snapshot does not yet export the type-discriminator package).
+	 * resolver's global configuration. The codec writes the type discriminator
+	 * ({@code _type} by default) into every document and prefers it over the
+	 * {@code EXPECTED_TYPE} hint on decode — the hint is only the fallback for
+	 * documents without one. No custom {@code TypeDiscriminatorService} is wired;
+	 * it is only needed for custom discriminator mappings, not for the generic
+	 * type field (issue #88).
 	 */
+	/**
+	 * Extends the caller options with the codec configuration resolver so the query
+	 * translation can resolve the effective type-discriminator config (issue #88).
+	 */
+	private Map<Object, Object> queryOptions(Map<?, ?> options) {
+		Map<Object, Object> effective = new HashMap<>();
+		if (nonNull(options)) {
+			effective.putAll(options);
+		}
+		effective.put(MongoPersistenceConstants.OPTION_CODEC_RESOLVER, getResolver());
+		return effective;
+	}
+
 	protected ObjectMapper mongoMapper() {
 		ObjectMapper mapper = mongoMapper;
 		if (nonNull(mapper)) {
@@ -406,7 +422,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		EClass eClass = resolveEClass(collectionName, options);
 		MongoQueryPlan plan;
 		try {
-			plan = MongoQueries.translate(queryProcessor, query, eClass, parameters, options);
+			plan = MongoQueries.translate(queryProcessor, query, eClass, parameters, queryOptions(options));
 		} catch (QueryException e) {
 			getErrors().add(new MongoDiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected for collection '" + collectionName + "': " + e.getMessage(), e);
@@ -552,7 +568,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			guardPlainSelector(delete.getSelector());
 			plan = MongoQueries.translate(queryProcessor, delete.getSelector(),
-					delete.getSelector().getFrom(), null, null);
+					delete.getSelector().getFrom(), null, queryOptions(null));
 		} catch (QueryException e) {
 			getErrors().add(new MongoDiagnostic("Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
@@ -580,7 +596,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			guardPlainSelector(update.getSelector());
 			ChangeTemplates.validate(update.getTemplate(), eClass);
-			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, null, null);
+			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, null, queryOptions(null));
 		} catch (QueryException e) {
 			getErrors().add(new MongoDiagnostic("Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);

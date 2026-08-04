@@ -759,10 +759,7 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
-	/**
-	 * Whether the backend supports type predicates (TYPE_CHECK/TYPE_CAST, issue #80).
-	 * Mongo refuses until documents carry a type discriminator.
-	 */
+	/** Whether the backend supports type predicates (TYPE_CHECK/TYPE_CAST, issues #80/#88). */
 	protected boolean supportsTypePredicates() {
 		return true;
 	}
@@ -801,9 +798,10 @@ public abstract class AbstractPersistenceTCK {
 		brutus.eSet(horsepower, 300);
 		EObject bonnie = newVehicle(motorcycleClass, 3, "Bonnie");
 		bonnie.eSet(motorcycleClass.getEStructuralFeature("cc"), 900);
+		// one hierarchy container: single table on JPA, one collection on Mongo —
+		// the codec type discriminator resolves the concrete subtype on decode (#88)
 		ResourceSet writeSet = createBackendResourceSet();
-		save(writeSet, "Car", beetle, brutus);
-		save(writeSet, "Motorcycle", bonnie);
+		save(writeSet, "Vehicle", beetle, brutus, bonnie);
 
 		ResourceSet readSet = createBackendResourceSet();
 		QueryableResource vehicles = (QueryableResource) readSet.createResource(uriFor("Vehicle"));

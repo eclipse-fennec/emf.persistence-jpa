@@ -58,6 +58,7 @@ import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.Computation;
@@ -71,6 +72,8 @@ import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.model.query.TopStage;
+import org.eclipse.fennec.codec.config.ConfigurationResolver;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
@@ -138,7 +141,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
-					QueryFeature.PIPELINE_COMPUTE, QueryFeature.FIELD_TO_FIELD,
+					QueryFeature.PIPELINE_COMPUTE, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
+					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
@@ -251,7 +255,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 			String field = field(comparison.getLeft());
 			EStructuralFeature target = targetOf(comparison.getLeft());
 			Object value = value(comparison.getRight(), target, context);
-			return switch (comparison.getOperator()) {
+			Bson filter = switch (comparison.getOperator()) {
 			case EQ -> Filters.eq(field, value);
 			case NE -> Filters.ne(field, value);
 			case LT -> Filters.lt(field, value);
@@ -259,19 +263,22 @@ public class MongoQueryProcessor implements QueryProcessor {
 			case GT -> Filters.gt(field, value);
 			case GE -> Filters.gte(field, value);
 			};
+			return guarded(filter, comparison.getLeft(), context);
 		}
 		if (expression instanceof IsNull isNull) {
 			String field = field(isNull.getSource());
-			return isNull.isNegated() ? Filters.ne(field, null) : Filters.eq(field, null);
+			return guarded(isNull.isNegated() ? Filters.ne(field, null) : Filters.eq(field, null),
+					isNull.getSource(), context);
 		}
 		if (expression instanceof Between between) {
 			String field = field(between.getSource());
 			EStructuralFeature target = targetOf(between.getSource());
 			Object lower = value(between.getLower(), target, context);
 			Object upper = value(between.getUpper(), target, context);
-			return Filters.and(
+			return guarded(Filters.and(
 					between.isLowerIncluded() ? Filters.gte(field, lower) : Filters.gt(field, lower),
-					between.isUpperIncluded() ? Filters.lte(field, upper) : Filters.lt(field, upper));
+					between.isUpperIncluded() ? Filters.lte(field, upper) : Filters.lt(field, upper)),
+					between.getSource(), context);
 		}
 		if (expression instanceof In in) {
 			String field = field(in.getSource());
@@ -280,16 +287,39 @@ public class MongoQueryProcessor implements QueryProcessor {
 			for (Expression candidate : in.getValues()) {
 				values.add(value(candidate, target, context));
 			}
-			return Filters.in(field, values);
+			return guarded(Filters.in(field, values), in.getSource(), context);
 		}
 		if (expression instanceof StringMatch match) {
-			return match(match, context);
+			return guarded(match(match, context), match.getSource(), context);
 		}
 		if (expression instanceof Quantifier quantifier) {
 			return quantifier(quantifier, context);
 		}
+		if (expression instanceof TypeCheck typeCheck) {
+			// against the codec type discriminator, config-driven (issue #88)
+			return MongoTypePredicates.typeCheck(typeCheck, codecResolver(context));
+		}
 		throw new QueryException("Unsupported predicate " + expression.eClass().getName()
 				+ " for the mongo backend");
+	}
+
+	/** ANDs the treat guard when the operand path downcasts the root (castBase, issue #88). */
+	private Bson guarded(Bson filter, Expression operand, QueryContext context) throws QueryException {
+		if (operand instanceof PropertyPath path && path.getCastBase() != null) {
+			return Filters.and(MongoTypePredicates.castGuard(path, codecResolver(context)), filter);
+		}
+		return filter;
+	}
+
+	/**
+	 * The codec configuration the documents were written with — passed by the resource
+	 * through the query options; defaults when queried standalone (issue #88).
+	 */
+	private ConfigurationResolver codecResolver(QueryContext context) {
+		Object resolver = context.options() == null ? null
+				: context.options().get(MongoPersistenceConstants.OPTION_CODEC_RESOLVER);
+		return resolver instanceof ConfigurationResolver configured ? configured
+				: ConfigurationResolver.defaults();
 	}
 
 	private Bson match(StringMatch match, QueryContext context) throws QueryException {
@@ -342,6 +372,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 				throw new QueryException("String functions, arithmetic and field-to-field comparisons are not"
 						+ " supported inside quantifier predicates on the mongo backend ($expr cannot address"
 						+ " $elemMatch elements)");
+			}
+			if (path.getCastBase() != null) {
+				throw new QueryException("Cast paths (castBase) are not supported inside $expr operands"
+						+ " on the mongo backend — use them in plain filter positions");
 			}
 			String reference = "$" + MongoFieldNames.render(path);
 			Document guard = new Document("$ne", Arrays.asList(reference, null));

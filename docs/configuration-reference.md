@@ -157,6 +157,21 @@ opts.put(Options.OPTION_PAGE_SIZE, 1000);
 resource.load(opts);
 ```
 
+## Codec settings (MongoDB)
+
+The Mongo backend stores documents through the Fennec codec and rides its
+defaults; several query features depend on them (details and the full table:
+`mongo-user-guide.md` → *Codec settings for MongoDB*). Overridable through
+the codec configuration chain (globally, per EPackage or EClass, e.g. via
+EAnnotations):
+
+| Codec key | Default | Purpose for MongoDB |
+|-----------|---------|---------------------|
+| `codec.typeInclude` / `codec.typeKey` / `codec.typeStrategy` | `true` / `_type` / `URI` | Type discriminator in every document — decode and the type predicates (`isOf`, `pathAs`) depend on it; recommended to keep |
+| `codec.superTypeSerialize` | `false` | Opt-in `_supertype` array: switches `isOf` to a direct supertype match (no subtype closure) |
+| `codec.dateFormat` | unset | Keep unset — temporal attributes then store as native `BsonDateTime`, required by the temporal query operators |
+| `codec.smartCompression` | `false` | Keep the plain default — values stored explicitly, queries see the model state |
+
 ## Non-OSGi bootstrap properties
 
 When assembling an `EntityManagerFactory` manually (see the Getting Started

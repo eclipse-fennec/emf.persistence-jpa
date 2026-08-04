@@ -359,6 +359,25 @@ What this means for you:
 Because there is no eorm model, the eorm-driven tuning of the JPA backend
 (fetch modes, batch hints, column overrides) does not apply here.
 
+## Codec settings for MongoDB
+
+The resource rides the codec defaults — they are the recommended MongoDB
+configuration, and several query features depend on them. Every setting is
+overridable through the normal codec configuration chain (globally, per
+EPackage or per EClass, e.g. via EAnnotations); this is what each document
+carries and why it matters:
+
+| Setting | Default | Stored as | Why it matters for MongoDB |
+|---|---|---|---|
+| `typeInclude` / `typeKey` / `typeStrategy` | `true` / `_type` / `URI` | `_type: "http://…#//Car"` in every document | Decode resolves the concrete EClass from it (the `EXPECTED_TYPE` hint is only the fallback), and the **type predicates** (`isOf`, `pathAs`) translate against it — with `typeInclude=false` or strategy `NONE` they are refused. Keep `URI`: values are unambiguous across packages, and existing data already carries them |
+| `superTypeSerialize` | `false` | `_supertype: [uris…]` when enabled | Opt-in. When enabled, `isOf` becomes a direct `_type`/`_supertype` match instead of a concrete-subtype closure — robust against subtypes added after the query was written. Off by default to keep documents lean |
+| `dateFormat` | unset | native `BsonDateTime` | Leave it unset: temporal attributes then store natively, which the temporal query operators (`year()`…`second()`) and date comparisons require. A configured format stores strings — readable, but not date-queryable |
+| `smartCompression` | `false` (resolver global) | empty/default values written explicitly | The plain default keeps field-based queries and collection counts aligned with the model state; the `$size` translation tolerates missing arrays either way |
+
+Recommendation for large collections: create an **index on the type field**
+(`_type`, plus `_supertype` where serialized) — type predicates filter on it
+directly.
+
 ## References and proxies
 
 The backend follows standard EMF cross-document semantics — the same

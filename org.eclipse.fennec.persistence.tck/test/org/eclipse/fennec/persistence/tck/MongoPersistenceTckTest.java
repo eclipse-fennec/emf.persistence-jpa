@@ -45,12 +45,6 @@ import com.mongodb.client.MongoDatabase;
  */
 class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 
-	/** Mongo refuses type predicates until documents carry a type discriminator (issue #80). */
-	@Override
-	protected boolean supportsTypePredicates() {
-		return false;
-	}
-
 	/** Mongo refuses filtered counts until $filter rendering lands (issue #81). */
 	@Override
 	protected boolean supportsFilteredCollectionCounts() {
