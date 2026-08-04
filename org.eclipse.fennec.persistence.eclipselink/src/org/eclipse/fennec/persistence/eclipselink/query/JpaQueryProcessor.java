@@ -56,6 +56,7 @@ import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
@@ -116,6 +117,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
 					QueryFeature.COLLECTION_COUNT, QueryFeature.COLLECTION_COUNT_FILTERED,
 					QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE, QueryFeature.SORT_EXPRESSION,
+					QueryFeature.GROUP_EXPRESSION,
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
@@ -249,8 +251,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 		return columns.toString();
 	}
 
-	private static String aggregateFunction(Aggregate aggregate) throws QueryException {
-		String argument = aggregate.getPath() == null ? ALIAS : rootPath(aggregate.getPath());
+	private static String aggregateFunction(Aggregate aggregate, String argument) {
 		return switch (aggregate.getMethod()) {
 		case SUM -> "SUM(" + argument + ")";
 		case MIN -> "MIN(" + argument + ")";
@@ -371,6 +372,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 		 * (AliasRef), trailing filters become HAVING with the columns re-rendered —
 		 * JPQL result variables are not addressable there. Without a GroupBy the
 		 * computes are terminal: one row per entity, single-valued attributes first.
+		 * A compute before the grouping (issue #87) only binds aliases for group keys
+		 * and aggregate sources — its expressions are re-rendered inline on use, the
+		 * aliases are no output columns.
 		 */
 		private TranslatedPipeline translatePipeline(Query query, List<String> rowKeys,
 				List<String> rowAliases) throws QueryException {
@@ -394,11 +398,15 @@ public class JpaQueryProcessor implements QueryProcessor {
 					}
 				} else if (stage instanceof ComputeStage compute) {
 					if (group == null && groupsSomewhere) {
-						throw new QueryException("A compute before GroupBy cannot be addressed by"
-								+ " group paths or aggregate sources yet — move it after the"
-								+ " grouping (issue #82)");
+						// pre-group compute (issue #87): bind the alias for inline
+						// re-rendering; expressions may reference earlier aliases
+						for (Computation computation : compute.getComputations()) {
+							columnExpressions.put(computation.getAlias(),
+									operand(computation.getExpression(), null));
+						}
+					} else {
+						computations.addAll(compute.getComputations());
 					}
-					computations.addAll(compute.getComputations());
 				} else if (stage instanceof SkipStage skip && group != null) {
 					// row-space paging: sort-then-limit — compose the window sequentially
 					result.skip += skip.getCount();
@@ -419,6 +427,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			StringBuilder columns = new StringBuilder();
 			if (group != null) {
+				List<String> groupByItems = new ArrayList<>();
 				for (PropertyPath path : group.getPaths()) {
 					String key = outputKey(null, path);
 					// group keys are alias-addressable under their derived name
@@ -426,23 +435,27 @@ public class JpaQueryProcessor implements QueryProcessor {
 					String rendered = rootPath(path);
 					columnExpressions.put(key, rendered);
 					appendColumn(columns, rendered + " AS " + key);
+					groupByItems.add(rendered);
+				}
+				for (GroupKey key : group.getKeys()) {
+					// expression-valued group key (issue #87): JPQL result variables
+					// are not addressable in GROUP BY — re-render the expression there
+					String alias = key.getAlias();
+					String rendered = operand(key.getExpression(), null);
+					registerKey(alias, alias, rowKeys, rowAliases);
+					columnExpressions.put(alias, rendered);
+					appendColumn(columns, rendered + " AS " + alias);
+					groupByItems.add(rendered);
 				}
 				for (Aggregate aggregate : group.getAggregates()) {
 					String key = aggregate.getAlias();
 					registerKey(key, key, rowKeys, rowAliases);
-					String rendered = aggregateFunction(aggregate);
+					String rendered = aggregateFunction(aggregate, aggregateArgument(aggregate));
 					columnExpressions.put(key, rendered);
 					appendColumn(columns, rendered + " AS " + key);
 				}
-				if (!group.getPaths().isEmpty()) {
-					StringBuilder groupBy = new StringBuilder(" GROUP BY ");
-					for (int i = 0; i < group.getPaths().size(); i++) {
-						if (i > 0) {
-							groupBy.append(", ");
-						}
-						groupBy.append(rootPath(group.getPaths().get(i)));
-					}
-					result.groupBy = groupBy.toString();
+				if (!groupByItems.isEmpty()) {
+					result.groupBy = " GROUP BY " + String.join(", ", groupByItems);
 				}
 			} else {
 				if (computations.isEmpty()) {
@@ -486,6 +499,18 @@ public class JpaQueryProcessor implements QueryProcessor {
 				columns.append(", ");
 			}
 			columns.append(column);
+		}
+
+		/**
+		 * The rendered argument of an aggregate function: an expression-valued source
+		 * (issue #87, e.g. an AliasRef to a pre-group compute), a persisted path, or
+		 * the bare group members for COUNT.
+		 */
+		private String aggregateArgument(Aggregate aggregate) throws QueryException {
+			if (aggregate.getSource() != null) {
+				return "(" + operand(aggregate.getSource(), null) + ")";
+			}
+			return aggregate.getPath() == null ? ALIAS : rootPath(aggregate.getPath());
 		}
 
 		private String render(Expression expression) throws QueryException {

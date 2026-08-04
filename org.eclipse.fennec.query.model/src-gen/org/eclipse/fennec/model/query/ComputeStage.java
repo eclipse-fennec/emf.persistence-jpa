@@ -22,7 +22,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Alias-bound computed columns (issue #82, revisits decision D3; OData $apply compute). Two positions in v1: terminal (no GroupBy in the pipeline — one row per entity: single-valued attributes plus the computed columns) and after grouping (computations over aggregate aliases/group keys via AliasRef, e.g. Total div Cnt as Avg — visible to a trailing HAVING filter and orderBy). A compute before a GroupBy is refused: group paths and aggregate sources are PropertyPath-typed and cannot address aliases yet (additive follow-up).
+ * Alias-bound computed columns (issue #82, revisits decision D3; OData $apply compute). Three positions: terminal (no GroupBy in the pipeline — one row per entity: single-valued attributes plus the computed columns), after grouping (computations over aggregate aliases/group keys via AliasRef, e.g. Total div Cnt as Avg — visible to a trailing HAVING filter and orderBy), and before grouping (issue #87): the aliases bind a named scope for expression-valued group keys (GroupKey) and aggregate sources (Aggregate.source) — they are no result columns.
  * <!-- end-model-doc -->
  *
  * <p>

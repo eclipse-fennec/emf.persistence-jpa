@@ -28,6 +28,7 @@ import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -102,6 +103,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	private EClass groupByStageEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass groupKeyEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -531,8 +539,48 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
-	public EReference getGroupByStage_Aggregates() {
+	public EReference getGroupByStage_Keys() {
 		return (EReference)groupByStageEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGroupByStage_Aggregates() {
+		return (EReference)groupByStageEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGroupKey() {
+		return groupKeyEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGroupKey_Expression() {
+		return (EReference)groupKeyEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getGroupKey_Alias() {
+		return (EAttribute)groupKeyEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -561,8 +609,18 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EReference getAggregate_Source() {
+		return (EReference)aggregateEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EAttribute getAggregate_Method() {
-		return (EAttribute)aggregateEClass.getEStructuralFeatures().get(1);
+		return (EAttribute)aggregateEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -572,7 +630,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 */
 	@Override
 	public EAttribute getAggregate_Alias() {
-		return (EAttribute)aggregateEClass.getEStructuralFeatures().get(2);
+		return (EAttribute)aggregateEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -752,10 +810,16 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		groupByStageEClass = createEClass(GROUP_BY_STAGE);
 		createEReference(groupByStageEClass, GROUP_BY_STAGE__PATHS);
+		createEReference(groupByStageEClass, GROUP_BY_STAGE__KEYS);
 		createEReference(groupByStageEClass, GROUP_BY_STAGE__AGGREGATES);
+
+		groupKeyEClass = createEClass(GROUP_KEY);
+		createEReference(groupKeyEClass, GROUP_KEY__EXPRESSION);
+		createEAttribute(groupKeyEClass, GROUP_KEY__ALIAS);
 
 		aggregateEClass = createEClass(AGGREGATE);
 		createEReference(aggregateEClass, AGGREGATE__PATH);
+		createEReference(aggregateEClass, AGGREGATE__SOURCE);
 		createEAttribute(aggregateEClass, AGGREGATE__METHOD);
 		createEAttribute(aggregateEClass, AGGREGATE__ALIAS);
 
@@ -853,10 +917,16 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		initEClass(groupByStageEClass, GroupByStage.class, "GroupByStage", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getGroupByStage_Paths(), theExpressionPackage.getPropertyPath(), null, "paths", null, 0, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGroupByStage_Keys(), this.getGroupKey(), null, "keys", null, 0, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getGroupByStage_Aggregates(), this.getAggregate(), null, "aggregates", null, 1, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(groupKeyEClass, GroupKey.class, "GroupKey", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGroupKey_Expression(), theExpressionPackage.getExpression(), null, "expression", null, 1, 1, GroupKey.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getGroupKey_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, GroupKey.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(aggregateEClass, Aggregate.class, "Aggregate", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getAggregate_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 0, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getAggregate_Source(), theExpressionPackage.getExpression(), null, "source", null, 0, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getAggregate_Method(), this.getAggregateMethod(), "method", null, 1, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getAggregate_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, Aggregate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 

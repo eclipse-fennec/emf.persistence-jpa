@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -764,15 +765,35 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
-	void computeBeforeGroupByIsRefused() {
+	void preGroupComputeFeedsGroupKeysAndSources() throws QueryException {
+		// floor(age/25) buckets Alice(30)/Bob(40) as 1, Carol(50) as 2 (issue #87)
 		Query query = QueryBuilder.from(personClass)
-				.computeAs("doubled", Expressions.path(personAge).times(2).toExpression())
-				.groupBy(personName)
+				.computeAs("band", Expressions.path(personAge).dividedBy(25).floor().toExpression())
+				.groupByAs("bucket", Expressions.aliasRef("band").toExpression())
+				.sum("bandSum", Expressions.aliasRef("band").toExpression())
+				.countOf("cnt")
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).hasSize(2);
+			Map<Integer, QueryResultRow> byBucket = rows.stream()
+					.collect(Collectors.toMap(row -> ((Number) row.get("bucket")).intValue(), row -> row));
+			assertThat(((Number) byBucket.get(1).get("cnt")).longValue()).isEqualTo(2);
+			assertThat(((Number) byBucket.get(1).get("bandSum")).intValue()).isEqualTo(2);
+			assertThat(((Number) byBucket.get(2).get("cnt")).longValue()).isEqualTo(1);
+			assertThat(((Number) byBucket.get(2).get("bandSum")).intValue()).isEqualTo(2);
+		}
+	}
+
+	@Test
+	void unknownAliasInGroupKeyIsRefused() {
+		Query query = QueryBuilder.from(personClass)
+				.groupByAs("bucket", Expressions.aliasRef("ghost").toExpression())
 				.countOf("cnt")
 				.build();
 		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
 				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("before GroupBy");
+				.hasMessageContaining("ghost");
 	}
 
 	@Test

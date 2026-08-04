@@ -74,6 +74,7 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 			case QueryPackage.PIPELINE: return createPipeline();
 			case QueryPackage.FILTER_STAGE: return createFilterStage();
 			case QueryPackage.GROUP_BY_STAGE: return createGroupByStage();
+			case QueryPackage.GROUP_KEY: return createGroupKey();
 			case QueryPackage.AGGREGATE: return createAggregate();
 			case QueryPackage.TOP_STAGE: return createTopStage();
 			case QueryPackage.SKIP_STAGE: return createSkipStage();
@@ -193,6 +194,17 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 	public GroupByStage createGroupByStage() {
 		GroupByStageImpl groupByStage = new GroupByStageImpl();
 		return groupByStage;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GroupKey createGroupKey() {
+		GroupKeyImpl groupKey = new GroupKeyImpl();
+		return groupKey;
 	}
 
 	/**

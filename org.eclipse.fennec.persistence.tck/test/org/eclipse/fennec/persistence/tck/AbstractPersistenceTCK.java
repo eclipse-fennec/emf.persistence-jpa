@@ -28,6 +28,7 @@ import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.URI;
@@ -956,6 +957,71 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(rows).hasSize(1);
 			assertThat(((Number) rows.get(0).get("avgAge")).doubleValue()).isEqualTo(30.0);
 			assertThat(((Number) rows.get(0).get("cnt")).longValue()).isEqualTo(2);
+		}
+	}
+
+	@Test
+	public void queryPreGroupComputeFeedsGroupKeysAndSources() throws Exception {
+		saveQueryFixture();
+		// Dora(35) shares the floor(age/10)=3 decade with Alice(30) — the pre-group
+		// compute alias feeds both the group key and an aggregate source (issue #87)
+		save(createBackendResourceSet(), "Person", newPerson(4, "Dora", 35));
+
+		Query query = QueryBuilder.from(personClass)
+				.computeAs("dec", Expressions.path(personAge).dividedBy(10).floor().toExpression())
+				.groupByAs("decade", Expressions.aliasRef("dec").toExpression())
+				.sum("decSum", Expressions.aliasRef("dec").toExpression())
+				.countOf("cnt")
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			Map<Integer, QueryResultRow> byDecade = result.rows()
+					.collect(Collectors.toMap(row -> ((Number) row.get("decade")).intValue(), row -> row));
+			assertThat(byDecade).containsOnlyKeys(3, 4, 5);
+			assertThat(((Number) byDecade.get(3).get("cnt")).longValue()).isEqualTo(2);
+			assertThat(((Number) byDecade.get(3).get("decSum")).intValue()).isEqualTo(6);
+			assertThat(((Number) byDecade.get(4).get("cnt")).longValue()).isEqualTo(1);
+			assertThat(((Number) byDecade.get(5).get("cnt")).longValue()).isEqualTo(1);
+		}
+
+		// differential: the memory oracle computes the same buckets
+		List<EObject> oracle = List.of(
+				newPerson(1, "Alice", 30), newPerson(2, "Bob", 40),
+				newPerson(3, "Carol", 50), newPerson(4, "Dora", 35));
+		try (QueryResult memory = MemoryQueries.execute(query, oracle, null)) {
+			Map<Integer, QueryResultRow> byDecade = memory.rows()
+					.collect(Collectors.toMap(row -> ((Number) row.get("decade")).intValue(), row -> row));
+			assertThat(byDecade).containsOnlyKeys(3, 4, 5);
+			assertThat(((Number) byDecade.get(3).get("cnt")).longValue()).isEqualTo(2);
+			assertThat(((Number) byDecade.get(3).get("decSum")).intValue()).isEqualTo(6);
+		}
+	}
+
+	@Test
+	public void queryGroupByExpressionKeyWithoutCompute() throws Exception {
+		saveQueryFixture();
+		// the expression key needs no pipeline compute (issue #87): floor(age/25)
+		// buckets Alice(30)/Bob(40) together, avg aggregates over an expression source
+		Query query = QueryBuilder.from(personClass)
+				.groupByAs("band", Expressions.path(personAge).dividedBy(25).floor().toExpression())
+				.avg("halfAvg", Expressions.path(personAge).dividedBy(2).toExpression())
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			Map<Integer, QueryResultRow> byBand = result.rows()
+					.collect(Collectors.toMap(row -> ((Number) row.get("band")).intValue(), row -> row));
+			assertThat(byBand).containsOnlyKeys(1, 2);
+			// band 1 = {30, 40}: avg(15, 20) = 17.5; band 2 = {50}: avg(25) = 25
+			assertThat(((Number) byBand.get(1).get("halfAvg")).doubleValue()).isEqualTo(17.5);
+			assertThat(((Number) byBand.get(2).get("halfAvg")).doubleValue()).isEqualTo(25.0);
+		}
+
+		List<EObject> oracle = List.of(
+				newPerson(1, "Alice", 30), newPerson(2, "Bob", 40), newPerson(3, "Carol", 50));
+		try (QueryResult memory = MemoryQueries.execute(query, oracle, null)) {
+			Map<Integer, QueryResultRow> byBand = memory.rows()
+					.collect(Collectors.toMap(row -> ((Number) row.get("band")).intValue(), row -> row));
+			assertThat(byBand).containsOnlyKeys(1, 2);
+			assertThat(((Number) byBand.get(1).get("halfAvg")).doubleValue()).isEqualTo(17.5);
+			assertThat(((Number) byBand.get(2).get("halfAvg")).doubleValue()).isEqualTo(25.0);
 		}
 	}
 

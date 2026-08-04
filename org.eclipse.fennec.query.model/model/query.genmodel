@@ -4,10 +4,23 @@
     modelDirectory="/org.eclipse.fennec.query.model/src-gen" modelPluginID="org.eclipse.fennec.query.model"
     modelName="Query" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
-    operationReflection="true" importOrganizing="true" oSGiCompatible="true" usedGenPackages="../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression">
+    usedGenPackages="../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
   <foreignModel>query.ecore</foreignModel>
   <genPackages prefix="Query" basePackage="org.eclipse.fennec.model" disposableProviderFactory="true"
       ecorePackage="query.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//SortDirection">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/ASC"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/DESC"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//AggregateMethod">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/SUM"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MIN"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MAX"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/AVG"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/COUNT_DISTINCT"/>
+    </genEnums>
     <genClasses ecoreClass="query.ecore#//Query">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference query.ecore#//Query/from"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/predicate"/>
@@ -45,10 +58,16 @@
     </genClasses>
     <genClasses ecoreClass="query.ecore#//GroupByStage">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/paths"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/keys"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/aggregates"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//GroupKey">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupKey/expression"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//GroupKey/alias"/>
     </genClasses>
     <genClasses ecoreClass="query.ecore#//Aggregate">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Aggregate/path"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Aggregate/source"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Aggregate/method"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Aggregate/alias"/>
     </genClasses>
@@ -65,17 +84,5 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Computation/expression"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Computation/alias"/>
     </genClasses>
-    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//SortDirection">
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/ASC"/>
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/DESC"/>
-    </genEnums>
-    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//AggregateMethod">
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/SUM"/>
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MIN"/>
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MAX"/>
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/AVG"/>
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/COUNT"/>
-      <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/COUNT_DISTINCT"/>
-    </genEnums>
   </genPackages>
 </genmodel:GenModel>

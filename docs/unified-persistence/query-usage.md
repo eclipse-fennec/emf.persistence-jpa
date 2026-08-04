@@ -64,7 +64,18 @@ Query query = QueryBuilder.from(personClass)
   aggregate aliases/group keys via `aliasRef(...)`); `.having(aliasRef("cnt").ge(2))`
   filters grouped rows. JPA renders GROUP BY/HAVING (columns re-rendered — JPQL result
   variables are not addressable there), Mongo `$set`/`$match`, memory evaluates in row
-  space. A compute **before** the grouping is refused for now.
+  space.
+- **Pre-group computes + expression keys/sources** (#87): a compute **before** the
+  grouping binds a named scope — `.computeAs("dec",
+  path(age).dividedBy(10).floor().toExpression()).groupByAs("decade",
+  aliasRef("dec").toExpression()).sum("decSum", aliasRef("dec").toExpression())`
+  groups by the computed bucket and aggregates over it. `groupByAs(alias, expression)`
+  declares an expression-valued group key (mandatory alias = result column), the
+  aggregate overloads with an `Expression` source (`sum/avg/min/max/countDistinct`)
+  aggregate arbitrary value expressions. Pre-group compute aliases are no result
+  columns. JPA re-renders the expressions inline (SELECT/GROUP BY/aggregate argument),
+  Mongo evaluates them in `$group`/`_id` and the accumulators over the `$set` fields,
+  memory per object with the alias environment.
 - **Collection counts** (#81, #86): `count(propertyPath(addresses)).ge(2)` and the
   filtered `count(propertyPath(reviews), r -> r.path(rating).gt(3)).ge(2)` — value
   expressions, missing/empty collections count 0. JPA renders `SIZE` resp. a
@@ -270,6 +281,7 @@ Declared via `QueryProcessor.capabilities()`; `validate()` reports every violati
 | Sort / top / skip / count | ✅ | ✅ | row sorting addresses output keys |
 | DISTINCT | ✅ incl. whole entities | ⚠️ projection only (code 101) | |
 | Projection / grouped + whole-set aggregation, COUNT_DISTINCT | ✅ | ✅ (`$addToSet`+`$size`) | group keys alias-addressable |
+| Expression group keys / aggregate sources (#87) | ✅ inline re-rendering | ✅ `$group`/`_id` + accumulator args | `GROUP_EXPRESSION`; incl. `aliasRef` to pre-group compute aliases |
 | **Multi-stage pipelines** | ❌ refused | ✅ **native** ($match/$limit/$skip in stage order) | the capability asymmetry showcase |
 | `expand` fetch hints | ✅ LEFT JOIN FETCH (depth 1) | ❌ | |
 | Parameters (`ParameterRef`) | ✅ | ✅ | model-level, no string convention |
@@ -277,8 +289,9 @@ Declared via `QueryProcessor.capabilities()`; `validate()` reports every violati
 | AS_OF / SERIES_RANGE | ❌ | ❌ | reserved (concept §14) |
 
 Refusal codes (`QueryValidator.DIAGNOSTIC_SOURCE`): `1` unsupported feature, `2` depth
-exceeded, `100` Mongo cross-document/non-embedded, `101` Mongo distinct without
-projection.
+exceeded, `3` division by a literal zero, `4` malformed aggregate (both or — except
+COUNT — neither of `path`/`source`, issue #87), `100` Mongo cross-document/non-embedded,
+`101` Mongo distinct without projection.
 
 ## 5. The memory backend
 

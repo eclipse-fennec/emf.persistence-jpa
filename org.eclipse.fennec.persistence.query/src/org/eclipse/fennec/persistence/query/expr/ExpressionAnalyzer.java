@@ -42,9 +42,11 @@ import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -82,6 +84,7 @@ public final class ExpressionAnalyzer {
 		Set<QueryFeature> features = EnumSet.noneOf(QueryFeature.class);
 		int[] maxDepth = { 0 };
 		boolean[] zeroDivision = { false };
+		String[] invalidAggregate = { null };
 
 		if (query.getFrom() != null) {
 			features.add(QueryFeature.TYPE_FILTER);
@@ -107,7 +110,8 @@ public final class ExpressionAnalyzer {
 				features.add(QueryFeature.PROJECTION_NESTED);
 			}
 		}
-		boolean aggregating = analyzePipeline(query.getApply(), features, maxDepth, zeroDivision);
+		boolean aggregating = analyzePipeline(query.getApply(), features, maxDepth, zeroDivision,
+				invalidAggregate);
 		if (!query.getExpand().isEmpty()) {
 			features.add(QueryFeature.EXPAND);
 			query.getExpand().forEach(expand -> path(expand, features, maxDepth));
@@ -129,7 +133,7 @@ public final class ExpressionAnalyzer {
 		}
 
 		QueryShape shape = deriveShape(query, aggregating);
-		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0]);
+		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0]);
 	}
 
 	private static QueryShape deriveShape(Query query, boolean aggregating) {
@@ -146,7 +150,7 @@ public final class ExpressionAnalyzer {
 	}
 
 	private static boolean analyzePipeline(Pipeline pipeline, Set<QueryFeature> features, int[] maxDepth,
-			boolean[] zeroDivision) {
+			boolean[] zeroDivision, String[] invalidAggregate) {
 		if (pipeline == null) {
 			return false;
 		}
@@ -157,10 +161,29 @@ public final class ExpressionAnalyzer {
 				aggregating = true;
 				features.add(QueryFeature.GROUP_BY);
 				groupBy.getPaths().forEach(p -> path(p, features, maxDepth));
+				for (GroupKey key : groupBy.getKeys()) {
+					// expression-valued group keys (issue #87)
+					features.add(QueryFeature.GROUP_EXPRESSION);
+					walk(key.getExpression(), features, maxDepth, zeroDivision);
+				}
 				for (Aggregate aggregate : groupBy.getAggregates()) {
 					features.add(aggregateFeature(aggregate));
+					if (aggregate.getPath() != null && aggregate.getSource() != null) {
+						invalidAggregate[0] = "Aggregate '" + aggregate.getAlias()
+								+ "' sets both path and source — exactly one is allowed";
+					} else if (aggregate.getPath() == null && aggregate.getSource() == null
+							&& aggregate.getMethod() != AggregateMethod.COUNT) {
+						invalidAggregate[0] = "Aggregate '" + aggregate.getAlias() + "' ("
+								+ aggregate.getMethod() + ") needs a path or a source"
+								+ " — only COUNT aggregates the bare group members";
+					}
 					if (aggregate.getPath() != null) {
 						path(aggregate.getPath(), features, maxDepth);
+					}
+					if (aggregate.getSource() != null) {
+						// expression-valued aggregate sources (issue #87)
+						features.add(QueryFeature.GROUP_EXPRESSION);
+						walk(aggregate.getSource(), features, maxDepth, zeroDivision);
 					}
 				}
 			} else if (stage instanceof FilterStage filter) {

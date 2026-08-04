@@ -549,6 +549,30 @@ final class MemoryPredicate {
 		return operand(expression, candidate, Map.of());
 	}
 
+	/**
+	 * Evaluates a value expression against a candidate with a pre-group compute alias
+	 * environment (issue #87): AliasRef resolves to the computed value, arithmetic and
+	 * numeric functions recurse with the environment, everything else evaluates in
+	 * plain object space.
+	 */
+	Object value(Expression expression, EObject candidate, Map<String, Object> aliasValues) {
+		if (expression instanceof AliasRef aliasRef) {
+			return aliasValues.get(aliasRef.getAlias());
+		}
+		if (expression instanceof Arithmetic arithmetic) {
+			return arithmetic(arithmetic.getOperator(),
+					value(arithmetic.getLeft(), candidate, aliasValues),
+					value(arithmetic.getRight(), candidate, aliasValues));
+		}
+		if (expression instanceof Negate negate) {
+			return negate(value(negate.getOperand(), candidate, aliasValues));
+		}
+		if (expression instanceof NumericFunction function) {
+			return rounded(function.getKind(), value(function.getSource(), candidate, aliasValues));
+		}
+		return operand(expression, candidate, Map.of());
+	}
+
 	private Object pathValue(PropertyPath path, EObject candidate, Map<Variable, Object> bindings) {
 		Object current = path.getBase() == null ? candidate : bindings.get(path.getBase());
 		if (path.getCastBase() != null) {

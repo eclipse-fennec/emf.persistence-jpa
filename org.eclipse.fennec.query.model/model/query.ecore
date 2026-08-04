@@ -120,19 +120,33 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="GroupByStage" eSuperTypes="#//Stage">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Grouping over the given paths with aggregate outputs. Without paths the aggregates apply to the whole input (single row)."/>
+      <details key="documentation" value="Grouping over the given paths and expression keys with aggregate outputs. The effective group keys are paths plus keys; without either the aggregates apply to the whole input (single row). Expression keys (issue #87) accept arbitrary expressions including AliasRef to a pre-group compute alias."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="paths" upperBound="-1"
         eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
         containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="keys" upperBound="-1"
+        eType="#//GroupKey" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="aggregates" lowerBound="1"
         upperBound="-1" eType="#//Aggregate" containment="true"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="GroupKey">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One expression-valued group key (issue #87). The mandatory alias names the key in the result rows and makes it addressable via AliasRef in post-grouping stages — expression keys without a name would leave the row schema undefined."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="expression" lowerBound="1"
+        eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//Expression"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alias" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Aggregate">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="One aggregate output. path is optional for COUNT (count of group members)."/>
+      <details key="documentation" value="One aggregate output over exactly one of path or source (the validator refuses both or, except for COUNT, neither). path addresses a persisted attribute; source (issue #87) accepts an expression, notably an AliasRef to a pre-group compute alias. Both are optional for COUNT (count of group members)."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="path" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//Expression"
         containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1"
         eType="#//AggregateMethod"/>
@@ -149,7 +163,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ComputeStage" eSuperTypes="#//Stage">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Alias-bound computed columns (issue #82, revisits decision D3; OData $apply compute). Two positions in v1: terminal (no GroupBy in the pipeline — one row per entity: single-valued attributes plus the computed columns) and after grouping (computations over aggregate aliases/group keys via AliasRef, e.g. Total div Cnt as Avg — visible to a trailing HAVING filter and orderBy). A compute before a GroupBy is refused: group paths and aggregate sources are PropertyPath-typed and cannot address aliases yet (additive follow-up)."/>
+      <details key="documentation" value="Alias-bound computed columns (issue #82, revisits decision D3; OData $apply compute). Three positions: terminal (no GroupBy in the pipeline — one row per entity: single-valued attributes plus the computed columns), after grouping (computations over aggregate aliases/group keys via AliasRef, e.g. Total div Cnt as Avg — visible to a trailing HAVING filter and orderBy), and before grouping (issue #87): the aliases bind a named scope for expression-valued group keys (GroupKey) and aggregate sources (Aggregate.source) — they are no result columns."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="computations" lowerBound="1"
         upperBound="-1" eType="#//Computation" containment="true"/>

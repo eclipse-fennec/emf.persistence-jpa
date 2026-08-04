@@ -568,6 +568,19 @@ public enum QueryFeature implements Enumerator {
 	SORT_EXPRESSION(73, "SORT_EXPRESSION", "SORT_EXPRESSION"),
 
 	/**
+	 * The '<em><b>GROUP EXPRESSION</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Expression-valued group keys (GroupKey) and aggregate sources (Aggregate.source), including AliasRef to a pre-group compute alias (issue #87). JPQL re-renders the expression inline in SELECT/GROUP BY/aggregate arguments; Mongo evaluates it in $group/_id and accumulator arguments over $set fields; memory evaluates it per object with the compute alias environment.
+	 * <!-- end-model-doc -->
+	 * @see #GROUP_EXPRESSION_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	GROUP_EXPRESSION(74, "GROUP_EXPRESSION", "GROUP_EXPRESSION"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1207,6 +1220,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int SORT_EXPRESSION_VALUE = 73;
 
 	/**
+	 * The '<em><b>GROUP EXPRESSION</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Expression-valued group keys (GroupKey) and aggregate sources (Aggregate.source), including AliasRef to a pre-group compute alias (issue #87). JPQL re-renders the expression inline in SELECT/GROUP BY/aggregate arguments; Mongo evaluates it in $group/_id and accumulator arguments over $set fields; memory evaluates it per object with the compute alias environment.
+	 * <!-- end-model-doc -->
+	 * @see #GROUP_EXPRESSION
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int GROUP_EXPRESSION_VALUE = 74;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1325,6 +1352,7 @@ public enum QueryFeature implements Enumerator {
 			COLLECTION_COUNT_FILTERED,
 			PIPELINE_COMPUTE,
 			SORT_EXPRESSION,
+			GROUP_EXPRESSION,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1427,6 +1455,7 @@ public enum QueryFeature implements Enumerator {
 			case COLLECTION_COUNT_FILTERED_VALUE: return COLLECTION_COUNT_FILTERED;
 			case PIPELINE_COMPUTE_VALUE: return PIPELINE_COMPUTE;
 			case SORT_EXPRESSION_VALUE: return SORT_EXPRESSION;
+			case GROUP_EXPRESSION_VALUE: return GROUP_EXPRESSION;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

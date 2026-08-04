@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:a21e4bafdd607b9e3e4b6a45989f9b188b2a8a0abebdf8b92b9f83b2a28e0303", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:fd15aaedb53784f9ec63e1bd3daed75a8836b7466a1903d53c2e029d57c850f8", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -491,13 +491,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int GROUP_BY_STAGE__PATHS = STAGE_FEATURE_COUNT + 0;
 
 	/**
+	 * The feature id for the '<em><b>Keys</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GROUP_BY_STAGE__KEYS = STAGE_FEATURE_COUNT + 1;
+
+	/**
 	 * The feature id for the '<em><b>Aggregates</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int GROUP_BY_STAGE__AGGREGATES = STAGE_FEATURE_COUNT + 1;
+	int GROUP_BY_STAGE__AGGREGATES = STAGE_FEATURE_COUNT + 2;
 
 	/**
 	 * The number of structural features of the '<em>Group By Stage</em>' class.
@@ -506,7 +515,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int GROUP_BY_STAGE_FEATURE_COUNT = STAGE_FEATURE_COUNT + 2;
+	int GROUP_BY_STAGE_FEATURE_COUNT = STAGE_FEATURE_COUNT + 3;
 
 	/**
 	 * The number of operations of the '<em>Group By Stage</em>' class.
@@ -518,6 +527,52 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int GROUP_BY_STAGE_OPERATION_COUNT = STAGE_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.GroupKeyImpl <em>Group Key</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.GroupKeyImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGroupKey()
+	 * @generated
+	 */
+	int GROUP_KEY = 8;
+
+	/**
+	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GROUP_KEY__EXPRESSION = 0;
+
+	/**
+	 * The feature id for the '<em><b>Alias</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GROUP_KEY__ALIAS = 1;
+
+	/**
+	 * The number of structural features of the '<em>Group Key</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GROUP_KEY_FEATURE_COUNT = 2;
+
+	/**
+	 * The number of operations of the '<em>Group Key</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GROUP_KEY_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.AggregateImpl <em>Aggregate</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -525,7 +580,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregate()
 	 * @generated
 	 */
-	int AGGREGATE = 8;
+	int AGGREGATE = 9;
 
 	/**
 	 * The feature id for the '<em><b>Path</b></em>' containment reference.
@@ -537,13 +592,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int AGGREGATE__PATH = 0;
 
 	/**
+	 * The feature id for the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int AGGREGATE__SOURCE = 1;
+
+	/**
 	 * The feature id for the '<em><b>Method</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int AGGREGATE__METHOD = 1;
+	int AGGREGATE__METHOD = 2;
 
 	/**
 	 * The feature id for the '<em><b>Alias</b></em>' attribute.
@@ -552,7 +616,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int AGGREGATE__ALIAS = 2;
+	int AGGREGATE__ALIAS = 3;
 
 	/**
 	 * The number of structural features of the '<em>Aggregate</em>' class.
@@ -561,7 +625,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int AGGREGATE_FEATURE_COUNT = 3;
+	int AGGREGATE_FEATURE_COUNT = 4;
 
 	/**
 	 * The number of operations of the '<em>Aggregate</em>' class.
@@ -580,7 +644,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getTopStage()
 	 * @generated
 	 */
-	int TOP_STAGE = 9;
+	int TOP_STAGE = 10;
 
 	/**
 	 * The feature id for the '<em><b>Count</b></em>' attribute.
@@ -617,7 +681,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSkipStage()
 	 * @generated
 	 */
-	int SKIP_STAGE = 10;
+	int SKIP_STAGE = 11;
 
 	/**
 	 * The feature id for the '<em><b>Count</b></em>' attribute.
@@ -654,7 +718,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputeStage()
 	 * @generated
 	 */
-	int COMPUTE_STAGE = 11;
+	int COMPUTE_STAGE = 12;
 
 	/**
 	 * The feature id for the '<em><b>Computations</b></em>' containment reference list.
@@ -691,7 +755,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputation()
 	 * @generated
 	 */
-	int COMPUTATION = 12;
+	int COMPUTATION = 13;
 
 	/**
 	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
@@ -737,7 +801,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSortDirection()
 	 * @generated
 	 */
-	int SORT_DIRECTION = 13;
+	int SORT_DIRECTION = 14;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}' enum.
@@ -747,7 +811,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregateMethod()
 	 * @generated
 	 */
-	int AGGREGATE_METHOD = 14;
+	int AGGREGATE_METHOD = 15;
 
 
 	/**
@@ -1084,6 +1148,17 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getGroupByStage_Paths();
 
 	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.GroupByStage#getKeys <em>Keys</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Keys</em>'.
+	 * @see org.eclipse.fennec.model.query.GroupByStage#getKeys()
+	 * @see #getGroupByStage()
+	 * @generated
+	 */
+	EReference getGroupByStage_Keys();
+
+	/**
 	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.GroupByStage#getAggregates <em>Aggregates</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1093,6 +1168,38 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getGroupByStage_Aggregates();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.GroupKey <em>Group Key</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Group Key</em>'.
+	 * @see org.eclipse.fennec.model.query.GroupKey
+	 * @generated
+	 */
+	EClass getGroupKey();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.GroupKey#getExpression <em>Expression</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Expression</em>'.
+	 * @see org.eclipse.fennec.model.query.GroupKey#getExpression()
+	 * @see #getGroupKey()
+	 * @generated
+	 */
+	EReference getGroupKey_Expression();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.GroupKey#getAlias <em>Alias</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Alias</em>'.
+	 * @see org.eclipse.fennec.model.query.GroupKey#getAlias()
+	 * @see #getGroupKey()
+	 * @generated
+	 */
+	EAttribute getGroupKey_Alias();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Aggregate <em>Aggregate</em>}'.
@@ -1114,6 +1221,17 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getAggregate_Path();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.Aggregate#getSource <em>Source</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Source</em>'.
+	 * @see org.eclipse.fennec.model.query.Aggregate#getSource()
+	 * @see #getAggregate()
+	 * @generated
+	 */
+	EReference getAggregate_Source();
 
 	/**
 	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.Aggregate#getMethod <em>Method</em>}'.
@@ -1540,12 +1658,46 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference GROUP_BY_STAGE__PATHS = eINSTANCE.getGroupByStage_Paths();
 
 		/**
+		 * The meta object literal for the '<em><b>Keys</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GROUP_BY_STAGE__KEYS = eINSTANCE.getGroupByStage_Keys();
+
+		/**
 		 * The meta object literal for the '<em><b>Aggregates</b></em>' containment reference list feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
 		EReference GROUP_BY_STAGE__AGGREGATES = eINSTANCE.getGroupByStage_Aggregates();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.GroupKeyImpl <em>Group Key</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.GroupKeyImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGroupKey()
+		 * @generated
+		 */
+		EClass GROUP_KEY = eINSTANCE.getGroupKey();
+
+		/**
+		 * The meta object literal for the '<em><b>Expression</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GROUP_KEY__EXPRESSION = eINSTANCE.getGroupKey_Expression();
+
+		/**
+		 * The meta object literal for the '<em><b>Alias</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute GROUP_KEY__ALIAS = eINSTANCE.getGroupKey_Alias();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.AggregateImpl <em>Aggregate</em>}' class.
@@ -1564,6 +1716,14 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference AGGREGATE__PATH = eINSTANCE.getAggregate_Path();
+
+		/**
+		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference AGGREGATE__SOURCE = eINSTANCE.getAggregate_Source();
 
 		/**
 		 * The meta object literal for the '<em><b>Method</b></em>' attribute feature.

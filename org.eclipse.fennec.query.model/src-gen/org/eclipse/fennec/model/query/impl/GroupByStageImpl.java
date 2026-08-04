@@ -28,6 +28,7 @@ import org.eclipse.fennec.model.expression.PropertyPath;
 
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.QueryPackage;
 
 /**
@@ -39,6 +40,7 @@ import org.eclipse.fennec.model.query.QueryPackage;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getPaths <em>Paths</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getKeys <em>Keys</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getAggregates <em>Aggregates</em>}</li>
  * </ul>
  *
@@ -54,6 +56,16 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 	 * @ordered
 	 */
 	protected EList<PropertyPath> paths;
+
+	/**
+	 * The cached value of the '{@link #getKeys() <em>Keys</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getKeys()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<GroupKey> keys;
 
 	/**
 	 * The cached value of the '{@link #getAggregates() <em>Aggregates</em>}' containment reference list.
@@ -103,6 +115,19 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 	 * @generated
 	 */
 	@Override
+	public EList<GroupKey> getKeys() {
+		if (keys == null) {
+			keys = new EObjectContainmentEList<GroupKey>(GroupKey.class, this, QueryPackage.GROUP_BY_STAGE__KEYS);
+		}
+		return keys;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EList<Aggregate> getAggregates() {
 		if (aggregates == null) {
 			aggregates = new EObjectContainmentEList<Aggregate>(Aggregate.class, this, QueryPackage.GROUP_BY_STAGE__AGGREGATES);
@@ -120,6 +145,8 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 		switch (featureID) {
 			case QueryPackage.GROUP_BY_STAGE__PATHS:
 				return ((InternalEList<?>)getPaths()).basicRemove(otherEnd, msgs);
+			case QueryPackage.GROUP_BY_STAGE__KEYS:
+				return ((InternalEList<?>)getKeys()).basicRemove(otherEnd, msgs);
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				return ((InternalEList<?>)getAggregates()).basicRemove(otherEnd, msgs);
 		}
@@ -136,6 +163,8 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 		switch (featureID) {
 			case QueryPackage.GROUP_BY_STAGE__PATHS:
 				return getPaths();
+			case QueryPackage.GROUP_BY_STAGE__KEYS:
+				return getKeys();
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				return getAggregates();
 		}
@@ -154,6 +183,10 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 			case QueryPackage.GROUP_BY_STAGE__PATHS:
 				getPaths().clear();
 				getPaths().addAll((Collection<? extends PropertyPath>)newValue);
+				return;
+			case QueryPackage.GROUP_BY_STAGE__KEYS:
+				getKeys().clear();
+				getKeys().addAll((Collection<? extends GroupKey>)newValue);
 				return;
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				getAggregates().clear();
@@ -174,6 +207,9 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 			case QueryPackage.GROUP_BY_STAGE__PATHS:
 				getPaths().clear();
 				return;
+			case QueryPackage.GROUP_BY_STAGE__KEYS:
+				getKeys().clear();
+				return;
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				getAggregates().clear();
 				return;
@@ -191,6 +227,8 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 		switch (featureID) {
 			case QueryPackage.GROUP_BY_STAGE__PATHS:
 				return paths != null && !paths.isEmpty();
+			case QueryPackage.GROUP_BY_STAGE__KEYS:
+				return keys != null && !keys.isEmpty();
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				return aggregates != null && !aggregates.isEmpty();
 		}

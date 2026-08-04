@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.Selection;
@@ -192,6 +193,8 @@ public final class MemoryQueryPlan implements QueryPlan {
 	private QueryResult executePipeline(Stream<EObject> objects) {
 		Stream<EObject> current = objects;
 		List<Stage> stages = source.getApply().getStages();
+		boolean groupsSomewhere = stages.stream().anyMatch(GroupByStage.class::isInstance);
+		List<Computation> preComputations = new ArrayList<>();
 		for (int i = 0; i < stages.size(); i++) {
 			Stage stage = stages.get(i);
 			if (stage instanceof FilterStage filter) {
@@ -201,15 +204,22 @@ public final class MemoryQueryPlan implements QueryPlan {
 			} else if (stage instanceof SkipStage skip) {
 				current = current.skip(skip.getCount());
 			} else if (stage instanceof GroupByStage groupBy) {
-				int width = groupBy.getPaths().size() + groupBy.getAggregates().size();
-				return rows(rowStages(aggregate(groupBy, current), width, stages, i + 1));
-			} else if (stage instanceof ComputeStage) {
-				// terminal computes (a compute before GroupBy is refused at translation):
-				// one row per entity, single-valued attributes first (issue #82)
-				int width = (int) source.getFrom().getEAllAttributes().stream()
-						.filter(attribute -> !attribute.isMany()).count();
-				return rows(rowStages(current.map(object -> terminalRow(object, width)),
-						width, stages, i));
+				int width = groupBy.getPaths().size() + groupBy.getKeys().size()
+						+ groupBy.getAggregates().size();
+				return rows(rowStages(aggregate(groupBy, current, preComputations), width, stages, i + 1));
+			} else if (stage instanceof ComputeStage compute) {
+				if (groupsSomewhere) {
+					// pre-group compute (issue #87): the aliases feed group keys and
+					// aggregate sources, evaluated per object at grouping time
+					preComputations.addAll(compute.getComputations());
+				} else {
+					// terminal computes: one row per entity, single-valued attributes
+					// first (issue #82)
+					int width = (int) source.getFrom().getEAllAttributes().stream()
+							.filter(attribute -> !attribute.isMany()).count();
+					return rows(rowStages(current.map(object -> terminalRow(object, width)),
+							width, stages, i));
+				}
 			}
 		}
 		// no GroupBy stage: the pipeline stayed in object space
@@ -267,16 +277,26 @@ public final class MemoryQueryPlan implements QueryPlan {
 		return QueryResultRows.of(rowAliases.subList(0, values.size()), values);
 	}
 
-	private Stream<QueryResultRow> aggregate(GroupByStage groupBy, Stream<EObject> objects) {
-		Map<List<Object>, List<EObject>> groups = new LinkedHashMap<>();
+	/** A group member with its pre-group compute alias environment (issue #87). */
+	private record ComputedMember(EObject object, Map<String, Object> aliasValues) {
+	}
+
+	private Stream<QueryResultRow> aggregate(GroupByStage groupBy, Stream<EObject> objects,
+			List<Computation> preComputations) {
+		Map<List<Object>, List<ComputedMember>> groups = new LinkedHashMap<>();
 		objects.forEach(object -> {
-			List<Object> key = new ArrayList<>(groupBy.getPaths().size());
+			Map<String, Object> aliasValues = aliasValues(object, preComputations);
+			List<Object> key = new ArrayList<>(groupBy.getPaths().size() + groupBy.getKeys().size());
 			for (PropertyPath path : groupBy.getPaths()) {
 				key.add(predicate.pathValue(path, object));
 			}
-			groups.computeIfAbsent(key, any -> new ArrayList<>()).add(object);
+			for (GroupKey groupKey : groupBy.getKeys()) {
+				// expression-valued keys (issue #87), e.g. over pre-group compute aliases
+				key.add(predicate.value(groupKey.getExpression(), object, aliasValues));
+			}
+			groups.computeIfAbsent(key, any -> new ArrayList<>()).add(new ComputedMember(object, aliasValues));
 		});
-		if (groups.isEmpty() && groupBy.getPaths().isEmpty()) {
+		if (groups.isEmpty() && groupBy.getPaths().isEmpty() && groupBy.getKeys().isEmpty()) {
 			// whole-set aggregation always yields one row, even over no matches
 			groups.put(List.of(), List.of());
 		}
@@ -291,13 +311,28 @@ public final class MemoryQueryPlan implements QueryPlan {
 		});
 	}
 
-	private Object aggregateValue(Aggregate aggregate, List<EObject> members) {
-		if (aggregate.getPath() == null) {
+	/** Evaluates the pre-group computations per object; later aliases see earlier ones. */
+	private Map<String, Object> aliasValues(EObject object, List<Computation> preComputations) {
+		if (preComputations.isEmpty()) {
+			return Map.of();
+		}
+		Map<String, Object> aliasValues = new LinkedHashMap<>();
+		for (Computation computation : preComputations) {
+			aliasValues.put(computation.getAlias(),
+					predicate.value(computation.getExpression(), object, aliasValues));
+		}
+		return aliasValues;
+	}
+
+	private Object aggregateValue(Aggregate aggregate, List<ComputedMember> members) {
+		if (aggregate.getPath() == null && aggregate.getSource() == null) {
 			// COUNT over the group itself
 			return (long) members.size();
 		}
 		List<Object> values = members.stream()
-				.map(member -> predicate.pathValue(aggregate.getPath(), member))
+				.map(member -> aggregate.getSource() != null
+						? predicate.value(aggregate.getSource(), member.object(), member.aliasValues())
+						: predicate.pathValue(aggregate.getPath(), member.object()))
 				.filter(Objects::nonNull)
 				.toList();
 		return switch (aggregate.getMethod()) {

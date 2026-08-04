@@ -46,6 +46,12 @@ public final class QueryValidator {
 	/** Diagnostic code: an arithmetic DIV/MOD divides by a literal zero (issue #76). */
 	public static final int CODE_DIVISION_BY_ZERO = 3;
 
+	/**
+	 * Diagnostic code: an {@code Aggregate} sets both or (except COUNT) neither of
+	 * {@code path}/{@code source} (issue #87).
+	 */
+	public static final int CODE_INVALID_AGGREGATE = 4;
+
 	private QueryValidator() {
 	}
 
@@ -95,6 +101,12 @@ public final class QueryValidator {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_DIVISION_BY_ZERO,
 					"Query divides by a literal zero (root type '" + rootName
 							+ "') — the expression can never evaluate",
+					new Object[] { analysis }));
+		}
+
+		if (analysis.invalidAggregate() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_AGGREGATE,
+					analysis.invalidAggregate() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

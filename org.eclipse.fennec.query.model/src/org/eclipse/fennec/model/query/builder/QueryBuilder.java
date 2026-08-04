@@ -25,6 +25,7 @@ import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -198,6 +199,24 @@ public final class QueryBuilder {
 	}
 
 	/**
+	 * Declares an expression-valued group key (issue #87). The mandatory alias names
+	 * the key in the result rows; the expression may be any value expression,
+	 * including an {@link Expressions#aliasRef(String) AliasRef} to a preceding
+	 * {@link #computeAs(String, Expression) compute} alias.
+	 *
+	 * @param alias the result column alias of this key
+	 * @param key the key expression
+	 * @return this builder
+	 */
+	public QueryBuilder groupByAs(String alias, Expression key) {
+		GroupKey groupKey = factory.createGroupKey();
+		groupKey.setAlias(Objects.requireNonNull(alias, "group key alias must not be null"));
+		groupKey.setExpression(Objects.requireNonNull(key, "group key expression must not be null"));
+		groupByStage().getKeys().add(groupKey);
+		return this;
+	}
+
+	/**
 	 * Adds an average aggregate output.
 	 *
 	 * @param alias the result column alias
@@ -262,6 +281,38 @@ public final class QueryBuilder {
 		return aggregate(AggregateMethod.COUNT_DISTINCT, alias, segments);
 	}
 
+	/**
+	 * Adds an average aggregate over a value expression (issue #87), e.g. an
+	 * {@link Expressions#aliasRef(String) AliasRef} to a pre-group compute alias.
+	 *
+	 * @param alias the result column alias
+	 * @param source the aggregated expression
+	 * @return this builder
+	 */
+	public QueryBuilder avg(String alias, Expression source) {
+		return aggregate(AggregateMethod.AVG, alias, source);
+	}
+
+	/** Expression-source variant of {@link #min(String, EStructuralFeature...)} (issue #87). */
+	public QueryBuilder min(String alias, Expression source) {
+		return aggregate(AggregateMethod.MIN, alias, source);
+	}
+
+	/** Expression-source variant of {@link #max(String, EStructuralFeature...)} (issue #87). */
+	public QueryBuilder max(String alias, Expression source) {
+		return aggregate(AggregateMethod.MAX, alias, source);
+	}
+
+	/** Expression-source variant of {@link #sum(String, EStructuralFeature...)} (issue #87). */
+	public QueryBuilder sum(String alias, Expression source) {
+		return aggregate(AggregateMethod.SUM, alias, source);
+	}
+
+	/** Expression-source variant of {@link #countDistinct(String, EStructuralFeature...)} (issue #87). */
+	public QueryBuilder countDistinct(String alias, Expression source) {
+		return aggregate(AggregateMethod.COUNT_DISTINCT, alias, source);
+	}
+
 	private QueryBuilder aggregate(AggregateMethod method, String alias, EStructuralFeature... segments) {
 		Aggregate aggregate = factory.createAggregate();
 		aggregate.setMethod(method);
@@ -269,6 +320,15 @@ public final class QueryBuilder {
 		if (segments.length > 0) {
 			aggregate.setPath(Expressions.propertyPath(segments));
 		}
+		groupByStage().getAggregates().add(aggregate);
+		return this;
+	}
+
+	private QueryBuilder aggregate(AggregateMethod method, String alias, Expression source) {
+		Aggregate aggregate = factory.createAggregate();
+		aggregate.setMethod(method);
+		aggregate.setAlias(Objects.requireNonNull(alias, "aggregate alias must not be null"));
+		aggregate.setSource(Objects.requireNonNull(source, "aggregate source must not be null"));
 		groupByStage().getAggregates().add(aggregate);
 		return this;
 	}

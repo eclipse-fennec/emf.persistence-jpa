@@ -110,6 +110,10 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 				return createGroupByStageAdapter();
 			}
 			@Override
+			public Adapter caseGroupKey(GroupKey object) {
+				return createGroupKeyAdapter();
+			}
+			@Override
 			public Adapter caseAggregate(Aggregate object) {
 				return createAggregateAdapter();
 			}
@@ -258,6 +262,20 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createGroupByStageAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.GroupKey <em>Group Key</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.GroupKey
+	 * @generated
+	 */
+	public Adapter createGroupKeyAdapter() {
 		return null;
 	}
 

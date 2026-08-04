@@ -96,7 +96,9 @@ reference for each construct.
 | `TypeCheck` | `source: PropertyPath[0..1]`, `type: EClass` | issue #80 (OData isof, OCL oclIsKindOf). **Kind-of semantics**; unset source tests the query root. JPQL `TYPE(x) IN (concrete subtypes by entity name)` — the dynamic Java classes are deliberately flat, entity names sidestep Java assignability. Mongo translates against the **codec type discriminator** (issue #88): the codec writes `_type` into every document; the translation resolves the effective config (`typeKey`/`typeStrategy`/`superTypeSerialize`, per EPackage/EClass incl. EAnnotations) through the writer's `ConfigurationResolver` and mirrors its value rendering — with serialized supertypes a direct `_type`/`_supertype` match (no closure, inheritance in one collection), else the concrete-subtype closure; `typeInclude=false`/`NONE` is refused |
 | `PropertyPath.castBase` | `EClass[0..1]` on PropertyPath | issue #80, the v1 cut matching OData's `Ns.SubType/prop` limit (full cast segments stay additive). JPQL `TREAT(e AS Sub).…`; non-instances yield null (verified EclipseLink three-valued behaviour inside OR); memory mirrors with a null short-circuit |
 | `CollectionCount` | `source: PropertyPath`, `variable: Variable[0..1]`, `predicate: Expression[0..1]` | issue #81 (OData `reviews/$count($filter=…)`). Value expression; a missing/empty collection counts 0. JPQL `SIZE(path)` resp. a correlated `SELECT COUNT` subquery (the JPQL text path avoids the criteria SubQueryImpl comparison gotcha); Mongo `$size($ifNull)` for the plain form and `$size($filter)` with `$$element` field references for the predicated form (issue #86 — cond vocabulary v1: comparisons/junctions/isNull/between/in/string matches over element fields and literals, nested functions refused); cross-document counts are refused by the embedded-path validation |
-| `AliasRef` | `alias: EString` | issue #82. References a pipeline output column (group key, aggregate or compute alias) in post-grouping stages. Memory resolves against row keys, JPQL re-renders the column (result variables are not addressable in HAVING), Mongo uses the flattened field. **Documented totality exception**: no OCL form — `ExprToOcl` refuses it (the bridge covers predicate expressions, not pipeline stages) |
+| `AliasRef` | `alias: EString` | issue #82. References a pipeline output column (group key, aggregate or compute alias) in post-grouping stages; since issue #87 also a **pre-group compute alias** inside `GroupKey.expression`/`Aggregate.source`. Memory resolves against row keys (post-group) resp. the per-object compute environment (pre-group), JPQL re-renders the column (result variables are not addressable in HAVING/GROUP BY), Mongo uses the flattened field resp. the `$set` field. **Documented totality exception**: no OCL form — `ExprToOcl` refuses it (the bridge covers predicate expressions, not pipeline stages) |
+| `GroupKey` | `expression: Expression[1]`, `alias: EString[1]` | issue #87 (OData `groupby` over computed properties). Expression-valued group key next to `GroupByStage.paths`; the mandatory alias names the key in the result rows and keeps it AliasRef-addressable. JPQL re-renders the expression in SELECT and GROUP BY, Mongo evaluates it inside `$group`/`_id`, memory per object with the compute alias environment |
+| `Aggregate.source` | `Expression[0..1]` on Aggregate | issue #87. Expression-valued aggregate input next to `path` — exactly one of the two (both empty only for COUNT, validator code 4). Accepts an AliasRef to a pre-group compute alias; JPQL inlines the expression as the aggregate argument, Mongo as the accumulator argument, memory evaluates per member |
 
 **Deliberately absent in v1** (decision list — add only with a driving use case):
 `If`/`Let`, collection operations
@@ -104,7 +106,8 @@ beyond `In`/`Exists`/`ForAll` (`Select`/`Collect`/`IterateExp`), tuple/map liter
 The model can grow additively; the capability mechanism covers backend divergence.
 Arithmetic left this list with issue #76, the extended string set with #77, the
 numeric functions with #78, the temporal parts with #79, type test/cast with #80 —
-the remaining OData-gap constructs are tracked in issues #81–#84.
+the remaining OData-gap constructs are tracked in issues #81–#84; expression-valued
+group keys and aggregate sources landed with #87.
 
 ### 3.2 Capability vocabulary (new `QueryFeature` terms)
 
@@ -126,7 +129,8 @@ Sketch of the new vocabulary and the expected initial matrix:
 | COLLECTION_COUNT | ✅ SIZE | ✅ `$size` | embedded collections only on Mongo (existing path validation) |
 | COLLECTION_COUNT_FILTERED | ✅ COUNT subquery | ✅ `$size($filter)` | issue #86: `$$element` refs in the cond; nested functions inside the cond stay refused (v1 vocabulary) |
 | PIPELINE | ✅ (issue #82) | ✅ | JPA: pre-group filters → WHERE, one GroupBy, post-group filters → HAVING. **Row-space pipeline Top/Skip are sort-then-limit on every backend**: the orderBy applies first, the pipeline window pages the sorted rows, the envelope top/skip page that window (JPA folds both into `setFirstResult`/`setMaxResults`; Mongo/memory defer the stage paging behind the sort). Object-space (pre-group) Top/Skip stay refused on JPA — not expressible in one JPQL statement |
-| PIPELINE_COMPUTE | ✅ | ✅ `$set` | ComputeStage terminal or post-group (revisits D3); a compute **before** GroupBy is refused — group paths/aggregate sources cannot address aliases yet (additive follow-up) |
+| PIPELINE_COMPUTE | ✅ | ✅ `$set` | ComputeStage terminal, post-group or — since issue #87 — pre-group (revisits D3); pre-group aliases bind the named scope for group keys/aggregate sources and are no result columns |
+| GROUP_EXPRESSION | ✅ inline | ✅ `$group`/`_id` | issue #87: expression-valued `GroupKey`s and `Aggregate.source`, incl. AliasRef to pre-group compute aliases. JPQL re-renders the expression in SELECT/GROUP BY/aggregate arguments (no named scope); Mongo evaluates over the `$set` fields; memory per object with the alias environment |
 | SORT_EXPRESSION | ✅ inline | ❌ refused | `OrderBy.key: Expression[0..1]` (issue #84, additive next to `path`); Mongo find-sorts cannot order by expressions — a `$addFields`+`$sort` pipeline route is a follow-up |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
 | PATH navigation depth | ✅ joins, −1 | ⚠️ containment only, −1 | as today |
@@ -154,10 +158,12 @@ Query
 
 Modelled after fennec-odata's `apply.ecore` (compositional, strictly more powerful than
 the v1 groupBy+ops): `Pipeline { stages: Stage[*] }` with v1 stages `Filter(predicate)`,
-`GroupBy(paths, aggregates: Aggregate[*]{path, method: {SUM, MIN, MAX, AVG, COUNT,
-COUNT_DISTINCT}, alias})`, `Top(n)`, `Skip(n)`. Further stages (`Compute`, `Concat`,
-`BottomTop`) are additive later. Structural convergence with OData's `$apply` is
-intentional — a later shared model is possible, not required.
+`GroupBy(paths, keys: GroupKey[*]{expression, alias} — issue #87, aggregates:
+Aggregate[*]{path | source (#87), method: {SUM, MIN, MAX, AVG, COUNT, COUNT_DISTINCT},
+alias})`, `Top(n)`, `Skip(n)`. `Compute` landed with #82 (terminal/post-group) and #87
+(pre-group named scope). Further stages (`Concat`, `BottomTop`) are additive later.
+Structural convergence with OData's `$apply` is intentional — a later shared model is
+possible, not required.
 
 ## 5. The command model (`command.ecore`) — CUD
 

@@ -47,6 +47,7 @@ import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
@@ -281,6 +282,55 @@ class ExpressionAnalyzerTest {
 				QueryFeature.AGG_COUNT_DISTINCT);
 		assertThat(analysis.features()).doesNotContain(QueryFeature.PIPELINE);
 		assertThat(analysis.shape()).isEqualTo(QueryShape.AGGREGATION);
+	}
+
+	@Test
+	void groupKeysAndAggregateSourcesAreDetected() {
+		GroupByStage group = factory.createGroupByStage();
+		GroupKey key = factory.createGroupKey();
+		key.setAlias("bucket");
+		key.setExpression(path(age));
+		group.getKeys().add(key);
+		Aggregate sum = factory.createAggregate();
+		sum.setMethod(AggregateMethod.SUM);
+		sum.setAlias("total");
+		sum.setSource(path(age));
+		group.getAggregates().add(sum);
+
+		Pipeline pipeline = factory.createPipeline();
+		pipeline.getStages().add(group);
+		Query query = query(null);
+		query.setApply(pipeline);
+
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query);
+		assertThat(analysis.features()).contains(QueryFeature.GROUP_BY, QueryFeature.GROUP_EXPRESSION,
+				QueryFeature.AGG_SUM);
+		assertThat(analysis.invalidAggregate()).isNull();
+	}
+
+	@Test
+	void malformedAggregatesAreFlagged() {
+		GroupByStage group = factory.createGroupByStage();
+		Aggregate both = factory.createAggregate();
+		both.setMethod(AggregateMethod.SUM);
+		both.setAlias("total");
+		both.setPath(path(age));
+		both.setSource(path(age));
+		group.getAggregates().add(both);
+
+		Pipeline pipeline = factory.createPipeline();
+		pipeline.getStages().add(group);
+		Query query = query(null);
+		query.setApply(pipeline);
+
+		assertThat(ExpressionAnalyzer.analyze(query).invalidAggregate()).contains("both path and source");
+
+		both.setPath(null);
+		both.setSource(null);
+		assertThat(ExpressionAnalyzer.analyze(query).invalidAggregate()).contains("needs a path or a source");
+
+		both.setMethod(AggregateMethod.COUNT);
+		assertThat(ExpressionAnalyzer.analyze(query).invalidAggregate()).isNull();
 	}
 
 	@Test

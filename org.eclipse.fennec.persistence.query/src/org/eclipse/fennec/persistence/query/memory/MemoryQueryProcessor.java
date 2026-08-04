@@ -53,6 +53,7 @@ import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.Selection;
@@ -171,6 +172,8 @@ public class MemoryQueryProcessor implements QueryProcessor {
 
 		private final QueryContext context;
 		private final Map<Expression, Object> values = new IdentityHashMap<>();
+		/** Aliases bound by pre-group computes — the scope of object-space AliasRefs (issue #87). */
+		private final Set<String> computeAliases = new HashSet<>();
 
 		private Resolution(QueryContext context) {
 			this.context = context;
@@ -242,6 +245,15 @@ public class MemoryQueryProcessor implements QueryProcessor {
 
 		private void operand(Expression expression, EStructuralFeature target, Set<Variable> scope)
 				throws QueryException {
+			if (expression instanceof AliasRef aliasRef) {
+				// object-space AliasRefs address pre-group compute aliases (issue #87)
+				if (!computeAliases.contains(aliasRef.getAlias())) {
+					throw new QueryException("Alias '" + aliasRef.getAlias()
+							+ "' does not address a pre-group compute alias (available: "
+							+ computeAliases + ")");
+				}
+				return;
+			}
 			if (expression instanceof PropertyPath path) {
 				path(path, scope);
 				return;
@@ -314,9 +326,19 @@ public class MemoryQueryProcessor implements QueryProcessor {
 						String key = outputKey(null, path);
 						registerKey(key, key, rowKeys, rowAliases);
 					}
+					for (GroupKey key : groupBy.getKeys()) {
+						// expression-valued group keys (issue #87): object-space
+						// vocabulary plus pre-group compute aliases
+						operand(key.getExpression(), null, Set.of());
+						registerKey(key.getAlias(), key.getAlias(), rowKeys, rowAliases);
+					}
 					for (Aggregate aggregate : groupBy.getAggregates()) {
 						if (aggregate.getPath() != null) {
 							rootPath(aggregate.getPath());
+						}
+						if (aggregate.getSource() != null) {
+							// expression-valued aggregate sources (issue #87)
+							operand(aggregate.getSource(), null, Set.of());
 						}
 						registerKey(aggregate.getAlias(), aggregate.getAlias(), rowKeys, rowAliases);
 					}
@@ -329,22 +351,26 @@ public class MemoryQueryProcessor implements QueryProcessor {
 					}
 				} else if (stage instanceof ComputeStage compute) {
 					if (!rowSpace && groupsSomewhere) {
-						throw new QueryException("A compute before GroupBy cannot be addressed by"
-								+ " group paths or aggregate sources yet — move it after the"
-								+ " grouping (issue #82)");
-					}
-					if (!rowSpace) {
-						// terminal computes: one row per entity, attributes first
-						for (EAttribute attribute : query.getFrom().getEAllAttributes()) {
-							if (!attribute.isMany()) {
-								registerKey(attribute.getName(), attribute.getName(), rowKeys, rowAliases);
-							}
+						// pre-group compute (issue #87): object-space vocabulary; the
+						// aliases feed group keys/aggregate sources, not result columns
+						for (Computation computation : compute.getComputations()) {
+							operand(computation.getExpression(), null, Set.of());
+							computeAliases.add(computation.getAlias());
 						}
-						rowSpace = true;
-					}
-					for (Computation computation : compute.getComputations()) {
-						rowExpression(computation.getExpression());
-						registerKey(computation.getAlias(), computation.getAlias(), rowKeys, rowAliases);
+					} else {
+						if (!rowSpace) {
+							// terminal computes: one row per entity, attributes first
+							for (EAttribute attribute : query.getFrom().getEAllAttributes()) {
+								if (!attribute.isMany()) {
+									registerKey(attribute.getName(), attribute.getName(), rowKeys, rowAliases);
+								}
+							}
+							rowSpace = true;
+						}
+						for (Computation computation : compute.getComputations()) {
+							rowExpression(computation.getExpression());
+							registerKey(computation.getAlias(), computation.getAlias(), rowKeys, rowAliases);
+						}
 					}
 				} else if (!(stage instanceof TopStage) && !(stage instanceof SkipStage)) {
 					throw new QueryException("Unsupported pipeline stage " + stage.eClass().getName());

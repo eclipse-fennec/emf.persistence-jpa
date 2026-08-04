@@ -24,7 +24,6 @@ import java.util.regex.Pattern;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.BsonInt32;
-import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.conversions.Bson;
 import org.eclipse.emf.common.util.BasicDiagnostic;
@@ -66,6 +65,7 @@ import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.Selection;
@@ -143,7 +143,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
 					QueryFeature.COLLECTION_COUNT_FILTERED,
-					QueryFeature.PIPELINE_COMPUTE, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
+					QueryFeature.PIPELINE_COMPUTE, QueryFeature.GROUP_EXPRESSION,
+					QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
@@ -793,17 +794,13 @@ public class MongoQueryProcessor implements QueryProcessor {
 			if (stage instanceof FilterStage filterStage) {
 				pipeline.add(Aggregates.match(filter(filterStage.getPredicate(), context)));
 			} else if (stage instanceof GroupByStage groupBy) {
-				groupStage(groupBy, pipeline, rowKeys, rowAliases);
+				groupStage(groupBy, pipeline, rowKeys, rowAliases, context);
 				rowSpace = true;
 			} else if (stage instanceof ComputeStage compute) {
 				// computed columns via $set (issue #82); after $group the flatten
 				// $project lifted every alias to a plain top-level field
-				if (!rowSpace && groupsSomewhere) {
-					throw new QueryException("A compute before GroupBy cannot be addressed by"
-							+ " group paths or aggregate sources yet — move it after the"
-							+ " grouping (issue #82)");
-				}
-				if (!rowSpace) {
+				boolean preGroup = !rowSpace && groupsSomewhere;
+				if (!rowSpace && !groupsSomewhere) {
 					// terminal computes: one row per entity, single-valued attributes first
 					for (EAttribute attribute : query.getFrom().getEAllAttributes()) {
 						if (!attribute.isMany()) {
@@ -816,7 +813,11 @@ public class MongoQueryProcessor implements QueryProcessor {
 				for (Computation computation : compute.getComputations()) {
 					fields.put(computation.getAlias(),
 							exprOperand(computation.getExpression(), null, context, new ArrayList<>()));
-					register(computation.getAlias(), computation.getAlias(), rowKeys, rowAliases);
+					if (!preGroup) {
+						register(computation.getAlias(), computation.getAlias(), rowKeys, rowAliases);
+					}
+					// pre-group aliases (issue #87) stay intermediate $set fields for
+					// group keys and aggregate sources — not result columns
 				}
 				pipeline.add(new Document("$set", fields));
 			} else if (stage instanceof TopStage top) {
@@ -831,47 +832,63 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 	}
 
-	private void groupStage(GroupByStage groupBy, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases)
-			throws QueryException {
-		Map<String, String> groupKeys = new LinkedHashMap<>();
+	private void groupStage(GroupByStage groupBy, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
+			QueryContext context) throws QueryException {
+		Document id = new Document();
 		for (PropertyPath path : groupBy.getPaths()) {
 			String field = MongoFieldNames.render(path);
-			groupKeys.put(field.replace('.', '_'), field);
+			id.put(field.replace('.', '_'), "$" + field);
 		}
-		BsonDocument id = new BsonDocument();
-		groupKeys.forEach((key, field) -> id.put(key, new BsonString("$" + field)));
-		BsonDocument group = new BsonDocument("_id", groupKeys.isEmpty() ? BsonNull.VALUE : id);
-		BsonDocument flatten = new BsonDocument("_id", new BsonInt32(0));
-		groupKeys.keySet().forEach(key -> {
+		for (GroupKey key : groupBy.getKeys()) {
+			// expression-valued group key (issue #87) — evaluated inside _id, e.g.
+			// over the $set fields of a pre-group compute (AliasRef → "$alias")
+			id.put(key.getAlias(), exprOperand(key.getExpression(), null, context, new ArrayList<>()));
+		}
+		Document group = new Document("_id", id.isEmpty() ? null : id);
+		Document flatten = new Document("_id", 0);
+		id.keySet().forEach(key -> {
 			// group keys are alias-addressable under their derived name
 			register(key, key, rowKeys, rowAliases);
-			flatten.put(key, new BsonString("$_id." + key));
+			flatten.put(key, "$_id." + key);
 		});
 		for (Aggregate aggregate : groupBy.getAggregates()) {
 			String alias = aggregate.getAlias();
 			register(alias, alias, rowKeys, rowAliases);
-			String field = aggregate.getPath() == null ? null : MongoFieldNames.render(aggregate.getPath());
+			Object argument = aggregateArgument(aggregate, context);
 			switch (aggregate.getMethod()) {
-			case SUM -> group.put(alias, new BsonDocument("$sum", new BsonString("$" + field)));
-			case MIN -> group.put(alias, new BsonDocument("$min", new BsonString("$" + field)));
-			case MAX -> group.put(alias, new BsonDocument("$max", new BsonString("$" + field)));
-			case AVG -> group.put(alias, new BsonDocument("$avg", new BsonString("$" + field)));
-			case COUNT -> group.put(alias, new BsonDocument("$sum", new BsonInt32(1)));
+			case SUM -> group.put(alias, new Document("$sum", argument));
+			case MIN -> group.put(alias, new Document("$min", argument));
+			case MAX -> group.put(alias, new Document("$max", argument));
+			case AVG -> group.put(alias, new Document("$avg", argument));
+			case COUNT -> group.put(alias, new Document("$sum", 1));
 			case COUNT_DISTINCT -> {
-				if (field == null) {
-					throw new QueryException("COUNT_DISTINCT requires a path (aggregate '" + alias + "')");
+				if (argument == null) {
+					throw new QueryException("COUNT_DISTINCT requires a path or source (aggregate '"
+							+ alias + "')");
 				}
-				group.put(alias, new BsonDocument("$addToSet", new BsonString("$" + field)));
+				group.put(alias, new Document("$addToSet", argument));
 			}
 			}
 			if (aggregate.getMethod() == AggregateMethod.COUNT_DISTINCT) {
-				flatten.put(alias, new BsonDocument("$size", new BsonString("$" + alias)));
+				flatten.put(alias, new Document("$size", "$" + alias));
 			} else {
-				flatten.put(alias, new BsonInt32(1));
+				flatten.put(alias, 1);
 			}
 		}
-		pipeline.add(new BsonDocument("$group", group));
+		pipeline.add(new Document("$group", group));
 		pipeline.add(Aggregates.project(flatten));
+	}
+
+	/**
+	 * The accumulator argument of an aggregate: an expression-valued source (issue
+	 * #87, e.g. an AliasRef to a pre-group $set field), a rendered document path, or
+	 * {@code null} for the bare COUNT.
+	 */
+	private Object aggregateArgument(Aggregate aggregate, QueryContext context) throws QueryException {
+		if (aggregate.getSource() != null) {
+			return exprOperand(aggregate.getSource(), null, context, new ArrayList<>());
+		}
+		return aggregate.getPath() == null ? null : "$" + MongoFieldNames.render(aggregate.getPath());
 	}
 
 	private static void register(String key, String alias, List<String> rowKeys, List<String> rowAliases) {

@@ -24,8 +24,13 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryFeature;
 import org.junit.jupiter.api.BeforeEach;
@@ -148,6 +153,58 @@ class QueryValidatorTest {
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.getChildren())
 				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_DIVISION_BY_ZERO));
+	}
+
+	@Test
+	void aggregateWithBothPathAndSourceYieldsError() {
+		Diagnostic diagnostic = QueryValidator.validate(groupQuery(aggregate(AggregateMethod.SUM, true, true)),
+				person, groupCapabilities());
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_AGGREGATE));
+	}
+
+	@Test
+	void aggregateWithoutPathOrSourceYieldsErrorUnlessCount() {
+		Diagnostic sum = QueryValidator.validate(groupQuery(aggregate(AggregateMethod.SUM, false, false)),
+				person, groupCapabilities());
+		assertThat(sum.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(sum.getChildren())
+				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_AGGREGATE));
+
+		Diagnostic count = QueryValidator.validate(groupQuery(aggregate(AggregateMethod.COUNT, false, false)),
+				person, groupCapabilities());
+		assertThat(count.getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	private Query groupQuery(Aggregate aggregate) {
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(person);
+		GroupByStage group = QueryFactory.eINSTANCE.createGroupByStage();
+		group.getPaths().add(Expressions.propertyPath(name));
+		group.getAggregates().add(aggregate);
+		Pipeline pipeline = QueryFactory.eINSTANCE.createPipeline();
+		pipeline.getStages().add(group);
+		query.setApply(pipeline);
+		return query;
+	}
+
+	private Aggregate aggregate(AggregateMethod method, boolean withPath, boolean withSource) {
+		Aggregate aggregate = QueryFactory.eINSTANCE.createAggregate();
+		aggregate.setMethod(method);
+		aggregate.setAlias("agg");
+		if (withPath) {
+			aggregate.setPath(Expressions.propertyPath(name));
+		}
+		if (withSource) {
+			aggregate.setSource(Expressions.propertyPath(name));
+		}
+		return aggregate;
+	}
+
+	private QueryCapabilities groupCapabilities() {
+		return capabilities(QueryFeature.GROUP_BY, QueryFeature.GROUP_EXPRESSION, QueryFeature.AGG_SUM,
+				QueryFeature.AGG_COUNT, QueryFeature.FEATUREPATH_NESTED);
 	}
 
 	@Test

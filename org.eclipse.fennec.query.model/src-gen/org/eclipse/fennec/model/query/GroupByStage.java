@@ -24,7 +24,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Grouping over the given paths with aggregate outputs. Without paths the aggregates apply to the whole input (single row).
+ * Grouping over the given paths and expression keys with aggregate outputs. The effective group keys are paths plus keys; without either the aggregates apply to the whole input (single row). Expression keys (issue #87) accept arbitrary expressions including AliasRef to a pre-group compute alias.
  * <!-- end-model-doc -->
  *
  * <p>
@@ -32,6 +32,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getPaths <em>Paths</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getKeys <em>Keys</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getAggregates <em>Aggregates</em>}</li>
  * </ul>
  *
@@ -52,6 +53,18 @@ public interface GroupByStage extends Stage {
 	 * @generated
 	 */
 	EList<PropertyPath> getPaths();
+
+	/**
+	 * Returns the value of the '<em><b>Keys</b></em>' containment reference list.
+	 * The list contents are of type {@link org.eclipse.fennec.model.query.GroupKey}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Keys</em>' containment reference list.
+	 * @see org.eclipse.fennec.model.query.QueryPackage#getGroupByStage_Keys()
+	 * @model containment="true"
+	 * @generated
+	 */
+	EList<GroupKey> getKeys();
 
 	/**
 	 * Returns the value of the '<em><b>Aggregates</b></em>' containment reference list.

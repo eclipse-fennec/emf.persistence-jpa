@@ -40,7 +40,7 @@ public class QueryEPackageConfigurator implements EPackageConfigurator {
 	 * service property.
 	 * @generated
 	 */
-	public static final String FINGERPRINT = "fp1:a21e4bafdd607b9e3e4b6a45989f9b188b2a8a0abebdf8b92b9f83b2a28e0303";
+	public static final String FINGERPRINT = "fp1:fd15aaedb53784f9ec63e1bd3daed75a8836b7466a1903d53c2e029d57c850f8";
 
 	private QueryPackage ePackage;
 

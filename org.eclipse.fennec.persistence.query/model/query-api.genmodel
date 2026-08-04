@@ -57,6 +57,7 @@
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/COLLECTION_COUNT_FILTERED"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PIPELINE_COMPUTE"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SORT_EXPRESSION"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GROUP_EXPRESSION"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PARAMETERS"/>

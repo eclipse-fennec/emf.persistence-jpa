@@ -14,6 +14,7 @@ package org.eclipse.fennec.model.query;
 
 import org.eclipse.emf.ecore.EObject;
 
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 
 import org.osgi.annotation.versioning.ProviderType;
@@ -24,7 +25,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * One aggregate output. path is optional for COUNT (count of group members).
+ * One aggregate output over exactly one of path or source (the validator refuses both or, except for COUNT, neither). path addresses a persisted attribute; source (issue #87) accepts an expression, notably an AliasRef to a pre-group compute alias. Both are optional for COUNT (count of group members).
  * <!-- end-model-doc -->
  *
  * <p>
@@ -32,6 +33,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.query.Aggregate#getPath <em>Path</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.Aggregate#getSource <em>Source</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Aggregate#getMethod <em>Method</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Aggregate#getAlias <em>Alias</em>}</li>
  * </ul>
@@ -63,6 +65,28 @@ public interface Aggregate extends EObject {
 	 * @generated
 	 */
 	void setPath(PropertyPath value);
+
+	/**
+	 * Returns the value of the '<em><b>Source</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the value of the '<em>Source</em>' containment reference.
+	 * @see #setSource(Expression)
+	 * @see org.eclipse.fennec.model.query.QueryPackage#getAggregate_Source()
+	 * @model containment="true"
+	 * @generated
+	 */
+	Expression getSource();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.query.Aggregate#getSource <em>Source</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Source</em>' containment reference.
+	 * @see #getSource()
+	 * @generated
+	 */
+	void setSource(Expression value);
 
 	/**
 	 * Returns the value of the '<em><b>Method</b></em>' attribute.

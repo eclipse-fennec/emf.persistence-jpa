@@ -33,6 +33,7 @@ public final class QueryAnalysis {
 	private final int maxFeaturePathDepth;
 	private final QueryShape shape;
 	private final boolean divisionByLiteralZero;
+	private final String invalidAggregate;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -56,12 +57,27 @@ public final class QueryAnalysis {
 	 */
 	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
 			boolean divisionByLiteralZero) {
+		this(features, maxFeaturePathDepth, shape, divisionByLiteralZero, null);
+	}
+
+	/**
+	 * Creates an analysis result including the static structural verdicts.
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 * @param divisionByLiteralZero whether any DIV/MOD divides by a literal zero
+	 * @param invalidAggregate the malformed-aggregate finding (issue #87), or {@code null}
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
+			boolean divisionByLiteralZero, String invalidAggregate) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
 		this.maxFeaturePathDepth = maxFeaturePathDepth;
 		this.shape = shape;
 		this.divisionByLiteralZero = divisionByLiteralZero;
+		this.invalidAggregate = invalidAggregate;
 	}
 
 	/**
@@ -102,9 +118,19 @@ public final class QueryAnalysis {
 		return divisionByLiteralZero;
 	}
 
+	/**
+	 * @return the malformed-aggregate finding — an {@code Aggregate} setting both or
+	 *         (except COUNT) neither of {@code path}/{@code source} (issue #87) —
+	 *         or {@code null} if all aggregates are well-formed
+	 */
+	public String invalidAggregate() {
+		return invalidAggregate;
+	}
+
 	@Override
 	public String toString() {
 		return "QueryAnalysis[shape=" + shape + ", maxDepth=" + maxFeaturePathDepth + ", features=" + features
-				+ (divisionByLiteralZero ? ", divisionByLiteralZero" : "") + "]";
+				+ (divisionByLiteralZero ? ", divisionByLiteralZero" : "")
+				+ (invalidAggregate != null ? ", invalidAggregate=" + invalidAggregate : "") + "]";
 	}
 }

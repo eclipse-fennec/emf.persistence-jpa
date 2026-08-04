@@ -98,6 +98,15 @@ public interface QueryFactory extends EFactory {
 	GroupByStage createGroupByStage();
 
 	/**
+	 * Returns a new object of class '<em>Group Key</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Group Key</em>'.
+	 * @generated
+	 */
+	GroupKey createGroupKey();
+
+	/**
 	 * Returns a new object of class '<em>Aggregate</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
