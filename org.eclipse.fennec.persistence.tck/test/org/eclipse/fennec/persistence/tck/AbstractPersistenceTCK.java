@@ -532,6 +532,32 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryPlainFilterOnIdAttribute() throws Exception {
+		saveQueryFixture();
+		// ID equality compiles to an EclipseLink ReadObjectQuery, which supports no
+		// scrollable cursor (issue #91) — must behave like any other predicate.
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personClass.getEIDAttribute()).eq(idValue(personClass, 2)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
+		}
+	}
+
+	@Test
+	public void queryMissOnIdAttributeIsEmpty() throws Exception {
+		saveQueryFixture();
+		// the no-match branch of the ReadObjectQuery path (issue #91): empty, not null
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personClass.getEIDAttribute()).eq(idValue(personClass, 99)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects()).isEmpty();
+		}
+	}
+
+	@Test
 	public void queryCaseInsensitiveMatching() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)

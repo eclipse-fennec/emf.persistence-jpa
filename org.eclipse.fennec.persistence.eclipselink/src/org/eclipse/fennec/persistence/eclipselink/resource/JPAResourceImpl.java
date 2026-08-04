@@ -82,6 +82,7 @@ import org.eclipse.persistence.config.HintValues;
 import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.jpa.JpaQuery;
+import org.eclipse.persistence.queries.DatabaseQuery;
 import org.eclipse.persistence.queries.ScrollableCursor;
 import org.eclipse.persistence.sessions.UnitOfWork;
 import org.eclipse.persistence.sessions.server.Server;
@@ -1005,6 +1006,10 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	/**
 	 * Executes an OBJECTS or row-shaped plan over a scrollable cursor. The
 	 * {@link EntityManager} and lease stay open until the returned result is closed.
+	 * <p>
+	 * An equality predicate on the entity's ID compiles to an EclipseLink
+	 * {@code ReadObjectQuery}, which rejects the scrollable-cursor hint (issue #91) —
+	 * such plans fetch their at-most-one result eagerly instead.
 	 */
 	private QueryResult executeCursor(JpaQueryPlan plan, Lease lease, String entityName) throws IOException {
 		EntityManager em = lease.createEntityManager();
@@ -1017,13 +1022,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			if (plan.limit() > 0) {
 				typedQuery.setMaxResults(plan.limit());
 			}
-			typedQuery.setHint(QueryHints.SCROLLABLE_CURSOR, HintValues.TRUE);
-			ScrollableCursor cursor = (ScrollableCursor) typedQuery.unwrap(JpaQuery.class).getResultCursor();
-			Stream<Object> rows = cursorStream(cursor).onClose(() -> {
-				cursor.close();
-				em.close();
-				lease.close();
-			});
+			Stream<Object> rows;
+			DatabaseQuery databaseQuery = typedQuery.unwrap(JpaQuery.class).getDatabaseQuery();
+			if (databaseQuery.isReadAllQuery() || databaseQuery.isDataReadQuery()) {
+				typedQuery.setHint(QueryHints.SCROLLABLE_CURSOR, HintValues.TRUE);
+				ScrollableCursor cursor = (ScrollableCursor) typedQuery.unwrap(JpaQuery.class).getResultCursor();
+				rows = cursorStream(cursor).onClose(() -> {
+					cursor.close();
+					em.close();
+					lease.close();
+				});
+			} else {
+				rows = typedQuery.getResultList().stream().map(Object.class::cast).onClose(() -> {
+					em.close();
+					lease.close();
+				});
+			}
 			if (plan.shape() == QueryShape.OBJECTS) {
 				return QueryResults.objects(rows
 						.filter(EObject.class::isInstance)
