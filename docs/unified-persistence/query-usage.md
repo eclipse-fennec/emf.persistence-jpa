@@ -65,11 +65,12 @@ Query query = QueryBuilder.from(personClass)
   filters grouped rows. JPA renders GROUP BY/HAVING (columns re-rendered — JPQL result
   variables are not addressable there), Mongo `$set`/`$match`, memory evaluates in row
   space. A compute **before** the grouping is refused for now.
-- **Collection counts** (#81): `count(propertyPath(addresses)).ge(2)` and the filtered
-  `count(propertyPath(reviews), r -> r.path(rating).gt(3)).ge(2)` — value expressions,
-  missing/empty collections count 0. JPA renders `SIZE` resp. a correlated
-  `SELECT COUNT` subquery; Mongo supports the plain form over embedded collections
-  (`$size`) and refuses the filtered form for now.
+- **Collection counts** (#81, #86): `count(propertyPath(addresses)).ge(2)` and the
+  filtered `count(propertyPath(reviews), r -> r.path(rating).gt(3)).ge(2)` — value
+  expressions, missing/empty collections count 0. JPA renders `SIZE` resp. a
+  correlated `SELECT COUNT` subquery; Mongo `$size` resp. `$size($filter)` over
+  embedded collections (the filter predicate addresses element fields and literals —
+  nested functions inside it are refused for now).
 - **Type predicates** (#80, #88): `isOf(carClass)` tests the root with **kind-of**
   semantics (type or subtype; `isOf(path, type)` for navigations),
   `pathAs(carClass, horsepower)` downcasts the root before navigating (JPA `TREAT`;

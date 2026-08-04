@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.fennec.model.query.builder.Expressions.add;
 import static org.eclipse.fennec.model.query.builder.Expressions.all;
 import static org.eclipse.fennec.model.query.builder.Expressions.concat;
+import static org.eclipse.fennec.model.query.builder.Expressions.count;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
 import static org.eclipse.fennec.model.query.builder.Expressions.isOf;
@@ -311,6 +312,27 @@ class MongoQueryProcessorTest {
 		} finally {
 			EPackage.Registry.INSTANCE.remove(pkg.getNsURI());
 		}
+	}
+
+	@Test
+	void filteredCollectionCountsRenderSizeOverFilter() throws QueryException {
+		// $size($filter) with $$it element references and a $ne-null guard (issue #86)
+		MongoQueryPlan plan = translate(QueryBuilder.from(person)
+				.where(count(propertyPath(addresses),
+						a -> a.path(street).startsWith("Main")).eq(1))
+				.build());
+		String json = render(plan.filter()).toJson();
+		assertThat(json).contains("$size").contains("$filter").contains("$$it.street")
+				.contains("$regexMatch");
+
+		// nested functions inside the cond are refused (v1 vocabulary)
+		Query nested = QueryBuilder.from(person)
+				.where(count(propertyPath(addresses),
+						a -> a.path(street).length().gt(3)).ge(1))
+				.build();
+		assertThatThrownBy(() -> translate(nested))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("filtered collection count");
 	}
 
 	@Test
