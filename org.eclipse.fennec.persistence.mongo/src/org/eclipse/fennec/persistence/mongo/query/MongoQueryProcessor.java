@@ -573,16 +573,20 @@ public class MongoQueryProcessor implements QueryProcessor {
 		List<String> rowKeys = new ArrayList<>();
 		List<String> rowAliases = new ArrayList<>();
 
+		List<Bson> deferredPaging = new ArrayList<>();
 		if (shape == QueryShape.PROJECTION) {
 			projectionStages(query, pipeline, rowKeys, rowAliases);
 		} else {
-			aggregationStages(query, pipeline, rowKeys, rowAliases, context);
+			aggregationStages(query, pipeline, rowKeys, rowAliases, deferredPaging, context);
 		}
 
 		Bson sort = rowSort(query, rowKeys);
 		if (sort != null) {
 			pipeline.add(Aggregates.sort(sort));
 		}
+		// row-space pipeline paging is sort-then-limit — behind the sort, before the
+		// envelope paging, so all backends page the same window
+		pipeline.addAll(deferredPaging);
 		if (query.getSkip() > 0) {
 			pipeline.add(Aggregates.skip(query.getSkip()));
 		}
@@ -621,7 +625,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 	}
 
 	private void aggregationStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
-			QueryContext context) throws QueryException {
+			List<Bson> deferredPaging, QueryContext context) throws QueryException {
 		boolean groupsSomewhere = query.getApply().getStages().stream()
 				.anyMatch(GroupByStage.class::isInstance);
 		boolean rowSpace = false;
@@ -656,9 +660,11 @@ public class MongoQueryProcessor implements QueryProcessor {
 				}
 				pipeline.add(new Document("$set", fields));
 			} else if (stage instanceof TopStage top) {
-				pipeline.add(Aggregates.limit(top.getCount()));
+				// object-space paging stays in stage order; row-space paging defers
+				// behind the sort (sort-then-limit)
+				(rowSpace ? deferredPaging : pipeline).add(Aggregates.limit(top.getCount()));
 			} else if (stage instanceof SkipStage skip) {
-				pipeline.add(Aggregates.skip(skip.getCount()));
+				(rowSpace ? deferredPaging : pipeline).add(Aggregates.skip(skip.getCount()));
 			} else {
 				throw new QueryException("Unsupported pipeline stage " + stage.eClass().getName());
 			}

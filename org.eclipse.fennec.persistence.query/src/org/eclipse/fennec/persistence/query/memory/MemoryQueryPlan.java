@@ -221,12 +221,13 @@ public final class MemoryQueryPlan implements QueryPlan {
 			List<Stage> stages, int fromIndex) {
 		Stream<QueryResultRow> current = rows;
 		int width = initialWidth;
+		List<Stage> paging = new ArrayList<>();
 		for (int i = fromIndex; i < stages.size(); i++) {
 			Stage stage = stages.get(i);
-			if (stage instanceof TopStage top) {
-				current = current.limit(top.getCount());
-			} else if (stage instanceof SkipStage skip) {
-				current = current.skip(skip.getCount());
+			if (stage instanceof TopStage || stage instanceof SkipStage) {
+				// row-space paging is sort-then-limit — deferred behind the sort so all
+				// backends page the same (deterministically ordered) window
+				paging.add(stage);
 			} else if (stage instanceof FilterStage filter) {
 				current = current.filter(row -> predicate.testRow(filter.getPredicate(), row));
 			} else if (stage instanceof ComputeStage compute) {
@@ -235,7 +236,12 @@ public final class MemoryQueryPlan implements QueryPlan {
 				width += compute.getComputations().size();
 			}
 		}
-		return page(sortRows(current));
+		Stream<QueryResultRow> sorted = sortRows(current);
+		for (Stage stage : paging) {
+			sorted = stage instanceof TopStage top ? sorted.limit(top.getCount())
+					: sorted.skip(((SkipStage) stage).getCount());
+		}
+		return page(sorted);
 	}
 
 	private QueryResultRow terminalRow(EObject object, int width) {

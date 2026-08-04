@@ -60,8 +60,10 @@ import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.Selection;
+import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.Stage;
+import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
@@ -194,8 +196,30 @@ public class JpaQueryProcessor implements QueryProcessor {
 		if (shape != QueryShape.COUNT) {
 			appendOrderBy(jpql, query, shape, rowKeys, translation);
 		}
+		int skip = Math.max(0, query.getSkip());
+		int top = Math.max(0, query.getTop());
+		if (pipeline != null && (pipeline.skip > 0 || pipeline.top > 0)) {
+			// pipeline paging applies first, envelope paging pages that window —
+			// both ride the single setFirstResult/setMaxResults pair of the query
+			int combinedSkip = pipeline.skip + skip;
+			int combinedTop = pipeline.top;
+			if (combinedTop > 0) {
+				combinedTop -= skip;
+				if (combinedTop <= 0) {
+					throw new QueryException("The envelope skip exhausts the pipeline top window"
+							+ " — the composition can never yield a row");
+				}
+				if (top > 0) {
+					combinedTop = Math.min(combinedTop, top);
+				}
+			} else {
+				combinedTop = top;
+			}
+			skip = combinedSkip;
+			top = combinedTop;
+		}
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
-				Math.max(0, query.getSkip()), Math.max(0, query.getTop()), rowKeys, rowAliases);
+				skip, top, rowKeys, rowAliases);
 	}
 
 	/** The JPQL fragments of a translated pipeline (issue #82). */
@@ -204,6 +228,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 		final List<String> preFilters = new ArrayList<>();
 		String groupBy = "";
 		String having = "";
+		/** Row-space paging window (0 = unset) — sort-then-limit semantics. */
+		int skip;
+		int top;
 	}
 
 	// -------------------------------------------------- select / group / order
@@ -372,9 +399,22 @@ public class JpaQueryProcessor implements QueryProcessor {
 								+ " grouping (issue #82)");
 					}
 					computations.addAll(compute.getComputations());
+				} else if (stage instanceof SkipStage skip && group != null) {
+					// row-space paging: sort-then-limit — compose the window sequentially
+					result.skip += skip.getCount();
+					if (result.top > 0) {
+						result.top -= skip.getCount();
+						if (result.top <= 0) {
+							throw new QueryException("The pipeline skip exhausts the preceding"
+									+ " top window — the composition can never yield a row");
+						}
+					}
+				} else if (stage instanceof TopStage top && group != null) {
+					result.top = result.top == 0 ? top.getCount() : Math.min(result.top, top.getCount());
 				} else {
 					throw new QueryException("Unsupported pipeline stage " + stage.eClass().getName()
-							+ " on the JPA processor — page with the envelope top/skip");
+							+ " before the grouping on the JPA processor — object-space paging is"
+							+ " not expressible in one JPQL statement");
 				}
 			}
 			StringBuilder columns = new StringBuilder();

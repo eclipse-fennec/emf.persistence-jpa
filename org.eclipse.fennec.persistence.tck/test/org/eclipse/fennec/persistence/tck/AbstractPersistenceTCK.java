@@ -42,6 +42,8 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.pushstreams.PersistencePushStreams;
@@ -956,6 +958,34 @@ public abstract class AbstractPersistenceTCK {
 	/** Whether the backend supports ordering by arbitrary value expressions (issue #84). */
 	protected boolean supportsSortExpressions() {
 		return true;
+	}
+
+	@Test
+	public void queryPipelinePagingIsSortThenLimit() throws Exception {
+		saveQueryFixture();
+		save(createBackendResourceSet(), "Person", newPerson(4, "Dora", 30));
+		// groups: age 30 (cnt 2), 40, 50 — sort DESC first, then the pipeline top
+		// takes the window: [50, 40] on every backend (the normative order)
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.orderByDesc(personAge)
+				.build();
+		TopStage top = QueryFactory.eINSTANCE.createTopStage();
+		top.setCount(2);
+		query.getApply().getStages().add(top);
+
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.containsExactly(50, 40);
+		}
+		List<EObject> oracle = List.of(
+				newPerson(1, "Alice", 30), newPerson(2, "Bob", 40),
+				newPerson(3, "Carol", 50), newPerson(4, "Dora", 30));
+		try (QueryResult memory = MemoryQueries.execute(query, oracle, null)) {
+			assertThat(memory.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.containsExactly(50, 40);
+		}
 	}
 
 	@Test

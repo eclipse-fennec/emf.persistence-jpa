@@ -125,7 +125,7 @@ Sketch of the new vocabulary and the expected initial matrix:
 | TYPE_CAST / TYPE_CHECK | ✅ TREAT / TYPE IN | ❌ refused | Mongo needs a stored type discriminator first (`_eType` reserved) |
 | COLLECTION_COUNT | ✅ SIZE | ✅ `$size` | embedded collections only on Mongo (existing path validation) |
 | COLLECTION_COUNT_FILTERED | ✅ COUNT subquery | ❌ refused | Mongo `$filter` rendering is a follow-up |
-| PIPELINE | ✅ (issue #82) | ✅ | JPA: pre-group filters → WHERE, one GroupBy, post-group filters → HAVING; pipeline Top/Skip stay refused on JPA (use the envelope) |
+| PIPELINE | ✅ (issue #82) | ✅ | JPA: pre-group filters → WHERE, one GroupBy, post-group filters → HAVING. **Row-space pipeline Top/Skip are sort-then-limit on every backend**: the orderBy applies first, the pipeline window pages the sorted rows, the envelope top/skip page that window (JPA folds both into `setFirstResult`/`setMaxResults`; Mongo/memory defer the stage paging behind the sort). Object-space (pre-group) Top/Skip stay refused on JPA — not expressible in one JPQL statement |
 | PIPELINE_COMPUTE | ✅ | ✅ `$set` | ComputeStage terminal or post-group (revisits D3); a compute **before** GroupBy is refused — group paths/aggregate sources cannot address aliases yet (additive follow-up) |
 | SORT_EXPRESSION | ✅ inline | ❌ refused | `OrderBy.key: Expression[0..1]` (issue #84, additive next to `path`); Mongo find-sorts cannot order by expressions — a `$addFields`+`$sort` pipeline route is a follow-up |
 | EXISTS / FOR_ALL | ✅ EXISTS subquery | ⚠️ embedded only (`$elemMatch`) | cross-document refused |
