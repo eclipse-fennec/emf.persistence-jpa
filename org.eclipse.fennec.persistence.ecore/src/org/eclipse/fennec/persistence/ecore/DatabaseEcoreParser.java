@@ -26,11 +26,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
+import org.eclipse.emf.common.util.BasicDiagnostic;
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -41,6 +42,7 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.diagnostic.Diagnostics;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Reference;
@@ -70,6 +72,10 @@ public class DatabaseEcoreParser {
 	private static final Logger LOG = Logger.getLogger(DatabaseEcoreParser.class.getName());
 
 	static final String PID = "fennec.ecore.DatabaseParser";
+
+	/** Diagnostic source of this parser (issue #19): the bundle namespace. */
+	public static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.ecore";
+
 	static final String ANNOTATION_SOURCE = "http://eclipse.org/fennec/persistence/database";
 	static final String ANNOTATION_READ_ONLY = "readOnly";
 	static final String ANNOTATION_TABLE_NAME = "tableName";
@@ -106,14 +112,16 @@ public class DatabaseEcoreParser {
 	}
 
 	/**
-	 * Parses the database schema(s) and returns one or more EPackages.
-	 * If multiple schemas are configured, each schema gets its own EPackage.
-	 * If no schema is configured, the default schema is used.
+	 * Parses the database schema(s) and returns the packages together with every
+	 * diagnostic collected on the way (issue #19). Nothing is logged here — callers
+	 * decide what to do with the diagnostics; the legacy {@link #parseAll()} boundary
+	 * derives JUL logging from them.
 	 *
-	 * @return list of EPackages (one per schema)
+	 * @return the parse result, never {@code null}
 	 */
-	public List<EPackage> parseAll() throws SQLException {
+	public ParseResult parseAllWithDiagnostics() throws SQLException {
 		List<EPackage> packages = new ArrayList<>();
+		List<Diagnostic> diagnostics = new ArrayList<>();
 		try (Connection con = datasource.getConnection()) {
 			DatabaseMetaData metaData = con.getMetaData();
 			List<String> schemas = resolveSchemas(con);
@@ -126,11 +134,27 @@ public class DatabaseEcoreParser {
 				EPackage ePackage = createPackage(pkgName, pkgName, uri);
 				addAnnotation(ePackage, ANNOTATION_SCHEMA, schema);
 
-				parseSchema(metaData, schema, ePackage);
+				parseSchema(metaData, schema, ePackage, diagnostics);
 				packages.add(ePackage);
 			}
 		}
-		return packages;
+		return new ParseResult(packages, diagnostics);
+	}
+
+	/**
+	 * Parses the database schema(s) and returns one or more EPackages.
+	 * If multiple schemas are configured, each schema gets its own EPackage.
+	 * If no schema is configured, the default schema is used.
+	 * <p>
+	 * Logging boundary: diagnostics collected during the run are logged through JUL
+	 * here; use {@link #parseAllWithDiagnostics()} to consume them programmatically.
+	 *
+	 * @return list of EPackages (one per schema)
+	 */
+	public List<EPackage> parseAll() throws SQLException {
+		ParseResult result = parseAllWithDiagnostics();
+		Diagnostics.log(LOG, result.diagnostics());
+		return result.ePackages();
 	}
 
 	/**
@@ -142,7 +166,8 @@ public class DatabaseEcoreParser {
 				config.uriPrefix() + "/" + config.packageName() + "/" + config.version()) : packages.get(0);
 	}
 
-	private void parseSchema(DatabaseMetaData metaData, String schema, EPackage ePackage) throws SQLException {
+	private void parseSchema(DatabaseMetaData metaData, String schema, EPackage ePackage,
+			List<Diagnostic> diagnostics) throws SQLException {
 		loadTables(metaData, schema, ePackage);
 		if (config.includeViews()) {
 			loadViews(metaData, schema, ePackage);
@@ -180,7 +205,7 @@ public class DatabaseEcoreParser {
 			if (junctionTables.contains(entry.getKey())) {
 				continue;
 			}
-			processTable(entry.getValue(), metaData, schema, ePackage);
+			processTable(entry.getValue(), metaData, schema, ePackage, diagnostics);
 		}
 	}
 
@@ -220,7 +245,8 @@ public class DatabaseEcoreParser {
 
 	// --- Column processing ---
 
-	private void processTable(TableInfo ti, DatabaseMetaData metaData, String schema, EPackage ePackage) throws SQLException {
+	private void processTable(TableInfo ti, DatabaseMetaData metaData, String schema, EPackage ePackage,
+			List<Diagnostic> diagnostics) throws SQLException {
 		String tableName = getOriginalTableName(ti.eClass);
 
 		try (ResultSet rs = metaData.getColumns(null, schema, tableName, "%")) {
@@ -251,12 +277,14 @@ public class DatabaseEcoreParser {
 							setOpposite(fwdRef, revRef);
 						}
 					} else {
-						LOG.log(Level.WARNING, "FK target ''{0}'' not found for column ''{1}.{2}''",
-								new Object[]{fkInfo.pkTableName, tableName, colName});
-						addAttribute(ti.eClass, transformAttributeName(colName), convertType(dataType), isPK, !nullable);
+						diagnostics.add(warning("FK target '" + fkInfo.pkTableName + "' not found for column '"
+								+ tableName + "." + colName + "'; mapped as plain attribute", ti.eClass));
+						addAttribute(ti.eClass, transformAttributeName(colName),
+								resolveType(dataType, ti.eClass, tableName, colName, diagnostics), isPK, !nullable);
 					}
 				} else {
-					addAttribute(ti.eClass, transformAttributeName(colName), convertType(dataType), isPK, !nullable);
+					addAttribute(ti.eClass, transformAttributeName(colName),
+							resolveType(dataType, ti.eClass, tableName, colName, diagnostics), isPK, !nullable);
 				}
 			}
 		}
@@ -385,14 +413,23 @@ public class DatabaseEcoreParser {
 	// --- Type mapping ---
 
 	static EDataType convertType(int sqlType) {
+		return mapType(sqlType).type();
+	}
+
+	/**
+	 * Maps a JDBC type code to an EDataType. Unknown or unmapped types fall back to
+	 * EString; the fallback is reported in {@link TypeMapping#problem()} instead of
+	 * being logged, so callers can turn it into a diagnostic with column context.
+	 */
+	static TypeMapping mapType(int sqlType) {
 		JDBCType jdbcType;
 		try {
 			jdbcType = JDBCType.valueOf(sqlType);
 		} catch (IllegalArgumentException e) {
-			LOG.log(Level.FINE, "Unknown JDBC type code: {0}, mapping to EString", sqlType);
-			return EcorePackage.Literals.ESTRING;
+			return new TypeMapping(EcorePackage.Literals.ESTRING,
+					"Unknown JDBC type code " + sqlType + ", mapping to EString");
 		}
-		return switch (jdbcType) {
+		EDataType mapped = switch (jdbcType) {
 			case TINYINT, SMALLINT -> EcorePackage.Literals.ESHORT_OBJECT;
 			case INTEGER -> EcorePackage.Literals.EINTEGER_OBJECT;
 			case BIGINT -> EcorePackage.Literals.ELONG_OBJECT;
@@ -407,11 +444,24 @@ public class DatabaseEcoreParser {
 			case BINARY, VARBINARY, LONGVARBINARY, BLOB -> EcorePackage.Literals.EBYTE_ARRAY;
 			case CLOB, NCLOB -> EcorePackage.Literals.ESTRING;
 			case SQLXML -> EcorePackage.Literals.ESTRING;
-			default -> {
-				LOG.log(Level.FINE, "Unmapped JDBC type: {0}, mapping to EString", jdbcType);
-				yield EcorePackage.Literals.ESTRING;
-			}
+			default -> null;
 		};
+		return nonNull(mapped) ? new TypeMapping(mapped, null)
+				: new TypeMapping(EcorePackage.Literals.ESTRING,
+						"Unmapped JDBC type " + jdbcType + ", mapping to EString");
+	}
+
+	private EDataType resolveType(int sqlType, EClass eClass, String tableName, String colName,
+			List<Diagnostic> diagnostics) {
+		TypeMapping mapping = mapType(sqlType);
+		if (nonNull(mapping.problem())) {
+			diagnostics.add(warning(mapping.problem() + " for column '" + tableName + "." + colName + "'", eClass));
+		}
+		return mapping.type();
+	}
+
+	private static Diagnostic warning(String message, EClass affected) {
+		return new BasicDiagnostic(Diagnostic.WARNING, DIAGNOSTIC_SOURCE, 0, message, new Object[] { affected });
 	}
 
 	// --- Lookup helpers ---
@@ -510,4 +560,7 @@ public class DatabaseEcoreParser {
 	record ForeignKeyInfo(String pkTableName, int deleteRule) {}
 
 	record TableInfo(EClass eClass, Set<String> pkColumns, Map<String, ForeignKeyInfo> fkColumns) {}
+
+	/** A mapped EDataType plus, on fallback, the problem to report ({@code null} if clean). */
+	record TypeMapping(EDataType type, String problem) {}
 }

@@ -5,6 +5,9 @@ Bundle-Description: Reverse-engineers Ecore models from database schemas via JDB
 
 -library: enableEMF
 
+-buildpath: \
+	org.eclipse.fennec.persistence;version=snapshot
+
 -testpath: \
 	assertj-core,\
 	com.h2database:h2

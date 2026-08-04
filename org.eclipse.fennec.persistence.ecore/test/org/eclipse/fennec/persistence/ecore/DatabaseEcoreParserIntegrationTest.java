@@ -18,8 +18,14 @@ import java.lang.annotation.Annotation;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
@@ -379,6 +385,94 @@ class DatabaseEcoreParserIntegrationTest {
 			assertThat(((EAttribute) oi.getEStructuralFeature("orderId")).isID()).isTrue();
 			assertThat(((EAttribute) oi.getEStructuralFeature("itemSeq")).isID()).isTrue();
 			assertThat(((EAttribute) oi.getEStructuralFeature("qty")).isID()).isFalse();
+		}
+	}
+
+	// --- Diagnostics (issue #19) ---
+
+	@Nested
+	@DisplayName("Diagnostics")
+	class DiagnosticsTests {
+
+		@Test void testCleanSchemaHasNoDiagnostics() throws SQLException {
+			executeSql("CREATE TABLE PERSON (ID INTEGER PRIMARY KEY, NAME VARCHAR(100))");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+
+			assertThat(result.ePackages()).hasSize(1);
+			assertThat(result.diagnostics()).isEmpty();
+			assertThat(result.isSuccess()).isTrue();
+			assertThat(result.getSeverity()).isEqualTo(Diagnostic.OK);
+		}
+
+		@Test void testUnmappedColumnTypeYieldsWarningWithColumnContext() throws SQLException {
+			executeSql("CREATE TABLE SENSOR (ID INTEGER PRIMARY KEY, READINGS INTEGER ARRAY)");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+
+			assertThat(result.isSuccess()).isTrue();
+			assertThat(result.diagnostics()).hasSize(1);
+			Diagnostic diagnostic = result.diagnostics().get(0);
+			assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.WARNING);
+			assertThat(diagnostic.getSource()).isEqualTo(DatabaseEcoreParser.DIAGNOSTIC_SOURCE);
+			assertThat(diagnostic.getMessage())
+					.contains("Unmapped JDBC type")
+					.contains("SENSOR.READINGS");
+
+			// data[0] = affected model element
+			EClass sensor = findClass(result.ePackages().get(0), "Sensor");
+			assertThat(diagnostic.getData()).first().isSameAs(sensor);
+			// The fallback attribute is still produced
+			assertThat(sensor.getEStructuralFeature("readings").getEType())
+					.isEqualTo(EcorePackage.Literals.ESTRING);
+		}
+
+		@Test void testMissingFkTargetYieldsWarningAndPlainAttribute() throws SQLException {
+			executeSql("CREATE SCHEMA OTHER_SCHEMA",
+					"CREATE TABLE OTHER_SCHEMA.PARENT (ID INTEGER PRIMARY KEY)",
+					"CREATE TABLE CHILD (ID INTEGER PRIMARY KEY, "
+							+ "PARENT_ID INTEGER NOT NULL REFERENCES OTHER_SCHEMA.PARENT(ID))");
+			activate(false, true, "PUBLIC");
+			ParseResult result = parser.parseAllWithDiagnostics();
+
+			assertThat(result.isSuccess()).isTrue();
+			assertThat(result.diagnostics()).hasSize(1);
+			Diagnostic diagnostic = result.diagnostics().get(0);
+			assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.WARNING);
+			assertThat(diagnostic.getSource()).isEqualTo(DatabaseEcoreParser.DIAGNOSTIC_SOURCE);
+			assertThat(diagnostic.getMessage())
+					.contains("FK target 'PARENT' not found")
+					.contains("CHILD.PARENT_ID");
+
+			EClass child = findClass(result.ePackages().get(0), "Child");
+			assertThat(diagnostic.getData()).first().isSameAs(child);
+			// FK falls back to a plain attribute instead of a reference
+			assertThat(child.getEStructuralFeature("parentId")).isInstanceOf(EAttribute.class);
+		}
+
+		@Test void testLegacyParseAllLogsAndReturnsPackages() throws SQLException {
+			executeSql("CREATE TABLE SENSOR (ID INTEGER PRIMARY KEY, READINGS INTEGER ARRAY)");
+			activateDefault();
+
+			Logger logger = Logger.getLogger(DatabaseEcoreParser.class.getName());
+			List<LogRecord> records = new ArrayList<>();
+			Handler handler = new Handler() {
+				@Override public void publish(LogRecord logRecord) { records.add(logRecord); }
+				@Override public void flush() {}
+				@Override public void close() {}
+			};
+			logger.addHandler(handler);
+			try {
+				List<EPackage> packages = parser.parseAll();
+				assertThat(packages).hasSize(1);
+				assertThat(records)
+						.anySatisfy(logRecord -> {
+							assertThat(logRecord.getLevel()).isEqualTo(Level.WARNING);
+							assertThat(logRecord.getMessage()).contains("Unmapped JDBC type");
+						});
+			} finally {
+				logger.removeHandler(handler);
+			}
 		}
 	}
 }
