@@ -10,12 +10,13 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.eclipselink.resource;
+package org.eclipse.fennec.persistence.eclipselink.spi;
 
 import static java.util.Objects.requireNonNull;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
 
 import jakarta.persistence.EntityManagerFactory;
 

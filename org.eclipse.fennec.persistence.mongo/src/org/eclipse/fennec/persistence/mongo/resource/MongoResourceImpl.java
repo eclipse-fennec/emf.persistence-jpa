@@ -395,6 +395,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		this.queryProcessor = requireNonNull(queryProcessor, "queryProcessor must not be null");
 	}
 
+	/** The effective processor — package-private so tests can assert the wiring. */
+	QueryProcessor queryProcessor() {
+		return queryProcessor;
+	}
+
 	@Override
 	public QueryResult query(Query query) throws IOException {
 		return query(query, null, null);

@@ -165,7 +165,7 @@ session knows how to map the EClasses to them.
 ### A.2 — Wire the EMF Resource layer
 
 ```java
-import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
+import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 
 ResourceSet persistenceRs = new ResourceSetImpl();
 persistenceRs.getResourceFactoryRegistry()
@@ -269,7 +269,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
+import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;

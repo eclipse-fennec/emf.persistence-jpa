@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.mongo.resource;
+package org.eclipse.fennec.persistence.mongo;
 
 import static java.util.Objects.requireNonNull;
 
@@ -18,6 +18,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.persistence.mongo.resource.MongoResourceImpl;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 
 import com.mongodb.client.MongoDatabase;

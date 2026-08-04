@@ -84,17 +84,54 @@ client.target=(mongo.client.ident=main)
 | `database` | yes | Name of the MongoDB database |
 | `client.target` | no | OSGi filter selecting the `MongoClient` service (recommended when more than one client exists) |
 
-### 3. Consuming the database service
+### 3. Resources through the `mongodb://` whiteboard
 
-The Mongo backend does not (yet) auto-mount its resource factory — you bind
-the `MongoDatabase` service and wire the factory into your `ResourceSet`
-yourself:
+The bundle auto-mounts its resource factory: `MongoResourceFactoryComponent`
+registers the single `Resource.Factory` for the `mongodb` protocol, and
+emf.osgi wires it into every `ResourceSet` service. The component
+whiteboard-tracks all `MongoDatabase` services and dispatches by URI
+authority — `mongodb://<alias>/<collection>` addresses the database whose
+`mongo.database.alias` property matches `<alias>`. No hand-wiring is needed:
+
+```java
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+
+@Component
+public class LibraryMongoService {
+
+    @Activate
+    public LibraryMongoService(@Reference ResourceSet resourceSet) {
+        Resource people = resourceSet
+                .createResource(URI.createURI("mongodb://library/Person"));
+    }
+}
+```
+
+Dispatch details:
+
+- Databases are resolved **lazily** — a configured database that no URI ever
+  addresses is never touched.
+- A URI addressing an **unknown alias** still yields a resource; it fails
+  with a clear diagnostic naming the alias on load/save instead of returning
+  `null` (no silent fallback to another database).
+- A `QueryProcessor` service with `persistence.query.backend=mongo` and a
+  `CodecValueRegistry` service are picked up greedily and handed to every
+  created resource.
+
+If you want to pin one fixed database instead — or bring your own
+`ResourceSet` — the exported `MongoResourceFactory` does the same wiring by
+hand:
 
 ```java
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
-import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
+import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -125,9 +162,9 @@ persist; in OSGi it tracks `EPackage` services automatically, so a model
 bundle that publishes its `EPackageConfigurator` (the generated one does)
 needs no explicit registration.
 
-Because the component `@Reference`s the `MongoDatabase` service, standard DS
-lifecycle applies: your component only activates while a verified connection
-exists, and deactivates when it goes away — see the next section.
+When a component `@Reference`s the `MongoDatabase` service directly, standard
+DS lifecycle applies: your component only activates while a verified
+connection exists, and deactivates when it goes away — see the next section.
 
 ## Connection liveness
 
@@ -179,7 +216,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
-import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
+import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -453,9 +490,6 @@ verifies:
   no unit-of-work or rollback spanning multiple resources.
 - **Id generation only for String ids** (`ObjectId` hex). Numeric ids must
   be assigned by the application.
-- **No automatic resource-factory registration.** You mount
-  `MongoResourceFactory` into each `ResourceSet` yourself; there is no
-  whiteboard that dispatches `mongodb://` URIs to configured databases yet.
 - **`count()`/`exist()` are collection-wide** and ignore the URI id segment.
 - **No eorm-style tuning** — fetch/batch/column configuration from the JPA
   backend has no Mongo counterpart (page size for load/stream is the only

@@ -32,7 +32,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.Options;
-import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceFactory;
+import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.junit.jupiter.api.BeforeEach;

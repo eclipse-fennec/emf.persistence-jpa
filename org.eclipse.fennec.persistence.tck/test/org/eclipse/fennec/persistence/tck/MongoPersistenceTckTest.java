@@ -28,7 +28,7 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
-import org.eclipse.fennec.persistence.mongo.resource.MongoResourceFactory;
+import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoClient;
