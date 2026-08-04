@@ -1,5 +1,5 @@
 Bundle-Name: Eclipse Fennec Persistence TCK
-Bundle-Description: Backend-agnostic compatibility tests for EMF persistence backends
+Bundle-Description: In-repo compatibility test suite for the EMF persistence backends (test sources only, not consumable as a library)
 
 -workingset: persistence
 
