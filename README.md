@@ -47,12 +47,42 @@ On the relational path it maps ECore metamodels (EClass, EAttribute, EReference)
 
 * `snapshot` is the active development branch. PRs land here first; every
   push publishes `-SNAPSHOT` artifacts to
-  [Sonatype Central snapshots](https://central.sonatype.com/repository/maven-snapshots/org/eclipse/fennec/persistence/jpa/).
+  [Sonatype Central snapshots](https://central.sonatype.com/repository/maven-snapshots/org/eclipse/fennec/persistence/).
 * `main` always holds the latest released version. Released artifacts are
-  available on [Maven Central](https://repo1.maven.org/maven2/org/eclipse/fennec/persistence/jpa/)
-  under `org.eclipse.fennec.persistence.jpa:*`.
+  available on [Maven Central](https://repo1.maven.org/maven2/org/eclipse/fennec/persistence/)
+  under `org.eclipse.fennec.persistence:*`.
 
 See [docs/ci.md](docs/ci.md) for the full CI / publishing pipeline.
+
+## Consuming from a bnd workspace
+
+The bundle `org.eclipse.fennec.persistence.workspace.library` is a
+[bnd workspace library](https://bnd.bndtools.org/instructions/library.html)
+(`bnd.library=fennecPersistence`). Two lines make the whole stack available
+in another bnd workspace:
+
+1. Add the library bundle to your workspace's Maven index (e.g.
+   `cnf/central.mvn`; snapshot versions additionally need a repository
+   pointing at Sonatype Central snapshots):
+
+   ```
+   org.eclipse.fennec.persistence:org.eclipse.fennec.persistence.workspace.library:<version>
+   ```
+
+2. Enable the library in `cnf/build.bnd`:
+
+   ```properties
+   -library: fennecPersistence
+   ```
+
+Enabling the library registers a read-only `MavenBndRepository` named
+"Eclipse Fennec Persistence" whose index carries the full dependency closure:
+the persistence bundles (core, orm, eclipselink, mongo, query stack, model
+bundles, OCL bridge), EclipseLink and `jakarta.persistence-api`, the MongoDB
+driver, the fennec codec, emf.osgi metadata, H2/PostgreSQL drivers with the
+daanse `DataSource` factories, and the supporting EMF/OSGi runtime bundles.
+After a repository refresh they can be used on any `-buildpath`/`-runbundles`
+like local artifacts.
 
 ## Quick Start
 
