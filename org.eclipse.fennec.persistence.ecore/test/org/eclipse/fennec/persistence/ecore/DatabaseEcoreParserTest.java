@@ -77,6 +77,29 @@ class DatabaseEcoreParserTest {
 	}
 
 	@Nested
+	@DisplayName("mapType — fallback reporting (issue #19)")
+	class MapTypeTests {
+
+		@Test void testCleanMappingHasNoProblem() {
+			DatabaseEcoreParser.TypeMapping mapping = DatabaseEcoreParser.mapType(Types.INTEGER);
+			assertThat(mapping.type()).isEqualTo(EcorePackage.Literals.EINTEGER_OBJECT);
+			assertThat(mapping.problem()).isNull();
+		}
+
+		@Test void testUnmappedJdbcTypeReportsProblem() {
+			DatabaseEcoreParser.TypeMapping mapping = DatabaseEcoreParser.mapType(Types.OTHER);
+			assertThat(mapping.type()).isEqualTo(EcorePackage.Literals.ESTRING);
+			assertThat(mapping.problem()).contains("Unmapped JDBC type OTHER");
+		}
+
+		@Test void testUnknownTypeCodeReportsProblem() {
+			DatabaseEcoreParser.TypeMapping mapping = DatabaseEcoreParser.mapType(99999);
+			assertThat(mapping.type()).isEqualTo(EcorePackage.Literals.ESTRING);
+			assertThat(mapping.problem()).contains("Unknown JDBC type code 99999");
+		}
+	}
+
+	@Nested
 	@DisplayName("Naming transformation")
 	class NamingTests {
 

@@ -54,6 +54,7 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.eclipse.fennec.codec.bson.BsonFormatDelegate;
@@ -144,6 +145,9 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
 
+	/** Diagnostic source of this resource layer (issue #19): the bundle namespace. */
+	static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.mongo";
+
 	private final MongoDatabase database;
 	private final CodecValueRegistry valueRegistry;
 	private volatile ObjectMapper mongoMapper;
@@ -225,7 +229,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		getWarnings().clear();
 		String collectionName = getCollectionName(options);
 		if (isNull(collectionName)) {
-			getWarnings().add(new MongoDiagnostic(
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 					"Resource URI has no collection segment — nothing to load", getURI()));
 			return;
 		}
@@ -247,7 +251,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				decodeInto(find, eClass, getContents());
 			}
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to load resource: " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to load resource: " + getURI(), e);
 		}
@@ -292,7 +296,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		getWarnings().clear();
 		String collectionName = getCollectionName(options);
 		if (isNull(collectionName)) {
-			getWarnings().add(new MongoDiagnostic(
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 					"Resource URI has no collection segment — nothing to save", getURI()));
 			return;
 		}
@@ -311,7 +315,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				collection.bulkWrite(writes);
 			}
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to save resource: " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to save resource: " + getURI(), e);
 		}
@@ -337,7 +341,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			getContents().clear();
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to delete resource: " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to delete resource: " + getURI(), e);
 		}
@@ -409,7 +413,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			catalogName = PersistedQueries.catalogName(query);
 		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected: " + e.getMessage(), e);
 		}
 		if (catalogName != null) {
@@ -424,13 +428,13 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			plan = MongoQueries.translate(queryProcessor, query, eClass, parameters, queryOptions(options));
 		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected for collection '" + collectionName + "': " + e.getMessage(), e);
 		}
 		try {
 			return execute(plan, collectionName, eClass, options);
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic("Query execution failed: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query execution failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query execution failed on collection '" + collectionName + "'", e);
 		}
 	}
@@ -482,7 +486,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			getCollection(QUERY_CATALOG_COLLECTION).replaceOne(eq("_id", new BsonString(name)),
 					document, new ReplaceOptions().upsert(true));
 		} catch (QueryException | RuntimeException e) {
-			getErrors().add(new MongoDiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to persist query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to persist query '" + name + "'", e);
 		}
@@ -494,7 +498,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			document = getCollection(QUERY_CATALOG_COLLECTION)
 					.find(eq("_id", new BsonString(name))).first();
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to load persisted query '" + name + "'", e);
 		}
@@ -504,7 +508,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			return PersistedQueries.fromXmi(name, document.getString("xmi").getValue(), packageRegistry());
 		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Cannot load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Cannot load persisted query '" + name + "': " + e.getMessage(), e);
 		}
@@ -570,14 +574,14 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			plan = MongoQueries.translate(queryProcessor, delete.getSelector(),
 					delete.getSelector().getFrom(), null, queryOptions(null));
 		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic("Delete selector rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
 		}
 		try {
 			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
 			return getCollection(collectionName).deleteMany(filter).getDeletedCount();
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic("Delete failed: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete failed on collection '" + collectionName + "'", e);
 		}
 	}
@@ -598,7 +602,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			ChangeTemplates.validate(update.getTemplate(), eClass);
 			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, null, queryOptions(null));
 		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic("Update rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);
 		}
 		try {
@@ -622,10 +626,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			return applied;
 		} catch (QueryException e) {
-			getErrors().add(new MongoDiagnostic("Update failed: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update failed on collection '" + collectionName + "': " + e.getMessage(), e);
 		} catch (RuntimeException e) {
-			getErrors().add(new MongoDiagnostic("Update failed: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update failed on collection '" + collectionName + "'", e);
 		}
 	}
@@ -752,7 +756,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			return resolved;
 		} catch (RuntimeException | IOException e) {
-			getWarnings().add(new MongoDiagnostic(
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(), getURI(), e));
 			return null;
 		}

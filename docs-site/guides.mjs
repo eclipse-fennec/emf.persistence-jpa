@@ -26,4 +26,5 @@ export const ARCHITECTURE = [
 
 export const CONCEPTS = [
   { file: 'concept-connection-liveness.md', slug: 'connection-liveness', title: 'Connection Liveness' },
+  { file: 'diagnostics.md', slug: 'diagnostics', title: 'Diagnostics' },
 ];

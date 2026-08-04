@@ -33,6 +33,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.internal.helper.DatabaseField;
 import org.eclipse.persistence.sessions.UnitOfWork;
@@ -865,8 +866,10 @@ class JPAResourceImplTest {
 				}
 			}) {
 				// Seed stale diagnostics
-				testResource.getErrors().add(new JPADiagnostic("stale error", null));
-				testResource.getWarnings().add(new JPADiagnostic("stale warning", null));
+				testResource.getErrors().add(PersistenceDiagnostic.error(
+						JPAResourceImpl.DIAGNOSTIC_SOURCE, "stale error", null));
+				testResource.getWarnings().add(PersistenceDiagnostic.warning(
+						JPAResourceImpl.DIAGNOSTIC_SOURCE, "stale warning", null));
 
 				testResource.load(null);
 				// Lazy resource: the deferred population clears diagnostics at its start.

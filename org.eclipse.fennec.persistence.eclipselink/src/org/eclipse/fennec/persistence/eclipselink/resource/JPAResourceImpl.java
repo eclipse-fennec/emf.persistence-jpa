@@ -51,6 +51,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueries;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryPlan;
@@ -108,6 +109,9 @@ import jakarta.persistence.TypedQuery;
 public class JPAResourceImpl extends ResourceImpl implements PersistenceResource, StreamingResource, QueryableResource, CommandResource {
 
 	private static final Logger LOG = Logger.getLogger(JPAResourceImpl.class.getName());
+
+	/** Diagnostic source of this resource layer (issue #19): the bundle namespace. */
+	static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.eclipselink";
 
 	private final JPAUnit unit;
 	private volatile QueryProcessor queryProcessor = new JpaQueryProcessor();
@@ -213,14 +217,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		getWarnings().clear();
 		String entityName = getEntityName();
 		if (isNull(entityName)) {
-			getWarnings().add(new JPADiagnostic(
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 					"Resource URI has no entity segment — nothing to load", getURI()));
 			return;
 		}
 		try (Lease lease = leaseChecked()) {
 			ClassDescriptor descriptor = getDescriptor(entityName);
 			if (isNull(descriptor)) {
-				getWarnings().add(new JPADiagnostic(
+				getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 						"No descriptor found for entity '" + entityName + "'", getURI()));
 				return;
 			}
@@ -236,7 +240,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					addToContents(query.getResultList());
 				}
 			} catch (RuntimeException e) {
-				getErrors().add(new JPADiagnostic(
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 						"Failed to load entity '" + entityName + "': " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to load resource: " + getURI(), e);
 			}
@@ -253,7 +257,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			return unit.lease();
 		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Persistence unit not available: " + e.getMessage(), getURI(), e));
 			throw new IOException("Persistence unit not available for " + getURI(), e);
 		}
@@ -335,7 +339,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
-				getErrors().add(new JPADiagnostic(
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 						"Failed to save resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
@@ -588,7 +592,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
-				getErrors().add(new JPADiagnostic(
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 						"Failed to delete resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to delete resource: " + getURI(), e);
 			}
@@ -649,7 +653,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try (Lease lease = unit.lease()) {
 			ClassDescriptor descriptor = getDescriptor(entityName);
 			if (isNull(descriptor)) {
-				getWarnings().add(new JPADiagnostic(
+				getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 						"No descriptor for entity '" + entityName + "' — cannot resolve fragment "
 						+ uriFragment, getURI()));
 				return null;
@@ -658,7 +662,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			try {
 				typedId = convertId(idValue, descriptor);
 			} catch (NumberFormatException e) {
-				getWarnings().add(new JPADiagnostic(
+				getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 						"Cannot convert id '" + idValue + "' for fragment " + uriFragment
 						+ ": " + e.getMessage(), getURI(), e));
 				return null;
@@ -670,7 +674,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				em.close();
 			}
 		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(),
 					getURI(), e));
 			return null;
@@ -742,7 +746,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			plan = JpaQueries.translate(queryProcessor, delete.getSelector(),
 					delete.getSelector().getFrom(), null, null);
 		} catch (QueryException e) {
-			getErrors().add(new JPADiagnostic("Delete selector rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
 		}
 		// load the matches and remove children-first: a JPQL bulk DELETE bypasses cascade
@@ -765,7 +769,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
-				getErrors().add(new JPADiagnostic("Delete failed: " + e.getMessage(), getURI(), e));
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
 			}
 		}
@@ -780,7 +784,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			plan = JpaQueries.translate(queryProcessor, update.getSelector(),
 					update.getSelector().getFrom(), null, null);
 		} catch (QueryException e) {
-			getErrors().add(new JPADiagnostic("Update rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);
 		}
 		// load the matches and patch them managed — the template addresses features
@@ -804,7 +808,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
-				getErrors().add(new JPADiagnostic("Update failed: " + e.getMessage(), getURI(), e));
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Update failed for selector on '" + plan.jpql() + "'", e);
 			}
 		}
@@ -856,7 +860,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			catalogName = PersistedQueries.catalogName(query);
 		} catch (QueryException e) {
-			getErrors().add(new JPADiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected: " + e.getMessage(), e);
 		}
 		if (catalogName != null) {
@@ -888,7 +892,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			plan = JpaQueries.translate(queryProcessor, query, eClass, parameters, options);
 		} catch (QueryException e) {
 			lease.close();
-			getErrors().add(new JPADiagnostic("Query rejected: " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected for entity '" + entityName + "': " + e.getMessage(), e);
 		}
 		if (plan.shape() == QueryShape.COUNT) {
@@ -907,7 +911,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			xmi = PersistedQueries.toXmi(query);
 		} catch (QueryException e) {
-			getErrors().add(new JPADiagnostic("Cannot persist query '" + name + "': " + e.getMessage(), getURI(), e));
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Cannot persist query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Cannot persist query '" + name + "': " + e.getMessage(), e);
 		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
@@ -926,7 +930,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				throw e;
 			}
 		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to persist query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to persist query '" + name + "'", e);
 		}
@@ -948,7 +952,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				throw e;
 			}
 		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to load persisted query '" + name + "'", e);
 		}
@@ -958,7 +962,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			return PersistedQueries.fromXmi(name, clobText(rows.get(0)), packageRegistry());
 		} catch (QueryException e) {
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Cannot load persisted query '" + name + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Cannot load persisted query '" + name + "': " + e.getMessage(), e);
 		}
@@ -992,7 +996,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			plan.parameters().forEach(countQuery::setParameter);
 			return QueryResults.count(countQuery.getSingleResult());
 		} catch (RuntimeException e) {
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to execute count query on '" + entityName + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to execute count query on '" + entityName + "'", e);
 		}
@@ -1029,7 +1033,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		} catch (RuntimeException e) {
 			em.close();
 			lease.close();
-			getErrors().add(new JPADiagnostic(
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to execute query on '" + entityName + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to execute query on '" + entityName + "'", e);
 		}
@@ -1144,14 +1148,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	public long count(Map<?, ?> options) throws IOException {
 		String entityName = getEntityName();
 		if (isNull(entityName)) {
-			getWarnings().add(new JPADiagnostic(
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 					"Resource URI has no entity segment — count is 0", getURI()));
 			return 0;
 		}
 		try (Lease lease = leaseChecked()) {
 			ClassDescriptor descriptor = getDescriptor(entityName);
 			if (isNull(descriptor)) {
-				getWarnings().add(new JPADiagnostic(
+				getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
 						"No descriptor for entity '" + entityName + "' — count is 0", getURI()));
 				return 0;
 			}
@@ -1161,7 +1165,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				return em.createQuery("SELECT COUNT(e) FROM " + validatedAlias + " e", Long.class)
 						.getSingleResult();
 			} catch (RuntimeException e) {
-				getErrors().add(new JPADiagnostic(
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 						"Failed to count entity '" + entityName + "': " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to count entity '" + entityName + "' in " + getURI(), e);
 			}
@@ -1253,7 +1257,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			String msg = "No descriptor found for EClass '" + source.eClass().getName()
 					+ "' — passing object as-is";
 			LOG.log(Level.WARNING, msg);
-			getWarnings().add(new JPADiagnostic(msg, getURI()));
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, msg, getURI()));
 			return source;
 		}
 		EObject target = EDynamicHelper.createInstance(descriptor);
