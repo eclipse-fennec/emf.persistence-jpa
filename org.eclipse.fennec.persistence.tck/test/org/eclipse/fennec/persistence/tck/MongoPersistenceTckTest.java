@@ -45,12 +45,6 @@ import com.mongodb.client.MongoDatabase;
  */
 class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 
-	/** Mongo refuses filtered counts until $filter rendering lands (issue #81). */
-	@Override
-	protected boolean supportsFilteredCollectionCounts() {
-		return false;
-	}
-
 	/** Mongo find-sorts cannot order by expressions (issue #84). */
 	@Override
 	protected boolean supportsSortExpressions() {

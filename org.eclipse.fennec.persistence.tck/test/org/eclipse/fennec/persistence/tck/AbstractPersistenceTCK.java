@@ -1344,6 +1344,10 @@ public abstract class AbstractPersistenceTCK {
 		corpus.put("collection count plain", QueryBuilder.from(personClass)
 				.where(Expressions.count(Expressions.propertyPath(personAddresses)).ge(2))
 				.build());
+		corpus.put("collection count filtered", QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("Main")).eq(1))
+				.build());
 		corpus.put("collection count empty", QueryBuilder.from(personClass)
 				.where(Expressions.count(Expressions.propertyPath(personAddresses)).eq(0))
 				.build());

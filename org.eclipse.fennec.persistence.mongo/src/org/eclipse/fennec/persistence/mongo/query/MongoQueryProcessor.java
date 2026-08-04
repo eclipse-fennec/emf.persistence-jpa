@@ -59,6 +59,7 @@ import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
+import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.Computation;
@@ -141,6 +142,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
+					QueryFeature.COLLECTION_COUNT_FILTERED,
 					QueryFeature.PIPELINE_COMPUTE, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
@@ -324,15 +326,19 @@ public class MongoQueryProcessor implements QueryProcessor {
 
 	private Bson match(StringMatch match, QueryContext context) throws QueryException {
 		String field = field(match.getSource());
+		String pattern = regexPattern(match, context);
+		return match.isCaseInsensitive() ? Filters.regex(field, pattern, "i") : Filters.regex(field, pattern);
+	}
+
+	private String regexPattern(StringMatch match, QueryContext context) throws QueryException {
 		Object raw = ExpressionValues.resolve(match.getPattern(), null, context.parameters(), null);
 		String text = raw == null ? "" : String.valueOf(raw);
-		String pattern = switch (match.getKind()) {
+		return switch (match.getKind()) {
 		case CONTAINS -> Pattern.quote(text);
 		case STARTS_WITH -> "^" + Pattern.quote(text);
 		case ENDS_WITH -> Pattern.quote(text) + "$";
 		case LIKE -> likeToRegex(text);
 		};
-		return match.isCaseInsensitive() ? Filters.regex(field, pattern, "i") : Filters.regex(field, pattern);
 	}
 
 	/**
@@ -362,6 +368,121 @@ public class MongoQueryProcessor implements QueryProcessor {
 		List<Object> operands = new ArrayList<>(guards);
 		operands.add(compare);
 		return Filters.expr(new Document("$and", operands));
+	}
+
+	/**
+	 * Renders a boolean aggregation-language condition for a {@code $filter} cond
+	 * (issue #86): paths based on the scoped variable address the element as
+	 * {@code $$<var>.<field>}, carrying the usual {@code $ne null} guards. The v1
+	 * vocabulary is comparisons, junctions, not, isNull, between, in and string
+	 * matches over element fields and literals — nested functions are refused.
+	 */
+	private Object exprCondition(Expression expression, Variable variable, String name,
+			QueryContext context) throws QueryException {
+		if (expression instanceof Junction junction) {
+			List<Object> operands = new ArrayList<>(junction.getOperands().size());
+			for (Expression operand : junction.getOperands()) {
+				operands.add(exprCondition(operand, variable, name, context));
+			}
+			return new Document(junction instanceof And ? "$and" : "$or", operands);
+		}
+		if (expression instanceof Not not) {
+			return new Document("$not", List.of(exprCondition(not.getOperand(), variable, name, context)));
+		}
+		if (expression instanceof Comparison comparison) {
+			EStructuralFeature target = condTarget(comparison.getLeft(), comparison.getRight());
+			List<Object> guards = new ArrayList<>();
+			Object left = condOperand(comparison.getLeft(), variable, name, target, context, guards);
+			Object right = condOperand(comparison.getRight(), variable, name, target, context, guards);
+			String operator = switch (comparison.getOperator()) {
+			case EQ -> "$eq";
+			case NE -> "$ne";
+			case LT -> "$lt";
+			case LE -> "$lte";
+			case GT -> "$gt";
+			case GE -> "$gte";
+			};
+			return guardedCondition(new Document(operator, Arrays.asList(left, right)), guards);
+		}
+		if (expression instanceof IsNull isNull) {
+			Object value = condOperand(isNull.getSource(), variable, name, null, context, new ArrayList<>());
+			return new Document(isNull.isNegated() ? "$ne" : "$eq", Arrays.asList(value, null));
+		}
+		if (expression instanceof Between between) {
+			EStructuralFeature target = condTarget(between.getSource(), null);
+			List<Object> guards = new ArrayList<>();
+			Object value = condOperand(between.getSource(), variable, name, target, context, guards);
+			Object lower = condOperand(between.getLower(), variable, name, target, context, guards);
+			Object upper = condOperand(between.getUpper(), variable, name, target, context, guards);
+			return guardedCondition(new Document("$and", Arrays.asList(
+					new Document(between.isLowerIncluded() ? "$gte" : "$gt", Arrays.asList(value, lower)),
+					new Document(between.isUpperIncluded() ? "$lte" : "$lt", Arrays.asList(value, upper)))),
+					guards);
+		}
+		if (expression instanceof In in) {
+			EStructuralFeature target = condTarget(in.getSource(), null);
+			List<Object> guards = new ArrayList<>();
+			Object value = condOperand(in.getSource(), variable, name, target, context, guards);
+			List<Object> options = new ArrayList<>(in.getValues().size());
+			for (Expression option : in.getValues()) {
+				options.add(mongoValue(ExpressionValues.resolve(option, target, context.parameters(),
+						context.converter())));
+			}
+			return guardedCondition(new Document("$in", Arrays.asList(value, options)), guards);
+		}
+		if (expression instanceof StringMatch match) {
+			List<Object> guards = new ArrayList<>();
+			Object input = condOperand(match.getSource(), variable, name, null, context, guards);
+			Document regex = new Document("input", input)
+					.append("regex", regexPattern(match, context));
+			if (match.isCaseInsensitive()) {
+				regex.append("options", "i");
+			}
+			return guardedCondition(new Document("$regexMatch", regex), guards);
+		}
+		throw new QueryException("Unsupported condition " + expression.eClass().getName()
+				+ " inside a filtered collection count on the mongo backend");
+	}
+
+	private static Object guardedCondition(Document condition, List<Object> guards) {
+		if (guards.isEmpty()) {
+			return condition;
+		}
+		List<Object> operands = new ArrayList<>(guards);
+		operands.add(condition);
+		return new Document("$and", operands);
+	}
+
+	/** The element field typing literal peers inside a {@code $filter} cond. */
+	private EStructuralFeature condTarget(Expression left, Expression right) {
+		if (left instanceof PropertyPath path) {
+			return ExpressionValues.targetFeature(path);
+		}
+		return right instanceof PropertyPath path ? ExpressionValues.targetFeature(path) : null;
+	}
+
+	/** One cond operand: the element field ({@code $$<var>.<field>}) or a bound value. */
+	private Object condOperand(Expression expression, Variable variable, String name,
+			EStructuralFeature target, QueryContext context, List<Object> guards) throws QueryException {
+		if (expression instanceof PropertyPath path) {
+			if (path.getBase() != variable) {
+				throw new QueryException("Filtered collection counts address the element variable"
+						+ " only — root paths and foreign variables are not supported in the cond");
+			}
+			String reference = "$$" + name + "." + MongoFieldNames.render(path);
+			Document guard = new Document("$ne", Arrays.asList(reference, null));
+			if (!guards.contains(guard)) {
+				guards.add(guard);
+			}
+			return reference;
+		}
+		if (expression instanceof Literal || expression instanceof ParameterRef) {
+			Object value = mongoValue(ExpressionValues.resolve(expression, target, context.parameters(),
+					context.converter()));
+			return new Document("$literal", value);
+		}
+		throw new QueryException("Unsupported operand " + expression.eClass().getName()
+				+ " inside a filtered collection count on the mongo backend");
 	}
 
 	/** Renders one {@code $expr} operand; collects a {@code $ne null} guard per referenced field. */
@@ -425,10 +546,6 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return "$" + aliasRef.getAlias();
 		}
 		if (expression instanceof CollectionCount count) {
-			if (count.getPredicate() != null) {
-				throw new QueryException("Filtered collection counts are not supported by the mongo"
-						+ " backend yet — declare COLLECTION_COUNT_FILTERED once $filter rendering lands");
-			}
 			if (count.getSource().getBase() != null) {
 				throw new QueryException("Collection counts inside quantifier predicates are not"
 						+ " supported by the mongo backend");
@@ -436,7 +553,16 @@ public class MongoQueryProcessor implements QueryProcessor {
 			// a missing array is an empty EMF list (smart compression omits it) — count 0,
 			// so no $ne-null guard and an $ifNull fallback instead
 			String reference = "$" + MongoFieldNames.render(count.getSource());
-			return new Document("$size", new Document("$ifNull", Arrays.asList(reference, List.of())));
+			Object input = new Document("$ifNull", Arrays.asList(reference, List.of()));
+			if (count.getPredicate() == null) {
+				return new Document("$size", input);
+			}
+			// predicated count: $size over $filter — the cond addresses the element
+			// through the $$variable (issue #86)
+			String name = count.getVariable().getName();
+			Object cond = exprCondition(count.getPredicate(), count.getVariable(), name, context);
+			return new Document("$size", new Document("$filter",
+					new Document("input", input).append("as", name).append("cond", cond)));
 		}
 		if (expression instanceof TemporalFunction temporalFunction) {
 			// BSON dates are UTC instants — the operators extract UTC parts natively,
