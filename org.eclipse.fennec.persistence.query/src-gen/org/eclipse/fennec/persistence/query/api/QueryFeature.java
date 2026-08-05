@@ -594,6 +594,32 @@ public enum QueryFeature implements Enumerator {
 	SCORE(75, "SCORE", "SCORE"),
 
 	/**
+	 * The '<em><b>GEO WITHIN</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * GeoWithin — containment of a WGS84 position in a box or polygon (issue #101). Memory carries the reference semantics (split subject binding); Mongo 2dsphere is G-P2, Lucene follows in emf.search, JPA refuses until a PostGIS dialect story exists.
+	 * <!-- end-model-doc -->
+	 * @see #GEO_WITHIN_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	GEO_WITHIN(76, "GEO_WITHIN", "GEO_WITHIN"),
+
+	/**
+	 * The '<em><b>GEO DISTANCE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * GeoDistance — the spherical WGS84 distance in meters as a value expression (issue #101, decision G3): composes with comparisons and the issue-#84 sort seam (nearest first). Reference: haversine over the mean earth radius; conformance banded per decision G5.
+	 * <!-- end-model-doc -->
+	 * @see #GEO_DISTANCE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	GEO_DISTANCE(77, "GEO_DISTANCE", "GEO_DISTANCE"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1261,6 +1287,34 @@ public enum QueryFeature implements Enumerator {
 	public static final int SCORE_VALUE = 75;
 
 	/**
+	 * The '<em><b>GEO WITHIN</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * GeoWithin — containment of a WGS84 position in a box or polygon (issue #101). Memory carries the reference semantics (split subject binding); Mongo 2dsphere is G-P2, Lucene follows in emf.search, JPA refuses until a PostGIS dialect story exists.
+	 * <!-- end-model-doc -->
+	 * @see #GEO_WITHIN
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int GEO_WITHIN_VALUE = 76;
+
+	/**
+	 * The '<em><b>GEO DISTANCE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * GeoDistance — the spherical WGS84 distance in meters as a value expression (issue #101, decision G3): composes with comparisons and the issue-#84 sort seam (nearest first). Reference: haversine over the mean earth radius; conformance banded per decision G5.
+	 * <!-- end-model-doc -->
+	 * @see #GEO_DISTANCE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int GEO_DISTANCE_VALUE = 77;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1381,6 +1435,8 @@ public enum QueryFeature implements Enumerator {
 			SORT_EXPRESSION,
 			GROUP_EXPRESSION,
 			SCORE,
+			GEO_WITHIN,
+			GEO_DISTANCE,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1485,6 +1541,8 @@ public enum QueryFeature implements Enumerator {
 			case SORT_EXPRESSION_VALUE: return SORT_EXPRESSION;
 			case GROUP_EXPRESSION_VALUE: return GROUP_EXPRESSION;
 			case SCORE_VALUE: return SCORE;
+			case GEO_WITHIN_VALUE: return GEO_WITHIN;
+			case GEO_DISTANCE_VALUE: return GEO_DISTANCE;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

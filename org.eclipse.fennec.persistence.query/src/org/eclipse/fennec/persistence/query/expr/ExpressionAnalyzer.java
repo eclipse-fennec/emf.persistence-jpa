@@ -18,6 +18,11 @@ import java.util.Set;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.Arithmetic;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoPolygon;
+import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.CollectionCount;
@@ -144,8 +149,10 @@ public final class ExpressionAnalyzer {
 		}
 
 		QueryShape shape = deriveShape(query, aggregating);
+		String invalidGeo = features.contains(QueryFeature.GEO_WITHIN)
+				|| features.contains(QueryFeature.GEO_DISTANCE) ? scanGeoStructure(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
-				invalidSort[0]);
+				invalidSort[0], invalidGeo);
 	}
 
 	private static QueryShape deriveShape(Query query, boolean aggregating) {
@@ -322,6 +329,12 @@ public final class ExpressionAnalyzer {
 			features.add(QueryFeature.PARAMETERS);
 		} else if (expression instanceof Score) {
 			features.add(QueryFeature.SCORE);
+		} else if (expression instanceof GeoWithin geoWithin) {
+			features.add(QueryFeature.GEO_WITHIN);
+			subjectPaths(geoWithin.getSubject(), features, maxDepth);
+		} else if (expression instanceof GeoDistance geoDistance) {
+			features.add(QueryFeature.GEO_DISTANCE);
+			subjectPaths(geoDistance.getSubject(), features, maxDepth);
 		} else if (expression instanceof PropertyPath propertyPath) {
 			if (propertyPath.getCastBase() != null) {
 				features.add(QueryFeature.TYPE_CAST);
@@ -329,6 +342,60 @@ public final class ExpressionAnalyzer {
 			path(propertyPath, features, maxDepth);
 		}
 		// literals and variable refs carry no features
+	}
+
+	/** Registers the subject's coordinate paths (either binding form — issue #101). */
+	private static void subjectPaths(GeoSubject subject, Set<QueryFeature> features, int[] maxDepth) {
+		if (subject == null) {
+			return;
+		}
+		if (subject.getPathLat() != null) {
+			path(subject.getPathLat(), features, maxDepth);
+		}
+		if (subject.getPathLon() != null) {
+			path(subject.getPathLon(), features, maxDepth);
+		}
+		if (subject.getPathPoint() != null) {
+			path(subject.getPathPoint(), features, maxDepth);
+		}
+	}
+
+	/**
+	 * Structural geo validation (issue #101, §5 rules): every subject carries exactly
+	 * one binding, coordinates are in range, polygons have three distinct vertices and
+	 * do not cross the antimeridian. First finding wins.
+	 */
+	private static String scanGeoStructure(Query query) {
+		var iterator = query.eAllContents();
+		while (iterator.hasNext()) {
+			Object content = iterator.next();
+			if (content instanceof GeoSubject subject) {
+				boolean split = subject.getPathLat() != null && subject.getPathLon() != null;
+				boolean packed = subject.getPathPoint() != null;
+				if (split == packed || (subject.getPathLat() == null) != (subject.getPathLon() == null)) {
+					return "GeoSubject must bind either the lat/lon feature pair or a single point path";
+				}
+			} else if (content instanceof GeoPointLiteral point) {
+				if (Math.abs(point.getLat()) > 90.0 || Math.abs(point.getLon()) > 180.0) {
+					return "Geo coordinate out of range: lon=" + point.getLon() + ", lat=" + point.getLat()
+							+ " (|lat| <= 90, |lon| <= 180)";
+				}
+			} else if (content instanceof GeoPolygon polygon) {
+				long distinct = polygon.getPoints().stream()
+						.map(p -> p.getLon() + "/" + p.getLat())
+						.distinct().count();
+				if (distinct < 3) {
+					return "GeoPolygon needs at least three distinct vertices, got " + distinct;
+				}
+				for (int i = 1; i < polygon.getPoints().size(); i++) {
+					if (Math.abs(polygon.getPoints().get(i).getLon()
+							- polygon.getPoints().get(i - 1).getLon()) > 180.0) {
+						return "GeoPolygon must not cross the antimeridian (§5.3) — split it";
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	/** Whether the divisor is a literal zero (statically refusable, issue #76). */

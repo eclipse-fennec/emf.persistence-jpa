@@ -59,6 +59,8 @@
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SORT_EXPRESSION"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GROUP_EXPRESSION"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SCORE"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GEO_WITHIN"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GEO_DISTANCE"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PARAMETERS"/>

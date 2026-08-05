@@ -142,6 +142,38 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createVariableRefAdapter();
 			}
 			@Override
+			public Adapter caseAliasRef(AliasRef object) {
+				return createAliasRefAdapter();
+			}
+			@Override
+			public Adapter caseGeoPointLiteral(GeoPointLiteral object) {
+				return createGeoPointLiteralAdapter();
+			}
+			@Override
+			public Adapter caseGeoSubject(GeoSubject object) {
+				return createGeoSubjectAdapter();
+			}
+			@Override
+			public Adapter caseGeoShape(GeoShape object) {
+				return createGeoShapeAdapter();
+			}
+			@Override
+			public Adapter caseGeoBox(GeoBox object) {
+				return createGeoBoxAdapter();
+			}
+			@Override
+			public Adapter caseGeoPolygon(GeoPolygon object) {
+				return createGeoPolygonAdapter();
+			}
+			@Override
+			public Adapter caseGeoWithin(GeoWithin object) {
+				return createGeoWithinAdapter();
+			}
+			@Override
+			public Adapter caseGeoDistance(GeoDistance object) {
+				return createGeoDistanceAdapter();
+			}
+			@Override
 			public Adapter caseScore(Score object) {
 				return createScoreAdapter();
 			}
@@ -208,10 +240,6 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 			@Override
 			public Adapter caseIndexOf(IndexOf object) {
 				return createIndexOfAdapter();
-			}
-			@Override
-			public Adapter caseAliasRef(AliasRef object) {
-				return createAliasRefAdapter();
 			}
 			@Override
 			public Adapter caseCollectionCount(CollectionCount object) {
@@ -478,6 +506,118 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.AliasRef <em>Alias Ref</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.AliasRef
+	 * @generated
+	 */
+	public Adapter createAliasRefAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoPointLiteral <em>Geo Point Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoPointLiteral
+	 * @generated
+	 */
+	public Adapter createGeoPointLiteralAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoSubject <em>Geo Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoSubject
+	 * @generated
+	 */
+	public Adapter createGeoSubjectAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoShape <em>Geo Shape</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoShape
+	 * @generated
+	 */
+	public Adapter createGeoShapeAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoBox <em>Geo Box</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoBox
+	 * @generated
+	 */
+	public Adapter createGeoBoxAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoPolygon <em>Geo Polygon</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoPolygon
+	 * @generated
+	 */
+	public Adapter createGeoPolygonAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoWithin <em>Geo Within</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoWithin
+	 * @generated
+	 */
+	public Adapter createGeoWithinAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.GeoDistance <em>Geo Distance</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.GeoDistance
+	 * @generated
+	 */
+	public Adapter createGeoDistanceAdapter() {
+		return null;
+	}
+
+	/**
 	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Score <em>Score</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
@@ -712,20 +852,6 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createIndexOfAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.AliasRef <em>Alias Ref</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.expression.AliasRef
-	 * @generated
-	 */
-	public Adapter createAliasRefAdapter() {
 		return null;
 	}
 

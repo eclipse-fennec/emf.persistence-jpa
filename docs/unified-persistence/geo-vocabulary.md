@@ -1,6 +1,9 @@
 # Geospatial predicate vocabulary in the query IR
 
-**Status:** draft concept for discussion (2026-08-05, issue #101) — nothing here is decided.
+**Status:** settled (concept round 2026-08-05, issue #101): G1 = both subject bindings,
+G2 = structural in v1, G3 = distance as value expression, G4 = feature ids 76/77,
+G5 = relative 1e-3 above 1 m / absolute 1 mm below; the §5 semantic rules are binding
+as proposed. Implementation phases per §7 — G-P1 in progress.
 Companions: `query-ir-redesign.md` (Expression IR, capability discipline),
 `query-processor-spi.md` (per-backend translation), `timeseries-access.md` §6.3
 (enrichment meta axis — lat/lon tags are a primary data source for these predicates).
@@ -84,9 +87,9 @@ the differential corpus (memory vs. Mongo) applies, and the TCK pins the numbers
 5. **Distance is symmetric and total on valid coordinates** — out-of-range coordinates
    (|lat| > 90, |lon| > 180) are a validation error, not a runtime surprise.
 
-## 6. Open decisions
+## 6. Decisions (settled 2026-08-05 — the "leaning" column became the decision)
 
-| # | Question | Leaning |
+| # | Question | Decision |
 |---|---|---|
 | G1 | Subject shape: feature-pair (`pathLat`×`pathLon`) vs. single packed point path vs. both | both, one `GeoSubject` node with either binding — split is what real Ecore models have, packed is what Mongo indexes; refusing one form per backend stays capability-honest |
 | G2 | Where the coordinate declaration lives: purely structural in the query (G1 paths) vs. a model aspect ("this feature pair is a position") | structural in v1 — an aspect can later *derive* the paths, same relationship as TrackingConfig to IngestMapping (#96 §6) |
@@ -98,7 +101,10 @@ the differential corpus (memory vs. Mongo) applies, and the TCK pins the numbers
 
 1. **G-P1** — IR nodes + capabilities + memory reference + validation rules (§5.3–5.5),
    TCK cases behind a `supportsGeo()`-style hook (both backends here refuse in the
-   beginning: Mongo needs G1 packed-form work, JPA refuses per §4).
+   beginning: Mongo needs G1 packed-form work, JPA refuses per §4). The memory
+   reference serves the SPLIT binding; the canonical value shape of the PACKED
+   binding is defined with the Mongo work in G-P2 (GeoJSON point) — until then the
+   reference engine refuses packed subjects with a precise message.
 2. **G-P2** — Mongo `2dsphere` translation + differential corpus memory vs. Mongo.
 3. **G-P3** — Lucene translation (in `emf.search`, against the published vocabulary).
 4. **G-P4** — PostGIS dialect for JPA (own issue, own concept note).

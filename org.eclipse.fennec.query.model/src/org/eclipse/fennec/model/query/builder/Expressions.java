@@ -38,6 +38,13 @@ import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.Exists;
+import org.eclipse.fennec.model.expression.GeoBox;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoPolygon;
+import org.eclipse.fennec.model.expression.GeoShape;
+import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ForAll;
@@ -213,6 +220,107 @@ public final class Expressions {
 		Not not = FACTORY.createNot();
 		not.setOperand(Objects.requireNonNull(operand, "operand must not be null"));
 		return not;
+	}
+
+	// ==================== geo (issue #101) ====================
+
+	/**
+	 * @param lon the longitude in degrees (GeoJSON order: lon first)
+	 * @param lat the latitude in degrees
+	 * @return a WGS84 point literal
+	 */
+	public static GeoPointLiteral geoPoint(double lon, double lat) {
+		GeoPointLiteral point = FACTORY.createGeoPointLiteral();
+		point.setLon(lon);
+		point.setLat(lat);
+		return point;
+	}
+
+	/**
+	 * The split coordinate binding (decision G1): a latitude and a longitude feature.
+	 *
+	 * @param latPath the latitude feature path, root first
+	 * @param lonPath the longitude feature path, root first
+	 * @return the geo subject
+	 */
+	public static GeoSubject geoSubject(PropertyPath latPath, PropertyPath lonPath) {
+		GeoSubject subject = FACTORY.createGeoSubject();
+		subject.setPathLat(Objects.requireNonNull(latPath, "latPath must not be null"));
+		subject.setPathLon(Objects.requireNonNull(lonPath, "lonPath must not be null"));
+		return subject;
+	}
+
+	/**
+	 * The packed coordinate binding (decision G1): a single point-valued feature. Its
+	 * canonical value shape is backend-defined (G-P2, GeoJSON point on Mongo).
+	 *
+	 * @param pointPath the point feature path, root first
+	 * @return the geo subject
+	 */
+	public static GeoSubject geoSubject(PropertyPath pointPath) {
+		GeoSubject subject = FACTORY.createGeoSubject();
+		subject.setPathPoint(Objects.requireNonNull(pointPath, "pointPath must not be null"));
+		return subject;
+	}
+
+	/**
+	 * An axis-aligned box; may cross the antimeridian ({@code southWest.lon > northEast.lon}).
+	 *
+	 * @param southWest the south-west corner
+	 * @param northEast the north-east corner
+	 * @return the box shape
+	 */
+	public static GeoBox geoBox(GeoPointLiteral southWest, GeoPointLiteral northEast) {
+		GeoBox box = FACTORY.createGeoBox();
+		box.setSouthWest(Objects.requireNonNull(southWest, "southWest must not be null"));
+		box.setNorthEast(Objects.requireNonNull(northEast, "northEast must not be null"));
+		return box;
+	}
+
+	/**
+	 * An implicitly closed polygon, vertices counter-clockwise, at least three points.
+	 *
+	 * @param points the vertices
+	 * @return the polygon shape
+	 */
+	public static GeoPolygon geoPolygon(GeoPointLiteral... points) {
+		GeoPolygon polygon = FACTORY.createGeoPolygon();
+		for (GeoPointLiteral point : points) {
+			polygon.getPoints().add(Objects.requireNonNull(point, "point must not be null"));
+		}
+		return polygon;
+	}
+
+	/**
+	 * Containment of the subject's position in the shape (capability {@code GEO_WITHIN}).
+	 * Null coordinates make the predicate UNKNOWN (3VL, issue #94).
+	 *
+	 * @param subject the coordinate binding
+	 * @param shape the box or polygon
+	 * @return the predicate
+	 */
+	public static GeoWithin geoWithin(GeoSubject subject, GeoShape shape) {
+		GeoWithin within = FACTORY.createGeoWithin();
+		within.setSubject(Objects.requireNonNull(subject, "subject must not be null"));
+		within.setShape(Objects.requireNonNull(shape, "shape must not be null"));
+		return within;
+	}
+
+	/**
+	 * The spherical WGS84 distance in meters between the subject and the point
+	 * (capability {@code GEO_DISTANCE}) — a value expression: comparable
+	 * ({@code geoDistance(...).le(500)}) and sortable as an issue-#84 key
+	 * (nearest first; k-NN = sort + limit).
+	 *
+	 * @param subject the coordinate binding
+	 * @param point the reference point
+	 * @return a comparable step over the distance in meters
+	 */
+	public static ArithmeticStep geoDistance(GeoSubject subject, GeoPointLiteral point) {
+		GeoDistance distance = FACTORY.createGeoDistance();
+		distance.setSubject(Objects.requireNonNull(subject, "subject must not be null"));
+		distance.setPoint(Objects.requireNonNull(point, "point must not be null"));
+		return new ArithmeticStep(distance);
 	}
 
 	// ==================== quantifiers ====================

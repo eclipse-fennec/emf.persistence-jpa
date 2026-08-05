@@ -133,6 +133,25 @@ class QueryValidatorTest {
 	}
 
 	@Test
+	void malformedGeoStructureIsRefused() {
+		// issue #101: a GeoSubject must bind exactly one form (pair XOR point)
+		org.eclipse.fennec.model.expression.GeoSubject dual =
+				org.eclipse.fennec.model.expression.ExpressionFactory.eINSTANCE.createGeoSubject();
+		dual.setPathLat(Expressions.propertyPath(name));
+		dual.setPathLon(Expressions.propertyPath(name));
+		dual.setPathPoint(Expressions.propertyPath(name));
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.geoWithin(dual,
+						Expressions.geoBox(Expressions.geoPoint(10, 50), Expressions.geoPoint(13, 52))))
+				.build();
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.GEO_WITHIN, QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren().get(0).getCode()).isEqualTo(QueryValidator.CODE_INVALID_GEO);
+		assertThat(diagnostic.getChildren().get(0).getMessage()).contains("GeoSubject must bind");
+	}
+
+	@Test
 	void everyUnsupportedFeatureIsReported() {
 		Query query = eqQuery(42, name);
 		query.setTop(10);

@@ -35,6 +35,7 @@ public final class QueryAnalysis {
 	private final boolean divisionByLiteralZero;
 	private final String invalidAggregate;
 	private final String invalidSort;
+	private final String invalidGeo;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -87,6 +88,23 @@ public final class QueryAnalysis {
 	 */
 	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
 			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort) {
+		this(features, maxFeaturePathDepth, shape, divisionByLiteralZero, invalidAggregate, invalidSort,
+				null);
+	}
+
+	/**
+	 * Creates an analysis result including the static structural verdicts.
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 * @param divisionByLiteralZero whether any DIV/MOD divides by a literal zero
+	 * @param invalidAggregate the malformed-aggregate finding (issue #87), or {@code null}
+	 * @param invalidSort the malformed-sort finding (issue #102), or {@code null}
+	 * @param invalidGeo the malformed-geo finding (issue #101), or {@code null}
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
+			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort, String invalidGeo) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
@@ -95,6 +113,7 @@ public final class QueryAnalysis {
 		this.divisionByLiteralZero = divisionByLiteralZero;
 		this.invalidAggregate = invalidAggregate;
 		this.invalidSort = invalidSort;
+		this.invalidGeo = invalidGeo;
 	}
 
 	/**
@@ -151,6 +170,15 @@ public final class QueryAnalysis {
 	 */
 	public String invalidSort() {
 		return invalidSort;
+	}
+
+	/**
+	 * @return the malformed-geo finding — a {@code GeoSubject} without exactly one
+	 *         binding, out-of-range coordinates or a degenerate/antimeridian-crossing
+	 *         polygon (issue #101) — or {@code null} if the geo structure is well-formed
+	 */
+	public String invalidGeo() {
+		return invalidGeo;
 	}
 
 	@Override

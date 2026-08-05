@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -43,6 +44,13 @@ import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.GeoBox;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoPolygon;
+import org.eclipse.fennec.model.expression.GeoShape;
+import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
@@ -187,6 +195,14 @@ final class MemoryPredicate {
 		if (expression instanceof StringMatch match) {
 			return evalMatch(match, candidate, bindings);
 		}
+		if (expression instanceof GeoWithin geoWithin) {
+			// reference semantics (issue #101): null coordinates are UNKNOWN (3VL)
+			double[] position = position(geoWithin.getSubject(), candidate, bindings);
+			if (position == null) {
+				return null;
+			}
+			return contains(geoWithin.getShape(), position[0], position[1]);
+		}
 		if (expression instanceof Quantifier quantifier) {
 			return evalQuantifier(quantifier, candidate, bindings);
 		}
@@ -327,7 +343,80 @@ final class MemoryPredicate {
 		if (expression instanceof NumericFunction function) {
 			return rounded(function.getKind(), operand(function.getSource(), candidate, bindings));
 		}
+		if (expression instanceof GeoDistance geoDistance) {
+			// reference formula (issue #101): haversine over the mean earth radius,
+			// meters; null coordinates poison the enclosing comparison (UNKNOWN)
+			double[] position = position(geoDistance.getSubject(), candidate, bindings);
+			if (position == null) {
+				return null;
+			}
+			return haversineMeters(position[1], position[0],
+					geoDistance.getPoint().getLat(), geoDistance.getPoint().getLon());
+		}
 		return values.get(expression);
+	}
+
+	// ------------------------------------------------------------- geo (issue #101)
+
+	/** Mean earth radius (meters) — the reference sphere of decision G5. */
+	private static final double EARTH_RADIUS_METERS = 6_371_008.8d;
+
+	/**
+	 * The subject's position as {@code [lon, lat]}, or {@code null} when a coordinate
+	 * is null/non-numeric (→ UNKNOWN). Packed subjects are refused at translation
+	 * (G-P2 defines their canonical value shape) — only the split binding reaches here.
+	 */
+	private double[] position(GeoSubject subject, EObject candidate, Map<Variable, Object> bindings) {
+		if (subject == null || subject.getPathLat() == null || subject.getPathLon() == null) {
+			return null;
+		}
+		Object lat = pathValue(subject.getPathLat(), candidate, bindings);
+		Object lon = pathValue(subject.getPathLon(), candidate, bindings);
+		if (!(lat instanceof Number latitude) || !(lon instanceof Number longitude)) {
+			return null;
+		}
+		return new double[] { longitude.doubleValue(), latitude.doubleValue() };
+	}
+
+	private static boolean contains(GeoShape shape, double lon, double lat) {
+		if (shape instanceof GeoBox box) {
+			if (lat < box.getSouthWest().getLat() || lat > box.getNorthEast().getLat()) {
+				return false;
+			}
+			double west = box.getSouthWest().getLon();
+			double east = box.getNorthEast().getLon();
+			// west > east is the legal antimeridian wrap-around box (§5.3)
+			return west <= east ? lon >= west && lon <= east : lon >= west || lon <= east;
+		}
+		if (shape instanceof GeoPolygon polygon) {
+			// ray casting on the lon/lat plane — polygons never cross the antimeridian
+			// (validated structurally), implicitly closed
+			List<GeoPointLiteral> points = polygon.getPoints();
+			boolean inside = false;
+			for (int i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+				double xi = points.get(i).getLon();
+				double yi = points.get(i).getLat();
+				double xj = points.get(j).getLon();
+				double yj = points.get(j).getLat();
+				if ((yi > lat) != (yj > lat)
+						&& lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) {
+					inside = !inside;
+				}
+			}
+			return inside;
+		}
+		return false;
+	}
+
+	/** Haversine distance in meters over the mean earth radius (reference, decision G5). */
+	private static double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
+		double phi1 = Math.toRadians(lat1);
+		double phi2 = Math.toRadians(lat2);
+		double dPhi = Math.toRadians(lat2 - lat1);
+		double dLambda = Math.toRadians(lon2 - lon1);
+		double a = Math.sin(dPhi / 2) * Math.sin(dPhi / 2)
+				+ Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) * Math.sin(dLambda / 2);
+		return 2 * EARTH_RADIUS_METERS * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	}
 
 	/**

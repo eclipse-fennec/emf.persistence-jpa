@@ -80,6 +80,13 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.PROPERTY_PATH: return createPropertyPath();
 			case ExpressionPackage.VARIABLE: return createVariable();
 			case ExpressionPackage.VARIABLE_REF: return createVariableRef();
+			case ExpressionPackage.ALIAS_REF: return createAliasRef();
+			case ExpressionPackage.GEO_POINT_LITERAL: return createGeoPointLiteral();
+			case ExpressionPackage.GEO_SUBJECT: return createGeoSubject();
+			case ExpressionPackage.GEO_BOX: return createGeoBox();
+			case ExpressionPackage.GEO_POLYGON: return createGeoPolygon();
+			case ExpressionPackage.GEO_WITHIN: return createGeoWithin();
+			case ExpressionPackage.GEO_DISTANCE: return createGeoDistance();
 			case ExpressionPackage.SCORE: return createScore();
 			case ExpressionPackage.PARAMETER_REF: return createParameterRef();
 			case ExpressionPackage.STRING_LITERAL: return createStringLiteral();
@@ -96,7 +103,6 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.NEGATE: return createNegate();
 			case ExpressionPackage.CONCAT: return createConcat();
 			case ExpressionPackage.INDEX_OF: return createIndexOf();
-			case ExpressionPackage.ALIAS_REF: return createAliasRef();
 			case ExpressionPackage.COLLECTION_COUNT: return createCollectionCount();
 			case ExpressionPackage.TYPE_CHECK: return createTypeCheck();
 			case ExpressionPackage.NUMERIC_FUNCTION: return createNumericFunction();
@@ -310,6 +316,83 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	@Override
+	public AliasRef createAliasRef() {
+		AliasRefImpl aliasRef = new AliasRefImpl();
+		return aliasRef;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GeoPointLiteral createGeoPointLiteral() {
+		GeoPointLiteralImpl geoPointLiteral = new GeoPointLiteralImpl();
+		return geoPointLiteral;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GeoSubject createGeoSubject() {
+		GeoSubjectImpl geoSubject = new GeoSubjectImpl();
+		return geoSubject;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GeoBox createGeoBox() {
+		GeoBoxImpl geoBox = new GeoBoxImpl();
+		return geoBox;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GeoPolygon createGeoPolygon() {
+		GeoPolygonImpl geoPolygon = new GeoPolygonImpl();
+		return geoPolygon;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GeoWithin createGeoWithin() {
+		GeoWithinImpl geoWithin = new GeoWithinImpl();
+		return geoWithin;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public GeoDistance createGeoDistance() {
+		GeoDistanceImpl geoDistance = new GeoDistanceImpl();
+		return geoDistance;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Score createScore() {
 		ScoreImpl score = new ScoreImpl();
 		return score;
@@ -478,17 +561,6 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	public IndexOf createIndexOf() {
 		IndexOfImpl indexOf = new IndexOfImpl();
 		return indexOf;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public AliasRef createAliasRef() {
-		AliasRefImpl aliasRef = new AliasRefImpl();
-		return aliasRef;
 	}
 
 	/**

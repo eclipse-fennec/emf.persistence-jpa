@@ -107,6 +107,34 @@
     <genClasses ecoreClass="expression.ecore#//VariableRef">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//VariableRef/variable"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//AliasRef">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//AliasRef/alias"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//GeoPointLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//GeoPointLiteral/lon"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//GeoPointLiteral/lat"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//GeoSubject">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoSubject/pathLat"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoSubject/pathLon"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoSubject/pathPoint"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="expression.ecore#//GeoShape"/>
+    <genClasses ecoreClass="expression.ecore#//GeoBox">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoBox/southWest"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoBox/northEast"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//GeoPolygon">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoPolygon/points"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//GeoWithin">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoWithin/subject"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoWithin/shape"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//GeoDistance">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoDistance/subject"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoDistance/point"/>
+    </genClasses>
     <genClasses ecoreClass="expression.ecore#//Score"/>
     <genClasses ecoreClass="expression.ecore#//ParameterRef">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//ParameterRef/name"/>
@@ -156,9 +184,6 @@
     <genClasses ecoreClass="expression.ecore#//IndexOf">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
-    </genClasses>
-    <genClasses ecoreClass="expression.ecore#//AliasRef">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//AliasRef/alias"/>
     </genClasses>
     <genClasses ecoreClass="expression.ecore#//CollectionCount">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/source"/>

@@ -319,6 +319,16 @@
         <details key="documentation" value="The Score expression — relevance of the row under the query's predicate (issue #100), usable as sort key and computation source. Only ranking backends declare it (first consumer: the Lucene backend); memory/JPA/Mongo refuse. Deliberately no reference semantics — conformance is ordinal at best and lives with the declaring backend."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="GEO_WITHIN" value="76">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="GeoWithin — containment of a WGS84 position in a box or polygon (issue #101). Memory carries the reference semantics (split subject binding); Mongo 2dsphere is G-P2, Lucene follows in emf.search, JPA refuses until a PostGIS dialect story exists."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="GEO_DISTANCE" value="77">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="GeoDistance — the spherical WGS84 distance in meters as a value expression (issue #101, decision G3): composes with comparisons and the issue-#84 sort seam (nearest first). Reference: haversine over the mean earth radius; conformance banded per decision G5."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>

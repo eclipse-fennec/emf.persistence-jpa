@@ -152,6 +152,69 @@ public interface ExpressionFactory extends EFactory {
 	VariableRef createVariableRef();
 
 	/**
+	 * Returns a new object of class '<em>Alias Ref</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Alias Ref</em>'.
+	 * @generated
+	 */
+	AliasRef createAliasRef();
+
+	/**
+	 * Returns a new object of class '<em>Geo Point Literal</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Geo Point Literal</em>'.
+	 * @generated
+	 */
+	GeoPointLiteral createGeoPointLiteral();
+
+	/**
+	 * Returns a new object of class '<em>Geo Subject</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Geo Subject</em>'.
+	 * @generated
+	 */
+	GeoSubject createGeoSubject();
+
+	/**
+	 * Returns a new object of class '<em>Geo Box</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Geo Box</em>'.
+	 * @generated
+	 */
+	GeoBox createGeoBox();
+
+	/**
+	 * Returns a new object of class '<em>Geo Polygon</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Geo Polygon</em>'.
+	 * @generated
+	 */
+	GeoPolygon createGeoPolygon();
+
+	/**
+	 * Returns a new object of class '<em>Geo Within</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Geo Within</em>'.
+	 * @generated
+	 */
+	GeoWithin createGeoWithin();
+
+	/**
+	 * Returns a new object of class '<em>Geo Distance</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Geo Distance</em>'.
+	 * @generated
+	 */
+	GeoDistance createGeoDistance();
+
+	/**
 	 * Returns a new object of class '<em>Score</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -294,15 +357,6 @@ public interface ExpressionFactory extends EFactory {
 	 * @generated
 	 */
 	IndexOf createIndexOf();
-
-	/**
-	 * Returns a new object of class '<em>Alias Ref</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Alias Ref</em>'.
-	 * @generated
-	 */
-	AliasRef createAliasRef();
 
 	/**
 	 * Returns a new object of class '<em>Collection Count</em>'.

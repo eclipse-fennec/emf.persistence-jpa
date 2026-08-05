@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:a3c32845461b3eb676e106e122ec738385bfcbb03e7f6d33492520b264d81bee", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:45023c4e5e8c260db32697dc7843820a0b6e99cecb352bc92048a440a61576e1", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -832,6 +832,375 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int VARIABLE_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.AliasRefImpl <em>Alias Ref</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.AliasRefImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAliasRef()
+	 * @generated
+	 */
+	int ALIAS_REF = 16;
+
+	/**
+	 * The feature id for the '<em><b>Alias</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ALIAS_REF__ALIAS = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Alias Ref</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ALIAS_REF_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Alias Ref</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ALIAS_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.LiteralImpl <em>Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.LiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getLiteral()
+	 * @generated
+	 */
+	int LITERAL = 26;
+
+	/**
+	 * The number of structural features of the '<em>Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LITERAL_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LITERAL_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoPointLiteralImpl <em>Geo Point Literal</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoPointLiteralImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoPointLiteral()
+	 * @generated
+	 */
+	int GEO_POINT_LITERAL = 17;
+
+	/**
+	 * The feature id for the '<em><b>Lon</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POINT_LITERAL__LON = LITERAL_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Lat</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POINT_LITERAL__LAT = LITERAL_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Geo Point Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POINT_LITERAL_FEATURE_COUNT = LITERAL_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Geo Point Literal</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POINT_LITERAL_OPERATION_COUNT = LITERAL_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoSubjectImpl <em>Geo Subject</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoSubjectImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoSubject()
+	 * @generated
+	 */
+	int GEO_SUBJECT = 18;
+
+	/**
+	 * The feature id for the '<em><b>Path Lat</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SUBJECT__PATH_LAT = 0;
+
+	/**
+	 * The feature id for the '<em><b>Path Lon</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SUBJECT__PATH_LON = 1;
+
+	/**
+	 * The feature id for the '<em><b>Path Point</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SUBJECT__PATH_POINT = 2;
+
+	/**
+	 * The number of structural features of the '<em>Geo Subject</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SUBJECT_FEATURE_COUNT = 3;
+
+	/**
+	 * The number of operations of the '<em>Geo Subject</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SUBJECT_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoShapeImpl <em>Geo Shape</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoShapeImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoShape()
+	 * @generated
+	 */
+	int GEO_SHAPE = 19;
+
+	/**
+	 * The number of structural features of the '<em>Geo Shape</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SHAPE_FEATURE_COUNT = 0;
+
+	/**
+	 * The number of operations of the '<em>Geo Shape</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_SHAPE_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoBoxImpl <em>Geo Box</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoBoxImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoBox()
+	 * @generated
+	 */
+	int GEO_BOX = 20;
+
+	/**
+	 * The feature id for the '<em><b>South West</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_BOX__SOUTH_WEST = GEO_SHAPE_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>North East</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_BOX__NORTH_EAST = GEO_SHAPE_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Geo Box</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_BOX_FEATURE_COUNT = GEO_SHAPE_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Geo Box</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_BOX_OPERATION_COUNT = GEO_SHAPE_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoPolygonImpl <em>Geo Polygon</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoPolygonImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoPolygon()
+	 * @generated
+	 */
+	int GEO_POLYGON = 21;
+
+	/**
+	 * The feature id for the '<em><b>Points</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POLYGON__POINTS = GEO_SHAPE_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Geo Polygon</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POLYGON_FEATURE_COUNT = GEO_SHAPE_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Geo Polygon</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_POLYGON_OPERATION_COUNT = GEO_SHAPE_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoWithinImpl <em>Geo Within</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoWithinImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoWithin()
+	 * @generated
+	 */
+	int GEO_WITHIN = 22;
+
+	/**
+	 * The feature id for the '<em><b>Subject</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_WITHIN__SUBJECT = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Shape</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_WITHIN__SHAPE = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Geo Within</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_WITHIN_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Geo Within</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_WITHIN_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.GeoDistanceImpl <em>Geo Distance</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.GeoDistanceImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoDistance()
+	 * @generated
+	 */
+	int GEO_DISTANCE = 23;
+
+	/**
+	 * The feature id for the '<em><b>Subject</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_DISTANCE__SUBJECT = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Point</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_DISTANCE__POINT = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Geo Distance</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_DISTANCE_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Geo Distance</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GEO_DISTANCE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ScoreImpl <em>Score</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -839,7 +1208,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getScore()
 	 * @generated
 	 */
-	int SCORE = 16;
+	int SCORE = 24;
 
 	/**
 	 * The number of structural features of the '<em>Score</em>' class.
@@ -867,7 +1236,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getParameterRef()
 	 * @generated
 	 */
-	int PARAMETER_REF = 17;
+	int PARAMETER_REF = 25;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -897,34 +1266,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int PARAMETER_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.LiteralImpl <em>Literal</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.model.expression.impl.LiteralImpl
-	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getLiteral()
-	 * @generated
-	 */
-	int LITERAL = 18;
-
-	/**
-	 * The number of structural features of the '<em>Literal</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int LITERAL_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 0;
-
-	/**
-	 * The number of operations of the '<em>Literal</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int LITERAL_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
-
-	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.StringLiteralImpl <em>String Literal</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -932,7 +1273,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringLiteral()
 	 * @generated
 	 */
-	int STRING_LITERAL = 19;
+	int STRING_LITERAL = 27;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -969,7 +1310,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntegerLiteral()
 	 * @generated
 	 */
-	int INTEGER_LITERAL = 20;
+	int INTEGER_LITERAL = 28;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1006,7 +1347,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getRealLiteral()
 	 * @generated
 	 */
-	int REAL_LITERAL = 21;
+	int REAL_LITERAL = 29;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1043,7 +1384,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBooleanLiteral()
 	 * @generated
 	 */
-	int BOOLEAN_LITERAL = 22;
+	int BOOLEAN_LITERAL = 30;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1080,7 +1421,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNullLiteral()
 	 * @generated
 	 */
-	int NULL_LITERAL = 23;
+	int NULL_LITERAL = 31;
 
 	/**
 	 * The number of structural features of the '<em>Null Literal</em>' class.
@@ -1108,7 +1449,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getEnumLiteral()
 	 * @generated
 	 */
-	int ENUM_LITERAL = 24;
+	int ENUM_LITERAL = 32;
 
 	/**
 	 * The feature id for the '<em><b>Literal Name</b></em>' attribute.
@@ -1145,7 +1486,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalLiteral()
 	 * @generated
 	 */
-	int TEMPORAL_LITERAL = 25;
+	int TEMPORAL_LITERAL = 33;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1191,7 +1532,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGuidLiteral()
 	 * @generated
 	 */
-	int GUID_LITERAL = 26;
+	int GUID_LITERAL = 34;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1228,7 +1569,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getDurationLiteral()
 	 * @generated
 	 */
-	int DURATION_LITERAL = 27;
+	int DURATION_LITERAL = 35;
 
 	/**
 	 * The feature id for the '<em><b>Iso8601</b></em>' attribute.
@@ -1265,7 +1606,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunction()
 	 * @generated
 	 */
-	int STRING_FUNCTION = 28;
+	int STRING_FUNCTION = 36;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1311,7 +1652,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmetic()
 	 * @generated
 	 */
-	int ARITHMETIC = 29;
+	int ARITHMETIC = 37;
 
 	/**
 	 * The feature id for the '<em><b>Operator</b></em>' attribute.
@@ -1366,7 +1707,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNegate()
 	 * @generated
 	 */
-	int NEGATE = 30;
+	int NEGATE = 38;
 
 	/**
 	 * The feature id for the '<em><b>Operand</b></em>' containment reference.
@@ -1403,7 +1744,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getConcat()
 	 * @generated
 	 */
-	int CONCAT = 31;
+	int CONCAT = 39;
 
 	/**
 	 * The feature id for the '<em><b>Parts</b></em>' containment reference list.
@@ -1440,7 +1781,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIndexOf()
 	 * @generated
 	 */
-	int INDEX_OF = 32;
+	int INDEX_OF = 40;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1479,43 +1820,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int INDEX_OF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.AliasRefImpl <em>Alias Ref</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.model.expression.impl.AliasRefImpl
-	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAliasRef()
-	 * @generated
-	 */
-	int ALIAS_REF = 33;
-
-	/**
-	 * The feature id for the '<em><b>Alias</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int ALIAS_REF__ALIAS = EXPRESSION_FEATURE_COUNT + 0;
-
-	/**
-	 * The number of structural features of the '<em>Alias Ref</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int ALIAS_REF_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 1;
-
-	/**
-	 * The number of operations of the '<em>Alias Ref</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int ALIAS_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
-
-	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.CollectionCountImpl <em>Collection Count</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1523,7 +1827,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getCollectionCount()
 	 * @generated
 	 */
-	int COLLECTION_COUNT = 34;
+	int COLLECTION_COUNT = 41;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1578,7 +1882,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTypeCheck()
 	 * @generated
 	 */
-	int TYPE_CHECK = 35;
+	int TYPE_CHECK = 42;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1624,7 +1928,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION = 36;
+	int NUMERIC_FUNCTION = 43;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1670,7 +1974,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION = 37;
+	int TEMPORAL_FUNCTION = 44;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1716,7 +2020,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 38;
+	int SUBSTRING = 45;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1771,7 +2075,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 39;
+	int COMPARISON_OPERATOR = 46;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1781,7 +2085,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 40;
+	int STRING_MATCH_KIND = 47;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1791,7 +2095,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 41;
+	int STRING_FUNCTION_KIND = 48;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
@@ -1801,7 +2105,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION_KIND = 42;
+	int TEMPORAL_FUNCTION_KIND = 49;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -1811,7 +2115,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 43;
+	int NUMERIC_FUNCTION_KIND = 50;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1821,7 +2125,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 44;
+	int ARITHMETIC_OPERATOR = 51;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1831,7 +2135,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 45;
+	int TEMPORAL_KIND = 52;
 
 
 	/**
@@ -2281,6 +2585,229 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getVariableRef_Variable();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.AliasRef <em>Alias Ref</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Alias Ref</em>'.
+	 * @see org.eclipse.fennec.model.expression.AliasRef
+	 * @generated
+	 */
+	EClass getAliasRef();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.AliasRef#getAlias <em>Alias</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Alias</em>'.
+	 * @see org.eclipse.fennec.model.expression.AliasRef#getAlias()
+	 * @see #getAliasRef()
+	 * @generated
+	 */
+	EAttribute getAliasRef_Alias();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoPointLiteral <em>Geo Point Literal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Point Literal</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoPointLiteral
+	 * @generated
+	 */
+	EClass getGeoPointLiteral();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.GeoPointLiteral#getLon <em>Lon</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Lon</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoPointLiteral#getLon()
+	 * @see #getGeoPointLiteral()
+	 * @generated
+	 */
+	EAttribute getGeoPointLiteral_Lon();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.GeoPointLiteral#getLat <em>Lat</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Lat</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoPointLiteral#getLat()
+	 * @see #getGeoPointLiteral()
+	 * @generated
+	 */
+	EAttribute getGeoPointLiteral_Lat();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoSubject <em>Geo Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Subject</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoSubject
+	 * @generated
+	 */
+	EClass getGeoSubject();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoSubject#getPathLat <em>Path Lat</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Path Lat</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoSubject#getPathLat()
+	 * @see #getGeoSubject()
+	 * @generated
+	 */
+	EReference getGeoSubject_PathLat();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoSubject#getPathLon <em>Path Lon</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Path Lon</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoSubject#getPathLon()
+	 * @see #getGeoSubject()
+	 * @generated
+	 */
+	EReference getGeoSubject_PathLon();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoSubject#getPathPoint <em>Path Point</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Path Point</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoSubject#getPathPoint()
+	 * @see #getGeoSubject()
+	 * @generated
+	 */
+	EReference getGeoSubject_PathPoint();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoShape <em>Geo Shape</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Shape</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoShape
+	 * @generated
+	 */
+	EClass getGeoShape();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoBox <em>Geo Box</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Box</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoBox
+	 * @generated
+	 */
+	EClass getGeoBox();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoBox#getSouthWest <em>South West</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>South West</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoBox#getSouthWest()
+	 * @see #getGeoBox()
+	 * @generated
+	 */
+	EReference getGeoBox_SouthWest();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoBox#getNorthEast <em>North East</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>North East</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoBox#getNorthEast()
+	 * @see #getGeoBox()
+	 * @generated
+	 */
+	EReference getGeoBox_NorthEast();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoPolygon <em>Geo Polygon</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Polygon</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoPolygon
+	 * @generated
+	 */
+	EClass getGeoPolygon();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.expression.GeoPolygon#getPoints <em>Points</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Points</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoPolygon#getPoints()
+	 * @see #getGeoPolygon()
+	 * @generated
+	 */
+	EReference getGeoPolygon_Points();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoWithin <em>Geo Within</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Within</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoWithin
+	 * @generated
+	 */
+	EClass getGeoWithin();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoWithin#getSubject <em>Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Subject</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoWithin#getSubject()
+	 * @see #getGeoWithin()
+	 * @generated
+	 */
+	EReference getGeoWithin_Subject();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoWithin#getShape <em>Shape</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Shape</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoWithin#getShape()
+	 * @see #getGeoWithin()
+	 * @generated
+	 */
+	EReference getGeoWithin_Shape();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.GeoDistance <em>Geo Distance</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Geo Distance</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoDistance
+	 * @generated
+	 */
+	EClass getGeoDistance();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoDistance#getSubject <em>Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Subject</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoDistance#getSubject()
+	 * @see #getGeoDistance()
+	 * @generated
+	 */
+	EReference getGeoDistance_Subject();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.GeoDistance#getPoint <em>Point</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Point</em>'.
+	 * @see org.eclipse.fennec.model.expression.GeoDistance#getPoint()
+	 * @see #getGeoDistance()
+	 * @generated
+	 */
+	EReference getGeoDistance_Point();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Score <em>Score</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -2658,27 +3185,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getIndexOf_Search();
-
-	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.AliasRef <em>Alias Ref</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Alias Ref</em>'.
-	 * @see org.eclipse.fennec.model.expression.AliasRef
-	 * @generated
-	 */
-	EClass getAliasRef();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.AliasRef#getAlias <em>Alias</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Alias</em>'.
-	 * @see org.eclipse.fennec.model.expression.AliasRef#getAlias()
-	 * @see #getAliasRef()
-	 * @generated
-	 */
-	EAttribute getAliasRef_Alias();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.CollectionCount <em>Collection Count</em>}'.
@@ -3324,6 +3830,190 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference VARIABLE_REF__VARIABLE = eINSTANCE.getVariableRef_Variable();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.AliasRefImpl <em>Alias Ref</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.AliasRefImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAliasRef()
+		 * @generated
+		 */
+		EClass ALIAS_REF = eINSTANCE.getAliasRef();
+
+		/**
+		 * The meta object literal for the '<em><b>Alias</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute ALIAS_REF__ALIAS = eINSTANCE.getAliasRef_Alias();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoPointLiteralImpl <em>Geo Point Literal</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoPointLiteralImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoPointLiteral()
+		 * @generated
+		 */
+		EClass GEO_POINT_LITERAL = eINSTANCE.getGeoPointLiteral();
+
+		/**
+		 * The meta object literal for the '<em><b>Lon</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute GEO_POINT_LITERAL__LON = eINSTANCE.getGeoPointLiteral_Lon();
+
+		/**
+		 * The meta object literal for the '<em><b>Lat</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute GEO_POINT_LITERAL__LAT = eINSTANCE.getGeoPointLiteral_Lat();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoSubjectImpl <em>Geo Subject</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoSubjectImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoSubject()
+		 * @generated
+		 */
+		EClass GEO_SUBJECT = eINSTANCE.getGeoSubject();
+
+		/**
+		 * The meta object literal for the '<em><b>Path Lat</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_SUBJECT__PATH_LAT = eINSTANCE.getGeoSubject_PathLat();
+
+		/**
+		 * The meta object literal for the '<em><b>Path Lon</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_SUBJECT__PATH_LON = eINSTANCE.getGeoSubject_PathLon();
+
+		/**
+		 * The meta object literal for the '<em><b>Path Point</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_SUBJECT__PATH_POINT = eINSTANCE.getGeoSubject_PathPoint();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoShapeImpl <em>Geo Shape</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoShapeImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoShape()
+		 * @generated
+		 */
+		EClass GEO_SHAPE = eINSTANCE.getGeoShape();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoBoxImpl <em>Geo Box</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoBoxImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoBox()
+		 * @generated
+		 */
+		EClass GEO_BOX = eINSTANCE.getGeoBox();
+
+		/**
+		 * The meta object literal for the '<em><b>South West</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_BOX__SOUTH_WEST = eINSTANCE.getGeoBox_SouthWest();
+
+		/**
+		 * The meta object literal for the '<em><b>North East</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_BOX__NORTH_EAST = eINSTANCE.getGeoBox_NorthEast();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoPolygonImpl <em>Geo Polygon</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoPolygonImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoPolygon()
+		 * @generated
+		 */
+		EClass GEO_POLYGON = eINSTANCE.getGeoPolygon();
+
+		/**
+		 * The meta object literal for the '<em><b>Points</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_POLYGON__POINTS = eINSTANCE.getGeoPolygon_Points();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoWithinImpl <em>Geo Within</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoWithinImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoWithin()
+		 * @generated
+		 */
+		EClass GEO_WITHIN = eINSTANCE.getGeoWithin();
+
+		/**
+		 * The meta object literal for the '<em><b>Subject</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_WITHIN__SUBJECT = eINSTANCE.getGeoWithin_Subject();
+
+		/**
+		 * The meta object literal for the '<em><b>Shape</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_WITHIN__SHAPE = eINSTANCE.getGeoWithin_Shape();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.GeoDistanceImpl <em>Geo Distance</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.GeoDistanceImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGeoDistance()
+		 * @generated
+		 */
+		EClass GEO_DISTANCE = eINSTANCE.getGeoDistance();
+
+		/**
+		 * The meta object literal for the '<em><b>Subject</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_DISTANCE__SUBJECT = eINSTANCE.getGeoDistance_Subject();
+
+		/**
+		 * The meta object literal for the '<em><b>Point</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GEO_DISTANCE__POINT = eINSTANCE.getGeoDistance_Point();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ScoreImpl <em>Score</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -3644,24 +4334,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference INDEX_OF__SEARCH = eINSTANCE.getIndexOf_Search();
-
-		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.AliasRefImpl <em>Alias Ref</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.model.expression.impl.AliasRefImpl
-		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAliasRef()
-		 * @generated
-		 */
-		EClass ALIAS_REF = eINSTANCE.getAliasRef();
-
-		/**
-		 * The meta object literal for the '<em><b>Alias</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute ALIAS_REF__ALIAS = eINSTANCE.getAliasRef_Alias();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.CollectionCountImpl <em>Collection Count</em>}' class.

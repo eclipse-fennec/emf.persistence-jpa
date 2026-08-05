@@ -58,6 +58,13 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_SORT = 5;
 
+	/**
+	 * Diagnostic code: malformed geo structure — a {@code GeoSubject} without exactly
+	 * one binding, out-of-range coordinates, or a degenerate/antimeridian-crossing
+	 * polygon (issue #101).
+	 */
+	public static final int CODE_INVALID_GEO = 6;
+
 	private QueryValidator() {
 	}
 
@@ -119,6 +126,12 @@ public final class QueryValidator {
 		if (analysis.invalidSort() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_SORT,
 					analysis.invalidSort() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+
+		if (analysis.invalidGeo() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_GEO,
+					analysis.invalidGeo() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

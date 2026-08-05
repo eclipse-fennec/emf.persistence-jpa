@@ -1911,6 +1911,38 @@ public abstract class AbstractPersistenceTCK {
 		return String.valueOf(value);
 	}
 
+	// --------------------------------------------------------------- geo (issue #101)
+
+	/**
+	 * Whether the backend serves the geo vocabulary. The memory engine is the reference;
+	 * JPA refuses until a PostGIS dialect story exists, Mongo until the 2dsphere
+	 * translation lands (G-P2) — geo-capable bindings flip this and run real semantics.
+	 */
+	protected boolean supportsGeo() {
+		return false;
+	}
+
+	@Test
+	public void queryGeoVocabularyIsCapabilityGated() throws Exception {
+		saveQueryFixture();
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(
+								Expressions.propertyPath(personAge), Expressions.propertyPath(personAge)),
+						Expressions.geoBox(Expressions.geoPoint(10, 50), Expressions.geoPoint(13, 52))))
+				.build();
+		if (!supportsGeo()) {
+			QueryableResource resource = queryable(createBackendResourceSet());
+			assertThatThrownBy(() -> resource.query(query).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("GEO_WITHIN");
+			return;
+		}
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects()).isNotNull();
+		}
+	}
+
 	// -------------------------------------------------- command transactions (issue #108)
 
 	/**

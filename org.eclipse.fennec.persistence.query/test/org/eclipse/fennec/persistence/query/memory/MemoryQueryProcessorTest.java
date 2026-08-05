@@ -69,6 +69,8 @@ class MemoryQueryProcessorTest {
 	private EAttribute personSalary;
 	private EAttribute personRank;
 	private EAttribute personHired;
+	private EAttribute lat;
+	private EAttribute lon;
 	private EEnum colorEnum;
 	private EAttribute personFavoriteColor;
 	private EReference personAddresses;
@@ -110,6 +112,12 @@ class MemoryQueryProcessorTest {
 		personHired = ecore.createEAttribute();
 		personHired.setName("hired");
 		personHired.setEType(EcorePackage.Literals.EDATE);
+		lat = ecore.createEAttribute();
+		lat.setName("lat");
+		lat.setEType(EcorePackage.Literals.EDOUBLE_OBJECT);
+		lon = ecore.createEAttribute();
+		lon.setName("lon");
+		lon.setEType(EcorePackage.Literals.EDOUBLE_OBJECT);
 		colorEnum = ecore.createEEnum();
 		colorEnum.setName("Color");
 		// RED first — the first literal is the dynamic-EMF default for unset values
@@ -136,6 +144,8 @@ class MemoryQueryProcessorTest {
 		personClass.getEStructuralFeatures().add(personRank);
 		personClass.getEStructuralFeatures().add(personHired);
 		personClass.getEStructuralFeatures().add(personFavoriteColor);
+		personClass.getEStructuralFeatures().add(lat);
+		personClass.getEStructuralFeatures().add(lon);
 		personClass.getEStructuralFeatures().add(personAddresses);
 
 		ePackage = ecore.createEPackage();
@@ -154,6 +164,8 @@ class MemoryQueryProcessorTest {
 		alice.eSet(personScore, 7.5d);
 		alice.eSet(personSalary, new BigDecimal("1000.10"));
 		alice.eSet(personFavoriteColor, green.getInstance());
+		alice.eSet(lat, 50.927d); // Jena
+		alice.eSet(lon, 11.586d);
 		persons.add(alice);
 		EObject bob = person("Bob", 40);
 		address(bob, "Main Street 5");
@@ -161,6 +173,8 @@ class MemoryQueryProcessorTest {
 		bob.eSet(personScore, 3.0d);
 		bob.eSet(personSalary, new BigDecimal("2000.20"));
 		bob.eSet(personRank, 1);
+		bob.eSet(lat, 50.880d); // Gera
+		bob.eSet(lon, 12.083d);
 		persons.add(bob);
 		EObject carol = person("Carol", 50);
 		carol.eSet(personScore, 12.5d);
@@ -313,6 +327,91 @@ class MemoryQueryProcessorTest {
 		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("SCORE");
+	}
+
+	@Test
+	void geoWithinBoxAndPolygon() throws QueryException {
+		// Thuringia-ish box contains Jena (Alice) and Gera (Bob); Carol has no coords
+		// — UNKNOWN excludes her (issue #101, 3VL per issue #94)
+		Query box = QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoBox(Expressions.geoPoint(10.0, 50.0), Expressions.geoPoint(13.0, 51.5))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(box, persons, null)) {
+			assertThat(names(result)).containsExactlyInAnyOrder("Alice", "Bob");
+		}
+
+		// triangle around Jena only
+		Query polygon = QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoPolygon(
+								Expressions.geoPoint(11.0, 50.5),
+								Expressions.geoPoint(12.0, 50.5),
+								Expressions.geoPoint(11.5, 51.5))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(polygon, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+
+		// the antimeridian wrap-around box (west > east) contains Fiji-ish, not Jena
+		Query wrap = QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoBox(Expressions.geoPoint(170.0, -30.0), Expressions.geoPoint(-170.0, 0.0))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(wrap, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+
+		// 3VL: not(within) must not flip Carol's UNKNOWN into a match
+		Query notWithin = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoPolygon(
+								Expressions.geoPoint(11.0, 50.5),
+								Expressions.geoPoint(12.0, 50.5),
+								Expressions.geoPoint(11.5, 51.5)))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(notWithin, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
+	void geoDistanceComparesAndSortsNearestFirst() throws QueryException {
+		// Jena↔Gera is ~35 km — 10 km around Jena keeps only Alice
+		Query near = QueryBuilder.from(personClass)
+				.where(Expressions.geoDistance(
+						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoPoint(11.586, 50.927)).le(10_000))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(near, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+
+		// nearest first via the issue-#84 sort seam (Carol's null coords sort last)
+		Query nearest = QueryBuilder.from(personClass)
+				.orderByAsc(Expressions.geoDistance(
+						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoPoint(12.083, 50.880)).toExpression())
+				.build();
+		try (QueryResult result = MemoryQueries.execute(nearest, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob", "Alice", "Carol");
+		}
+	}
+
+	@Test
+	void geoPackedSubjectIsRefusedByTheMemoryEngine() {
+		Query packed = QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(lat)),
+						Expressions.geoBox(Expressions.geoPoint(10.0, 50.0), Expressions.geoPoint(13.0, 51.5))))
+				.build();
+		assertThatThrownBy(() -> MemoryQueries.execute(packed, persons, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("Packed geo subjects");
 	}
 
 	@Test

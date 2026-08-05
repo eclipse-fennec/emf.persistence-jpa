@@ -37,6 +37,13 @@ import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 import org.eclipse.fennec.model.expression.ForAll;
+import org.eclipse.fennec.model.expression.GeoBox;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoPolygon;
+import org.eclipse.fennec.model.expression.GeoShape;
+import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
@@ -193,6 +200,62 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass aliasRefEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoPointLiteralEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoSubjectEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoShapeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoBoxEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoPolygonEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoWithinEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass geoDistanceEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass scoreEClass = null;
 
 	/**
@@ -306,13 +369,6 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass indexOfEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass aliasRefEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -884,6 +940,216 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getAliasRef() {
+		return aliasRefEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getAliasRef_Alias() {
+		return (EAttribute)aliasRefEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoPointLiteral() {
+		return geoPointLiteralEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getGeoPointLiteral_Lon() {
+		return (EAttribute)geoPointLiteralEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getGeoPointLiteral_Lat() {
+		return (EAttribute)geoPointLiteralEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoSubject() {
+		return geoSubjectEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoSubject_PathLat() {
+		return (EReference)geoSubjectEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoSubject_PathLon() {
+		return (EReference)geoSubjectEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoSubject_PathPoint() {
+		return (EReference)geoSubjectEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoShape() {
+		return geoShapeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoBox() {
+		return geoBoxEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoBox_SouthWest() {
+		return (EReference)geoBoxEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoBox_NorthEast() {
+		return (EReference)geoBoxEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoPolygon() {
+		return geoPolygonEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoPolygon_Points() {
+		return (EReference)geoPolygonEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoWithin() {
+		return geoWithinEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoWithin_Subject() {
+		return (EReference)geoWithinEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoWithin_Shape() {
+		return (EReference)geoWithinEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getGeoDistance() {
+		return geoDistanceEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoDistance_Subject() {
+		return (EReference)geoDistanceEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getGeoDistance_Point() {
+		return (EReference)geoDistanceEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getScore() {
 		return scoreEClass;
 	}
@@ -1244,26 +1510,6 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
-	public EClass getAliasRef() {
-		return aliasRefEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getAliasRef_Alias() {
-		return (EAttribute)aliasRefEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
 	public EClass getCollectionCount() {
 		return collectionCountEClass;
 	}
@@ -1585,6 +1831,35 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		variableRefEClass = createEClass(VARIABLE_REF);
 		createEReference(variableRefEClass, VARIABLE_REF__VARIABLE);
 
+		aliasRefEClass = createEClass(ALIAS_REF);
+		createEAttribute(aliasRefEClass, ALIAS_REF__ALIAS);
+
+		geoPointLiteralEClass = createEClass(GEO_POINT_LITERAL);
+		createEAttribute(geoPointLiteralEClass, GEO_POINT_LITERAL__LON);
+		createEAttribute(geoPointLiteralEClass, GEO_POINT_LITERAL__LAT);
+
+		geoSubjectEClass = createEClass(GEO_SUBJECT);
+		createEReference(geoSubjectEClass, GEO_SUBJECT__PATH_LAT);
+		createEReference(geoSubjectEClass, GEO_SUBJECT__PATH_LON);
+		createEReference(geoSubjectEClass, GEO_SUBJECT__PATH_POINT);
+
+		geoShapeEClass = createEClass(GEO_SHAPE);
+
+		geoBoxEClass = createEClass(GEO_BOX);
+		createEReference(geoBoxEClass, GEO_BOX__SOUTH_WEST);
+		createEReference(geoBoxEClass, GEO_BOX__NORTH_EAST);
+
+		geoPolygonEClass = createEClass(GEO_POLYGON);
+		createEReference(geoPolygonEClass, GEO_POLYGON__POINTS);
+
+		geoWithinEClass = createEClass(GEO_WITHIN);
+		createEReference(geoWithinEClass, GEO_WITHIN__SUBJECT);
+		createEReference(geoWithinEClass, GEO_WITHIN__SHAPE);
+
+		geoDistanceEClass = createEClass(GEO_DISTANCE);
+		createEReference(geoDistanceEClass, GEO_DISTANCE__SUBJECT);
+		createEReference(geoDistanceEClass, GEO_DISTANCE__POINT);
+
 		scoreEClass = createEClass(SCORE);
 
 		parameterRefEClass = createEClass(PARAMETER_REF);
@@ -1637,9 +1912,6 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		indexOfEClass = createEClass(INDEX_OF);
 		createEReference(indexOfEClass, INDEX_OF__SOURCE);
 		createEReference(indexOfEClass, INDEX_OF__SEARCH);
-
-		aliasRefEClass = createEClass(ALIAS_REF);
-		createEAttribute(aliasRefEClass, ALIAS_REF__ALIAS);
 
 		collectionCountEClass = createEClass(COLLECTION_COUNT);
 		createEReference(collectionCountEClass, COLLECTION_COUNT__SOURCE);
@@ -1715,6 +1987,12 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		forAllEClass.getESuperTypes().add(this.getQuantifier());
 		propertyPathEClass.getESuperTypes().add(this.getExpression());
 		variableRefEClass.getESuperTypes().add(this.getExpression());
+		aliasRefEClass.getESuperTypes().add(this.getExpression());
+		geoPointLiteralEClass.getESuperTypes().add(this.getLiteral());
+		geoBoxEClass.getESuperTypes().add(this.getGeoShape());
+		geoPolygonEClass.getESuperTypes().add(this.getGeoShape());
+		geoWithinEClass.getESuperTypes().add(this.getExpression());
+		geoDistanceEClass.getESuperTypes().add(this.getExpression());
 		scoreEClass.getESuperTypes().add(this.getExpression());
 		parameterRefEClass.getESuperTypes().add(this.getExpression());
 		literalEClass.getESuperTypes().add(this.getExpression());
@@ -1732,7 +2010,6 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		negateEClass.getESuperTypes().add(this.getExpression());
 		concatEClass.getESuperTypes().add(this.getExpression());
 		indexOfEClass.getESuperTypes().add(this.getExpression());
-		aliasRefEClass.getESuperTypes().add(this.getExpression());
 		collectionCountEClass.getESuperTypes().add(this.getExpression());
 		typeCheckEClass.getESuperTypes().add(this.getExpression());
 		numericFunctionEClass.getESuperTypes().add(this.getExpression());
@@ -1798,6 +2075,35 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(variableRefEClass, VariableRef.class, "VariableRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getVariableRef_Variable(), this.getVariable(), null, "variable", null, 1, 1, VariableRef.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(aliasRefEClass, AliasRef.class, "AliasRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getAliasRef_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, AliasRef.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(geoPointLiteralEClass, GeoPointLiteral.class, "GeoPointLiteral", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getGeoPointLiteral_Lon(), ecorePackage.getEDouble(), "lon", null, 1, 1, GeoPointLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getGeoPointLiteral_Lat(), ecorePackage.getEDouble(), "lat", null, 1, 1, GeoPointLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(geoSubjectEClass, GeoSubject.class, "GeoSubject", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGeoSubject_PathLat(), this.getPropertyPath(), null, "pathLat", null, 0, 1, GeoSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGeoSubject_PathLon(), this.getPropertyPath(), null, "pathLon", null, 0, 1, GeoSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGeoSubject_PathPoint(), this.getPropertyPath(), null, "pathPoint", null, 0, 1, GeoSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(geoShapeEClass, GeoShape.class, "GeoShape", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(geoBoxEClass, GeoBox.class, "GeoBox", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGeoBox_SouthWest(), this.getGeoPointLiteral(), null, "southWest", null, 1, 1, GeoBox.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGeoBox_NorthEast(), this.getGeoPointLiteral(), null, "northEast", null, 1, 1, GeoBox.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(geoPolygonEClass, GeoPolygon.class, "GeoPolygon", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGeoPolygon_Points(), this.getGeoPointLiteral(), null, "points", null, 3, -1, GeoPolygon.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(geoWithinEClass, GeoWithin.class, "GeoWithin", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGeoWithin_Subject(), this.getGeoSubject(), null, "subject", null, 1, 1, GeoWithin.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGeoWithin_Shape(), this.getGeoShape(), null, "shape", null, 1, 1, GeoWithin.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(geoDistanceEClass, GeoDistance.class, "GeoDistance", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getGeoDistance_Subject(), this.getGeoSubject(), null, "subject", null, 1, 1, GeoDistance.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGeoDistance_Point(), this.getGeoPointLiteral(), null, "point", null, 1, 1, GeoDistance.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(scoreEClass, Score.class, "Score", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(parameterRefEClass, ParameterRef.class, "ParameterRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -1850,9 +2156,6 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(indexOfEClass, IndexOf.class, "IndexOf", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getIndexOf_Source(), this.getExpression(), null, "source", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getIndexOf_Search(), this.getExpression(), null, "search", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(aliasRefEClass, AliasRef.class, "AliasRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getAliasRef_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, AliasRef.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(collectionCountEClass, CollectionCount.class, "CollectionCount", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getCollectionCount_Source(), this.getPropertyPath(), null, "source", null, 1, 1, CollectionCount.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

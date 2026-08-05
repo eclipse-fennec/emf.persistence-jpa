@@ -38,6 +38,8 @@ import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.CollectionCount;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
@@ -280,6 +282,11 @@ public final class ExprToOcl {
 				// execution-time backend value — OCL has no ranking concept
 				throw new QueryException("Score has no OCL form — relevance is a ranking-backend"
 						+ " execution value, not a model expression");
+			}
+			if (expression instanceof GeoWithin || expression instanceof GeoDistance) {
+				// the third totality exception (issue #101): OCL has no geo vocabulary
+				throw new QueryException(expression.eClass().getName()
+						+ " has no OCL form — the geo vocabulary (issue #101) is not part of the bridge subset");
 			}
 			if (expression instanceof CollectionCount count) {
 				// plain: path->size(); filtered: path->select(v | pred)->size() (issue #81)

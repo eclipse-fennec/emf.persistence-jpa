@@ -47,6 +47,7 @@ import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
 import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -341,6 +342,16 @@ class ExpressionOclBridgeTest {
 		assertThatThrownBy(() -> ExprToOcl.toOcl(score().toExpression()))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("Score");
+	}
+
+	@Test
+	void geoVocabularyHasNoOclForm() {
+		// documented totality exception (issue #101), like AliasRef and Score
+		assertThatThrownBy(() -> ExprToOcl.toOcl(Expressions.geoWithin(
+				Expressions.geoSubject(Expressions.propertyPath(age), Expressions.propertyPath(age)),
+				Expressions.geoBox(Expressions.geoPoint(10, 50), Expressions.geoPoint(13, 52)))))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("GeoWithin");
 	}
 
 	@Test

@@ -31,6 +31,9 @@ import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
@@ -118,6 +121,22 @@ public class MemoryQueryProcessor implements QueryProcessor {
 		return CAPABILITIES;
 	}
 
+	/**
+	 * The reference engine serves the SPLIT coordinate binding; the PACKED binding's
+	 * canonical value shape is defined with the Mongo translation (issue #101, G-P2) —
+	 * until then it is refused with a precise message instead of guessing a value form.
+	 */
+	private static void refusePackedGeoSubjects(Query query) throws QueryException {
+		var iterator = query.eAllContents();
+		while (iterator.hasNext()) {
+			if (iterator.next() instanceof GeoSubject subject && subject.getPathPoint() != null) {
+				throw new QueryException("Packed geo subjects (pathPoint) are not supported by the"
+						+ " memory engine yet — their canonical value shape is defined with the"
+						+ " Mongo translation (issue #101, G-P2); use the lat/lon pair binding");
+			}
+		}
+	}
+
 	@Override
 	public Diagnostic validate(Query query, EClass rootEClass) {
 		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
@@ -132,6 +151,7 @@ public class MemoryQueryProcessor implements QueryProcessor {
 		if (query.getApply() != null && !query.getSelect().isEmpty()) {
 			throw new QueryException("select and apply are mutually exclusive — aggregation defines its own columns");
 		}
+		refusePackedGeoSubjects(query);
 		Resolution resolution = new Resolution(context);
 		resolution.walk(query.getPredicate(), Set.of());
 
@@ -244,7 +264,24 @@ public class MemoryQueryProcessor implements QueryProcessor {
 				}
 				return;
 			}
+			if (expression instanceof GeoWithin geoWithin) {
+				// shape points are model literals read directly at evaluation (issue #101)
+				geoSubject(geoWithin.getSubject(), scope);
+				return;
+			}
 			throw new QueryException("Unsupported predicate " + expression.eClass().getName());
+		}
+
+		private void geoSubject(GeoSubject subject, Set<Variable> scope) throws QueryException {
+			if (subject == null) {
+				return;
+			}
+			if (subject.getPathLat() != null) {
+				path(subject.getPathLat(), scope);
+			}
+			if (subject.getPathLon() != null) {
+				path(subject.getPathLon(), scope);
+			}
 		}
 
 		private void operand(Expression expression, EStructuralFeature target, Set<Variable> scope)
@@ -282,6 +319,11 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Negate negate) {
 				operand(negate.getOperand(), target, scope);
+				return;
+			}
+			if (expression instanceof GeoDistance geoDistance) {
+				// a value expression (issue #101, G3) — only the subject paths resolve
+				geoSubject(geoDistance.getSubject(), scope);
 				return;
 			}
 			if (expression instanceof NumericFunction numericFunction) {
