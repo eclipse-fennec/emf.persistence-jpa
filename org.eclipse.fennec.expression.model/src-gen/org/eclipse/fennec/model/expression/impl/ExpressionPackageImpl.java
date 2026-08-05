@@ -54,6 +54,7 @@ import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
+import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringLiteral;
@@ -186,6 +187,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass variableRefEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass scoreEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -868,6 +876,16 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	@Override
 	public EReference getVariableRef_Variable() {
 		return (EReference)variableRefEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getScore() {
+		return scoreEClass;
 	}
 
 	/**
@@ -1567,6 +1585,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		variableRefEClass = createEClass(VARIABLE_REF);
 		createEReference(variableRefEClass, VARIABLE_REF__VARIABLE);
 
+		scoreEClass = createEClass(SCORE);
+
 		parameterRefEClass = createEClass(PARAMETER_REF);
 		createEAttribute(parameterRefEClass, PARAMETER_REF__NAME);
 
@@ -1695,6 +1715,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		forAllEClass.getESuperTypes().add(this.getQuantifier());
 		propertyPathEClass.getESuperTypes().add(this.getExpression());
 		variableRefEClass.getESuperTypes().add(this.getExpression());
+		scoreEClass.getESuperTypes().add(this.getExpression());
 		parameterRefEClass.getESuperTypes().add(this.getExpression());
 		literalEClass.getESuperTypes().add(this.getExpression());
 		stringLiteralEClass.getESuperTypes().add(this.getLiteral());
@@ -1776,6 +1797,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 
 		initEClass(variableRefEClass, VariableRef.class, "VariableRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getVariableRef_Variable(), this.getVariable(), null, "variable", null, 1, 1, VariableRef.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(scoreEClass, Score.class, "Score", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(parameterRefEClass, ParameterRef.class, "ParameterRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getParameterRef_Name(), ecorePackage.getEString(), "name", null, 1, 1, ParameterRef.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

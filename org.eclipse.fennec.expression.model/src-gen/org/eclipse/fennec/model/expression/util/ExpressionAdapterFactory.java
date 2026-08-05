@@ -142,6 +142,10 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createVariableRefAdapter();
 			}
 			@Override
+			public Adapter caseScore(Score object) {
+				return createScoreAdapter();
+			}
+			@Override
 			public Adapter caseParameterRef(ParameterRef object) {
 				return createParameterRefAdapter();
 			}
@@ -470,6 +474,20 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createVariableRefAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Score <em>Score</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.Score
+	 * @generated
+	 */
+	public Adapter createScoreAdapter() {
 		return null;
 	}
 

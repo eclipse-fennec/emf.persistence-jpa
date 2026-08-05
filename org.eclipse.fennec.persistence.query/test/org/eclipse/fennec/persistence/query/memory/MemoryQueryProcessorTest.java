@@ -304,6 +304,18 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void scoreIsRefusedByTheMemoryBackend() {
+		// issue #100: a score has no reference semantics — the memory engine does not
+		// declare SCORE and validation refuses the query wholesale
+		Query query = QueryBuilder.from(personClass)
+				.orderByDesc(Expressions.score().toExpression())
+				.build();
+		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("SCORE");
+	}
+
+	@Test
 	void caseInsensitiveMatching() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personName).containsIgnoreCase("ARO"))

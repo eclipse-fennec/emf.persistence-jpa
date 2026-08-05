@@ -28,6 +28,7 @@ import static org.eclipse.fennec.model.query.builder.Expressions.param;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
 import static org.eclipse.fennec.model.query.builder.Expressions.pathAs;
 import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
+import static org.eclipse.fennec.model.query.builder.Expressions.score;
 
 import java.time.Duration;
 import java.util.Map;
@@ -332,6 +333,14 @@ class ExpressionOclBridgeTest {
 		StringLiteralExp literal = OclFactory.eINSTANCE.createStringLiteralExp();
 		literal.setStringSymbol(value);
 		return literal;
+	}
+
+	@Test
+	void scoreHasNoOclForm() {
+		// documented totality exception (issue #100), like AliasRef for pipelines
+		assertThatThrownBy(() -> ExprToOcl.toOcl(score().toExpression()))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("Score");
 	}
 
 	@Test

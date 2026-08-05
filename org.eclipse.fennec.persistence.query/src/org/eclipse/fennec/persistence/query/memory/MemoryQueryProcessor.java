@@ -99,7 +99,11 @@ public class MemoryQueryProcessor implements QueryProcessor {
 	public static final String BACKEND = "memory";
 
 	private static final QueryCapabilities CAPABILITIES = QueryCapabilitiesBuilder.create()
-			.support(EnumSet.complementOf(EnumSet.of(QueryFeature.AS_OF, QueryFeature.SERIES_RANGE))
+			// SCORE stays undeclared by design (issue #100): a relevance score without a
+			// text-scoring model has no reference semantics — the first feature the
+			// reference engine deliberately does not implement
+			.support(EnumSet.complementOf(
+					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SERIES_RANGE, QueryFeature.SCORE))
 					.toArray(QueryFeature[]::new))
 			.maxFeaturePathDepth(-1)
 			.build();

@@ -581,6 +581,19 @@ public enum QueryFeature implements Enumerator {
 	GROUP_EXPRESSION(74, "GROUP_EXPRESSION", "GROUP_EXPRESSION"),
 
 	/**
+	 * The '<em><b>SCORE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The Score expression — relevance of the row under the query's predicate (issue #100), usable as sort key and computation source. Only ranking backends declare it (first consumer: the Lucene backend); memory/JPA/Mongo refuse. Deliberately no reference semantics — conformance is ordinal at best and lives with the declaring backend.
+	 * <!-- end-model-doc -->
+	 * @see #SCORE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	SCORE(75, "SCORE", "SCORE"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1234,6 +1247,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int GROUP_EXPRESSION_VALUE = 74;
 
 	/**
+	 * The '<em><b>SCORE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The Score expression — relevance of the row under the query's predicate (issue #100), usable as sort key and computation source. Only ranking backends declare it (first consumer: the Lucene backend); memory/JPA/Mongo refuse. Deliberately no reference semantics — conformance is ordinal at best and lives with the declaring backend.
+	 * <!-- end-model-doc -->
+	 * @see #SCORE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int SCORE_VALUE = 75;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1353,6 +1380,7 @@ public enum QueryFeature implements Enumerator {
 			PIPELINE_COMPUTE,
 			SORT_EXPRESSION,
 			GROUP_EXPRESSION,
+			SCORE,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1456,6 +1484,7 @@ public enum QueryFeature implements Enumerator {
 			case PIPELINE_COMPUTE_VALUE: return PIPELINE_COMPUTE;
 			case SORT_EXPRESSION_VALUE: return SORT_EXPRESSION;
 			case GROUP_EXPRESSION_VALUE: return GROUP_EXPRESSION;
+			case SCORE_VALUE: return SCORE;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

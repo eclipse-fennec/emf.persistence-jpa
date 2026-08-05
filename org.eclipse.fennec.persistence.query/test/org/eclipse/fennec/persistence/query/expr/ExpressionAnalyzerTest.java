@@ -471,6 +471,23 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void scoreIsDetected() {
+		// the relevance sort key (issue #100) requires the SCORE capability
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.orderByDesc(Expressions.score().toExpression())
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.SORT_EXPRESSION,
+				QueryFeature.SCORE);
+
+		QueryAnalysis predicate = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.where(Expressions.score().ge(0.5))
+						.build());
+		assertThat(predicate.features()).contains(QueryFeature.SCORE);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();
