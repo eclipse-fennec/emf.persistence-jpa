@@ -38,6 +38,7 @@ import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
@@ -108,6 +109,11 @@ import com.mongodb.client.model.Sorts;
  * containment embedding only — cross-document paths are refused (code 100).</li>
  * <li>{@code IsNull} matches missing-or-null ({@code {field: null}}); negated →
  * {@code {$ne: null}}.</li>
+ * <li>Null comparisons follow SQL's three-valued logic (issue #97): {@code NE} and
+ * negated IN/string matches carry {@code $ne null} guards, {@code Not} translates by
+ * negation push-down (De Morgan, operator inversion, quantifier duality) instead of the
+ * two-valued {@code $nor} — a null-poisoned comparison never matches, negated or
+ * not.</li>
  * <li>{@code Exists}/{@code ForAll} over <em>embedded</em> collections via
  * {@code $elemMatch} (ForAll = {@code $nor} around an $elemMatch of the negated
  * predicate); non-embedded quantifier sources are refused (code 100).</li>
@@ -234,39 +240,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return junction instanceof And ? Filters.and(operands) : Filters.or(operands);
 		}
 		if (expression instanceof Not not) {
-			return Filters.nor(predicate(not.getOperand(), context));
+			return negated(not.getOperand(), context);
 		}
 		if (expression instanceof Comparison comparison) {
-			boolean rightIsValue = comparison.getRight() instanceof Literal
-					|| comparison.getRight() instanceof ParameterRef;
-			if (comparison.getLeft() instanceof AliasRef aliasRef && rightIsValue) {
-				// pipeline output columns are plain top-level fields after the flatten
-				Object bound = value(comparison.getRight(), null, context);
-				return switch (comparison.getOperator()) {
-				case EQ -> Filters.eq(aliasRef.getAlias(), bound);
-				case NE -> Filters.ne(aliasRef.getAlias(), bound);
-				case LT -> Filters.lt(aliasRef.getAlias(), bound);
-				case LE -> Filters.lte(aliasRef.getAlias(), bound);
-				case GT -> Filters.gt(aliasRef.getAlias(), bound);
-				case GE -> Filters.gte(aliasRef.getAlias(), bound);
-				};
-			}
-			boolean plain = comparison.getLeft() instanceof PropertyPath && rightIsValue;
-			if (!plain) {
-				return exprComparison(comparison, context);
-			}
-			String field = field(comparison.getLeft());
-			EStructuralFeature target = targetOf(comparison.getLeft());
-			Object value = value(comparison.getRight(), target, context);
-			Bson filter = switch (comparison.getOperator()) {
-			case EQ -> Filters.eq(field, value);
-			case NE -> Filters.ne(field, value);
-			case LT -> Filters.lt(field, value);
-			case LE -> Filters.lte(field, value);
-			case GT -> Filters.gt(field, value);
-			case GE -> Filters.gte(field, value);
-			};
-			return guarded(filter, comparison.getLeft(), context);
+			return comparison(comparison, comparison.getOperator(), context);
 		}
 		if (expression instanceof IsNull isNull) {
 			String field = field(isNull.getSource());
@@ -288,7 +265,11 @@ public class MongoQueryProcessor implements QueryProcessor {
 			EStructuralFeature target = targetOf(in.getSource());
 			List<Object> values = new ArrayList<>(in.getValues().size());
 			for (Expression candidate : in.getValues()) {
-				values.add(value(candidate, target, context));
+				Object resolved = value(candidate, target, context);
+				if (resolved != null) {
+					// SQL: a null option never matches ($in would match null docs)
+					values.add(resolved);
+				}
 			}
 			return guarded(Filters.in(field, values), in.getSource(), context);
 		}
@@ -304,6 +285,129 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 		throw new QueryException("Unsupported predicate " + expression.eClass().getName()
 				+ " for the mongo backend");
+	}
+
+	/**
+	 * Translates a comparison with an explicit effective operator — the negation
+	 * rewrite (issue #97) passes the inverse. NE carries a {@code $ne null} guard:
+	 * a bare {@code $ne} matches null and missing fields where SQL's NE over null
+	 * is UNKNOWN and excludes the row.
+	 */
+	private Bson comparison(Comparison comparison, ComparisonOperator operator, QueryContext context)
+			throws QueryException {
+		boolean rightIsValue = comparison.getRight() instanceof Literal
+				|| comparison.getRight() instanceof ParameterRef;
+		if (comparison.getLeft() instanceof AliasRef aliasRef && rightIsValue) {
+			// pipeline output columns are plain top-level fields after the flatten
+			Object bound = value(comparison.getRight(), null, context);
+			return fieldComparison(aliasRef.getAlias(), operator, bound);
+		}
+		boolean plain = comparison.getLeft() instanceof PropertyPath && rightIsValue;
+		if (!plain) {
+			return exprComparison(comparison, operator, context);
+		}
+		String field = field(comparison.getLeft());
+		EStructuralFeature target = targetOf(comparison.getLeft());
+		Object value = value(comparison.getRight(), target, context);
+		return guarded(fieldComparison(field, operator, value), comparison.getLeft(), context);
+	}
+
+	private static Bson fieldComparison(String field, ComparisonOperator operator, Object value) {
+		return switch (operator) {
+		case EQ -> Filters.eq(field, value);
+		case NE -> Filters.and(Filters.ne(field, value), Filters.ne(field, null));
+		case LT -> Filters.lt(field, value);
+		case LE -> Filters.lte(field, value);
+		case GT -> Filters.gt(field, value);
+		case GE -> Filters.gte(field, value);
+		};
+	}
+
+	/**
+	 * SQL-3VL negation by push-down (issue #97): a {@code $nor} is the two-valued
+	 * complement and would select rows whose predicate is UNKNOWN (a null operand).
+	 * Junctions flip by De Morgan, comparisons by operator inversion — both exact
+	 * under Kleene 3VL — quantifiers by duality (¬∃p = ∀¬p, ¬∀p = ∃¬p); negated
+	 * string matches and IN carry explicit non-null guards.
+	 */
+	private Bson negated(Expression expression, QueryContext context) throws QueryException {
+		if (expression instanceof Not not) {
+			return predicate(not.getOperand(), context);
+		}
+		if (expression instanceof Junction junction) {
+			List<Bson> operands = new ArrayList<>(junction.getOperands().size());
+			for (Expression operand : junction.getOperands()) {
+				operands.add(negated(operand, context));
+			}
+			return junction instanceof And ? Filters.or(operands) : Filters.and(operands);
+		}
+		if (expression instanceof Comparison comparison) {
+			return comparison(comparison, inverse(comparison.getOperator()), context);
+		}
+		if (expression instanceof IsNull isNull) {
+			// the null probe is two-valued — negation just flips it
+			String field = field(isNull.getSource());
+			return guarded(isNull.isNegated() ? Filters.eq(field, null) : Filters.ne(field, null),
+					isNull.getSource(), context);
+		}
+		if (expression instanceof Between between) {
+			// ¬(l ≤ x ≤ u) → x < l OR x > u — positive operators exclude nulls natively
+			String field = field(between.getSource());
+			EStructuralFeature target = targetOf(between.getSource());
+			Object lower = value(between.getLower(), target, context);
+			Object upper = value(between.getUpper(), target, context);
+			return guarded(Filters.or(
+					between.isLowerIncluded() ? Filters.lt(field, lower) : Filters.lte(field, lower),
+					between.isUpperIncluded() ? Filters.gt(field, upper) : Filters.gte(field, upper)),
+					between.getSource(), context);
+		}
+		if (expression instanceof In in) {
+			String field = field(in.getSource());
+			EStructuralFeature target = targetOf(in.getSource());
+			List<Object> values = new ArrayList<>(in.getValues().size());
+			for (Expression candidate : in.getValues()) {
+				Object resolved = value(candidate, target, context);
+				if (resolved == null) {
+					// SQL: NOT IN over a null option can never be TRUE
+					return Filters.expr(false);
+				}
+				values.add(resolved);
+			}
+			return guarded(Filters.and(Filters.nin(field, values), Filters.ne(field, null)),
+					in.getSource(), context);
+		}
+		if (expression instanceof StringMatch match) {
+			// $not over a regex matches null/missing — SQL's NOT LIKE over null is UNKNOWN
+			return guarded(Filters.and(Filters.not(match(match, context)),
+					Filters.ne(field(match.getSource()), null)), match.getSource(), context);
+		}
+		if (expression instanceof Quantifier quantifier) {
+			String collection = MongoFieldNames.render(quantifier.getSource());
+			Bson inner = negated(quantifier.getPredicate(), context);
+			if (quantifier instanceof Exists) {
+				// ¬∃p = ∀¬p: no element where p is TRUE or UNKNOWN
+				return Filters.nor(Filters.elemMatch(collection, Filters.nor(inner)));
+			}
+			// ¬∀p = ∃¬p: some element where p is plainly FALSE
+			return Filters.elemMatch(collection, inner);
+		}
+		if (expression instanceof TypeCheck typeCheck) {
+			// the discriminator is always present — the two-valued complement is exact
+			return Filters.nor(MongoTypePredicates.typeCheck(typeCheck, codecResolver(context)));
+		}
+		throw new QueryException("Unsupported negated predicate " + expression.eClass().getName()
+				+ " for the mongo backend");
+	}
+
+	private static ComparisonOperator inverse(ComparisonOperator operator) {
+		return switch (operator) {
+		case EQ -> ComparisonOperator.NE;
+		case NE -> ComparisonOperator.EQ;
+		case LT -> ComparisonOperator.GE;
+		case LE -> ComparisonOperator.GT;
+		case GT -> ComparisonOperator.LE;
+		case GE -> ComparisonOperator.LT;
+		};
 	}
 
 	/** ANDs the treat guard when the operand path downcasts the root (castBase, issue #88). */
@@ -349,12 +453,23 @@ public class MongoQueryProcessor implements QueryProcessor {
 	 * comparisons involving missing/null values are false (SQL and in-memory
 	 * semantics; Mongo itself treats missing as equal to null).
 	 */
-	private Bson exprComparison(Comparison comparison, QueryContext context) throws QueryException {
+	private Bson exprComparison(Comparison comparison, ComparisonOperator operator, QueryContext context)
+			throws QueryException {
 		EStructuralFeature target = exprTarget(comparison.getLeft(), comparison.getRight());
 		List<Object> guards = new ArrayList<>();
 		Object left = exprOperand(comparison.getLeft(), target, context, guards);
 		Object right = exprOperand(comparison.getRight(), target, context, guards);
-		String operator = switch (comparison.getOperator()) {
+		Document compare = new Document(mongoOperator(operator), Arrays.asList(left, right));
+		if (guards.isEmpty()) {
+			return Filters.expr(compare);
+		}
+		List<Object> operands = new ArrayList<>(guards);
+		operands.add(compare);
+		return Filters.expr(new Document("$and", operands));
+	}
+
+	private static String mongoOperator(ComparisonOperator operator) {
+		return switch (operator) {
 		case EQ -> "$eq";
 		case NE -> "$ne";
 		case LT -> "$lt";
@@ -362,13 +477,6 @@ public class MongoQueryProcessor implements QueryProcessor {
 		case GT -> "$gt";
 		case GE -> "$gte";
 		};
-		Document compare = new Document(operator, Arrays.asList(left, right));
-		if (guards.isEmpty()) {
-			return Filters.expr(compare);
-		}
-		List<Object> operands = new ArrayList<>(guards);
-		operands.add(compare);
-		return Filters.expr(new Document("$and", operands));
 	}
 
 	/**
@@ -388,22 +496,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return new Document(junction instanceof And ? "$and" : "$or", operands);
 		}
 		if (expression instanceof Not not) {
-			return new Document("$not", List.of(exprCondition(not.getOperand(), variable, name, context)));
+			return negatedCondition(not.getOperand(), variable, name, context);
 		}
 		if (expression instanceof Comparison comparison) {
-			EStructuralFeature target = condTarget(comparison.getLeft(), comparison.getRight());
-			List<Object> guards = new ArrayList<>();
-			Object left = condOperand(comparison.getLeft(), variable, name, target, context, guards);
-			Object right = condOperand(comparison.getRight(), variable, name, target, context, guards);
-			String operator = switch (comparison.getOperator()) {
-			case EQ -> "$eq";
-			case NE -> "$ne";
-			case LT -> "$lt";
-			case LE -> "$lte";
-			case GT -> "$gt";
-			case GE -> "$gte";
-			};
-			return guardedCondition(new Document(operator, Arrays.asList(left, right)), guards);
+			return condComparison(comparison, comparison.getOperator(), variable, name, context);
 		}
 		if (expression instanceof IsNull isNull) {
 			Object value = condOperand(isNull.getSource(), variable, name, null, context, new ArrayList<>());
@@ -442,6 +538,82 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return guardedCondition(new Document("$regexMatch", regex), guards);
 		}
 		throw new QueryException("Unsupported condition " + expression.eClass().getName()
+				+ " inside a filtered collection count on the mongo backend");
+	}
+
+	private Object condComparison(Comparison comparison, ComparisonOperator operator, Variable variable,
+			String name, QueryContext context) throws QueryException {
+		EStructuralFeature target = condTarget(comparison.getLeft(), comparison.getRight());
+		List<Object> guards = new ArrayList<>();
+		Object left = condOperand(comparison.getLeft(), variable, name, target, context, guards);
+		Object right = condOperand(comparison.getRight(), variable, name, target, context, guards);
+		return guardedCondition(new Document(mongoOperator(operator), Arrays.asList(left, right)), guards);
+	}
+
+	/**
+	 * The cond-language mirror of {@link #negated} (issue #97): a bare {@code $not}
+	 * would turn a guard-collapsed false (null element field) back into true. The
+	 * guards stay ANDed outside the pushed-down negation, so a null-poisoned
+	 * element condition remains false — the element does not count.
+	 */
+	private Object negatedCondition(Expression expression, Variable variable, String name,
+			QueryContext context) throws QueryException {
+		if (expression instanceof Not not) {
+			return exprCondition(not.getOperand(), variable, name, context);
+		}
+		if (expression instanceof Junction junction) {
+			List<Object> operands = new ArrayList<>(junction.getOperands().size());
+			for (Expression operand : junction.getOperands()) {
+				operands.add(negatedCondition(operand, variable, name, context));
+			}
+			return new Document(junction instanceof And ? "$or" : "$and", operands);
+		}
+		if (expression instanceof Comparison comparison) {
+			return condComparison(comparison, inverse(comparison.getOperator()), variable, name, context);
+		}
+		if (expression instanceof IsNull isNull) {
+			Object value = condOperand(isNull.getSource(), variable, name, null, context, new ArrayList<>());
+			return new Document(isNull.isNegated() ? "$eq" : "$ne", Arrays.asList(value, null));
+		}
+		if (expression instanceof Between between) {
+			EStructuralFeature target = condTarget(between.getSource(), null);
+			List<Object> guards = new ArrayList<>();
+			Object value = condOperand(between.getSource(), variable, name, target, context, guards);
+			Object lower = condOperand(between.getLower(), variable, name, target, context, guards);
+			Object upper = condOperand(between.getUpper(), variable, name, target, context, guards);
+			return guardedCondition(new Document("$or", Arrays.asList(
+					new Document(between.isLowerIncluded() ? "$lt" : "$lte", Arrays.asList(value, lower)),
+					new Document(between.isUpperIncluded() ? "$gt" : "$gte", Arrays.asList(value, upper)))),
+					guards);
+		}
+		if (expression instanceof In in) {
+			EStructuralFeature target = condTarget(in.getSource(), null);
+			List<Object> guards = new ArrayList<>();
+			Object value = condOperand(in.getSource(), variable, name, target, context, guards);
+			List<Object> options = new ArrayList<>(in.getValues().size());
+			for (Expression option : in.getValues()) {
+				Object resolved = mongoValue(ExpressionValues.resolve(option, target, context.parameters(),
+						context.converter()));
+				if (resolved == null) {
+					// SQL: NOT IN over a null option can never be TRUE
+					return Boolean.FALSE;
+				}
+				options.add(resolved);
+			}
+			return guardedCondition(new Document("$not",
+					List.of(new Document("$in", Arrays.asList(value, options)))), guards);
+		}
+		if (expression instanceof StringMatch match) {
+			List<Object> guards = new ArrayList<>();
+			Object input = condOperand(match.getSource(), variable, name, null, context, guards);
+			Document regex = new Document("input", input)
+					.append("regex", regexPattern(match, context));
+			if (match.isCaseInsensitive()) {
+				regex.append("options", "i");
+			}
+			return guardedCondition(new Document("$not", List.of(new Document("$regexMatch", regex))), guards);
+		}
+		throw new QueryException("Unsupported negated condition " + expression.eClass().getName()
 				+ " inside a filtered collection count on the mongo backend");
 	}
 

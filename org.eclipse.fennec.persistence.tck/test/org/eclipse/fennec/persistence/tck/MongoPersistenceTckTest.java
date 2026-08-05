@@ -102,12 +102,6 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	 * clear error instead of inventing values. The String-id binding
 	 * ({@link MongoStringIdPersistenceTckTest}) inherits the regular generation test.
 	 */
-	/** Mongo's find vocabulary negates two-valued ($nor) — SQL 3VL pending issue #97. */
-	@Override
-	protected boolean supportsThreeValuedNegation() {
-		return false;
-	}
-
 	@Override
 	@Test
 	public void idGenerationOnSaveAssignsAndWritesBackId() throws Exception {

@@ -142,9 +142,73 @@ class MongoQueryProcessorTest {
 						or(path(age).ge(18), path(age).ne(65)),
 						not(path(name).isNull())))
 				.build());
+		// NE carries the $ne null guard, not(isNull) flips to the two-valued probe (issue #97)
 		assertThat(render(grouped.filter())).isEqualTo(BsonDocument.parse(
-				"{'$and': [{'$or': [{'age': {'$gte': 18}}, {'age': {'$ne': 65}}]},"
-						+ " {'$nor': [{'name': null}]}]}"));
+				"{'$and': [{'$or': [{'age': {'$gte': 18}},"
+						+ " {'$and': [{'age': {'$ne': 65}}, {'age': {'$ne': null}}]}]},"
+						+ " {'name': {'$ne': null}}]}"));
+	}
+
+	@Test
+	void negationPushesDownInsteadOfNor() throws QueryException {
+		// not(age = 65) → the inverse operator with the $ne null guard — never $nor,
+		// which would select documents whose comparison is UNKNOWN (issue #97)
+		MongoQueryPlan notEq = translate(QueryBuilder.from(person)
+				.where(not(path(age).eq(65))).build());
+		assertThat(render(notEq.filter())).isEqualTo(BsonDocument.parse(
+				"{'$and': [{'age': {'$ne': 65}}, {'age': {'$ne': null}}]}"));
+
+		// double negation cancels
+		MongoQueryPlan doubled = translate(QueryBuilder.from(person)
+				.where(not(not(path(age).eq(65)))).build());
+		assertThat(render(doubled.filter())).isEqualTo(BsonDocument.parse("{'age': 65}"));
+
+		// De Morgan over junctions, inversion at the leaves
+		MongoQueryPlan deMorgan = translate(QueryBuilder.from(person)
+				.where(not(and(path(age).ge(40), path(name).eq("Alice")))).build());
+		assertThat(render(deMorgan.filter())).isEqualTo(BsonDocument.parse(
+				"{'$or': [{'age': {'$lt': 40}},"
+						+ " {'$and': [{'name': {'$ne': 'Alice'}}, {'name': {'$ne': null}}]}]}"));
+
+		// ¬between → outside the range with flipped inclusivity
+		MongoQueryPlan notBetween = translate(QueryBuilder.from(person)
+				.where(not(path(age).between(18, 65, true, false))).build());
+		assertThat(render(notBetween.filter())).isEqualTo(BsonDocument.parse(
+				"{'$or': [{'age': {'$lt': 18}}, {'age': {'$gte': 65}}]}"));
+	}
+
+	@Test
+	void negatedInMatchAndQuantifiersCarryGuards() throws QueryException {
+		// ¬IN → $nin plus the non-null guard
+		MongoQueryPlan notIn = translate(QueryBuilder.from(person)
+				.where(not(path(age).in(1, 2, 3))).build());
+		assertThat(render(notIn.filter())).isEqualTo(BsonDocument.parse(
+				"{'$and': [{'age': {'$nin': [1, 2, 3]}}, {'age': {'$ne': null}}]}"));
+
+		// ¬IN with a null option can never be TRUE in SQL
+		MongoQueryPlan notInNull = translate(QueryBuilder.from(person)
+				.where(not(path(age).in(1, null))).build());
+		assertThat(render(notInNull.filter())).isEqualTo(BsonDocument.parse("{'$expr': false}"));
+
+		// ¬contains → $not regex plus the non-null guard
+		MongoQueryPlan notMatch = translate(QueryBuilder.from(person)
+				.where(not(path(name).contains("mit"))).build());
+		String json = render(notMatch.filter()).toJson();
+		assertThat(json).contains("$not").contains("mit").contains("{\"name\": {\"$ne\": null}}");
+
+		// ¬∃p = ∀¬p — the forAll shape around the negated (inverted) inner predicate
+		MongoQueryPlan notExists = translate(QueryBuilder.from(person)
+				.where(not(any(propertyPath(addresses), a -> a.path(street).eq("Main St")))).build());
+		assertThat(render(notExists.filter())).isEqualTo(BsonDocument.parse(
+				"{'$nor': [{'addresses': {'$elemMatch': {'$nor': ["
+						+ "{'$and': [{'street': {'$ne': 'Main St'}}, {'street': {'$ne': null}}]}]}}}]}"));
+
+		// ¬∀p = ∃¬p — a plain $elemMatch of the negated inner predicate
+		MongoQueryPlan notForAll = translate(QueryBuilder.from(person)
+				.where(not(all(propertyPath(addresses), a -> a.path(street).eq("Main St")))).build());
+		assertThat(render(notForAll.filter())).isEqualTo(BsonDocument.parse(
+				"{'addresses': {'$elemMatch': "
+						+ "{'$and': [{'street': {'$ne': 'Main St'}}, {'street': {'$ne': null}}]}}}"));
 	}
 
 	@Test

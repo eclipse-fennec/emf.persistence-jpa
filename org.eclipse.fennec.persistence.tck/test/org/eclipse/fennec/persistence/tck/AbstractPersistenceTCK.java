@@ -14,7 +14,6 @@ package org.eclipse.fennec.persistence.tck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -547,21 +546,10 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
-	/**
-	 * Whether the backend evaluates NOT over null-poisoned comparisons in SQL's
-	 * three-valued logic (issue #94). Mongo's find vocabulary is two-valued until
-	 * issue #97 lands — its bindings return {@code false} to skip the pinning case.
-	 */
-	protected boolean supportsThreeValuedNegation() {
-		return true;
-	}
-
 	@Test
 	public void queryNotOverNullableComparisonExcludesNullRows() throws Exception {
-		assumeTrue(supportsThreeValuedNegation(),
-				"two-valued negation — pending issue #97");
-		// SQL 3VL pinned by issue #94: not(birthday = X) over a NULL birthday is
-		// NOT UNKNOWN = UNKNOWN — the row is excluded, it does not flip to a match
+		// SQL 3VL pinned by issue #94 (Mongo aligned by #97): not(birthday = X) over a
+		// NULL birthday is NOT UNKNOWN = UNKNOWN — excluded, it does not flip to a match
 		EObject alice = newPerson(1, "Alice", 30);
 		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
 		EObject dave = newPerson(4, "Dave", 25); // no birthday — the nullable column
@@ -572,6 +560,46 @@ public abstract class AbstractPersistenceTCK {
 						Expressions.path(personBirthday).eq(Date.from(BOB_BIRTHDAY))))
 				.build();
 		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+
+		// the divergence exists without Not too: a plain NE over null is UNKNOWN
+		Query ne = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).ne(Date.from(BOB_BIRTHDAY)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(ne)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+	}
+
+	@Test
+	public void queryNegationDistributesThreeValuedOverJunctions() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
+		EObject dave = newPerson(4, "Dave", 25); // no birthday
+		save(createBackendResourceSet(), "Person", alice, dave);
+
+		// FALSE dominates AND over UNKNOWN: Dave's (UNKNOWN and false) is FALSE, so
+		// not(...) is TRUE — a blanket non-null guard around the Not would lose him
+		Query notOverAnd = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.and(
+						Expressions.path(personBirthday).eq(Date.from(BOB_BIRTHDAY)),
+						Expressions.path(personAge).ge(40))))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(notOverAnd)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactlyInAnyOrder("Alice", "Dave");
+		}
+
+		// UNKNOWN survives OR against FALSE: Dave's not(UNKNOWN or false) stays UNKNOWN
+		Query notOverOr = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.or(
+						Expressions.path(personBirthday).eq(Date.from(BOB_BIRTHDAY)),
+						Expressions.path(personAge).ge(40))))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(notOverOr)) {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Alice");
 		}
