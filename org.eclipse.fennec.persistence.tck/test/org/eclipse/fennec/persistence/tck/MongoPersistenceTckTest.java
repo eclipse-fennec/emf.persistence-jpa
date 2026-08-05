@@ -63,11 +63,8 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
-	/** No session-capable client handle — command transactions are refused (issue #108). */
-	@Override
-	protected boolean supportsCommandTransactions() {
-		return false;
-	}
+	// command transactions run for real since issue #112: the factory carries the
+	// session-capable client and the test container is a single-node replica set
 
 	private MongoClient client;
 	private MongoDatabase database;
@@ -102,8 +99,10 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	protected ResourceSet createBackendResourceSet() {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(tckPackage.getNsURI(), tckPackage);
+		// the session-capable client unlocks command transactions (issue #112) — the
+		// test container runs a single-node replica set
 		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
-				.put("mongodb", new MongoResourceFactory(database, metadataService, null));
+				.put("mongodb", new MongoResourceFactory(database, metadataService, null, null, client));
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put("*", new XMIResourceFactoryImpl());
 		return resourceSet;

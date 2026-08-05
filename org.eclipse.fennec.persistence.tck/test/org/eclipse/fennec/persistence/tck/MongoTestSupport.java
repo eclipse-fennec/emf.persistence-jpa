@@ -77,15 +77,20 @@ final class MongoTestSupport {
 			return uri;
 		}
 		try {
+			// single-node replica set: functionally identical for plain operations, and
+			// it unlocks multi-document transactions for the command-bracket TCK cases
+			// (issue #112); directConnection keeps the driver off RS discovery, which
+			// would resolve the container-internal hostname
 			String id = exec(180, resolveCli(), "run", "-d", "--rm",
-					"-p", "127.0.0.1::27017", IMAGE);
+					"-p", "127.0.0.1::27017", IMAGE, "--replSet", "rs0");
 			if (nonNull(id) && !id.isBlank()) {
 				containerId = id.trim();
 				String mapping = exec(20, resolveCli(), "port", containerId, "27017/tcp");
 				if (nonNull(mapping) && mapping.contains(":")) {
 					String port = mapping.trim().lines().findFirst().orElse("");
 					port = port.substring(port.lastIndexOf(':') + 1);
-					uri = "mongodb://127.0.0.1:" + port;
+					initiateReplicaSet();
+					uri = "mongodb://127.0.0.1:" + port + "/?directConnection=true";
 					Runtime.getRuntime().addShutdownHook(new Thread(MongoTestSupport::shutdown));
 				}
 			}
@@ -93,6 +98,21 @@ final class MongoTestSupport {
 			LOG.log(Level.INFO, "No MongoDB available for TCK tests: " + e.getMessage());
 		}
 		return uri;
+	}
+
+	/** Initiates the single-node replica set and waits until the node is PRIMARY. */
+	private static void initiateReplicaSet() throws Exception {
+		exec(60, resolveCli(), "exec", containerId, "mongosh", "--quiet", "--eval", "rs.initiate()");
+		long deadline = System.currentTimeMillis() + 60_000;
+		while (System.currentTimeMillis() < deadline) {
+			String primary = exec(20, resolveCli(), "exec", containerId, "mongosh", "--quiet",
+					"--eval", "db.hello().isWritablePrimary");
+			if (nonNull(primary) && primary.trim().endsWith("true")) {
+				return;
+			}
+			Thread.sleep(500);
+		}
+		throw new IllegalStateException("Replica set did not reach PRIMARY within 60s");
 	}
 
 	static synchronized void shutdown() {

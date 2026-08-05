@@ -21,6 +21,7 @@ import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceImpl;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
 /**
@@ -42,6 +43,7 @@ public class MongoResourceFactory implements Resource.Factory {
 	private final MetadataService metadataService;
 	private final CodecValueRegistry valueRegistry;
 	private final QueryProcessor queryProcessor;
+	private final MongoClient client;
 
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -55,12 +57,24 @@ public class MongoResourceFactory implements Resource.Factory {
 	 */
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor) {
+		this(database, metadataService, valueRegistry, queryProcessor, null);
+	}
+
+	/**
+	 * Variant with a session-capable {@link MongoClient} (issue #112): resources created
+	 * by this factory serve {@code CommandResource.begin()} with real multi-document
+	 * transactions on replica-set/mongos deployments. Without the client, command
+	 * transactions are refused.
+	 */
+	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client) {
 		requireNonNull(database, "MongoDatabase is required");
 		requireNonNull(metadataService, "MetadataService is required");
 		this.database = database;
 		this.metadataService = metadataService;
 		this.valueRegistry = valueRegistry;
 		this.queryProcessor = queryProcessor;
+		this.client = client;
 	}
 
 	@Override
@@ -69,6 +83,9 @@ public class MongoResourceFactory implements Resource.Factory {
 				valueRegistry != null ? valueRegistry.copy() : null);
 		if (queryProcessor != null) {
 			resource.setQueryProcessor(queryProcessor);
+		}
+		if (client != null) {
+			resource.setClient(client);
 		}
 		return resource;
 	}

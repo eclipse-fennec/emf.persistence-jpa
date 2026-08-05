@@ -72,7 +72,9 @@ import org.eclipse.fennec.codec.resource.CodecResource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
 
+import com.mongodb.client.ClientSession;
 import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.AggregateIterable;
@@ -155,6 +157,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private final CodecValueRegistry valueRegistry;
 	private volatile ObjectMapper mongoMapper;
 	private volatile QueryProcessor queryProcessor = new MongoQueryProcessor();
+	/** Session-capable client for command transactions (issue #112); optional. */
+	private volatile MongoClient client;
+	/** The open command bracket (issue #112); resources are single-threaded per EMF semantics. */
+	private MongoCommandTransaction activeTransaction;
 
 	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -305,17 +311,9 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		try {
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
-			List<WriteModel<BsonDocument>> writes = new ArrayList<>(getContents().size());
-			ReplaceOptions upsert = new ReplaceOptions().upsert(true);
 			// snapshot: encoding may resolve proxies, and a keyed-find resolution against
 			// this very resource attaches its result to the contents (issue #107)
-			for (EObject eObject : List.copyOf(getContents())) {
-				BsonValue id = ensureId(eObject);
-				BsonDocument document = encode(eObject);
-				document.put(MongoPersistenceConstants.ID_FIELD, id);
-				writes.add(new ReplaceOneModel<>(
-						eq(MongoPersistenceConstants.ID_FIELD, id), document, upsert));
-			}
+			List<WriteModel<BsonDocument>> writes = writeModels(List.copyOf(getContents()));
 			if (!writes.isEmpty()) {
 				collection.bulkWrite(writes);
 			}
@@ -324,6 +322,20 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					"Failed to save resource: " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to save resource: " + getURI(), e);
 		}
+	}
+
+	/** The upsert write models of the save pipeline, shared with bracketed inserts (issue #112). */
+	private List<WriteModel<BsonDocument>> writeModels(List<EObject> objects) throws IOException {
+		List<WriteModel<BsonDocument>> writes = new ArrayList<>(objects.size());
+		ReplaceOptions upsert = new ReplaceOptions().upsert(true);
+		for (EObject eObject : objects) {
+			BsonValue id = ensureId(eObject);
+			BsonDocument document = encode(eObject);
+			document.put(MongoPersistenceConstants.ID_FIELD, id);
+			writes.add(new ReplaceOneModel<>(
+					eq(MongoPersistenceConstants.ID_FIELD, id), document, upsert));
+		}
+		return writes;
 	}
 
 	// -------------------------------------------------- delete / count / exist
@@ -560,17 +572,121 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
 
+	/** Injects the session-capable client — wired by the {@code MongoResourceFactory} (issue #112). */
+	public void setClient(MongoClient client) {
+		this.client = client;
+	}
+
 	/**
-	 * Command transactions are not served by this backend (issue #108): multi-document
-	 * transactions need a session-capable {@code MongoClient} handle and a replica-set
-	 * deployment — the resource holds only a {@link MongoDatabase}. Honest refusal
-	 * instead of a pretend-bracket that commits per command.
+	 * Opens a command bracket (issue #112) over a {@link ClientSession} transaction.
+	 * Requires a session-capable {@link MongoClient} (factory-injected) and a
+	 * replica-set/mongos deployment — both are probed and refused honestly, no
+	 * pretend-bracket that commits per command.
 	 */
 	@Override
 	public CommandTransaction begin() throws IOException {
-		throw new IOException("Command transactions are not supported by the mongo backend"
-				+ " — multi-document transactions require a session-capable client and a"
-				+ " replica set (issue #108)");
+		if (nonNull(activeTransaction)) {
+			throw new IOException("A command transaction is already open on this resource"
+					+ " — commit or close it before opening another");
+		}
+		if (isNull(client)) {
+			throw new IOException("Command transactions are not supported without a session-capable"
+					+ " MongoClient — construct the MongoResourceFactory with the client (issue #112)");
+		}
+		try {
+			BsonDocument hello = database.runCommand(new BsonDocument("hello", new BsonInt32(1)),
+					BsonDocument.class);
+			boolean transactional = hello.containsKey("setName")
+					|| "isdbgrid".equals(hello.containsKey("msg") ? hello.getString("msg").getValue() : null);
+			if (!transactional) {
+				throw new IOException("Command transactions require a replica set or mongos"
+						+ " — this MongoDB deployment is standalone (issue #112)");
+			}
+		} catch (RuntimeException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Cannot probe the deployment for transaction support: " + e.getMessage(), getURI(), e));
+			throw new IOException("Cannot probe the deployment for transaction support: " + e.getMessage(), e);
+		}
+		ClientSession session;
+		try {
+			session = client.startSession();
+			session.startTransaction();
+		} catch (RuntimeException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Cannot open command transaction: " + e.getMessage(), getURI(), e));
+			throw new IOException("Cannot open command transaction: " + e.getMessage(), e);
+		}
+		activeTransaction = new MongoCommandTransaction(session);
+		return activeTransaction;
+	}
+
+	/** The session the open bracket rides, or {@code null} outside a bracket. */
+	private ClientSession activeSession() {
+		return nonNull(activeTransaction) ? activeTransaction.session : null;
+	}
+
+	/** The Mongo command bracket (issue #112): one client-session transaction per bracket. */
+	private final class MongoCommandTransaction implements CommandTransaction {
+
+		private final ClientSession session;
+		private boolean closed;
+
+		private MongoCommandTransaction(ClientSession session) {
+			this.session = session;
+		}
+
+		@Override
+		public void commit() throws IOException {
+			if (closed) {
+				throw new IOException("The command transaction is already closed");
+			}
+			try {
+				session.commitTransaction();
+			} catch (RuntimeException e) {
+				abortQuietly();
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+						"Command transaction commit failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Command transaction commit failed: " + e.getMessage(), e);
+			} finally {
+				cleanup();
+			}
+		}
+
+		@Override
+		public void rollback() {
+			if (closed) {
+				return;
+			}
+			abortQuietly();
+			cleanup();
+		}
+
+		@Override
+		public void close() {
+			if (!closed) {
+				rollback();
+			}
+		}
+
+		private void abortQuietly() {
+			try {
+				if (session.hasActiveTransaction()) {
+					session.abortTransaction();
+				}
+			} catch (RuntimeException e) {
+				LOG.log(Level.FINE, "Command transaction abort failed", e);
+			}
+		}
+
+		private void cleanup() {
+			closed = true;
+			try {
+				session.close();
+			} catch (RuntimeException e) {
+				LOG.log(Level.FINE, "Closing the client session failed", e);
+			}
+			activeTransaction = null;
+		}
 	}
 
 	/**
@@ -588,6 +704,24 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Insert rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Insert rejected: " + e.getMessage(), e);
+		}
+		ClientSession session = activeSession();
+		if (nonNull(session)) {
+			// bracketed insert (issue #112): write through the bracket's session
+			String collectionName = getCollectionName(null);
+			if (isNull(collectionName)) {
+				throw new IOException("Resource URI has no collection segment — cannot insert: " + getURI());
+			}
+			try {
+				List<WriteModel<BsonDocument>> writes = writeModels(copies);
+				if (!writes.isEmpty()) {
+					getCollection(collectionName).bulkWrite(session, writes);
+				}
+				return copies.size();
+			} catch (RuntimeException e) {
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Insert failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Insert failed on collection '" + collectionName + "'", e);
+			}
 		}
 		getContents().addAll(copies);
 		try {
@@ -615,7 +749,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		try {
 			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
-			return getCollection(collectionName).deleteMany(filter).getDeletedCount();
+			ClientSession session = activeSession();
+			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			return (nonNull(session)
+					? collection.deleteMany(session, filter)
+					: collection.deleteMany(filter)).getDeletedCount();
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete failed on collection '" + collectionName + "'", e);
@@ -643,9 +781,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		try {
 			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
+			ClientSession session = activeSession();
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
 			long applied = 0;
-			try (MongoCursor<BsonDocument> cursor = collection.find(filter).iterator()) {
+			try (MongoCursor<BsonDocument> cursor = (nonNull(session)
+					? collection.find(session, filter)
+					: collection.find(filter)).iterator()) {
 				while (cursor.hasNext()) {
 					BsonDocument document = cursor.next();
 					EObject eObject = decodeUnchecked(document, eClass);
@@ -656,7 +797,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					BsonValue id = document.get(MongoPersistenceConstants.ID_FIELD);
 					BsonDocument replacement = encode(eObject);
 					replacement.put(MongoPersistenceConstants.ID_FIELD, id);
-					collection.replaceOne(eq(MongoPersistenceConstants.ID_FIELD, id), replacement);
+					if (nonNull(session)) {
+						collection.replaceOne(session, eq(MongoPersistenceConstants.ID_FIELD, id), replacement);
+					} else {
+						collection.replaceOne(eq(MongoPersistenceConstants.ID_FIELD, id), replacement);
+					}
 					applied++;
 				}
 			}
@@ -688,9 +833,14 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 						+ "' has a composite id — the mongo backend supports single-id classes only (issue #109)");
 			}
 			try {
-				BsonDocument existing = getCollection(targetType.getName())
-						.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(id, targetType)))
-						.first();
+				// inside a bracket the keyed find rides the session, so targets inserted
+				// earlier in the same (uncommitted) transaction resolve (issue #112)
+				ClientSession session = activeSession();
+				MongoCollection<BsonDocument> targets = getCollection(targetType.getName());
+				Bson byId = eq(MongoPersistenceConstants.ID_FIELD, toBsonId(id, targetType));
+				BsonDocument existing = (nonNull(session)
+						? targets.find(session, byId)
+						: targets.find(byId)).first();
 				if (isNull(existing)) {
 					return null;
 				}
