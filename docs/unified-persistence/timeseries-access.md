@@ -1,11 +1,13 @@
 # Time-series access on the stream model — TIMESERIES profile store SPI + series queries
 
 **Status:** draft concept for discussion (2026-08-05, issue #96) — nothing here is decided.
-Companions: `concept.md` §2 (requirements 2/4/5), §9 (storage profiles), §10 (keyframing),
-§14 (query integration), §19 (technology mapping); `query-ir-redesign.md` (Expression IR,
-capability discipline); `query-processor-spi.md` (per-backend translation). Consumer
-trajectory: eclipse-fennec/emf.odata#12 (`$apply` on pipeline stages), emf.odata#11
-(`$delta`, currently a service-layer journal).
+Companions: `concept.md` §2 (requirements 2/4/5), §7 (capture hybrid), §8 (tracking
+aspect), §9 (storage profiles), §10 (keyframing), §14 (query integration), §19 (technology
+mapping); `query-ir-redesign.md` (Expression IR, capability discipline);
+`query-processor-spi.md` (per-backend translation). Donor pattern for the ingest mapping
+(§6): `emf.util/org.eclipse.fennec.sensinact.mapping`. Consumer trajectory:
+eclipse-fennec/emf.odata#12 (`$apply` on pipeline stages), emf.odata#11 (`$delta`,
+currently a service-layer journal).
 
 ---
 
@@ -24,8 +26,9 @@ What exists is the metamodel and the doctrine. What does **not** exist is any ac
 - no query vocabulary for series — §14 names the gap verbatim: *"what is missing is the
   notion 'subject is a series, not the current state'"*.
 
-This document proposes the access design in three separable cuts: a stream-store SPI
-(§4), series queries in the IR (§5), and CDC capture as a deliberately later cut (§6).
+This document proposes the access design in four separable cuts: a stream-store SPI
+(§4), series queries in the IR (§5), a declarative ingest mapping for payload-borne
+sensor data (§6), and CDC capture as a deliberately later cut (§7).
 
 ## 2. What already exists and is load-bearing
 
@@ -77,7 +80,7 @@ public interface StreamStore {
 ```
 
 Shape is a sketch, not a signature contract — whether this is its own service or folds
-into `CommandResource`/`QueryableResource` is open question O1 (§9). What is NOT open is
+into `CommandResource`/`QueryableResource` is open question O1 (§10). What is NOT open is
 the boundary schema (`stream.ecore`) and idempotency on `ChangeSet.id`.
 
 ### 4.1 Backend mapping — MongoDB time-series collections
@@ -133,16 +136,61 @@ New `QueryFeature` constants (naming = O5): `SERIES_SUBJECT`, `TIME_BUCKET`,
 `SERIES_FIRST_LAST`, `SERIES_GAPFILL`. The memory engine implements all of them as the
 reference; JPA/Mongo declare what they push down.
 
-## 6. Cut 3 — CDC capture (deliberately later)
+## 6. Cut 3 — declarative ingest mapping (payload → series)
+
+The dominant real-world source is payload-borne: ChirpStack/TTN uplinks arrive as JSON,
+the codec decodes them into EObjects of a *payload model* (`lorawan-uplink.ecore`,
+device-specific decoder classes). `concept.md` §7.1 (SnapshotCapture) already covers the
+capture mechanics for exactly this scenario — keyed snapshot diff, "degenerates to append
+for high-frequency numeric features with TIMESERIES profile" — and §8 covers the *what*:
+`TrackingConfig` per feature (`mode`, `changeRules` — themselves lifted from
+sensinact-mapping, retention, keyframing).
+
+What §7/§8 presuppose and nothing declares yet is the ***from where***: the payload class
+is usually NOT the series subject. Identity, event time and values sit somewhere in the
+decoded message, and that binding must be configuration, not code. The donor pattern
+exists in `emf.util/org.eclipse.fennec.sensinact.mapping`: a small mapping metamodel
+whose instances declare per payload EClass a timestamp strategy (`FEATURE` path vs.
+receive time), an identity path, and feature→resource assignments — exactly the shape
+needed here, retargeted from sensiNact resources to stream subjects:
+
+```
+IngestMapping (per payload EClass)
+  subject      : the tracked EClass the payload feeds (the series subject / domain entity)
+  identity     : payload feature path(s) → objectId/streamId  (e.g. devEUI)
+  timestamp    : FEATURE(path) | RECEIVED                     → ChangeSet.timestamp
+                 (commitTime is always ingest time; §4.3 axes stay separate)
+  assignments  : payload feature path → tracked feature [× unit hint]
+```
+
+Division of labor (deliberately two aspects, one registry plane):
+
+- **IngestMapping answers "where does the sample come from"** — pure extraction/binding.
+  It carries NO filtering rules and NO retention: those stay in `TrackingConfig` (§8),
+  otherwise there are two competing rule truths (R3/R6 interpretation would fork).
+- **TrackingConfig answers "does it enter the stream, and how long does it live"** —
+  unchanged.
+- The capture pipeline composes them: codec → payload EObject → IngestMapping resolves
+  (subject, objectId, timestamp, values) → ChangeRule filter (§7.3) → `StreamStore.append`
+  (+ current-state projection per O2).
+
+Like the tracking config, the mapping lives in the metadata/aspect plane (registered per
+payload EPackage; open point O7 — aspect entry vs. standalone XMI artifacts like the
+sensinact `*.xmi` mappings). Nothing in cuts 1–2 depends on this cut, but the SPI (§4)
+should be reviewed against it: `append` must be callable with samples whose subject
+differs from the payload class — which the `(streamId, objectId, featureId)` coordinates
+already allow.
+
+## 7. Cut 4 — CDC capture (deliberately later)
 
 Mongo change streams / Postgres logical decoding as *sources* that emit CHANGELOG-profile
 ChangeSets into a `StreamStore` — a durable, cross-process change feed for data that is
 also written outside the service layer. Separate cut because the failure modes are
 different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing in cuts
-1–2 depends on it. Design constraint to keep in view: the capture side must stamp
+1–3 depends on it. Design constraint to keep in view: the capture side must stamp
 `contextFingerprint` correctly, which requires the metadata registry at capture time.
 
-## 7. Consumers
+## 8. Consumers
 
 - **OData `$apply`** folds onto pipeline stages; with `TIME_BUCKET` OData serves
   dashboard-style aggregations over sensor history via pushdown instead of in-memory work
@@ -154,7 +202,7 @@ different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing
 - **Derived references over history** (`query-derived-references.md`) get a natural
   extension target: an OCL derivation over a series subject.
 
-## 8. Semantic ground rules (proposed as binding)
+## 9. Semantic ground rules (proposed as binding)
 
 1. **Samples are absolute values.** A TIMESERIES entry is effectively KEYFRAME-natured
    (§9): `valueOld` stays unset, invertibility is not a series property.
@@ -172,7 +220,7 @@ different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing
    sample and updating `Sensor.temp` is one logical operation; which side is authoritative
    during ingest is O2.
 
-## 9. Open decisions
+## 10. Open decisions
 
 | # | Question | Leaning |
 |---|---|---|
@@ -182,17 +230,22 @@ different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing
 | O4 | Storage granularity: table/collection per aggregate root vs. per package vs. generic | start generic (one per unit), measure, specialize behind the SPI |
 | O5 | Capability naming + granularity for the series vocabulary | proposal in §5, to be settled with the IR maintainers |
 | O6 | Does `ReplayFilter` belong in the SPI or is replay always whole-stream (filter = query concern)? | in the SPI — TS engines answer filtered ranges natively, whole-stream replay would be the N+1 of series access |
+| O7 | Ingest mapping registration: metadata aspect entry per payload EPackage vs. standalone XMI artifacts (sensinact-mapping style) vs. both | aspect plane as the registry, XMI as an authoring format loaded into it |
+| O8 | Units in the ingest mapping: hint-only (documentation/metadata plane) vs. converting assignments | hint-only in v1 — conversion is a projection concern, not a capture concern |
 
-## 10. Phasing proposal
+## 11. Phasing proposal
 
 1. **P1 — store SPI + JPA narrow table + memory reference** (smallest end-to-end slice;
    proves boundary discipline and round-tripping via fingerprint typing).
 2. **P2 — series subject + TimeBucket in the IR**, memory reference semantics + JPA
    pushdown (`date_trunc`), TCK differential corpus memory vs. JPA.
-3. **P3 — Mongo TS collections** (store mapping + `$dateTrunc` pushdown, TCK green).
-4. **P4 — Timescale dialect** (hypertable DDL, `time_bucket`, compression/retention).
-5. **P5 — series extras** behind capabilities (first/last, gapfill, delta/rate).
-6. **P6 — CDC capture** (own concept round first, see §6).
+3. **P3 — ingest mapping + SnapshotCapture wiring** (mapping metamodel, aspect
+   registration, codec→capture→store pipeline against P1; proves the ChirpStack/TTN
+   path end to end, see §6).
+4. **P4 — Mongo TS collections** (store mapping + `$dateTrunc` pushdown, TCK green).
+5. **P5 — Timescale dialect** (hypertable DDL, `time_bucket`, compression/retention).
+6. **P6 — series extras** behind capabilities (first/last, gapfill, delta/rate).
+7. **P7 — CDC capture** (own concept round first, see §7).
 
 Each phase is issue-sized in the spirit of the #76–#84 wave: JPA + Mongo + memory + TCK
 as the definition of done per construct.
