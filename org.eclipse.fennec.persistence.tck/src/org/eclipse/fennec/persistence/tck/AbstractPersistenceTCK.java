@@ -2024,9 +2024,8 @@ public abstract class AbstractPersistenceTCK {
 	// ------------------------------------------------------- composite ids (issue #109)
 
 	/**
-	 * Whether the backend persists composite-id EClasses. The mongo backend refuses
-	 * them honestly (no compound {@code _id} yet — its bindings return {@code false}
-	 * and assert the refusal instead).
+	 * Whether the backend persists composite-id EClasses. A backend without support
+	 * returns {@code false} and the keyed test asserts the honest refusal instead.
 	 */
 	protected boolean supportsCompositeIds() {
 		return true;

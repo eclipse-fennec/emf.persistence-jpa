@@ -57,11 +57,8 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
-	/** No compound {@code _id} yet — composite-id classes are refused (issue #109). */
-	@Override
-	protected boolean supportsCompositeIds() {
-		return false;
-	}
+	// composite ids map to a compound structured _id via the codec id plane since
+	// issue #110 — the inherited supportsCompositeIds() default applies
 
 	// command transactions run for real since issue #112: the factory carries the
 	// session-capable client and the test container is a single-node replica set

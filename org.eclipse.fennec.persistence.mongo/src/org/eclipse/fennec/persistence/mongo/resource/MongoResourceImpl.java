@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -155,6 +156,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	private final MongoDatabase database;
 	private final CodecValueRegistry valueRegistry;
+	/** Lazily populated per-EClass id configuration for composite-id classes (issue #110). */
+	private final Map<EClass, Map<String, Object>> compositeIdConfigs;
 	private volatile ObjectMapper mongoMapper;
 	private volatile QueryProcessor queryProcessor = new MongoQueryProcessor();
 	/** Session-capable client for command transactions (issue #112); optional. */
@@ -164,10 +167,41 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
-		super(uri, metadataService, ConfigurationResolver.defaults(), valueRegistry, null, null);
+		this(uri, database, metadataService, valueRegistry, new ConcurrentHashMap<>());
+	}
+
+	private MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry, Map<EClass, Map<String, Object>> compositeIdConfigs) {
+		// the per-EClass id configuration rides the resolver's resource plane (issue
+		// #110): the map reference is shared and populated lazily — always BEFORE the
+		// first encode/decode of the class, so the resolver's per-class cache is warm
+		// with the right values
+		super(uri, metadataService, ConfigurationResolver.defaults().toBuilder()
+				.resourceProperties(Map.of(ConfigProperty.ECLASS_CONFIG.getKey(), compositeIdConfigs))
+				.build(), valueRegistry, null, null);
 		requireNonNull(database, "MongoDatabase is required");
 		this.database = database;
 		this.valueRegistry = valueRegistry;
+		this.compositeIdConfigs = compositeIdConfigs;
+	}
+
+	/**
+	 * Registers the codec id configuration for a composite-id EClass (issue #110,
+	 * decision: STRUCTURED + BOTH, composite classes only): the id features derive from
+	 * the {@code isID} attributes in declaration order (the codec requires the explicit
+	 * list — its own fallback is the single eID attribute, emf.codec#99), {@code _id}
+	 * serialises as the structured sub-document, and the components stay in the payload
+	 * so component predicates keep addressing plain fields.
+	 */
+	private void ensureCompositeIdConfig(EClass eClass) {
+		if (isNull(eClass) || !CompositeIds.isComposite(eClass)) {
+			return;
+		}
+		compositeIdConfigs.computeIfAbsent(eClass, ec -> Map.of(
+				ConfigProperty.ID_FEATURES.getKey(),
+				CompositeIds.idAttributes(ec).stream().map(EAttribute::getName).toList(),
+				ConfigProperty.ID_FORMAT.getKey(), "STRUCTURED",
+				ConfigProperty.ID_KEY_MODE.getKey(), "BOTH"));
 	}
 
 	/**
@@ -828,10 +862,6 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				throw new QueryException("Reference target type '" + targetType.getName()
 						+ "' is abstract — cannot bind by id");
 			}
-			if (CompositeIds.isComposite(targetType)) {
-				throw new QueryException("Reference target type '" + targetType.getName()
-						+ "' has a composite id — the mongo backend supports single-id classes only (issue #109)");
-			}
 			try {
 				// inside a bracket the keyed find rides the session, so targets inserted
 				// earlier in the same (uncommitted) transaction resolve (issue #112)
@@ -937,7 +967,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 */
 	@Override
 	public String getURIFragment(EObject eObject) {
-		String id = EcoreUtil.getID(eObject);
+		// composite-id types use the k1=v1,k2=v2 shape (issue #109/#110)
+		String id = CompositeIds.fragment(eObject);
 		return nonNull(id) ? id : super.getURIFragment(eObject);
 	}
 
@@ -989,6 +1020,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * codec's format-delegate bridge (mirrors {@code CodecResource.doSaveWithFormat}).
 	 */
 	protected BsonDocument encode(EObject eObject) throws IOException {
+		ensureCompositeIdConfig(eObject.eClass());
 		BsonFormatDelegate delegate = new BsonFormatDelegate(new BsonDocument());
 		try (FormatDelegateGenerator<BsonDocument> generator = FormatDelegateGenerator.create(
 				ObjectWriteContext.empty(), newIOContext(false), delegate)) {
@@ -1087,6 +1119,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * whose URIs are resolved against this resource's URI.
 	 */
 	protected EObject decode(BsonDocument document, EClass eClassHint) throws IOException {
+		ensureCompositeIdConfig(eClassHint);
 		DiagnosticCollector diagnostics = new DiagnosticCollector();
 		List<UnresolvedReference> unresolved = new ArrayList<>();
 		ObjectReader reader = mongoMapper().readerFor(EObject.class)
@@ -1206,11 +1239,18 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 */
 	protected BsonValue ensureId(EObject eObject) throws IOException {
 		if (CompositeIds.isComposite(eObject.eClass())) {
-			// upserting on a first-component _id would silently overwrite rows that
-			// differ only in a later key component (issue #109) — refuse honestly
-			// until compound _id support lands
-			throw new IOException("EClass '" + eObject.eClass().getName()
-					+ "' has a composite id — the mongo backend supports single-id classes only");
+			// compound _id sub-document in canonical (declaration) order (issue #110);
+			// composite components are never generated (issue #111 discipline)
+			BsonDocument compound = new BsonDocument();
+			for (EAttribute id : CompositeIds.idAttributes(eObject.eClass())) {
+				Object value = eObject.eGet(id);
+				if (isNull(value)) {
+					throw new IOException("Composite id component '" + id.getName() + "' of '"
+							+ eObject.eClass().getName() + "' is unset — composite ids are assigned, never generated");
+				}
+				compound.put(id.getName(), toBsonValue(value));
+			}
+			return compound;
 		}
 		EAttribute idAttribute = eObject.eClass().getEIDAttribute();
 		if (isNull(idAttribute)) {
@@ -1234,6 +1274,17 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	/** Returns the {@code _id} value of the EObject or {@code null} if unset. */
 	protected BsonValue extractId(EObject eObject) {
+		if (CompositeIds.isComposite(eObject.eClass())) {
+			BsonDocument compound = new BsonDocument();
+			for (EAttribute id : CompositeIds.idAttributes(eObject.eClass())) {
+				Object value = eObject.eGet(id);
+				if (isNull(value)) {
+					return null;
+				}
+				compound.put(id.getName(), toBsonValue(value));
+			}
+			return compound;
+		}
 		EAttribute idAttribute = eObject.eClass().getEIDAttribute();
 		if (isNull(idAttribute)) {
 			return null;
@@ -1268,20 +1319,36 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	/** Converts a string id from a URI fragment to the typed {@code _id} representation. */
 	private BsonValue toBsonId(String idValue, EClass eClass) {
 		if (nonNull(eClass)) {
+			if (CompositeIds.isComposite(eClass)) {
+				// compound _id sub-document from the k1=v1,k2=v2 fragment contract (issue #110)
+				List<EAttribute> idAttributes = CompositeIds.idAttributes(eClass);
+				List<String> components = CompositeIds.parse(eClass, idValue);
+				BsonDocument compound = new BsonDocument();
+				for (int i = 0; i < idAttributes.size(); i++) {
+					compound.put(idAttributes.get(i).getName(), toTypedBson(idAttributes.get(i), components.get(i)));
+				}
+				return compound;
+			}
 			EAttribute idAttribute = eClass.getEIDAttribute();
 			if (nonNull(idAttribute)) {
-				Class<?> instanceClass = idAttribute.getEAttributeType().getInstanceClass();
-				try {
-					if (instanceClass == Integer.class || instanceClass == int.class) {
-						return new BsonInt32(Integer.parseInt(idValue));
-					}
-					if (instanceClass == Long.class || instanceClass == long.class) {
-						return new BsonInt64(Long.parseLong(idValue));
-					}
-				} catch (NumberFormatException e) {
-					LOG.log(Level.FINE, "Cannot convert id '" + idValue + "' to " + instanceClass, e);
-				}
+				return toTypedBson(idAttribute, idValue);
 			}
+		}
+		return new BsonString(idValue);
+	}
+
+	/** Converts one string id component to the attribute's instance type in BSON. */
+	private static BsonValue toTypedBson(EAttribute idAttribute, String idValue) {
+		Class<?> instanceClass = idAttribute.getEAttributeType().getInstanceClass();
+		try {
+			if (instanceClass == Integer.class || instanceClass == int.class) {
+				return new BsonInt32(Integer.parseInt(idValue));
+			}
+			if (instanceClass == Long.class || instanceClass == long.class) {
+				return new BsonInt64(Long.parseLong(idValue));
+			}
+		} catch (NumberFormatException e) {
+			LOG.log(Level.FINE, "Cannot convert id '" + idValue + "' to " + instanceClass, e);
 		}
 		return new BsonString(idValue);
 	}
