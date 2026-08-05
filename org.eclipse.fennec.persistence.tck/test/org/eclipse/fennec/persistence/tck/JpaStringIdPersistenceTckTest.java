@@ -24,6 +24,6 @@ class JpaStringIdPersistenceTckTest extends JpaPersistenceTckTest {
 
 	@Override
 	protected String tckModelPath() {
-		return "data/tck-string.ecore";
+		return "tck-string.ecore";
 	}
 }

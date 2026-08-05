@@ -15,8 +15,8 @@ package org.eclipse.fennec.persistence.tck;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.Map;
 import java.util.ArrayList;
@@ -146,22 +146,26 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
-	 * The TCK model to run against. The default model uses int-typed EMF ids; the
-	 * String-id bindings override this with {@code data/tck-string.ecore}.
+	 * The TCK model to run against, as a resource next to this class. The default model
+	 * uses int-typed EMF ids; the String-id bindings override this with
+	 * {@code tck-string.ecore}.
 	 */
 	protected String tckModelPath() {
-		return "data/tck.ecore";
+		return "tck.ecore";
 	}
 
+	/** Loads the TCK model from the bundle/classpath (issue #99 — no source checkout needed). */
 	protected EPackage loadTckModel() throws IOException {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put("*", new XMIResourceFactoryImpl());
-		File ecoreFile = new File(tckModelPath());
-		assertThat(ecoreFile).as("TCK ecore must exist").exists();
-		Resource resource = resourceSet.createResource(URI.createFileURI(ecoreFile.getAbsolutePath()));
-		resource.load(null);
+		Resource resource = resourceSet.createResource(URI.createURI(tckModelPath()));
+		try (InputStream stream = AbstractPersistenceTCK.class.getResourceAsStream(tckModelPath())) {
+			assertThat(stream).as("TCK model '%s' must be a classpath resource next to %s",
+					tckModelPath(), AbstractPersistenceTCK.class.getSimpleName()).isNotNull();
+			resource.load(stream, null);
+		}
 		EPackage ePackage = (EPackage) resource.getContents().get(0);
 		resourceSet.getPackageRegistry().put(ePackage.getNsURI(), ePackage);
 		return ePackage;
