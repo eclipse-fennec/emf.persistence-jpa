@@ -45,9 +45,10 @@ public final class JpaQueryPlan implements QueryPlan {
 	private final int limit;
 	private final List<String> rowKeys;
 	private final List<String> rowAliases;
+	private final List<String> batchFetchPaths;
 
 	JpaQueryPlan(Query source, QueryShape shape, String jpql, Map<String, Object> parameters, int skip, int limit,
-			List<String> rowKeys, List<String> rowAliases) {
+			List<String> rowKeys, List<String> rowAliases, List<String> batchFetchPaths) {
 		this.source = Objects.requireNonNull(source, "source must not be null");
 		this.shape = Objects.requireNonNull(shape, "shape must not be null");
 		this.jpql = Objects.requireNonNull(jpql, "jpql must not be null");
@@ -59,6 +60,7 @@ public final class JpaQueryPlan implements QueryPlan {
 		this.rowKeys = rowKeys == null ? List.of() : List.copyOf(rowKeys);
 		this.rowAliases = rowAliases == null ? List.of()
 				: Collections.unmodifiableList(new ArrayList<>(rowAliases));
+		this.batchFetchPaths = batchFetchPaths == null ? List.of() : List.copyOf(batchFetchPaths);
 	}
 
 	@Override
@@ -116,6 +118,18 @@ public final class JpaQueryPlan implements QueryPlan {
 	 */
 	public List<String> rowAliases() {
 		return rowAliases;
+	}
+
+	/**
+	 * The to-many tails of {@code expand} paths as dotted attribute paths
+	 * ({@code e.a.b}), applied as {@code eclipselink.batch} hints with
+	 * {@code BATCH_TYPE = IN} — a collection fetch join would multiply rows and break
+	 * {@code setMaxResults} counting (issue #95).
+	 *
+	 * @return the batch-fetch paths; empty when every expand level fetch-joins
+	 */
+	public List<String> batchFetchPaths() {
+		return batchFetchPaths;
 	}
 
 	@Override

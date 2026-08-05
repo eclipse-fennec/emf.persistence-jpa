@@ -1145,6 +1145,75 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryExpandPrefetchesMultiSegmentPaths() throws Exception {
+		// multi-segment expand (issue #95): single-valued segments fetch-join as an
+		// aliased chain — the result must stay correct and fully navigable
+		EObject company = newCompany(21, "Data In Motion");
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBestFriend, alice);
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource companyResource = writeSet.createResource(uriFor("Company"));
+		companyResource.getContents().add(company);
+		alice.eSet(personEmployer, company);
+		companyResource.save(null);
+		save(writeSet, "Person", alice, bob);
+
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("Bob"))
+				.expand(personBestFriend, personEmployer)
+				.build();
+		if (!supportsExpand()) {
+			QueryableResource resource = queryable(createBackendResourceSet());
+			assertThatThrownBy(() -> resource.query(query).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("EXPAND");
+			return;
+		}
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet).query(query)) {
+			List<EObject> persons = result.objects().toList();
+			assertThat(persons).hasSize(1);
+			EObject bestFriend = resolved((EObject) persons.get(0).eGet(personBestFriend), readSet);
+			assertThat(bestFriend.eGet(personName)).isEqualTo("Alice");
+			EObject employer = resolved((EObject) bestFriend.eGet(personEmployer), readSet);
+			assertThat(employer.eGet(companyName)).isEqualTo("Data In Motion");
+		}
+	}
+
+	@Test
+	public void queryExpandToManyKeepsMaxResultsCounting() throws Exception {
+		// a collection fetch join would count joined SQL rows against setMaxResults and
+		// truncate Bob's addresses — the to-many expand must batch instead (issue #95)
+		saveQueryFixture();
+		Query query = QueryBuilder.from(personClass)
+				.orderByAsc(personName)
+				.top(2)
+				.expand(personAddresses)
+				.build();
+		if (!supportsExpand()) {
+			QueryableResource resource = queryable(createBackendResourceSet());
+			assertThatThrownBy(() -> resource.query(query).close())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("EXPAND");
+			return;
+		}
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			List<EObject> persons = result.objects().toList();
+			assertThat(persons.stream().map(person -> person.eGet(personName)))
+					.containsExactly("Alice", "Bob");
+			assertThat(listOf(persons.get(1), personAddresses))
+					.as("the expanded to-many reference must stay complete under top()")
+					.hasSize(2);
+		}
+	}
+
+	/** Whether the backend serves {@code expand} prefetch hints (issue #95). */
+	protected boolean supportsExpand() {
+		return true;
+	}
+
+	@Test
 	public void queryPipelinePagingIsSortThenLimit() throws Exception {
 		saveQueryFixture();
 		save(createBackendResourceSet(), "Person", newPerson(4, "Dora", 30));

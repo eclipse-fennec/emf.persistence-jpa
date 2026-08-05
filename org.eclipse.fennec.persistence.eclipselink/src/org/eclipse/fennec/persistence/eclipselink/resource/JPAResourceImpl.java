@@ -78,6 +78,7 @@ import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
+import org.eclipse.persistence.annotations.BatchFetchType;
 import org.eclipse.persistence.config.HintValues;
 import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
@@ -1016,6 +1017,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			TypedQuery<?> typedQuery = em.createQuery(plan.jpql(), resultType(plan));
 			plan.parameters().forEach(typedQuery::setParameter);
+			if (plan.shape() == QueryShape.OBJECTS && !plan.batchFetchPaths().isEmpty()) {
+				// to-many expand levels batch-fetch instead of fetch-joining (issue #95);
+				// IN batching is cursor-compatible (each row feeds the batch policy)
+				typedQuery.setHint(QueryHints.BATCH_TYPE, BatchFetchType.IN);
+				for (String path : plan.batchFetchPaths()) {
+					typedQuery.setHint(QueryHints.BATCH, path);
+				}
+			}
 			if (plan.skip() > 0) {
 				typedQuery.setFirstResult(plan.skip());
 			}

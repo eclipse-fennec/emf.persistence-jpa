@@ -51,6 +51,12 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
+	/** Mongo declares no EXPAND capability — expand hints are refused (issue #95). */
+	@Override
+	protected boolean supportsExpand() {
+		return false;
+	}
+
 	private MongoClient client;
 	private MongoDatabase database;
 	private MetadataWhiteboard metadataService;

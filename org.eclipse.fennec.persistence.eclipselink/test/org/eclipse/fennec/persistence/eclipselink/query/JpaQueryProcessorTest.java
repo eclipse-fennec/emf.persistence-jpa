@@ -54,6 +54,9 @@ class JpaQueryProcessorTest {
 	private EAttribute name;
 	private EAttribute age;
 	private EReference addresses;
+	private EReference friend;
+	private EReference mentor;
+	private EReference owner;
 	private EAttribute street;
 
 	@BeforeEach
@@ -83,6 +86,21 @@ class JpaQueryProcessorTest {
 		addresses.setUpperBound(-1);
 		addresses.setContainment(true);
 		person.getEStructuralFeatures().add(addresses);
+
+		friend = ecore.createEReference();
+		friend.setName("friend");
+		friend.setEType(person);
+		person.getEStructuralFeatures().add(friend);
+
+		mentor = ecore.createEReference();
+		mentor.setName("mentor");
+		mentor.setEType(person);
+		person.getEStructuralFeatures().add(mentor);
+
+		owner = ecore.createEReference();
+		owner.setName("owner");
+		owner.setEType(person);
+		address.getEStructuralFeatures().add(owner);
 	}
 
 	private JpaQueryPlan translate(Query query) throws QueryException {
@@ -266,13 +284,47 @@ class JpaQueryProcessorTest {
 	}
 
 	@Test
-	void expandBecomesFetchJoin() throws QueryException {
-		JpaQueryPlan plan = translate(QueryBuilder.from(person).expand(addresses).build());
-		assertThat(plan.jpql()).isEqualTo("SELECT e FROM Person e LEFT JOIN FETCH e.addresses");
+	void expandSingleValuedBecomesAliasedFetchJoinChain() throws QueryException {
+		// single-valued segments chain as aliased LEFT JOIN FETCH (issue #95)
+		JpaQueryPlan plan = translate(QueryBuilder.from(person).expand(friend).build());
+		assertThat(plan.jpql()).isEqualTo("SELECT e FROM Person e LEFT JOIN FETCH e.friend f0");
+		assertThat(plan.batchFetchPaths()).isEmpty();
 
-		Query nested = QueryBuilder.from(person).expand(addresses, street).build();
-		assertThatThrownBy(() -> translate(nested)).isInstanceOf(QueryException.class)
-				.hasMessageContaining("depth");
+		JpaQueryPlan nested = translate(QueryBuilder.from(person).expand(friend, mentor).build());
+		assertThat(nested.jpql()).isEqualTo(
+				"SELECT e FROM Person e LEFT JOIN FETCH e.friend f0 LEFT JOIN FETCH f0.mentor f1");
+
+		// shared prefixes reuse their alias — e.friend joins once
+		JpaQueryPlan shared = translate(QueryBuilder.from(person)
+				.expand(friend, mentor)
+				.expand(friend)
+				.build());
+		assertThat(shared.jpql()).isEqualTo(
+				"SELECT e FROM Person e LEFT JOIN FETCH e.friend f0 LEFT JOIN FETCH f0.mentor f1");
+	}
+
+	@Test
+	void expandToManyBecomesBatchFetchPath() throws QueryException {
+		// a collection fetch join would multiply rows and break setMaxResults (issue #95)
+		JpaQueryPlan plan = translate(QueryBuilder.from(person).expand(addresses).build());
+		assertThat(plan.jpql()).isEqualTo("SELECT e FROM Person e");
+		assertThat(plan.batchFetchPaths()).containsExactly("e.addresses");
+
+		// single-valued prefix fetch-joins, the to-many tail batches from the root path
+		JpaQueryPlan mixed = translate(QueryBuilder.from(person).expand(friend, addresses).build());
+		assertThat(mixed.jpql()).isEqualTo("SELECT e FROM Person e LEFT JOIN FETCH e.friend f0");
+		assertThat(mixed.batchFetchPaths()).containsExactly("e.friend.addresses");
+
+		// everything behind a to-many segment batches too — one hint per level
+		JpaQueryPlan behind = translate(QueryBuilder.from(person).expand(addresses, owner).build());
+		assertThat(behind.batchFetchPaths()).containsExactly("e.addresses", "e.addresses.owner");
+	}
+
+	@Test
+	void expandRefusesNonReferenceSegments() {
+		Query attribute = QueryBuilder.from(person).expand(addresses, street).build();
+		assertThatThrownBy(() -> translate(attribute)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("not a reference");
 	}
 
 	@Test

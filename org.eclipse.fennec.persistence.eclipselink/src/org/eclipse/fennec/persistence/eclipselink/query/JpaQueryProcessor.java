@@ -15,8 +15,10 @@ package org.eclipse.fennec.persistence.eclipselink.query;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,6 +26,7 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.AliasRef;
@@ -93,8 +96,9 @@ import org.osgi.service.component.annotations.Component;
  * Aggregation: a single {@code GroupByStage} pipeline translates to
  * {@code GROUP BY} + aggregate functions; multi-stage pipelines
  * ({@link QueryFeature#PIPELINE}) are not yet served. Sorting in row shapes addresses
- * the result variables. {@code expand} hints translate to {@code LEFT JOIN FETCH}
- * (single-segment paths).
+ * the result variables. {@code expand} hints translate to aliased {@code LEFT JOIN
+ * FETCH} chains for single-valued segments and batch-fetch hints from the first
+ * to-many segment on (issue #95).
  *
  * @author Mark Hoffmann
  * @since 24.07.2026
@@ -183,7 +187,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 		case AGGREGATION -> jpql.append(pipeline.columns);
 		}
 		jpql.append(" FROM ").append(entity).append(' ').append(ALIAS);
-		appendFetchJoins(jpql, query);
+		List<String> batchFetchPaths = appendFetchJoins(jpql, query);
 		String conjuncts = pipeline == null ? where
 				: Stream.concat(where.isEmpty() ? Stream.empty() : Stream.of(where),
 						pipeline.preFilters.stream())
@@ -221,7 +225,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			top = combinedTop;
 		}
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
-				skip, top, rowKeys, rowAliases);
+				skip, top, rowKeys, rowAliases, batchFetchPaths);
 	}
 
 	/** The JPQL fragments of a translated pipeline (issue #82). */
@@ -262,15 +266,51 @@ public class JpaQueryProcessor implements QueryProcessor {
 		};
 	}
 
-	private void appendFetchJoins(StringBuilder jpql, Query query) throws QueryException {
+	/**
+	 * Renders the expand prefetch hints (issue #95). The single-valued prefix of each
+	 * expand path becomes an aliased {@code LEFT JOIN FETCH} chain (EclipseLink JPQL
+	 * extension); shared prefixes reuse their alias. From the first to-many segment on,
+	 * a fetch join would multiply rows and break {@code setMaxResults} counting — those
+	 * levels are returned as dotted batch-fetch paths instead, one per level, applied
+	 * as {@code eclipselink.batch} hints with {@code BATCH_TYPE = IN} at execution.
+	 *
+	 * @return the batch-fetch attribute paths ({@code e.a.b} notation), deduplicated
+	 */
+	private List<String> appendFetchJoins(StringBuilder jpql, Query query) throws QueryException {
+		Map<String, String> aliases = new LinkedHashMap<>();
+		Set<String> batchPaths = new LinkedHashSet<>();
 		for (PropertyPath expand : query.getExpand()) {
-			if (expand.getSegments().size() != 1) {
-				throw new QueryException("expand supports single-segment reference paths on JPA, got depth "
-						+ expand.getSegments().size());
+			if (expand.getSegments().isEmpty()) {
+				throw new QueryException("expand requires at least one reference segment");
 			}
-			jpql.append(" LEFT JOIN FETCH ").append(ALIAS).append('.')
-					.append(expand.getSegments().get(0).getName());
+			if (expand.getCastBase() != null) {
+				throw new QueryException("expand does not support cast paths (castBase)");
+			}
+			String parentAlias = ALIAS;
+			StringBuilder dotted = new StringBuilder(ALIAS);
+			boolean batching = false;
+			for (EStructuralFeature segment : expand.getSegments()) {
+				if (!(segment instanceof EReference reference)) {
+					throw new QueryException("expand path segment '" + segment.getName()
+							+ "' is not a reference — only references can be prefetched");
+				}
+				dotted.append('.').append(reference.getName());
+				if (batching || reference.isMany()) {
+					batching = true;
+					batchPaths.add(dotted.toString());
+					continue;
+				}
+				String alias = aliases.get(dotted.toString());
+				if (alias == null) {
+					alias = "f" + aliases.size();
+					aliases.put(dotted.toString(), alias);
+					jpql.append(" LEFT JOIN FETCH ").append(parentAlias).append('.')
+							.append(reference.getName()).append(' ').append(alias);
+				}
+				parentAlias = alias;
+			}
 		}
+		return List.copyOf(batchPaths);
 	}
 
 	private void appendOrderBy(StringBuilder jpql, Query query, QueryShape shape, List<String> rowKeys,
