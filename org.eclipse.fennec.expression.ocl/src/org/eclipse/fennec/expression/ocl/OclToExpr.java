@@ -71,7 +71,8 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * {@code oclIsUndefined} (→ IsNull), {@code includes} over a collection literal (→ In),
  * {@code contains/startsWith/endsWith/like} (→ StringMatch, a {@code toLowerCase} pair
  * on both sides folds into the case-insensitive flag),
- * {@code toLowerCase/toUpperCase/trim/size} (→ StringFunction),
+ * {@code toLowerCase/toUpperCase/trim/size} (→ StringFunction; {@code toLower/toUpper}
+ * are accepted as the evaluator-dialect aliases — issue #92),
  * {@code concat/indexOf/substring} (→ Concat/IndexOf/Substring — OData-flavoured
  * 0-based semantics, binary concat chains flatten into the n-ary Concat),
  * {@code round/floor/ceiling} (→ NumericFunction; round is half away from zero),
@@ -246,11 +247,13 @@ public final class OclToExpr {
 				match.setPattern(map(pattern));
 				return match;
 			}
-			case "toLowerCase", "toUpperCase", "trim" -> {
+			case "toLowerCase", "toLower", "toUpperCase", "toUpper", "trim" -> {
+				// toLower/toUpper are the OData evaluator dialect for the same
+				// operations (issue #92)
 				StringFunction function = EXPR.createStringFunction();
 				function.setKind(switch (name) {
-				case "toLowerCase" -> StringFunctionKind.TO_LOWER;
-				case "toUpperCase" -> StringFunctionKind.TO_UPPER;
+				case "toLowerCase", "toLower" -> StringFunctionKind.TO_LOWER;
+				case "toUpperCase", "toUpper" -> StringFunctionKind.TO_UPPER;
 				default -> StringFunctionKind.TRIM;
 				});
 				function.setSource(map(call.getOwnedSource()));
@@ -452,7 +455,8 @@ public final class OclToExpr {
 		}
 
 		private static boolean isToLower(OclExpression expression) {
-			return expression instanceof OperationCallExp call && "toLowerCase".equals(call.getName());
+			return expression instanceof OperationCallExp call
+					&& ("toLowerCase".equals(call.getName()) || "toLower".equals(call.getName()));
 		}
 
 		/** Unwraps the type argument: TypeExp → ClassifierType → EClass (issue #80). */

@@ -43,6 +43,7 @@ import org.eclipse.fennec.m2x.model.ocl.IteratorExp;
 import org.eclipse.fennec.m2x.model.ocl.OclExpression;
 import org.eclipse.fennec.m2x.model.ocl.OclFactory;
 import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
+import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -276,6 +277,61 @@ class ExpressionOclBridgeTest {
 		// size over a string path stays the string LENGTH
 		Expression length = path(name).length().gt(3);
 		assertThat(EcoreUtil.equals(length, roundTrip(length))).isTrue();
+	}
+
+	@Test
+	void evaluatorDialectCaseAliasesMapToStringFunctions() throws QueryException {
+		// toLower/toUpper are the OData evaluator dialect for toLowerCase/toUpperCase (issue #92)
+		Expression lower = OclToExpr.toExpr(
+				call("=", call("toLower", property(name)), string("smith")));
+		assertThat(EcoreUtil.equals(lower, path(name).toLower().eq("smith")))
+				.as("toLower must map like toLowerCase")
+				.isTrue();
+
+		Expression upper = OclToExpr.toExpr(
+				call("=", call("toUpper", property(name)), string("SMITH")));
+		assertThat(EcoreUtil.equals(upper, path(name).toUpper().eq("SMITH")))
+				.as("toUpper must map like toUpperCase")
+				.isTrue();
+	}
+
+	@Test
+	void evaluatorDialectToLowerPairFoldsIntoCaseInsensitiveMatch() throws QueryException {
+		// the caseInsensitive fold must recognise the alias spelling on both sides…
+		Expression folded = OclToExpr.toExpr(
+				call("contains", call("toLower", property(name)), call("toLower", string("smith"))));
+		assertThat(EcoreUtil.equals(folded, path(name).containsIgnoreCase("smith")))
+				.as("a toLower pair must fold into the case-insensitive flag")
+				.isTrue();
+
+		// …and mixed spellings (one alias, one canonical) still fold
+		Expression mixed = OclToExpr.toExpr(
+				call("contains", call("toLower", property(name)), call("toLowerCase", string("smith"))));
+		assertThat(EcoreUtil.equals(mixed, path(name).containsIgnoreCase("smith")))
+				.as("mixed toLower/toLowerCase must fold into the case-insensitive flag")
+				.isTrue();
+	}
+
+	private static OperationCallExp call(String name, OclExpression source, OclExpression... arguments) {
+		OperationCallExp call = OclFactory.eINSTANCE.createOperationCallExp();
+		call.setName(name);
+		call.setOwnedSource(source);
+		for (OclExpression argument : arguments) {
+			call.getOwnedArguments().add(argument);
+		}
+		return call;
+	}
+
+	private static PropertyCallExp property(EAttribute attribute) {
+		PropertyCallExp property = OclFactory.eINSTANCE.createPropertyCallExp();
+		property.setReferredProperty(attribute);
+		return property;
+	}
+
+	private static StringLiteralExp string(String value) {
+		StringLiteralExp literal = OclFactory.eINSTANCE.createStringLiteralExp();
+		literal.setStringSymbol(value);
+		return literal;
 	}
 
 	@Test
