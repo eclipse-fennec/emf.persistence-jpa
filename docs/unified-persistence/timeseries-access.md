@@ -1,6 +1,9 @@
 # Time-series access on the stream model — TIMESERIES profile store SPI + series queries
 
-**Status:** draft concept for discussion (2026-08-05, issue #96) — nothing here is decided.
+**Status:** draft concept for discussion (2026-08-05, issue #96). Settled so far
+(discussion 2026-08-05): the ingest-ladder evaluation strategy (§6.1 — expression IR, not
+the OData evaluator), the project cut, repository placement and the OData boundary (§12).
+Everything else remains open.
 Companions: `concept.md` §2 (requirements 2/4/5), §7 (capture hybrid), §8 (tracking
 aspect), §9 (storage profiles), §10 (keyframing), §14 (query integration), §19 (technology
 mapping); `query-ir-redesign.md` (Expression IR, capability discipline);
@@ -198,10 +201,25 @@ the lower the rung, the more tooling can verify statically:
 Rung 4 is a **DS whiteboard service referenced by name/target from the mapping** (the
 codec custom-handler pattern): the XMI stays serializable, the code stays discoverable.
 The OCL dialect is the **same m2x OCL used everywhere else** (derived references, OData
-`$filter`) — one OCL, not two; evaluation is in-memory per message, so the reference
-evaluator carries. Note: that evaluator currently lives in `odata.query` —
-eclipse-fennec/emf.odata#14 (neutral home) gains its second consumer and moves up in
-priority. The sensinact-mapping precursor (`collectionIndex`/`collectionFilter` with
+`$filter`) — one OCL, not two. Evaluation, however, rides the **in-house expression IR**,
+not the OData reference evaluator (decision 2026-08-05): the mapping's OCL text is
+m2x-parsed and bridged via `OclToExpr` (the blessed subset), guards evaluate through the
+memory engine's predicate path and transforms through its value path (`test()`/`value()`,
+issues #84/#87). That buys three things:
+
+- **no odata dependency for the ingest cut** — eclipse-fennec/emf.odata#14 (neutral
+  evaluator home) loses its would-be second consumer and the evaluator stays OData's
+  internal reference oracle;
+- **one evaluation semantics** — the pinned coercion and 3VL rules (#93/#94) apply to
+  guards uniformly, and the odata#11 differential suite already guards drift between the
+  evaluators;
+- **a crisp, tool-checkable rung boundary** — rung 2/3 is exactly the blessed subset;
+  whatever `OclToExpr` refuses is rung 4 by definition. Nothing real is lost: n:1
+  combinations are arithmetic/concat, iteration is the mapping's own `foreach`, and what
+  genuinely exceeds the subset (logarithms for a dew-point formula) exceeds standard OCL
+  too — that was always rung 4.
+
+The sensinact-mapping precursor (`collectionIndex`/`collectionFilter` with
 "implementation-specific" filter syntax) is exactly rung 2 without a defined dialect.
 
 On top of the ladder, four orthogonal declaration elements per assignment:
@@ -335,3 +353,61 @@ different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing
 
 Each phase is issue-sized in the spirit of the #76–#84 wave: JPA + Mongo + memory + TCK
 as the definition of done per construct.
+
+## 12. Project cut & consumer boundary (settled 2026-08-05)
+
+### 12.1 Bundle cut in this workspace
+
+New bnd projects, aligned with the §11 phases (naming follows the `*.model` /
+backend-suffix conventions):
+
+| Project | Content | Phase |
+|---|---|---|
+| `org.eclipse.fennec.persistence.stream` | `StreamStore` SPI (append/replay/asOf/truncate), `StorageProfile`/`ReplayFilter`/`RetentionRule`/`TimeAxis`, the shared housekeeping service (O3: stores expose primitives only) **plus the in-memory reference implementation** — P1's "smallest end-to-end slice" is one API bundle + one backend | P1 |
+| `org.eclipse.fennec.persistence.stream.jpa` | narrow-table store over the exported `eclipselink.spi` (JPAUnit/lease is API since #65/#90), **including the series-query pushdown** (`date_trunc`); TimescaleDB rides inside as dialect detection — §4.2: not a backend, hence not a project | P1/P2/P5 |
+| `org.eclipse.fennec.persistence.stream.mongo` | TS-collection store + `$dateTrunc` pushdown, docking onto the `MongoDatabase` whiteboard (#90) | P4 |
+| `org.eclipse.fennec.tracking.model` | `fennec-tracking.ecore` (today only under `docs/…/model/`) — TrackingConfig, virtual features (fingerprint-relevant) | P3 |
+| `org.eclipse.fennec.stream.ingest.model` | ingest-mapping metamodel (ladder, foreach, guards, constants, lookups) — deliberately separate from the tracking model, mirroring the two-aspects-one-registry doctrine (§6) | P3 |
+| `org.eclipse.fennec.persistence.stream.ingest` | capture pipeline: codec → payload → mapping → ChangeRules → `StreamStore`; OCL evaluation via `expression.ocl` + the memory engine (§6.1), converter whiteboard (rung 4), enrichment lookups with TTL cache | P3 |
+| `org.eclipse.fennec.persistence.stream.cdc.*` | CDC sources — own concept round first (§7); name reservation only | P7 |
+
+Deliberately **no** new projects, extended additively instead: series subject + TimeBucket
+stage go into `query.model`/`expression.model` (one canonical IR — pattern of #82/#84/#87);
+translator extensions live in the existing backend bundles; the stream-store TCK and the
+series-query cases extend `org.eclipse.fennec.persistence.tck`.
+
+Why not folded into the existing backend bundles: dependency hygiene. Mongo TS specifics,
+Timescale DDL, the m2x parser and codec must not leak into `eclipselink`/`mongo`/
+`persistence.query` — a consumer of plain CRUD persistence must not carry series machinery
+on its buildpath. New bundles also start at 1.0.0 without baselining pressure on the
+existing ones.
+
+### 12.2 Repository question
+
+The stack **starts in this workspace** — P1/P2 co-evolve with the query IR and with the
+young backend SPIs (`eclipselink.spi`, the Mongo whiteboard), and cross-repo snapshot
+round-trips would tax exactly the fastest-iterating phase. The bnd workspace already
+enforces the dependency direction (stream → persistence, never the reverse) per-project.
+
+The natural extraction line, if one is ever drawn, is **capture vs. access — not stream
+vs. persistence**: the access side (store SPI, backends, series queries) is inseparable
+from the query machinery and stays here; the ingest cut (`tracking.model`,
+`ingest.model`, `ingest`) has a different consumer profile (IoT gateways: ChirpStack/TTN,
+codec) and different foreign dependencies, and is the designated extraction candidate
+from P3 on — once the SPI and IR vocabulary have settled and release cadence actually
+diverges. The §12.1 bundle cut is what keeps that extraction a wholesale project move.
+
+### 12.3 OData boundary
+
+OData remains a consumer (§8) — and OData is special, so OData-specific machinery is
+welcome to live in `emf.odata` as special solutions. The dividing rule:
+
+- **Protocol semantics → odata-special**: the `$apply` submodel bridge onto pipeline
+  stages, `$delta` protocol mechanics (delta links, tokens), and the `OclEvaluator` as
+  OData's internal reference oracle (§6.1 — emf.odata#14 is no longer a prerequisite
+  here).
+- **Persistence, history and aggregation → this stack, bridged at the boundary**: a
+  durable `$delta` journal is exactly the CHANGELOG store of cut 1 (the bounded in-memory
+  journal in odata is an acceptable interim, its durable successor comes from here), and
+  time bucketing is cut 2's pushdown — re-implementing either as an odata special
+  solution would fork the truth this concept just unified.
