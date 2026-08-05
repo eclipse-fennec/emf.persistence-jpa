@@ -57,6 +57,8 @@ import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+
 /**
  * <!-- begin-user-doc -->
  * An implementation of the model <b>Package</b>.
@@ -161,6 +163,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EDataType queryExceptionEDataType = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EDataType commandTransactionEDataType = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -623,6 +632,16 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
+	public EOperation getCommandResource__Begin() {
+		return commandResourceEClass.getEOperations().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getQueryShape() {
 		return queryShapeEEnum;
 	}
@@ -665,6 +684,16 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	@Override
 	public EDataType getQueryException() {
 		return queryExceptionEDataType;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EDataType getCommandTransaction() {
+		return commandTransactionEDataType;
 	}
 
 	/**
@@ -808,6 +837,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 
 		commandResourceEClass = createEClass(COMMAND_RESOURCE);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND);
+		createEOperation(commandResourceEClass, COMMAND_RESOURCE___BEGIN);
 
 		// Create enums
 		queryShapeEEnum = createEEnum(QUERY_SHAPE);
@@ -817,6 +847,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		diagnosticEDataType = createEDataType(DIAGNOSTIC);
 		converterServiceEDataType = createEDataType(CONVERTER_SERVICE);
 		queryExceptionEDataType = createEDataType(QUERY_EXCEPTION);
+		commandTransactionEDataType = createEDataType(COMMAND_TRANSACTION);
 		ioExceptionEDataType = createEDataType(IO_EXCEPTION);
 		eObjectStreamEDataType = createEDataType(EOBJECT_STREAM);
 		rowStreamEDataType = createEDataType(ROW_STREAM);
@@ -949,6 +980,9 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEParameter(op, theCommandPackage.getCommand(), "command", 1, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, this.getIOException());
 
+		op = initEOperation(getCommandResource__Begin(), this.getCommandTransaction(), "begin", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEException(op, this.getIOException());
+
 		// Initialize enums and add enum literals
 		initEEnum(queryShapeEEnum, QueryShape.class, "QueryShape");
 		addEEnumLiteral(queryShapeEEnum, QueryShape.OBJECTS);
@@ -1010,6 +1044,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		initEDataType(diagnosticEDataType, Diagnostic.class, "Diagnostic", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(converterServiceEDataType, ConverterService.class, "ConverterService", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(queryExceptionEDataType, QueryException.class, "QueryException", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
+		initEDataType(commandTransactionEDataType, CommandTransaction.class, "CommandTransaction", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(ioExceptionEDataType, IOException.class, "IOException", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(eObjectStreamEDataType, Stream.class, "EObjectStream", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.stream.Stream<org.eclipse.emf.ecore.EObject>");
 		initEDataType(rowStreamEDataType, Stream.class, "RowStream", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.stream.Stream<org.eclipse.fennec.persistence.query.api.QueryResultRow>");

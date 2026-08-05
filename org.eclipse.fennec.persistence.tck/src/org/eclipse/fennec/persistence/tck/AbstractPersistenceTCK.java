@@ -62,6 +62,7 @@ import org.eclipse.fennec.model.stream.ChangeSet;
 import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.derived.DerivedReferenceCompiler;
 import org.eclipse.fennec.persistence.query.derived.QueryBackedSettingDelegateFactory;
@@ -1908,6 +1909,84 @@ public abstract class AbstractPersistenceTCK {
 	/** The string form of a person id, matching the model's id type via {@code EcoreUtil.getID}. */
 	private String id(int value) {
 		return String.valueOf(value);
+	}
+
+	// -------------------------------------------------- command transactions (issue #108)
+
+	/**
+	 * Whether the backend serves cross-command transaction brackets. The mongo backend
+	 * refuses (multi-document transactions need a session-capable client and a replica
+	 * set) — its bindings return {@code false} and assert the refusal shape instead.
+	 */
+	protected boolean supportsCommandTransactions() {
+		return true;
+	}
+
+	@Test
+	public void commandTransactionCommitsAtomically() throws Exception {
+		saveQueryFixture();
+		CommandResource resource = commands(createBackendResourceSet());
+		if (!supportsCommandTransactions()) {
+			assertThatThrownBy(resource::begin)
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("not supported");
+			return;
+		}
+		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
+		insert.getObjects().add(newPerson(4, "Dave", 25));
+		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
+		setAge.setValueNew("26");
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Dave")).build(),
+				setAge);
+
+		try (CommandTransaction transaction = resource.begin()) {
+			assertThat(resource.execute(insert)).isEqualTo(1);
+			// the update sees the bracket's own uncommitted insert (OData $batch:
+			// later requests in a changeset see earlier ones)
+			assertThat(resource.execute(update)).isEqualTo(1);
+			transaction.commit();
+		}
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents()).hasSize(4);
+		EObject dave = findById(loaded, "4");
+		assertThat(((Number) dave.eGet(personAge)).intValue()).isEqualTo(26);
+	}
+
+	@Test
+	public void commandTransactionRollbackLeavesNoTrace() throws Exception {
+		assumeTrue(supportsCommandTransactions(), "no command transactions — issue #108");
+		saveQueryFixture();
+		CommandResource resource = commands(createBackendResourceSet());
+
+		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
+		insert.getObjects().add(newPerson(4, "Dave", 25));
+		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
+		setAge.setValueNew("99");
+		UpdateCommand update = updateCommand(QueryBuilder.from(personClass).build(), setAge);
+
+		// close() without commit rolls back — the try-with-resources contract
+		try (CommandTransaction transaction = resource.begin()) {
+			assertThat(resource.execute(insert)).isEqualTo(1);
+			assertThat(resource.execute(update)).isEqualTo(4);
+		}
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents()).hasSize(3);
+		assertThat(loaded.getContents())
+				.allSatisfy(person -> assertThat(((Number) person.eGet(personAge)).intValue()).isNotEqualTo(99));
+
+		// only one bracket at a time; a closed bracket stays closed
+		try (CommandTransaction transaction = resource.begin()) {
+			assertThatThrownBy(resource::begin)
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("already open");
+			transaction.rollback();
+			assertThatThrownBy(transaction::commit)
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("closed");
+		}
 	}
 
 	// ------------------------------------------------------- composite ids (issue #109)

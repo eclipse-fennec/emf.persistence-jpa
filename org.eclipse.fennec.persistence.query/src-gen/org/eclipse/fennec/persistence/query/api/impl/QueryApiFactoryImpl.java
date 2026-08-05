@@ -41,6 +41,8 @@ import org.eclipse.fennec.persistence.query.api.QueryFeature;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+
 /**
  * <!-- begin-user-doc -->
  * An implementation of the model <b>Factory</b>.
@@ -108,6 +110,8 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return createConverterServiceFromString(eDataType, initialValue);
 			case QueryApiPackage.QUERY_EXCEPTION:
 				return createQueryExceptionFromString(eDataType, initialValue);
+			case QueryApiPackage.COMMAND_TRANSACTION:
+				return createCommandTransactionFromString(eDataType, initialValue);
 			case QueryApiPackage.IO_EXCEPTION:
 				return createIOExceptionFromString(eDataType, initialValue);
 			case QueryApiPackage.EOBJECT_STREAM:
@@ -145,6 +149,8 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return convertConverterServiceToString(eDataType, instanceValue);
 			case QueryApiPackage.QUERY_EXCEPTION:
 				return convertQueryExceptionToString(eDataType, instanceValue);
+			case QueryApiPackage.COMMAND_TRANSACTION:
+				return convertCommandTransactionToString(eDataType, instanceValue);
 			case QueryApiPackage.IO_EXCEPTION:
 				return convertIOExceptionToString(eDataType, instanceValue);
 			case QueryApiPackage.EOBJECT_STREAM:
@@ -255,6 +261,24 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 	 * @generated
 	 */
 	public String convertQueryExceptionToString(EDataType eDataType, Object instanceValue) {
+		return super.convertToString(eDataType, instanceValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public CommandTransaction createCommandTransactionFromString(EDataType eDataType, String initialValue) {
+		return (CommandTransaction)super.createFromString(eDataType, initialValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertCommandTransactionToString(EDataType eDataType, Object instanceValue) {
 		return super.convertToString(eDataType, instanceValue);
 	}
 

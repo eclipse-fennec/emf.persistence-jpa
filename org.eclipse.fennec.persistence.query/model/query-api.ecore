@@ -28,6 +28,11 @@
       <details key="documentation" value="Hand-written exception (lives in src, not generated) signalling that a query could not be validated or translated. Carries the validation Diagnostic when it results from a failed validate call."/>
     </eAnnotations>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="CommandTransaction" instanceClassName="org.eclipse.fennec.persistence.query.support.CommandTransaction">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A transaction bracket handle grouping subsequent execute() calls (issue #108) — hand-written interface in the support package (commit/rollback/AutoCloseable)."/>
+    </eAnnotations>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EDataType" name="IOException" instanceClassName="java.io.IOException">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="java.io.IOException — thrown by resource-level query execution, consistent with the EMF Resource load/save contract."/>
@@ -523,9 +528,14 @@
     <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
         eExceptions="#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Executes the command and returns the number of affected objects (inserted or deleted)."/>
+        <details key="documentation" value="Executes the command and returns the number of affected objects (inserted or deleted). Inside an open transaction bracket the command joins the bracket instead of committing on its own."/>
       </eAnnotations>
       <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
+    </eOperations>
+    <eOperations name="begin" eType="#//CommandTransaction" eExceptions="#//IOException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back."/>
+      </eAnnotations>
     </eOperations>
   </eClassifiers>
 </ecore:EPackage>

@@ -69,6 +69,7 @@ import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
@@ -757,6 +758,107 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
 
+	/** The open command bracket (issue #108); resources are single-threaded per EMF semantics. */
+	private JpaCommandTransaction activeTransaction;
+
+	@Override
+	public CommandTransaction begin() throws IOException {
+		if (nonNull(activeTransaction)) {
+			throw new IOException("A command transaction is already open on this resource"
+					+ " — commit or close it before opening another");
+		}
+		Lease lease = leaseChecked();
+		try {
+			EntityManager em = lease.createEntityManager();
+			em.getTransaction().begin();
+			activeTransaction = new JpaCommandTransaction(lease, em);
+			return activeTransaction;
+		} catch (RuntimeException e) {
+			lease.close();
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Cannot open command transaction: " + e.getMessage(), getURI(), e));
+			throw new IOException("Cannot open command transaction: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * The JPA command bracket (issue #108): one {@code EntityTransaction} spans every
+	 * command executed until commit/rollback — the OData {@code $batch} atomicity-group
+	 * contract. Types whose references were patched are remembered for the shared-cache
+	 * identity-map drop (issue #107), which must happen only on commit.
+	 */
+	private final class JpaCommandTransaction implements CommandTransaction {
+
+		private final Lease lease;
+		private final EntityManager em;
+		private final Set<Class<?>> referencePatchedTypes = new HashSet<>();
+		private boolean closed;
+
+		private JpaCommandTransaction(Lease lease, EntityManager em) {
+			this.lease = lease;
+			this.em = em;
+		}
+
+		@Override
+		public void commit() throws IOException {
+			if (closed) {
+				throw new IOException("The command transaction is already closed");
+			}
+			try {
+				em.getTransaction().commit();
+				for (Class<?> type : referencePatchedTypes) {
+					// see executeUpdate: collection merges accumulate, removals need a
+					// fresh build from the database (issue #107)
+					getServer().getIdentityMapAccessor().initializeIdentityMap(type);
+				}
+			} catch (RuntimeException e) {
+				rollbackQuietly();
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+						"Command transaction commit failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Command transaction commit failed: " + e.getMessage(), e);
+			} finally {
+				cleanup();
+			}
+		}
+
+		@Override
+		public void rollback() {
+			if (closed) {
+				return;
+			}
+			rollbackQuietly();
+			cleanup();
+		}
+
+		@Override
+		public void close() {
+			if (!closed) {
+				rollback();
+			}
+		}
+
+		private void rollbackQuietly() {
+			try {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+			} catch (RuntimeException e) {
+				LOG.log(Level.FINE, "Command transaction rollback failed", e);
+			}
+		}
+
+		private void cleanup() {
+			closed = true;
+			try {
+				em.close();
+			} catch (RuntimeException e) {
+				LOG.log(Level.FINE, "Closing the command transaction EntityManager failed", e);
+			}
+			lease.close();
+			activeTransaction = null;
+		}
+	}
+
 	/**
 	 * Insert = the resource's save semantics over copies of the contained payload.
 	 * Non-containment references to EXISTING targets bind by id (issue #107): verified
@@ -767,6 +869,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		EcoreUtil.Copier copier = new EcoreUtil.Copier();
 		List<EObject> copies = new ArrayList<>(copier.copyAll(insert.getObjects()));
 		copier.copyReferences();
+		if (nonNull(activeTransaction)) {
+			// bracketed insert (issue #108): persist through the bracket's EntityManager
+			EntityManager em = activeTransaction.em;
+			try {
+				ChangeTemplates.bindInsertReferences(copier, insertBindingResolver(em));
+				Server server = serverOf(activeTransaction.lease);
+				Function<EObject, EObject> entityFactory = entityFactory(server);
+				for (EObject copy : copies) {
+					EObject source = nonNull(server) ? toManagedEntity(copy, server, entityFactory) : copy;
+					upsert(em, source, copy, server);
+				}
+				return copies.size();
+			} catch (QueryException | RuntimeException e) {
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Insert rejected: " + e.getMessage(), getURI(), e));
+				throw new IOException("Insert rejected: " + e.getMessage(), e);
+			}
+		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			ChangeTemplates.bindInsertReferences(copier, insertBindingResolver(em));
 		} catch (QueryException e) {
@@ -793,22 +912,20 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
 		}
-		// load the matches and remove children-first: a JPQL bulk DELETE bypasses cascade
-		// semantics and trips containment FK constraints — the entities are EObjects, so
-		// the containment tree is generically walkable
+		if (nonNull(activeTransaction)) {
+			try {
+				return deleteCore(plan, activeTransaction.em);
+			} catch (RuntimeException e) {
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
+			}
+		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
-				jakarta.persistence.Query select = em.createQuery(plan.jpql());
-				plan.parameters().forEach(select::setParameter);
-				List<?> matches = select.getResultList();
-				for (Object match : matches) {
-					if (match instanceof EObject eObject) {
-						removeChildrenFirst(em, eObject);
-					}
-				}
+				long deleted = deleteCore(plan, em);
 				em.getTransaction().commit();
-				return matches.size();
+				return deleted;
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
@@ -817,6 +934,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
 			}
 		}
+	}
+
+	/**
+	 * Loads the matches and removes children-first: a JPQL bulk DELETE bypasses cascade
+	 * semantics and trips containment FK constraints — the entities are EObjects, so the
+	 * containment tree is generically walkable.
+	 */
+	private long deleteCore(JpaQueryPlan plan, EntityManager em) {
+		jakarta.persistence.Query select = em.createQuery(plan.jpql());
+		plan.parameters().forEach(select::setParameter);
+		List<?> matches = select.getResultList();
+		for (Object match : matches) {
+			if (match instanceof EObject eObject) {
+				removeChildrenFirst(em, eObject);
+			}
+		}
+		return matches.size();
 	}
 
 	/** Update = selector + ChangeSet template per match (concept §14, patch-apply engine §18.1). */
@@ -831,30 +965,30 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);
 		}
-		// load the matches and patch them managed — the template addresses features
-		// generically, so EclipseLink's change detection persists the delta on commit
+		if (nonNull(activeTransaction)) {
+			try {
+				// the identity-map drop belongs to the bracket's COMMIT (issue #108)
+				return updateCore(update, plan, activeTransaction.em,
+						activeTransaction.referencePatchedTypes::add);
+			} catch (QueryException | RuntimeException e) {
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
+				throw new IOException("Update failed for selector on '" + plan.jpql() + "': "
+						+ e.getMessage(), e);
+			}
+		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
-				jakarta.persistence.Query select = em.createQuery(plan.jpql());
-				plan.parameters().forEach(select::setParameter);
-				List<?> matches = select.getResultList();
-				ReferenceResolver resolver = referenceResolver(em);
-				long applied = 0;
-				for (Object match : matches) {
-					if (match instanceof EObject eObject) {
-						ChangeTemplates.apply(update.getTemplate(), eObject, resolver);
-						applied++;
-					}
-				}
+				Set<Class<?>> patchedTypes = new HashSet<>();
+				long applied = updateCore(update, plan, em, patchedTypes::add);
 				em.getTransaction().commit();
-				if (applied > 0 && hasReferenceEntries(update.getTemplate(), update.getSelector().getFrom())) {
+				for (Class<?> type : patchedTypes) {
 					// the accessor's collection writes accumulate by design (AP-47 proxy
 					// rebuild paths), so member REMOVALS can never reach the shared-cache
 					// original — and invalidation alone refreshes IN PLACE through the
 					// same accumulating accessor. Drop the cached instances entirely; the
 					// next read builds fresh objects from the database.
-					getServer().getIdentityMapAccessor().initializeIdentityMap(matches.get(0).getClass());
+					getServer().getIdentityMapAccessor().initializeIdentityMap(type);
 				}
 				return applied;
 			} catch (QueryException | RuntimeException e) {
@@ -866,6 +1000,41 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						+ e.getMessage(), e);
 			}
 		}
+	}
+
+	/**
+	 * Loads the matches and patches them managed — the template addresses features
+	 * generically, so EclipseLink's change detection persists the delta on commit.
+	 * Reference-patched entity classes are reported for the post-commit identity-map
+	 * drop (issue #107).
+	 */
+	private long updateCore(UpdateCommand update, JpaQueryPlan plan, EntityManager em,
+			java.util.function.Consumer<Class<?>> referencePatched) throws QueryException {
+		jakarta.persistence.Query select = em.createQuery(plan.jpql());
+		plan.parameters().forEach(select::setParameter);
+		List<?> matches = select.getResultList();
+		ReferenceResolver resolver = referenceResolver(em);
+		long applied = 0;
+		for (Object match : matches) {
+			if (match instanceof EObject eObject) {
+				ChangeTemplates.apply(update.getTemplate(), eObject, resolver);
+				applied++;
+			}
+		}
+		if (applied > 0 && hasReferenceEntries(update.getTemplate(), update.getSelector().getFrom())) {
+			referencePatched.accept(matches.get(0).getClass());
+		}
+		return applied;
+	}
+
+	/** The per-EClass entity factory of the save pipeline, reused by bracketed inserts. */
+	private static Function<EObject, EObject> entityFactory(Server server) {
+		return nonNull(server)
+				? src -> {
+					ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
+					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
+				}
+				: null;
 	}
 
 	/** Whether any template entry addresses an {@link EReference} of the type (issue #107). */

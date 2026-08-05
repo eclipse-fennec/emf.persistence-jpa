@@ -16,6 +16,8 @@ import java.io.IOException;
 
 import org.eclipse.fennec.model.command.Command;
 
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+
 import org.osgi.annotation.versioning.ProviderType;
 
 /**
@@ -38,11 +40,22 @@ public interface CommandResource {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Executes the command and returns the number of affected objects (inserted or deleted).
+	 * Executes the command and returns the number of affected objects (inserted or deleted). Inside an open transaction bracket the command joins the bracket instead of committing on its own.
 	 * <!-- end-model-doc -->
 	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" commandRequired="true"
 	 * @generated
 	 */
 	long execute(Command command) throws IOException;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back.
+	 * <!-- end-model-doc -->
+	 * @model dataType="org.eclipse.fennec.persistence.query.api.CommandTransaction" exceptions="org.eclipse.fennec.persistence.query.api.IOException"
+	 * @generated
+	 */
+	CommandTransaction begin() throws IOException;
 
 } // CommandResource

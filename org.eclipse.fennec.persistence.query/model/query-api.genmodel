@@ -68,6 +68,7 @@
     <genDataTypes ecoreDataType="query-api.ecore#//Diagnostic"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ConverterService"/>
     <genDataTypes ecoreDataType="query-api.ecore#//QueryException"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//CommandTransaction"/>
     <genDataTypes ecoreDataType="query-api.ecore#//IOException"/>
     <genDataTypes ecoreDataType="query-api.ecore#//EObjectStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
@@ -140,6 +141,7 @@
       <genOperations ecoreOperation="query-api.ecore#//CommandResource/execute">
         <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute/command"/>
       </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//CommandResource/begin"/>
     </genClasses>
   </genPackages>
 </genmodel:GenModel>

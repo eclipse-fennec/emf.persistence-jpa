@@ -96,6 +96,7 @@ import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
@@ -557,6 +558,19 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			return executeUpdate(update);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
+	}
+
+	/**
+	 * Command transactions are not served by this backend (issue #108): multi-document
+	 * transactions need a session-capable {@code MongoClient} handle and a replica-set
+	 * deployment — the resource holds only a {@link MongoDatabase}. Honest refusal
+	 * instead of a pretend-bracket that commits per command.
+	 */
+	@Override
+	public CommandTransaction begin() throws IOException {
+		throw new IOException("Command transactions are not supported by the mongo backend"
+				+ " — multi-document transactions require a session-capable client and a"
+				+ " replica set (issue #108)");
 	}
 
 	/**

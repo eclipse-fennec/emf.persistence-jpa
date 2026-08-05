@@ -63,6 +63,12 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
+	/** No session-capable client handle — command transactions are refused (issue #108). */
+	@Override
+	protected boolean supportsCommandTransactions() {
+		return false;
+	}
+
 	private MongoClient client;
 	private MongoDatabase database;
 	private MetadataWhiteboard metadataService;

@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:5343afa42bc982f139b0137701309ae11c262801783cc9d2eeba71807afa576b", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
+@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:9938783742b524a05d1d178099e0fc86052d8ddec70c0457ab8c8b4e843c9ae1", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
 public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -546,13 +546,22 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int COMMAND_RESOURCE___EXECUTE__COMMAND = 0;
 
 	/**
+	 * The operation id for the '<em>Begin</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMMAND_RESOURCE___BEGIN = 1;
+
+	/**
 	 * The number of operations of the '<em>Command Resource</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int COMMAND_RESOURCE_OPERATION_COUNT = 1;
+	int COMMAND_RESOURCE_OPERATION_COUNT = 2;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}' enum.
@@ -605,6 +614,16 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int QUERY_EXCEPTION = 13;
 
 	/**
+	 * The meta object id for the '<em>Command Transaction</em>' data type.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.persistence.query.support.CommandTransaction
+	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandTransaction()
+	 * @generated
+	 */
+	int COMMAND_TRANSACTION = 14;
+
+	/**
 	 * The meta object id for the '<em>IO Exception</em>' data type.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -612,7 +631,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getIOException()
 	 * @generated
 	 */
-	int IO_EXCEPTION = 14;
+	int IO_EXCEPTION = 15;
 
 	/**
 	 * The meta object id for the '<em>EObject Stream</em>' data type.
@@ -622,7 +641,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getEObjectStream()
 	 * @generated
 	 */
-	int EOBJECT_STREAM = 15;
+	int EOBJECT_STREAM = 16;
 
 	/**
 	 * The meta object id for the '<em>Row Stream</em>' data type.
@@ -632,7 +651,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getRowStream()
 	 * @generated
 	 */
-	int ROW_STREAM = 16;
+	int ROW_STREAM = 17;
 
 	/**
 	 * The meta object id for the '<em>Object List</em>' data type.
@@ -642,7 +661,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getObjectList()
 	 * @generated
 	 */
-	int OBJECT_LIST = 17;
+	int OBJECT_LIST = 18;
 
 	/**
 	 * The meta object id for the '<em>Query Feature Set</em>' data type.
@@ -652,7 +671,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryFeatureSet()
 	 * @generated
 	 */
-	int QUERY_FEATURE_SET = 18;
+	int QUERY_FEATURE_SET = 19;
 
 	/**
 	 * The meta object id for the '<em>Parameter Map</em>' data type.
@@ -662,7 +681,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getParameterMap()
 	 * @generated
 	 */
-	int PARAMETER_MAP = 19;
+	int PARAMETER_MAP = 20;
 
 	/**
 	 * The meta object id for the '<em>Options Map</em>' data type.
@@ -672,7 +691,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getOptionsMap()
 	 * @generated
 	 */
-	int OPTIONS_MAP = 20;
+	int OPTIONS_MAP = 21;
 
 
 	/**
@@ -1017,6 +1036,16 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EOperation getCommandResource__Execute__Command();
 
 	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandResource#begin() <em>Begin</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Begin</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.CommandResource#begin()
+	 * @generated
+	 */
+	EOperation getCommandResource__Begin();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1077,6 +1106,20 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EDataType getQueryException();
+
+	/**
+	 * Returns the meta object for data type '{@link org.eclipse.fennec.persistence.query.support.CommandTransaction <em>Command Transaction</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+     * <!-- begin-model-doc -->
+     * A transaction bracket handle grouping subsequent execute() calls (issue #108) — hand-written interface in the support package (commit/rollback/AutoCloseable).
+     * <!-- end-model-doc -->
+	 * @return the meta object for data type '<em>Command Transaction</em>'.
+	 * @see org.eclipse.fennec.persistence.query.support.CommandTransaction
+	 * @model instanceClass="org.eclipse.fennec.persistence.query.support.CommandTransaction"
+	 * @generated
+	 */
+	EDataType getCommandTransaction();
 
 	/**
 	 * Returns the meta object for data type '{@link java.io.IOException <em>IO Exception</em>}'.
@@ -1490,6 +1533,14 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		EOperation COMMAND_RESOURCE___EXECUTE__COMMAND = eINSTANCE.getCommandResource__Execute__Command();
 
 		/**
+		 * The meta object literal for the '<em><b>Begin</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation COMMAND_RESOURCE___BEGIN = eINSTANCE.getCommandResource__Begin();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}' enum.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -1538,6 +1589,16 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EDataType QUERY_EXCEPTION = eINSTANCE.getQueryException();
+
+		/**
+		 * The meta object literal for the '<em>Command Transaction</em>' data type.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.persistence.query.support.CommandTransaction
+		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandTransaction()
+		 * @generated
+		 */
+		EDataType COMMAND_TRANSACTION = eINSTANCE.getCommandTransaction();
 
 		/**
 		 * The meta object literal for the '<em>IO Exception</em>' data type.
