@@ -115,6 +115,10 @@ public final class ExpressionValues {
 			return null;
 		}
 		if (literal instanceof StringLiteral string) {
+			if (target != null && target.getEType() instanceof EEnum eEnum) {
+				// OData transports enum values as quoted strings (issue #93)
+				return resolveEnum(eEnum, string.getValue(), target);
+			}
 			return string.getValue();
 		}
 		if (literal instanceof BooleanLiteral bool) {
@@ -235,9 +239,14 @@ public final class ExpressionValues {
 			// without an enum-typed target the name is the best representation
 			return literal.getLiteralName();
 		}
-		EEnumLiteral resolved = eEnum.getEEnumLiteral(literal.getLiteralName());
+		return resolveEnum(eEnum, literal.getLiteralName(), target);
+	}
+
+	private static Object resolveEnum(EEnum eEnum, String literalName, EStructuralFeature target)
+			throws QueryException {
+		EEnumLiteral resolved = eEnum.getEEnumLiteral(literalName);
 		if (resolved == null) {
-			throw new QueryException("Enum " + eEnum.getName() + " has no literal '" + literal.getLiteralName()
+			throw new QueryException("Enum " + eEnum.getName() + " has no literal '" + literalName
 					+ "' (feature '" + target.getName() + "')");
 		}
 		return resolved.getInstance() != null ? resolved.getInstance() : resolved;

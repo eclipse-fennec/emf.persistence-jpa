@@ -33,6 +33,7 @@ import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -81,6 +82,31 @@ class ExpressionValuesTest {
 
 		EnumLiteral unknown = expr.createEnumLiteral();
 		unknown.setLiteralName("PURPLE");
+		assertThatThrownBy(() -> ExpressionValues.resolve(unknown, attribute("color", colors), null, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("PURPLE");
+	}
+
+	@Test
+	void stringLiteralCoercesAgainstEnumTypedFeature() throws QueryException {
+		// OData transports enum values as quoted strings (issue #93)
+		EEnum colors = EcoreFactory.eINSTANCE.createEEnum();
+		colors.setName("Color");
+		EEnumLiteral green = EcoreFactory.eINSTANCE.createEEnumLiteral();
+		green.setName("GREEN");
+		colors.getELiterals().add(green);
+
+		StringLiteral literal = expr.createStringLiteral();
+		literal.setValue("GREEN");
+		assertThat(ExpressionValues.resolve(literal, attribute("color", colors), null, null))
+				.isEqualTo(green);
+		// without an enum-typed target the string stays a string
+		assertThat(ExpressionValues.resolve(literal, attribute("name", EcorePackage.Literals.ESTRING), null, null))
+				.isEqualTo("GREEN");
+		assertThat(ExpressionValues.resolve(literal, null, null, null)).isEqualTo("GREEN");
+
+		StringLiteral unknown = expr.createStringLiteral();
+		unknown.setValue("PURPLE");
 		assertThatThrownBy(() -> ExpressionValues.resolve(unknown, attribute("color", colors), null, null))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("PURPLE");

@@ -11,6 +11,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="age" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="birthday" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="favoriteColor" eType="#//Color"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="addresses" upperBound="-1"
         eType="#//Address" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="bestFriend" eType="#//Person"/>
@@ -48,5 +49,10 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Motorcycle" eSuperTypes="#//Vehicle">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cc" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Color">
+    <eLiterals name="RED"/>
+    <eLiterals name="GREEN" value="1"/>
+    <eLiterals name="BLUE" value="2"/>
   </eClassifiers>
 </ecore:EPackage>

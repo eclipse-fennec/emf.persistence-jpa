@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -94,6 +95,7 @@ public abstract class AbstractPersistenceTCK {
 	protected EStructuralFeature personName;
 	protected EStructuralFeature personAge;
 	protected EStructuralFeature personBirthday;
+	protected EStructuralFeature personFavoriteColor;
 	protected EStructuralFeature personAddresses;
 	protected EStructuralFeature personBestFriend;
 	protected EStructuralFeature personFriends;
@@ -127,6 +129,7 @@ public abstract class AbstractPersistenceTCK {
 		personName = personClass.getEStructuralFeature("name");
 		personAge = personClass.getEStructuralFeature("age");
 		personBirthday = personClass.getEStructuralFeature("birthday");
+		personFavoriteColor = personClass.getEStructuralFeature("favoriteColor");
 		personAddresses = personClass.getEStructuralFeature("addresses");
 		personBestFriend = personClass.getEStructuralFeature("bestFriend");
 		personFriends = personClass.getEStructuralFeature("friends");
@@ -482,18 +485,29 @@ public abstract class AbstractPersistenceTCK {
 		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 	}
 
-	/** Saves the standard query fixture: three persons with UTC birthdays, Bob with two addresses. */
+	/**
+	 * Saves the standard query fixture: three persons with UTC birthdays, Bob with two
+	 * addresses, Alice and Bob with favourite colors (Carol's stays unset).
+	 */
 	private void saveQueryFixture() throws Exception {
 		EObject alice = newPerson(1, "Alice", 30);
 		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
+		alice.eSet(personFavoriteColor, colorLiteral("GREEN"));
 		EObject bob = newPerson(2, "Bob", 40);
 		bob.eSet(personBirthday, Date.from(BOB_BIRTHDAY));
+		bob.eSet(personFavoriteColor, colorLiteral("BLUE"));
 		listOf(bob, personAddresses).add(newAddress(21, "Main Street 5", "Jena"));
 		listOf(bob, personAddresses).add(newAddress(22, "Side Road 9", "Gera"));
 		EObject carol = newPerson(3, "Carol", 50);
 		carol.eSet(personBirthday, Date.from(CAROL_BIRTHDAY));
 		ResourceSet writeSet = createBackendResourceSet();
 		save(writeSet, "Person", alice, bob, carol);
+	}
+
+	/** The dynamic-EMF instance value of a Color literal. */
+	private Object colorLiteral(String name) {
+		EEnum colors = (EEnum) tckPackage.getEClassifier("Color");
+		return colors.getEEnumLiteral(name).getInstance();
 	}
 
 	private QueryableResource queryable(ResourceSet resourceSet) {
@@ -530,6 +544,27 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Bob");
 		}
+	}
+
+	@Test
+	public void queryStringLiteralCoercesAgainstEnumFeature() throws Exception {
+		saveQueryFixture();
+		// OData transports enum values as quoted strings (issue #93): a StringLiteral
+		// compared against an EEnum-typed feature must resolve like an EnumLiteral
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personFavoriteColor).eq("GREEN"))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
+		}
+
+		// an unknown literal must be refused, not silently match nothing
+		Query unknown = QueryBuilder.from(personClass)
+				.where(Expressions.path(personFavoriteColor).eq("PURPLE"))
+				.build();
+		assertThatThrownBy(() -> queryable(createBackendResourceSet()).query(unknown))
+				.hasMessageContaining("PURPLE");
 	}
 
 	@Test

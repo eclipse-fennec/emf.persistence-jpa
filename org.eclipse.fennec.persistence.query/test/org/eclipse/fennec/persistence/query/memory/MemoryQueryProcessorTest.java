@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EEnum;
+import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
@@ -67,6 +69,8 @@ class MemoryQueryProcessorTest {
 	private EAttribute personSalary;
 	private EAttribute personRank;
 	private EAttribute personHired;
+	private EEnum colorEnum;
+	private EAttribute personFavoriteColor;
 	private EReference personAddresses;
 	private EAttribute addressStreet;
 	private EPackage ePackage;
@@ -106,6 +110,19 @@ class MemoryQueryProcessorTest {
 		personHired = ecore.createEAttribute();
 		personHired.setName("hired");
 		personHired.setEType(EcorePackage.Literals.EDATE);
+		colorEnum = ecore.createEEnum();
+		colorEnum.setName("Color");
+		// RED first — the first literal is the dynamic-EMF default for unset values
+		EEnumLiteral red = ecore.createEEnumLiteral();
+		red.setName("RED");
+		colorEnum.getELiterals().add(red);
+		EEnumLiteral green = ecore.createEEnumLiteral();
+		green.setName("GREEN");
+		green.setValue(1);
+		colorEnum.getELiterals().add(green);
+		personFavoriteColor = ecore.createEAttribute();
+		personFavoriteColor.setName("favoriteColor");
+		personFavoriteColor.setEType(colorEnum);
 		personAddresses = ecore.createEReference();
 		personAddresses.setName("addresses");
 		personAddresses.setEType(addressClass);
@@ -118,6 +135,7 @@ class MemoryQueryProcessorTest {
 		personClass.getEStructuralFeatures().add(personSalary);
 		personClass.getEStructuralFeatures().add(personRank);
 		personClass.getEStructuralFeatures().add(personHired);
+		personClass.getEStructuralFeatures().add(personFavoriteColor);
 		personClass.getEStructuralFeatures().add(personAddresses);
 
 		ePackage = ecore.createEPackage();
@@ -126,6 +144,7 @@ class MemoryQueryProcessorTest {
 		ePackage.setNsPrefix("memtest");
 		ePackage.getEClassifiers().add(addressClass);
 		ePackage.getEClassifiers().add(personClass);
+		ePackage.getEClassifiers().add(colorEnum);
 
 		// the TCK query fixture: Alice 30, Bob 40 with two addresses, Carol 50 —
 		// extended with score (double), salary (BigDecimal) and the nullable rank
@@ -134,6 +153,7 @@ class MemoryQueryProcessorTest {
 		EObject alice = person("Alice", 30);
 		alice.eSet(personScore, 7.5d);
 		alice.eSet(personSalary, new BigDecimal("1000.10"));
+		alice.eSet(personFavoriteColor, green.getInstance());
 		persons.add(alice);
 		EObject bob = person("Bob", 40);
 		address(bob, "Main Street 5");
@@ -191,6 +211,25 @@ class MemoryQueryProcessorTest {
 		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
 			assertThat(names(result)).containsExactly("Bob");
 		}
+	}
+
+	@Test
+	void stringLiteralCoercesAgainstEnumFeature() throws QueryException {
+		// OData transports enum values as quoted strings (issue #93): 'GREEN' against
+		// the enum-typed feature must match the Enumerator value, not stay a String
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personFavoriteColor).eq("GREEN"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+
+		Query unknown = QueryBuilder.from(personClass)
+				.where(Expressions.path(personFavoriteColor).eq("PURPLE"))
+				.build();
+		assertThatThrownBy(() -> MemoryQueries.execute(unknown, persons, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("PURPLE");
 	}
 
 	@Test
