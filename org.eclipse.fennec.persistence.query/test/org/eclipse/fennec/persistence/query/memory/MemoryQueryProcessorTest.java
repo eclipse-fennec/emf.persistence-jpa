@@ -233,6 +233,77 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
+	void notOverNullableComparisonIsThreeValued() throws QueryException {
+		// Kleene 3VL (issue #94): not(rank = 2) over the null ranks of Alice/Carol is
+		// UNKNOWN and excludes the row — matching SQL's NOT UNKNOWN, not Java's !false
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personRank).eq(2)))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+
+		// not(rank = 1): Bob is plainly false, the null ranks stay UNKNOWN — nobody
+		Query nobody = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personRank).eq(1)))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(nobody, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+	}
+
+	@Test
+	void unknownPropagatesThroughJunctions() throws QueryException {
+		// Carol: UNKNOWN or TRUE = TRUE (in), Alice: UNKNOWN or FALSE = UNKNOWN (out)
+		Query orQuery = QueryBuilder.from(personClass)
+				.where(Expressions.or(
+						Expressions.not(Expressions.path(personRank).eq(2)),
+						Expressions.path(personAge).ge(50)))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(orQuery, persons, null)) {
+			assertThat(names(result)).containsExactlyInAnyOrder("Bob", "Carol");
+		}
+
+		// FALSE dominates AND over UNKNOWN: Alice's (UNKNOWN and false) is FALSE, so
+		// not(...) is TRUE — a blanket "operand must be non-null" guard would be wrong
+		Query notOverAnd = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.and(
+						Expressions.path(personRank).eq(2),
+						Expressions.path(personAge).ge(40))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(notOverAnd, persons, null)) {
+			assertThat(names(result)).containsExactlyInAnyOrder("Alice", "Bob");
+		}
+	}
+
+	@Test
+	void notOverNullPoisonedOperandsIsUnknown() throws QueryException {
+		// nickname is null everywhere: LIKE/contains over null is UNKNOWN, not false
+		Query match = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personNickname).contains("x")))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(match, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+
+		// a null option keeps an IN miss UNKNOWN: 1 in (2, null) is UNKNOWN for Bob too
+		Query inWithNull = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personRank).in(2, null)))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(inWithNull, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+
+		// IsNull stays two-valued — not(rank isNull) is exactly isNotNull
+		Query notIsNull = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personRank).isNull()))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(notIsNull, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
 	void caseInsensitiveMatching() throws QueryException {
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personName).containsIgnoreCase("ARO"))

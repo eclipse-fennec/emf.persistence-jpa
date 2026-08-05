@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.tck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -543,6 +544,36 @@ public abstract class AbstractPersistenceTCK {
 		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Bob");
+		}
+	}
+
+	/**
+	 * Whether the backend evaluates NOT over null-poisoned comparisons in SQL's
+	 * three-valued logic (issue #94). Mongo's find vocabulary is two-valued until
+	 * issue #97 lands — its bindings return {@code false} to skip the pinning case.
+	 */
+	protected boolean supportsThreeValuedNegation() {
+		return true;
+	}
+
+	@Test
+	public void queryNotOverNullableComparisonExcludesNullRows() throws Exception {
+		assumeTrue(supportsThreeValuedNegation(),
+				"two-valued negation — pending issue #97");
+		// SQL 3VL pinned by issue #94: not(birthday = X) over a NULL birthday is
+		// NOT UNKNOWN = UNKNOWN — the row is excluded, it does not flip to a match
+		EObject alice = newPerson(1, "Alice", 30);
+		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
+		EObject dave = newPerson(4, "Dave", 25); // no birthday — the nullable column
+		save(createBackendResourceSet(), "Person", alice, dave);
+
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.not(
+						Expressions.path(personBirthday).eq(Date.from(BOB_BIRTHDAY))))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Alice");
 		}
 	}
 

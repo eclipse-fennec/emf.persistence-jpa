@@ -67,10 +67,13 @@ import org.eclipse.fennec.persistence.query.api.QueryResultRow;
  * literals and bound parameters were resolved at translation time (see
  * {@link MemoryQueryProcessor}) — evaluation itself never throws.
  * <p>
- * Comparison semantics follow the database backends: any comparison with {@code null}
- * is <em>false</em> (SQL three-valued logic collapsed), {@code IsNull} is the explicit
- * null probe, {@code ForAll} is vacuously true on empty collections. Numbers compare
- * numerically across their boxed types, enums by their model value.
+ * Comparison semantics follow SQL's Kleene three-valued logic (issue #94): a comparison
+ * over a {@code null} operand is UNKNOWN (internally the {@code null} {@link Boolean}),
+ * {@code Not}/junctions propagate it ({@code NOT UNKNOWN} stays UNKNOWN), and a row is
+ * only selected when the root predicate is <em>true</em> — UNKNOWN excludes like false.
+ * {@code IsNull} is the explicit two-valued null probe, {@code ForAll} is vacuously
+ * true on empty collections. Numbers compare numerically across their boxed types,
+ * enums by their model value.
  *
  * @author Mark Hoffmann
  * @since 24.07.2026
@@ -108,27 +111,38 @@ final class MemoryPredicate {
 
 	/** Evaluates any translated expression (e.g. a pipeline FilterStage predicate). */
 	boolean test(Expression expression, EObject candidate) {
-		return eval(expression, candidate, new HashMap<>());
+		return Boolean.TRUE.equals(eval(expression, candidate, new HashMap<>()));
 	}
 
-	private boolean eval(Expression expression, EObject candidate, Map<Variable, Object> bindings) {
+	/**
+	 * Kleene evaluation (issue #94): the {@code null} Boolean is UNKNOWN — a predicate
+	 * poisoned by a null operand. Junctions and {@code Not} propagate it; the public
+	 * entry points collapse it to "not selected".
+	 */
+	private Boolean eval(Expression expression, EObject candidate, Map<Variable, Object> bindings) {
 		if (expression instanceof Junction junction) {
 			boolean and = junction instanceof And;
+			Boolean result = and;
 			for (Expression operand : junction.getOperands()) {
-				if (eval(operand, candidate, bindings) != and) {
+				Boolean value = eval(operand, candidate, bindings);
+				if (value == null) {
+					result = null;
+				} else if (value != and) {
+					// FALSE dominates AND, TRUE dominates OR — over UNKNOWN as well
 					return !and;
 				}
 			}
-			return and;
+			return result;
 		}
 		if (expression instanceof Not not) {
-			return !eval(not.getOperand(), candidate, bindings);
+			Boolean operand = eval(not.getOperand(), candidate, bindings);
+			return operand == null ? null : !operand;
 		}
 		if (expression instanceof Comparison comparison) {
 			Object left = operand(comparison.getLeft(), candidate, bindings);
 			Object right = operand(comparison.getRight(), candidate, bindings);
 			if (left == null || right == null) {
-				return false;
+				return null;
 			}
 			return switch (comparison.getOperator()) {
 			case EQ -> equal(left, right);
@@ -148,19 +162,27 @@ final class MemoryPredicate {
 			Object lower = operand(between.getLower(), candidate, bindings);
 			Object upper = operand(between.getUpper(), candidate, bindings);
 			if (value == null || lower == null || upper == null) {
-				return false;
+				return null;
 			}
 			return lessThan(lower, value, between.isLowerIncluded())
 					&& lessThan(value, upper, between.isUpperIncluded());
 		}
 		if (expression instanceof In in) {
+			// x IN (a, b) ≡ x=a OR x=b — a null option keeps a miss UNKNOWN (SQL)
 			Object value = operand(in.getSource(), candidate, bindings);
 			if (value == null) {
-				return false;
+				return null;
 			}
-			return in.getValues().stream()
-					.map(option -> operand(option, candidate, bindings))
-					.anyMatch(option -> option != null && equal(value, option));
+			boolean unknown = false;
+			for (Expression option : in.getValues()) {
+				Object resolved = operand(option, candidate, bindings);
+				if (resolved == null) {
+					unknown = true;
+				} else if (equal(value, resolved)) {
+					return true;
+				}
+			}
+			return unknown ? null : false;
 		}
 		if (expression instanceof StringMatch match) {
 			return evalMatch(match, candidate, bindings);
@@ -178,10 +200,13 @@ final class MemoryPredicate {
 		return false;
 	}
 
-	private boolean evalMatch(StringMatch match, EObject candidate, Map<Variable, Object> bindings) {
+	private Boolean evalMatch(StringMatch match, EObject candidate, Map<Variable, Object> bindings) {
 		Object source = operand(match.getSource(), candidate, bindings);
 		Object pattern = values.get(match.getPattern());
-		if (!(source instanceof String text) || pattern == null) {
+		if (source == null || pattern == null) {
+			return null; // LIKE over a null operand is UNKNOWN
+		}
+		if (!(source instanceof String text)) {
 			return false;
 		}
 		String raw = String.valueOf(pattern);
@@ -197,21 +222,24 @@ final class MemoryPredicate {
 		};
 	}
 
-	private boolean evalQuantifier(Quantifier quantifier, EObject candidate, Map<Variable, Object> bindings) {
+	private Boolean evalQuantifier(Quantifier quantifier, EObject candidate, Map<Variable, Object> bindings) {
 		Object collection = pathValue(quantifier.getSource(), candidate, bindings);
 		boolean exists = quantifier instanceof Exists;
 		if (!(collection instanceof Collection<?> elements) || elements.isEmpty()) {
 			return !exists; // exists: false on empty, forAll: vacuously true
 		}
+		Boolean result = !exists;
 		for (Object element : elements) {
 			bindings.put(quantifier.getVariable(), element);
-			boolean matches = eval(quantifier.getPredicate(), candidate, bindings);
+			Boolean matches = eval(quantifier.getPredicate(), candidate, bindings);
 			bindings.remove(quantifier.getVariable());
-			if (matches == exists) {
+			if (matches == null) {
+				result = null;
+			} else if (matches == exists) {
 				return exists;
 			}
 		}
-		return !exists;
+		return result;
 	}
 
 	/** Resolves a comparison operand: navigations and functions per candidate, values from the map. */
@@ -243,7 +271,8 @@ final class MemoryPredicate {
 			int matches = 0;
 			for (Object element : elements) {
 				bindings.put(count.getVariable(), element);
-				if (eval(count.getPredicate(), candidate, bindings)) {
+				// only TRUE counts — UNKNOWN elements don't (SQL COUNT semantics)
+				if (Boolean.TRUE.equals(eval(count.getPredicate(), candidate, bindings))) {
 					matches++;
 				}
 			}
@@ -345,23 +374,33 @@ final class MemoryPredicate {
 
 	/** Evaluates a post-grouping pipeline predicate against a result row. */
 	boolean testRow(Expression expression, QueryResultRow row) {
+		return Boolean.TRUE.equals(evalRow(expression, row));
+	}
+
+	/** Row-space Kleene evaluation — same UNKNOWN propagation as {@link #eval} (issue #94). */
+	private Boolean evalRow(Expression expression, QueryResultRow row) {
 		if (expression instanceof Junction junction) {
 			boolean and = junction instanceof And;
+			Boolean result = and;
 			for (Expression operand : junction.getOperands()) {
-				if (testRow(operand, row) != and) {
+				Boolean value = evalRow(operand, row);
+				if (value == null) {
+					result = null;
+				} else if (value != and) {
 					return !and;
 				}
 			}
-			return and;
+			return result;
 		}
 		if (expression instanceof Not not) {
-			return !testRow(not.getOperand(), row);
+			Boolean operand = evalRow(not.getOperand(), row);
+			return operand == null ? null : !operand;
 		}
 		if (expression instanceof Comparison comparison) {
 			Object left = rowValue(comparison.getLeft(), row);
 			Object right = rowValue(comparison.getRight(), row);
 			if (left == null || right == null) {
-				return false;
+				return null;
 			}
 			return switch (comparison.getOperator()) {
 			case EQ -> equal(left, right);
@@ -381,7 +420,7 @@ final class MemoryPredicate {
 			Object lower = rowValue(between.getLower(), row);
 			Object upper = rowValue(between.getUpper(), row);
 			if (value == null || lower == null || upper == null) {
-				return false;
+				return null;
 			}
 			return lessThan(lower, value, between.isLowerIncluded())
 					&& lessThan(value, upper, between.isUpperIncluded());
@@ -389,11 +428,18 @@ final class MemoryPredicate {
 		if (expression instanceof In in) {
 			Object value = rowValue(in.getSource(), row);
 			if (value == null) {
-				return false;
+				return null;
 			}
-			return in.getValues().stream()
-					.map(option -> rowValue(option, row))
-					.anyMatch(option -> option != null && equal(value, option));
+			boolean unknown = false;
+			for (Expression option : in.getValues()) {
+				Object resolved = rowValue(option, row);
+				if (resolved == null) {
+					unknown = true;
+				} else if (equal(value, resolved)) {
+					return true;
+				}
+			}
+			return unknown ? null : false;
 		}
 		// unreachable: the row-space translation refused everything else
 		return false;
