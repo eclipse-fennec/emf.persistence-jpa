@@ -181,6 +181,85 @@ should be reviewed against it: `append` must be callable with samples whose subj
 differs from the payload class — which the `(streamId, objectId, featureId)` coordinates
 already allow.
 
+### 6.1 Extraction strategies — the ladder
+
+Every extraction (identity, timestamp AND value — uniformly) is a two-stage declaration:
+a **context path** (where in the payload to navigate) times an optional **transform**.
+That yields an escalation ladder, with a binding bias toward the weakest sufficient rung —
+the lower the rung, the more tooling can verify statically:
+
+| Rung | Declaration | Typical use |
+|---|---|---|
+| 1 | feature path, no transform | the 80% case; statically validated against the payload metamodel |
+| 2 | path + OCL (short `self` context) | select/compute locally on the navigated element |
+| 3 | OCL against the payload root | n:1 combinations (raw × scale, lat/lon → point), conversions |
+| 4 | converter service | binary decoding, lookup tables — anything OCL cannot |
+
+Rung 4 is a **DS whiteboard service referenced by name/target from the mapping** (the
+codec custom-handler pattern): the XMI stays serializable, the code stays discoverable.
+The OCL dialect is the **same m2x OCL used everywhere else** (derived references, OData
+`$filter`) — one OCL, not two; evaluation is in-memory per message, so the reference
+evaluator carries. Note: that evaluator currently lives in `odata.query` —
+eclipse-fennec/emf.odata#14 (neutral home) gains its second consumer and moves up in
+priority. The sensinact-mapping precursor (`collectionIndex`/`collectionFilter` with
+"implementation-specific" filter syntax) is exactly rung 2 without a defined dialect.
+
+On top of the ladder, four orthogonal declaration elements per assignment:
+
+- **Iteration (1:n).** A collection-valued context path with a `foreach` marker: each
+  element yields its own sample, with a **sub-identity** extracted from the element
+  (channel number → part of objectId/featureId resolution). Without this, CayenneLPP and
+  multi-channel LoRaWAN payloads cannot be mapped; a fixed `collectionIndex` is the
+  degenerate case.
+- **Guards.** A boolean OCL predicate per assignment: emit only if the payload warrants it
+  (`fPort = 2`, validity flag). Guards answer "is there a datum at all" (payload level);
+  ChangeRules answer "does it enter the stream" (history level, §8/R3) — orthogonal
+  questions, so the one-rule-truth discipline of §6 holds.
+- **Constants.** Literal sources (quality flag, profile discriminator) — without them,
+  every literal forces an OCL rung.
+- **Missing-member policy.** `eIsSet`-based, per assignment: member absent →
+  **`SKIP`** (default: no sample — never silently historize type defaults) **or
+  `DEFAULT(<literal>)`** (emit the declared substitute value).
+
+Absent a transform, the raw value is coerced through the EMF converter of the target's
+declared type — rung 1 covers string→number without OCL.
+
+### 6.2 Virtual series — subjects not in the Ecore
+
+Historization must not be limited to real `EStructuralFeature`s. Two shapes force this:
+computed series (dew point from temp+humidity — rung 3 produces a value no feature holds)
+and dynamic channels (a CayenneLPP channel is not a static feature). A **virtual feature**
+is declared in the aspect plane exactly like a tracked real one: stable `featureId` from
+the §4.2 assignment (which already owns id-space), plus an explicit type declaration —
+because `stream.ecore` resolves typing EXCLUSIVELY from `(contextFingerprint, featureId)`,
+**virtual feature declarations are fingerprint-relevant** and enter the context snapshot,
+consistent with R6 (rules are context). Consequences kept honest:
+
+- a virtual series has **no current-state projection** by definition (nothing to project
+  onto); P1/§9 "current state is the materialized projection" applies per *real* feature;
+- series queries (§5) address virtual subjects the same way — the subject declaration
+  resolves via the aspect, not via `EClass.getEStructuralFeature`.
+
+### 6.3 Enrichment from secondary sources
+
+Payloads are chronically incomplete: static asset data (lat/lon, install position,
+customer) lives in a database, not in the uplink. The mapping therefore supports **named
+lookups**: a key extracted from the payload (same ladder), resolved as a **keyed find
+through the existing persistence machinery** (a configured unit/backend URI + subject
+EClass — the `QueryableResource`/`getEObject` path, no ad-hoc access code). Assignments
+may then draw from the payload context *or* a lookup context (`asset.lat`).
+
+- **Enrich-at-ingest denormalizes deliberately**: the sample records what was true at
+  capture — an asset later moving does not rewrite history (extraction is pre-log, §9);
+  future samples carry the new values. Join-at-query stays the later alternative and
+  needs series-query joins (not v1).
+- The natural landing zone for enrichment values is the series **meta/tag axis** — Mongo
+  `metaField` members, Timescale segment-by columns (§4.1/4.2): exactly where TS engines
+  want low-cardinality static attributes.
+- Operationally: per-key cache with TTL (ingest rates × keyed finds would otherwise be
+  the N+1 of capture), and an explicit **failure policy** per lookup: key unresolvable →
+  `SKIP` sample | `EMIT_WITHOUT` enrichment | `FAIL` (dead-letter territory, later).
+
 ## 7. Cut 4 — CDC capture (deliberately later)
 
 Mongo change streams / Postgres logical decoding as *sources* that emit CHANGELOG-profile
@@ -218,7 +297,12 @@ different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing
    for the series profile; `DeletionRule`-by-age suffices.
 5. **The current-state EObject remains the materialized projection** (P1, §9) — writing a
    sample and updating `Sensor.temp` is one logical operation; which side is authoritative
-   during ingest is O2.
+   during ingest is O2. Virtual series (§6.2) are the declared exception: no projection.
+6. **Extraction is pre-log.** Mapping changes (paths, transforms, guards, enrichment)
+   never reinterpret stored samples — the stored value is the truth; changes affect
+   future capture only. The one exception is deliberate: **virtual feature
+   *declarations* are typing** and therefore fingerprint-relevant (§6.2, R6) — their
+   evolution produces a new context snapshot like any rule change.
 
 ## 10. Open decisions
 
@@ -232,6 +316,8 @@ different (resume tokens, WAL slots, snapshot/backfill coordination) and nothing
 | O6 | Does `ReplayFilter` belong in the SPI or is replay always whole-stream (filter = query concern)? | in the SPI — TS engines answer filtered ranges natively, whole-stream replay would be the N+1 of series access |
 | O7 | Ingest mapping registration: metadata aspect entry per payload EPackage vs. standalone XMI artifacts (sensinact-mapping style) vs. both | aspect plane as the registry, XMI as an authoring format loaded into it |
 | O8 | Units in the ingest mapping: hint-only (documentation/metadata plane) vs. converting assignments | hint-only in v1 — conversion is a projection concern, not a capture concern |
+| O9 | Virtual feature mechanics: id-space shared with §4.2 real-feature ids vs. own range; where the type declaration lives in the snapshot | shared id-space (one `featureId` axis per class), type declared in the tracking aspect and stamped into the context snapshot |
+| O10 | Enrichment default: denormalize into the sample/meta axis at ingest vs. join at query time | denormalize in v1 (§6.3) — capture truth is immutable, TS meta axes want it, series joins do not exist yet |
 
 ## 11. Phasing proposal
 
