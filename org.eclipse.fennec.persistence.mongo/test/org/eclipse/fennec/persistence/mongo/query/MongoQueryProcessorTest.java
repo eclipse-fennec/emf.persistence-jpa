@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.mongo.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.eclipse.fennec.model.query.builder.Expressions.add;
+import static org.eclipse.fennec.model.query.builder.Expressions.aliasRef;
 import static org.eclipse.fennec.model.query.builder.Expressions.all;
 import static org.eclipse.fennec.model.query.builder.Expressions.concat;
 import static org.eclipse.fennec.model.query.builder.Expressions.count;
@@ -462,6 +463,28 @@ class MongoQueryProcessorTest {
 				"{'$project': {'_id': 0, 'name': '$_id.name', 'avgAge': 1, 'cnt': 1,"
 						+ " 'streets': {'$size': '$streets'}}}"));
 		assertThat(plan.rowKeys()).containsExactly("name", "avgAge", "cnt", "streets");
+	}
+
+	@Test
+	void aggregationAliasSortSortsTheOutputField() throws QueryException {
+		// a bare AliasRef sort key is a plain $sort on the flattened output field
+		// (issue #102) — native after $group, no SORT_EXPRESSION involved
+		MongoQueryPlan plan = translate(QueryBuilder.from(person)
+				.groupBy(name)
+				.avg("avgAge", age)
+				.orderByDesc(aliasRef("avgAge").toExpression())
+				.build());
+		assertThat(render(plan.pipeline().get(plan.pipeline().size() - 1))).isEqualTo(
+				BsonDocument.parse("{'$sort': {'avgAge': -1}}"));
+
+		Query unknown = QueryBuilder.from(person)
+				.groupBy(name)
+				.avg("avgAge", age)
+				.orderByDesc(aliasRef("nope").toExpression())
+				.build();
+		assertThatThrownBy(() -> translate(unknown))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("nope");
 	}
 
 	@Test

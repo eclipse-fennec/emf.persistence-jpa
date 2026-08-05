@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryFeature;
@@ -115,6 +116,20 @@ class QueryValidatorTest {
 				capabilities(QueryFeature.WHERE_COMPARISON));
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.getChildren().get(0).getMessage()).contains("SCORE");
+	}
+
+	@Test
+	void bareAliasSortOutsideRowShapeIsRefused() {
+		// issue #102: an output-column sort needs a projection or aggregation
+		Query query = QueryBuilder.from(person)
+				.orderByDesc(Expressions.aliasRef("total").toExpression())
+				.build();
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.SORT, QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		Diagnostic child = diagnostic.getChildren().get(0);
+		assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_SORT);
+		assertThat(child.getMessage()).contains("total").contains("row-shaped");
 	}
 
 	@Test

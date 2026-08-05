@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.eclipselink.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.eclipse.fennec.model.query.builder.Expressions.aliasRef;
 import static org.eclipse.fennec.model.query.builder.Expressions.all;
 import static org.eclipse.fennec.model.query.builder.Expressions.and;
 import static org.eclipse.fennec.model.query.builder.Expressions.any;
@@ -275,6 +276,27 @@ class JpaQueryProcessorTest {
 		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS name, AVG(e.age) AS avgAge, COUNT(e) AS cnt,"
 				+ " COUNT(DISTINCT e.addresses.street) AS streets"
 				+ " FROM Person e GROUP BY e.name ORDER BY avgAge DESC");
+	}
+
+	@Test
+	void aggregationAliasSortRendersTheResultVariable() throws QueryException {
+		// a bare AliasRef sort key addresses the output column directly (issue #102)
+		Query query = QueryBuilder.from(person)
+				.groupBy(name)
+				.sum("total", age)
+				.orderByDesc(aliasRef("total").toExpression())
+				.build();
+		JpaQueryPlan plan = translate(query);
+		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS name, SUM(e.age) AS total"
+				+ " FROM Person e GROUP BY e.name ORDER BY total DESC");
+
+		Query unknown = QueryBuilder.from(person)
+				.groupBy(name)
+				.sum("total", age)
+				.orderByDesc(aliasRef("nope").toExpression())
+				.build();
+		assertThatThrownBy(() -> translate(unknown)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("nope");
 	}
 
 	@Test

@@ -324,9 +324,18 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (i > 0) {
 				jpql.append(", ");
 			}
-			if (orderBy.getKey() != null) {
+			if (orderBy.getKey() instanceof AliasRef aliasRef) {
+				// a bare AliasRef is a plain output-column sort (issue #102): JPQL
+				// result variables ARE addressable in ORDER BY (unlike HAVING)
+				if (!rowKeys.contains(aliasRef.getAlias())) {
+					throw new QueryException("Sort key '" + aliasRef.getAlias()
+							+ "' does not address an output key of the projection/aggregation (keys: "
+							+ rowKeys + ") — alias the column accordingly");
+				}
+				jpql.append(aliasRef.getAlias());
+			} else if (orderBy.getKey() != null) {
 				// arbitrary sort expressions render inline (issue #84); AliasRef
-				// re-renders the pipeline column
+				// inside a computed key re-renders the pipeline column
 				jpql.append(translation.operand(orderBy.getKey(), null));
 			} else if (shape == QueryShape.OBJECTS) {
 				jpql.append(rootPath(orderBy.getPath()));

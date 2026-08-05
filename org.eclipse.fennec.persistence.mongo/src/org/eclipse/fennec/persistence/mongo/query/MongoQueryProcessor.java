@@ -1076,14 +1076,20 @@ public class MongoQueryProcessor implements QueryProcessor {
 		Bson[] entries = new Bson[query.getOrderBy().size()];
 		for (int i = 0; i < query.getOrderBy().size(); i++) {
 			OrderBy orderBy = query.getOrderBy().get(i);
-			if (orderBy.getKey() != null) {
+			String candidate;
+			if (orderBy.getKey() instanceof AliasRef aliasRef) {
+				// a bare AliasRef is a plain output-column sort (issue #102) —
+				// $sort on the flattened field, native after $group
+				candidate = aliasRef.getAlias();
+			} else if (orderBy.getKey() != null) {
 				// backstop — SORT_EXPRESSION is not declared, validation refuses first
 				throw new QueryException("Sort expressions are not supported by the mongo backend"
 						+ " (feature SORT_EXPRESSION)");
+			} else {
+				candidate = MongoFieldNames.render(orderBy.getPath()).replace('.', '_');
 			}
-			String candidate = MongoFieldNames.render(orderBy.getPath()).replace('.', '_');
 			if (!keys.contains(candidate)) {
-				throw new QueryException("Sort path '" + candidate
+				throw new QueryException("Sort key '" + candidate
 						+ "' does not address an output key of the projection/aggregation (keys: " + rowKeys
 						+ ") — alias the column accordingly");
 			}

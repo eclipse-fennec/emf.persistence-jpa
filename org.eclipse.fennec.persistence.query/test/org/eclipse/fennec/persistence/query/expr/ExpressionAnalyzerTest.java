@@ -471,6 +471,37 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void bareAliasSortIsPlainSortNotSortExpression() {
+		// a bare AliasRef key is an output-column sort (issue #102) — plain SORT
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.groupBy(name)
+						.avg("avgAge", age)
+						.orderByDesc(Expressions.aliasRef("avgAge").toExpression())
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.SORT)
+				.doesNotContain(QueryFeature.SORT_EXPRESSION);
+		assertThat(analysis.invalidSort()).isNull();
+
+		// computed keys (even over aliases) stay SORT_EXPRESSION
+		QueryAnalysis computed = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.groupBy(name)
+						.avg("avgAge", age)
+						.orderByDesc(Expressions.neg(Expressions.aliasRef("avgAge").toExpression())
+								.toExpression())
+						.build());
+		assertThat(computed.features()).contains(QueryFeature.SORT_EXPRESSION);
+
+		// outside a row shape the alias addresses nothing — structural finding
+		QueryAnalysis invalid = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.orderByDesc(Expressions.aliasRef("avgAge").toExpression())
+						.build());
+		assertThat(invalid.invalidSort()).contains("avgAge");
+	}
+
+	@Test
 	void scoreIsDetected() {
 		// the relevance sort key (issue #100) requires the SCORE capability
 		QueryAnalysis analysis = ExpressionAnalyzer.analyze(

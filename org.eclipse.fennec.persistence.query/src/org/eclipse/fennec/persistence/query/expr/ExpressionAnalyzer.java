@@ -16,6 +16,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import org.eclipse.fennec.model.expression.And;
+import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.Arithmetic;
 import org.eclipse.fennec.model.expression.ArithmeticOperator;
 import org.eclipse.fennec.model.expression.Between;
@@ -93,9 +94,18 @@ public final class ExpressionAnalyzer {
 		if (query.getPredicate() != null) {
 			walk(query.getPredicate(), features, maxDepth, zeroDivision);
 		}
+		String[] invalidSort = { null };
 		for (OrderBy orderBy : query.getOrderBy()) {
 			features.add(QueryFeature.SORT);
-			if (orderBy.getKey() != null) {
+			if (orderBy.getKey() instanceof AliasRef aliasRef) {
+				// a bare AliasRef key is a plain output-column sort (issue #102): no
+				// rendering beyond addressing the column — plain SORT on every backend
+				if (query.getSelect().isEmpty() && query.getApply() == null) {
+					invalidSort[0] = "Sort key '" + aliasRef.getAlias()
+							+ "' addresses an output column, but the query is not row-shaped"
+							+ " (no projection or aggregation)";
+				}
+			} else if (orderBy.getKey() != null) {
 				// ordering by an arbitrary value expression (issue #84)
 				features.add(QueryFeature.SORT_EXPRESSION);
 				walk(orderBy.getKey(), features, maxDepth, zeroDivision);
@@ -134,7 +144,8 @@ public final class ExpressionAnalyzer {
 		}
 
 		QueryShape shape = deriveShape(query, aggregating);
-		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0]);
+		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
+				invalidSort[0]);
 	}
 
 	private static QueryShape deriveShape(Query query, boolean aggregating) {

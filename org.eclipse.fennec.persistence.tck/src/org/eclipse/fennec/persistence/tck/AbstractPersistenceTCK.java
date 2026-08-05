@@ -1149,6 +1149,23 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	public void queryAggregationSortsByOutputAlias() throws Exception {
+		saveQueryFixture();
+		// OData: $apply=groupby((name),aggregate(age with average as avgAge))&$orderby=avgAge desc
+		// — a bare AliasRef key is a plain output-column sort on EVERY backend (issue
+		// #102), no SORT_EXPRESSION involved: $sort after $group is native on Mongo
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personName)
+				.avg("avgAge", personAge)
+				.orderByDesc(Expressions.aliasRef("avgAge").toExpression())
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.rows().map(row -> row.get("name")))
+					.containsExactly("Carol", "Bob", "Alice");
+		}
+	}
+
+	@Test
 	public void queryExpandPrefetchesMultiSegmentPaths() throws Exception {
 		// multi-segment expand (issue #95): single-valued segments fetch-join as an
 		// aliased chain — the result must stay correct and fully navigable

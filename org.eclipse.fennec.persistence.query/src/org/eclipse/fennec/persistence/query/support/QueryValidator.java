@@ -52,6 +52,12 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_AGGREGATE = 4;
 
+	/**
+	 * Diagnostic code: a bare {@code AliasRef} sort key on a query that is not
+	 * row-shaped — output-column sorts need a projection or aggregation (issue #102).
+	 */
+	public static final int CODE_INVALID_SORT = 5;
+
 	private QueryValidator() {
 	}
 
@@ -107,6 +113,12 @@ public final class QueryValidator {
 		if (analysis.invalidAggregate() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_AGGREGATE,
 					analysis.invalidAggregate() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+
+		if (analysis.invalidSort() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_SORT,
+					analysis.invalidSort() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

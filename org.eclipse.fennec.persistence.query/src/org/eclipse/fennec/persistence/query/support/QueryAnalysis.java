@@ -34,6 +34,7 @@ public final class QueryAnalysis {
 	private final QueryShape shape;
 	private final boolean divisionByLiteralZero;
 	private final String invalidAggregate;
+	private final String invalidSort;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -71,6 +72,21 @@ public final class QueryAnalysis {
 	 */
 	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
 			boolean divisionByLiteralZero, String invalidAggregate) {
+		this(features, maxFeaturePathDepth, shape, divisionByLiteralZero, invalidAggregate, null);
+	}
+
+	/**
+	 * Creates an analysis result including the static structural verdicts.
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 * @param divisionByLiteralZero whether any DIV/MOD divides by a literal zero
+	 * @param invalidAggregate the malformed-aggregate finding (issue #87), or {@code null}
+	 * @param invalidSort the malformed-sort finding (issue #102), or {@code null}
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
+			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
@@ -78,6 +94,7 @@ public final class QueryAnalysis {
 		this.shape = shape;
 		this.divisionByLiteralZero = divisionByLiteralZero;
 		this.invalidAggregate = invalidAggregate;
+		this.invalidSort = invalidSort;
 	}
 
 	/**
@@ -127,10 +144,20 @@ public final class QueryAnalysis {
 		return invalidAggregate;
 	}
 
+	/**
+	 * @return the malformed-sort finding — a bare {@code AliasRef} sort key on a query
+	 *         that is not row-shaped (issue #102) — or {@code null} if all sorts are
+	 *         well-formed
+	 */
+	public String invalidSort() {
+		return invalidSort;
+	}
+
 	@Override
 	public String toString() {
 		return "QueryAnalysis[shape=" + shape + ", maxDepth=" + maxFeaturePathDepth + ", features=" + features
 				+ (divisionByLiteralZero ? ", divisionByLiteralZero" : "")
-				+ (invalidAggregate != null ? ", invalidAggregate=" + invalidAggregate : "") + "]";
+				+ (invalidAggregate != null ? ", invalidAggregate=" + invalidAggregate : "")
+				+ (invalidSort != null ? ", invalidSort=" + invalidSort : "") + "]";
 	}
 }
