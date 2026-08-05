@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.tck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -1907,6 +1908,79 @@ public abstract class AbstractPersistenceTCK {
 	/** The string form of a person id, matching the model's id type via {@code EcoreUtil.getID}. */
 	private String id(int value) {
 		return String.valueOf(value);
+	}
+
+	// ------------------------------------------------------- composite ids (issue #109)
+
+	/**
+	 * Whether the backend persists composite-id EClasses. The mongo backend refuses
+	 * them honestly (no compound {@code _id} yet — its bindings return {@code false}
+	 * and assert the refusal instead).
+	 */
+	protected boolean supportsCompositeIds() {
+		return true;
+	}
+
+	private EObject orderLine(String order, int line, int quantity) {
+		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
+		EObject orderLine = EcoreUtil.create(orderLineClass);
+		orderLine.eSet(orderLineClass.getEStructuralFeature("orderId"), order);
+		orderLine.eSet(orderLineClass.getEStructuralFeature("lineNo"), line);
+		orderLine.eSet(orderLineClass.getEStructuralFeature("quantity"), quantity);
+		return orderLine;
+	}
+
+	@Test
+	public void compositeIdKeyedResolutionUsesTheFragmentContract() throws Exception {
+		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
+		ResourceSet writeSet = createBackendResourceSet();
+		if (!supportsCompositeIds()) {
+			Resource resource = writeSet.createResource(uriFor("OrderLine"));
+			resource.getContents().add(orderLine("A", 1, 10));
+			assertThatThrownBy(() -> resource.save(null))
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("composite id");
+			return;
+		}
+		// two lines sharing the first key component — distinguishable only composite
+		save(writeSet, "OrderLine", orderLine("A", 1, 10), orderLine("A", 2, 20), orderLine("B", 1, 30));
+
+		ResourceSet readSet = createBackendResourceSet();
+		Resource loaded = loadAll(readSet, "OrderLine");
+		assertThat(loaded.getContents()).hasSize(3);
+
+		// the keyed-access contract (issue #109): k1=v1,k2=v2 in declaration order
+		EObject line = loaded.getEObject("orderId=A,lineNo=2");
+		assertThat(line).isNotNull();
+		assertThat(line.eGet(orderLineClass.getEStructuralFeature("quantity"))).isEqualTo(20);
+
+		// pair order in the fragment is free; the produced fragment is canonical
+		assertThat(loaded.getEObject("lineNo=1,orderId=B")).isNotNull();
+		assertThat(loaded.getURIFragment(line)).isEqualTo("orderId=A,lineNo=2");
+		assertThat(loaded.getEObject("orderId=A,lineNo=99")).isNull();
+	}
+
+	@Test
+	public void compositeIdSelectorResolvesASingleObject() throws Exception {
+		assumeTrue(supportsCompositeIds(), "composite ids pending on this backend — issue #109");
+		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
+		save(createBackendResourceSet(), "OrderLine",
+				orderLine("A", 1, 10), orderLine("A", 2, 20), orderLine("B", 1, 30));
+
+		// the selector guarantee (issue #109 variant 2): an AND over the full composite
+		// key addresses exactly one row on the primary-key path
+		Query query = QueryBuilder.from(orderLineClass)
+				.where(Expressions.and(
+						Expressions.path(orderLineClass.getEStructuralFeature("orderId")).eq("A"),
+						Expressions.path(orderLineClass.getEStructuralFeature("lineNo")).eq(2)))
+				.build();
+		ResourceSet readSet = createBackendResourceSet();
+		QueryableResource resource = (QueryableResource) readSet.createResource(uriFor("OrderLine"));
+		try (QueryResult result = resource.query(query)) {
+			assertThat(result.objects().map(line ->
+					line.eGet(orderLineClass.getEStructuralFeature("quantity"))))
+					.containsExactly(20);
+		}
 	}
 
 	@Test

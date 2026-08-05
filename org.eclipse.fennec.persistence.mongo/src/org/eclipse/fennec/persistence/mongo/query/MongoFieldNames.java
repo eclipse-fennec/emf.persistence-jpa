@@ -16,6 +16,7 @@ import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 
 /**
@@ -100,7 +101,11 @@ public final class MongoFieldNames {
 	}
 
 	private static String fieldName(EStructuralFeature feature, boolean rootLevel) {
-		if (rootLevel && feature instanceof EAttribute attribute && attribute.isID()) {
+		if (rootLevel && feature instanceof EAttribute attribute && attribute.isID()
+				&& !CompositeIds.isComposite(attribute.getEContainingClass())) {
+			// only the single id maps onto _id — with a composite id (issue #109) every
+			// component would collapse onto _id and silently mis-filter; composite
+			// classes cannot be saved on this backend anyway (see MongoResourceImpl)
 			return MongoPersistenceConstants.ID_FIELD;
 		}
 		return feature.getName();

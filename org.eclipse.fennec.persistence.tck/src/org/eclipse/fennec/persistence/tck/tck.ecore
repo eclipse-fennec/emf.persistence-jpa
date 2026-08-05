@@ -55,4 +55,11 @@
     <eLiterals name="GREEN" value="1"/>
     <eLiterals name="BLUE" value="2"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="OrderLine">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="orderId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lineNo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="quantity" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
 </ecore:EPackage>

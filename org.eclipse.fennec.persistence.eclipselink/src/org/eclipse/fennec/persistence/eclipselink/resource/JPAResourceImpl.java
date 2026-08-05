@@ -75,6 +75,8 @@ import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
+import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -83,6 +85,7 @@ import org.eclipse.persistence.annotations.BatchFetchType;
 import org.eclipse.persistence.config.HintValues;
 import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.dynamic.DynamicType;
 import org.eclipse.persistence.jpa.JpaQuery;
 import org.eclipse.persistence.queries.DatabaseQuery;
 import org.eclipse.persistence.queries.ScrollableCursor;
@@ -285,14 +288,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		EList<EObject> raw = super.getContents();
 		Set<String> existingIds = new HashSet<>();
 		for (EObject eo : raw) {
-			String id = EcoreUtil.getID(eo);
+			// composite-aware dedup key (issue #109): getID alone would collide two
+			// rows that differ only in a later id component
+			String id = CompositeIds.fragment(eo);
 			if (nonNull(id)) {
 				existingIds.add(id);
 			}
 		}
 		for (Object obj : results) {
 			if (obj instanceof EObject eo) {
-				String id = EcoreUtil.getID(eo);
+				String id = CompositeIds.fragment(eo);
 				if (nonNull(id) && !existingIds.add(id)) {
 					continue;
 				}
@@ -368,9 +373,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			em.merge(source);
 			return;
 		}
-		EAttribute idAttr = source.eClass().getEIDAttribute();
-		Object id = nonNull(idAttr) ? source.eGet(idAttr) : null;
-		if (isNull(id) || isDefaultIdValue(id)) {
+		Object id = findKey(source);
+		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
 			sanitizeNonContainmentReferences(source, original, server, em);
 			em.persist(source);
 			return;
@@ -435,6 +439,29 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
+	 * The {@code em.find}/{@code em.getReference} key of an object: the scalar id value,
+	 * or an {@code Object[]} in id-attribute (= PK-field) order for composite-id types
+	 * (issue #109); {@code null} when any component is unset.
+	 */
+	private static Object findKey(EObject source) {
+		List<EAttribute> ids = CompositeIds.idAttributes(source.eClass());
+		if (ids.isEmpty()) {
+			return null;
+		}
+		if (ids.size() == 1) {
+			return source.eGet(ids.get(0));
+		}
+		Object[] key = new Object[ids.size()];
+		for (int i = 0; i < ids.size(); i++) {
+			key[i] = source.eGet(ids.get(i));
+			if (isNull(key[i])) {
+				return null;
+			}
+		}
+		return key;
+	}
+
+	/**
 	 * Returns a JPA-managed handle for a plain (unmanaged) EObject with a persisted id,
 	 * or {@code null} when the value is already managed or carries no usable id.
 	 */
@@ -443,9 +470,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isNull(value) || value.eIsProxy() || nonNull(server.getDescriptor(value.getClass()))) {
 			return null;
 		}
-		EAttribute idAttr = value.eClass().getEIDAttribute();
-		Object id = nonNull(idAttr) ? value.eGet(idAttr) : null;
-		if (isNull(id) || isDefaultIdValue(id)) {
+		Object id = findKey(value);
+		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
 			return null;
 		}
 		try {
@@ -620,7 +646,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	@Override
 	public String getURIFragment(EObject eObject) {
-		String id = EcoreUtil.getID(eObject);
+		// composite-id types use the k1=v1,k2=v2 shape (issue #109) — EcoreUtil.getID
+		// would return only the first component and could not round-trip
+		String id = CompositeIds.fragment(eObject);
 		return nonNull(id) ? id : super.getURIFragment(eObject);
 	}
 
@@ -860,7 +888,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				return null;
 			}
 			EObject stub = EcoreUtil.create(reference.getEReferenceType());
-			EcoreUtil.setID(stub, id);
+			CompositeIds.setId(stub, id);
 			return stub;
 		};
 	}
@@ -1077,7 +1105,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * <p>
 	 * An equality predicate on the entity's ID compiles to an EclipseLink
 	 * {@code ReadObjectQuery}, which rejects the scrollable-cursor hint (issue #91) —
-	 * such plans fetch their at-most-one result eagerly instead.
+	 * such plans fetch their at-most-one result eagerly instead. The branch tests the
+	 * <em>produced</em> query type, not the predicate shape, so an AND over a full
+	 * composite key that EclipseLink's JPQL compiler also turns into a
+	 * {@code ReadObjectQuery} lands here by construction — the selector guarantee of
+	 * issue #109 (TCK: {@code compositeIdSelectorResolvesASingleObject}).
 	 */
 	private QueryResult executeCursor(JpaQueryPlan plan, Lease lease, String entityName) throws IOException {
 		EntityManager em = lease.createEntityManager();
@@ -1360,14 +1392,38 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
-	 * Converts a string ID value to the appropriate type for the descriptor's primary key.
-	 * Uses the descriptor's primary key field type to determine the correct conversion.
+	 * Converts a keyed-access fragment to the {@code em.find} key: the typed scalar for
+	 * single-id descriptors, an {@code Object[]} in primary-key-field order for the
+	 * composite {@code k1=v1,k2=v2} shape (issue #109 — the descriptor's PK fields are
+	 * collected in id-attribute declaration order by the {@code IdConfigurator}, so the
+	 * canonical fragment order and the key order coincide; EclipseLink's
+	 * {@code DynamicIdentityPolicy} accepts {@code Object[]} for multi-PK descriptors).
 	 */
 	private Object convertId(String idValue, ClassDescriptor descriptor) {
+		EClass eClass = eClassOf(descriptor);
+		boolean composite = nonNull(eClass) && CompositeIds.isComposite(eClass);
+		if (composite) {
+			if (!CompositeIds.isCompositeFragment(idValue)) {
+				throw new IllegalArgumentException("Type '" + eClass.getName()
+						+ "' has a composite id — the keyed-access fragment is k1=v1,k2=v2 (issue #109), got '"
+						+ idValue + "'");
+			}
+			List<String> parts = CompositeIds.parse(eClass, idValue);
+			List<org.eclipse.persistence.internal.helper.DatabaseField> pkFields = descriptor.getPrimaryKeyFields();
+			Object[] key = new Object[parts.size()];
+			for (int i = 0; i < parts.size(); i++) {
+				key[i] = convertScalar(parts.get(i), i < pkFields.size() ? pkFields.get(i).getType() : null);
+			}
+			return key;
+		}
 		Class<?> pkType = descriptor.getPrimaryKeyFields().stream()
 				.findFirst()
 				.map(field -> field.getType())
 				.orElse(null);
+		return convertScalar(idValue, pkType);
+	}
+
+	private static Object convertScalar(String idValue, Class<?> pkType) {
 		if (isNull(pkType)) {
 			return idValue;
 		}
@@ -1379,5 +1435,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		// Default: return as String (UUID, etc.)
 		return idValue;
+	}
+
+	/** The EClass behind a fennec dynamic descriptor ({@code EDynamicType} property). */
+	private static EClass eClassOf(ClassDescriptor descriptor) {
+		return descriptor.getProperty(DynamicType.DESCRIPTOR_PROPERTY) instanceof EDynamicType dynamicType
+				? dynamicType.getEClass()
+				: null;
 	}
 }

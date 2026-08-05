@@ -57,6 +57,12 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return false;
 	}
 
+	/** No compound {@code _id} yet — composite-id classes are refused (issue #109). */
+	@Override
+	protected boolean supportsCompositeIds() {
+		return false;
+	}
+
 	private MongoClient client;
 	private MongoDatabase database;
 	private MetadataWhiteboard metadataService;

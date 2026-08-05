@@ -25,6 +25,7 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.model.stream.ChangeEntry;
 import org.eclipse.fennec.model.stream.ChangeSet;
 import org.eclipse.fennec.model.stream.DeltaKind;
@@ -228,7 +229,8 @@ public final class ChangeTemplates {
 	 * @return the id, or {@code null} if the object carries none
 	 */
 	public static String idOf(EObject object) {
-		String id = EcoreUtil.getID(object);
+		// composite-id types yield the k1=v1,k2=v2 fragment (issue #109)
+		String id = CompositeIds.fragment(object);
 		if (id == null && object.eIsProxy()) {
 			String fragment = ((InternalEObject) object).eProxyURI().fragment();
 			if (fragment == null) {

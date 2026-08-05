@@ -54,6 +54,7 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
@@ -668,6 +669,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				throw new QueryException("Reference target type '" + targetType.getName()
 						+ "' is abstract — cannot bind by id");
 			}
+			if (CompositeIds.isComposite(targetType)) {
+				throw new QueryException("Reference target type '" + targetType.getName()
+						+ "' has a composite id — the mongo backend supports single-id classes only (issue #109)");
+			}
 			try {
 				BsonDocument existing = getCollection(targetType.getName())
 						.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(id, targetType)))
@@ -1036,6 +1041,13 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * {@link ObjectId} hex string when the String-typed EMF id attribute is unset.
 	 */
 	protected BsonValue ensureId(EObject eObject) throws IOException {
+		if (CompositeIds.isComposite(eObject.eClass())) {
+			// upserting on a first-component _id would silently overwrite rows that
+			// differ only in a later key component (issue #109) — refuse honestly
+			// until compound _id support lands
+			throw new IOException("EClass '" + eObject.eClass().getName()
+					+ "' has a composite id — the mongo backend supports single-id classes only");
+		}
 		EAttribute idAttribute = eObject.eClass().getEIDAttribute();
 		if (isNull(idAttribute)) {
 			throw new IOException("EClass '" + eObject.eClass().getName()
