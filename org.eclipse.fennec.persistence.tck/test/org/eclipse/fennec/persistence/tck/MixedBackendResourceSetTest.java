@@ -16,10 +16,11 @@ import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.UUID;
 
 import org.eclipse.emf.common.util.URI;
@@ -62,6 +63,13 @@ import jakarta.persistence.EntityManagerFactory;
  * @since 16.07.2026
  */
 class MixedBackendResourceSetTest {
+
+	static {
+		// Same doctrine as AbstractPersistenceTCK (issue #79): H2 caches the JVM zone
+		// statically at first use, and this class does not extend the abstract TCK —
+		// when it runs first in the module it must pin UTC itself.
+		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+	}
 
 	private static final String PU_NAME = "mixed";
 
@@ -123,9 +131,11 @@ class MixedBackendResourceSetTest {
 		resourceSet.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put("*", new XMIResourceFactoryImpl());
-		Resource resource = resourceSet.createResource(
-				URI.createFileURI(new File("data/tck.ecore").getAbsolutePath()));
-		resource.load(null);
+		// the TCK model ships as a resource next to the abstract TCK (issue #99)
+		Resource resource = resourceSet.createResource(URI.createURI("tck.ecore"));
+		try (InputStream stream = AbstractPersistenceTCK.class.getResourceAsStream("tck.ecore")) {
+			resource.load(stream, null);
+		}
 		EPackage ePackage = (EPackage) resource.getContents().get(0);
 		resourceSet.getPackageRegistry().put(ePackage.getNsURI(), ePackage);
 		return ePackage;

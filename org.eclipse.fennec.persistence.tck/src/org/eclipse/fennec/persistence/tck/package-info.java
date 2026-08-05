@@ -12,7 +12,14 @@
  ********************************************************************/
 /**
  * Backend-agnostic compatibility test suite (TCK) for EMF persistence backends.
- * The abstract suite and its backend bindings live in the test source folder of
- * this project; this package only anchors the bundle.
+ * <p>
+ * {@link org.eclipse.fennec.persistence.tck.AbstractPersistenceTCK} is subclass API
+ * (issue #99): a backend binding — in this workspace or an external one — extends it,
+ * implements the backend SPI hooks ({@code setUpBackend}, {@code createBackendResourceSet},
+ * {@code uriFor}) and declares its capability variance via the {@code supports*()} hooks.
+ * The TCK models ({@code tck.ecore}, {@code tck-string.ecore}) ship as resources next to
+ * the class. The in-repo JPA/Mongo bindings live in this project's test folder.
  */
+@org.osgi.annotation.bundle.Export
+@org.osgi.annotation.versioning.Version("1.0.0")
 package org.eclipse.fennec.persistence.tck;

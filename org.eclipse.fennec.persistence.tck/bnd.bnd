@@ -1,15 +1,29 @@
 Bundle-Name: Eclipse Fennec Persistence TCK
-Bundle-Description: In-repo compatibility test suite for the EMF persistence backends (test sources only, not consumable as a library)
+Bundle-Description: Compatibility test suite for EMF persistence backends — the abstract \
+	TCK and its model fixtures are consumable API for backend bindings outside this \
+	workspace (issue #99); the in-repo JPA/Mongo bindings live in the test sources
 
 -workingset: persistence
 
 -library: enableEMF
 
--includeresource: \
-	data=data
-
 -buildpath: \
-	biz.aQute.bnd.annotation;version=latest
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.annotation.bundle;version=latest,\
+	org.osgi.annotation.versioning;version=latest,\
+	junit-jupiter-api;version=latest,\
+	assertj-core,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.persistence.query.derived;version=snapshot,\
+	org.eclipse.fennec.persistence.pushstreams;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.command.model;version=snapshot,\
+	org.eclipse.fennec.stream.model;version=snapshot,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest
 
 -testpath: \
 	assertj-core,\
