@@ -36,6 +36,7 @@ import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
+import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
@@ -308,6 +309,8 @@ public final class ExpressionAnalyzer {
 			}
 		} else if (expression instanceof ParameterRef) {
 			features.add(QueryFeature.PARAMETERS);
+		} else if (expression instanceof Score) {
+			features.add(QueryFeature.SCORE);
 		} else if (expression instanceof PropertyPath propertyPath) {
 			if (propertyPath.getCastBase() != null) {
 				features.add(QueryFeature.TYPE_CAST);

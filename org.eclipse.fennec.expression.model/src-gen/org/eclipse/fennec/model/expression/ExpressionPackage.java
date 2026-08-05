@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:910334b2203b87dbd7ef416659b1dc24fc0b69c7d571cd73cea3e89b57cb27b7", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:a3c32845461b3eb676e106e122ec738385bfcbb03e7f6d33492520b264d81bee", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -832,6 +832,34 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int VARIABLE_REF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ScoreImpl <em>Score</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.ScoreImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getScore()
+	 * @generated
+	 */
+	int SCORE = 16;
+
+	/**
+	 * The number of structural features of the '<em>Score</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SCORE_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Score</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SCORE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ParameterRefImpl <em>Parameter Ref</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -839,7 +867,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getParameterRef()
 	 * @generated
 	 */
-	int PARAMETER_REF = 16;
+	int PARAMETER_REF = 17;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -876,7 +904,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getLiteral()
 	 * @generated
 	 */
-	int LITERAL = 17;
+	int LITERAL = 18;
 
 	/**
 	 * The number of structural features of the '<em>Literal</em>' class.
@@ -904,7 +932,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringLiteral()
 	 * @generated
 	 */
-	int STRING_LITERAL = 18;
+	int STRING_LITERAL = 19;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -941,7 +969,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntegerLiteral()
 	 * @generated
 	 */
-	int INTEGER_LITERAL = 19;
+	int INTEGER_LITERAL = 20;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -978,7 +1006,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getRealLiteral()
 	 * @generated
 	 */
-	int REAL_LITERAL = 20;
+	int REAL_LITERAL = 21;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1015,7 +1043,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBooleanLiteral()
 	 * @generated
 	 */
-	int BOOLEAN_LITERAL = 21;
+	int BOOLEAN_LITERAL = 22;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1052,7 +1080,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNullLiteral()
 	 * @generated
 	 */
-	int NULL_LITERAL = 22;
+	int NULL_LITERAL = 23;
 
 	/**
 	 * The number of structural features of the '<em>Null Literal</em>' class.
@@ -1080,7 +1108,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getEnumLiteral()
 	 * @generated
 	 */
-	int ENUM_LITERAL = 23;
+	int ENUM_LITERAL = 24;
 
 	/**
 	 * The feature id for the '<em><b>Literal Name</b></em>' attribute.
@@ -1117,7 +1145,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalLiteral()
 	 * @generated
 	 */
-	int TEMPORAL_LITERAL = 24;
+	int TEMPORAL_LITERAL = 25;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1163,7 +1191,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGuidLiteral()
 	 * @generated
 	 */
-	int GUID_LITERAL = 25;
+	int GUID_LITERAL = 26;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1200,7 +1228,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getDurationLiteral()
 	 * @generated
 	 */
-	int DURATION_LITERAL = 26;
+	int DURATION_LITERAL = 27;
 
 	/**
 	 * The feature id for the '<em><b>Iso8601</b></em>' attribute.
@@ -1237,7 +1265,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunction()
 	 * @generated
 	 */
-	int STRING_FUNCTION = 27;
+	int STRING_FUNCTION = 28;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1283,7 +1311,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmetic()
 	 * @generated
 	 */
-	int ARITHMETIC = 28;
+	int ARITHMETIC = 29;
 
 	/**
 	 * The feature id for the '<em><b>Operator</b></em>' attribute.
@@ -1338,7 +1366,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNegate()
 	 * @generated
 	 */
-	int NEGATE = 29;
+	int NEGATE = 30;
 
 	/**
 	 * The feature id for the '<em><b>Operand</b></em>' containment reference.
@@ -1375,7 +1403,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getConcat()
 	 * @generated
 	 */
-	int CONCAT = 30;
+	int CONCAT = 31;
 
 	/**
 	 * The feature id for the '<em><b>Parts</b></em>' containment reference list.
@@ -1412,7 +1440,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIndexOf()
 	 * @generated
 	 */
-	int INDEX_OF = 31;
+	int INDEX_OF = 32;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1458,7 +1486,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getAliasRef()
 	 * @generated
 	 */
-	int ALIAS_REF = 32;
+	int ALIAS_REF = 33;
 
 	/**
 	 * The feature id for the '<em><b>Alias</b></em>' attribute.
@@ -1495,7 +1523,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getCollectionCount()
 	 * @generated
 	 */
-	int COLLECTION_COUNT = 33;
+	int COLLECTION_COUNT = 34;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1550,7 +1578,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTypeCheck()
 	 * @generated
 	 */
-	int TYPE_CHECK = 34;
+	int TYPE_CHECK = 35;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1596,7 +1624,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION = 35;
+	int NUMERIC_FUNCTION = 36;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1642,7 +1670,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION = 36;
+	int TEMPORAL_FUNCTION = 37;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1688,7 +1716,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 37;
+	int SUBSTRING = 38;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1743,7 +1771,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 38;
+	int COMPARISON_OPERATOR = 39;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -1753,7 +1781,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 39;
+	int STRING_MATCH_KIND = 40;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -1763,7 +1791,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 40;
+	int STRING_FUNCTION_KIND = 41;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
@@ -1773,7 +1801,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION_KIND = 41;
+	int TEMPORAL_FUNCTION_KIND = 42;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -1783,7 +1811,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 42;
+	int NUMERIC_FUNCTION_KIND = 43;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -1793,7 +1821,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 43;
+	int ARITHMETIC_OPERATOR = 44;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -1803,7 +1831,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 44;
+	int TEMPORAL_KIND = 45;
 
 
 	/**
@@ -2251,6 +2279,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getVariableRef_Variable();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Score <em>Score</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Score</em>'.
+	 * @see org.eclipse.fennec.model.expression.Score
+	 * @generated
+	 */
+	EClass getScore();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.ParameterRef <em>Parameter Ref</em>}'.
@@ -3284,6 +3322,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference VARIABLE_REF__VARIABLE = eINSTANCE.getVariableRef_Variable();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ScoreImpl <em>Score</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.ScoreImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getScore()
+		 * @generated
+		 */
+		EClass SCORE = eINSTANCE.getScore();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ParameterRefImpl <em>Parameter Ref</em>}' class.

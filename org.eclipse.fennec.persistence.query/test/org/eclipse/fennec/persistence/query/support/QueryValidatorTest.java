@@ -106,6 +106,18 @@ class QueryValidatorTest {
 	}
 
 	@Test
+	void scoreRequiresTheRankingCapability() {
+		// issue #100: only ranking backends declare SCORE — everyone else refuses
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(person);
+		query.setPredicate(Expressions.score().ge(0.5));
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.WHERE_COMPARISON));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren().get(0).getMessage()).contains("SCORE");
+	}
+
+	@Test
 	void everyUnsupportedFeatureIsReported() {
 		Query query = eqQuery(42, name);
 		query.setTop(10);

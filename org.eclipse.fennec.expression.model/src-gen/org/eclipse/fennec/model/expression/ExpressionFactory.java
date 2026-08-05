@@ -152,6 +152,15 @@ public interface ExpressionFactory extends EFactory {
 	VariableRef createVariableRef();
 
 	/**
+	 * Returns a new object of class '<em>Score</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Score</em>'.
+	 * @generated
+	 */
+	Score createScore();
+
+	/**
 	 * Returns a new object of class '<em>Parameter Ref</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

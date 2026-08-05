@@ -80,6 +80,7 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.PROPERTY_PATH: return createPropertyPath();
 			case ExpressionPackage.VARIABLE: return createVariable();
 			case ExpressionPackage.VARIABLE_REF: return createVariableRef();
+			case ExpressionPackage.SCORE: return createScore();
 			case ExpressionPackage.PARAMETER_REF: return createParameterRef();
 			case ExpressionPackage.STRING_LITERAL: return createStringLiteral();
 			case ExpressionPackage.INTEGER_LITERAL: return createIntegerLiteral();
@@ -301,6 +302,17 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	public VariableRef createVariableRef() {
 		VariableRefImpl variableRef = new VariableRefImpl();
 		return variableRef;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Score createScore() {
+		ScoreImpl score = new ScoreImpl();
+		return score;
 	}
 
 	/**

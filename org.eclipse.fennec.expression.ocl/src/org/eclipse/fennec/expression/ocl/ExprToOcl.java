@@ -38,6 +38,7 @@ import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.CollectionCount;
+import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.DurationLiteral;
@@ -273,6 +274,12 @@ public final class ExprToOcl {
 				// address query-envelope output columns — OCL has no pipeline concept
 				throw new QueryException("Alias reference '" + aliasRef.getAlias()
 						+ "' has no OCL form — the bridge covers predicate expressions, not pipeline stages");
+			}
+			if (expression instanceof Score) {
+				// the second totality exception (issue #100): the relevance score is an
+				// execution-time backend value — OCL has no ranking concept
+				throw new QueryException("Score has no OCL form — relevance is a ranking-backend"
+						+ " execution value, not a model expression");
 			}
 			if (expression instanceof CollectionCount count) {
 				// plain: path->size(); filtered: path->select(v | pred)->size() (issue #81)

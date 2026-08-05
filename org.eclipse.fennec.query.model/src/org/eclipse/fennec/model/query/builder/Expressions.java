@@ -290,6 +290,18 @@ public final class Expressions {
 	}
 
 	/**
+	 * The relevance score of the row under the query's predicate (issue #100) —
+	 * comparable and arithmetic-chainable like any value step, typically used as a
+	 * sort key ({@code orderByDesc(score().toExpression())}) or computation source.
+	 * Only ranking backends declare the {@code SCORE} capability.
+	 *
+	 * @return a comparable step over the row's relevance score
+	 */
+	public static ArithmeticStep score() {
+		return new ArithmeticStep(FACTORY.createScore());
+	}
+
+	/**
 	 * @param name the parameter name
 	 * @return a first-class named parameter reference
 	 */
