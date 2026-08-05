@@ -95,6 +95,7 @@ import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
@@ -304,7 +305,9 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
 			List<WriteModel<BsonDocument>> writes = new ArrayList<>(getContents().size());
 			ReplaceOptions upsert = new ReplaceOptions().upsert(true);
-			for (EObject eObject : getContents()) {
+			// snapshot: encoding may resolve proxies, and a keyed-find resolution against
+			// this very resource attaches its result to the contents (issue #107)
+			for (EObject eObject : List.copyOf(getContents())) {
 				BsonValue id = ensureId(eObject);
 				BsonDocument document = encode(eObject);
 				document.put(MongoPersistenceConstants.ID_FIELD, id);
@@ -555,9 +558,22 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
 
-	/** Insert = the resource's save semantics over copies of the contained payload. */
+	/**
+	 * Insert = the resource's save semantics over copies of the contained payload.
+	 * Non-containment references to EXISTING targets bind by id (issue #107): verified
+	 * via keyed find and rebound as canonical proxies — without this, encode would
+	 * serialise a detached stub as its bare TYPE URI and silently lose the id.
+	 */
 	private long executeInsert(InsertCommand insert) throws IOException {
-		List<EObject> copies = new ArrayList<>(EcoreUtil.copyAll(insert.getObjects()));
+		EcoreUtil.Copier copier = new EcoreUtil.Copier();
+		List<EObject> copies = new ArrayList<>(copier.copyAll(insert.getObjects()));
+		copier.copyReferences();
+		try {
+			ChangeTemplates.bindInsertReferences(copier, referenceResolver());
+		} catch (QueryException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Insert rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Insert rejected: " + e.getMessage(), e);
+		}
 		getContents().addAll(copies);
 		try {
 			save(null);
@@ -621,7 +637,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					if (isNull(eObject)) {
 						continue;
 					}
-					ChangeTemplates.apply(update.getTemplate(), eObject);
+					ChangeTemplates.apply(update.getTemplate(), eObject, referenceResolver());
 					BsonValue id = document.get(MongoPersistenceConstants.ID_FIELD);
 					BsonDocument replacement = encode(eObject);
 					replacement.put(MongoPersistenceConstants.ID_FIELD, id);
@@ -637,6 +653,36 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update failed on collection '" + collectionName + "'", e);
 		}
+	}
+
+	/**
+	 * The Mongo {@link ReferenceResolver} (issue #107): verifies the target exists via a
+	 * keyed find in the target type's collection, then binds a canonical proxy
+	 * ({@code mongodb://<db>/<Type>#<id>}) — exactly the shape decode produces for
+	 * cross-document references, so encode writes the reference correctly.
+	 */
+	private ReferenceResolver referenceResolver() {
+		return (reference, id) -> {
+			EClass targetType = reference.getEReferenceType();
+			if (targetType.isAbstract() || targetType.isInterface()) {
+				throw new QueryException("Reference target type '" + targetType.getName()
+						+ "' is abstract — cannot bind by id");
+			}
+			try {
+				BsonDocument existing = getCollection(targetType.getName())
+						.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(id, targetType)))
+						.first();
+				if (isNull(existing)) {
+					return null;
+				}
+			} catch (RuntimeException e) {
+				throw new QueryException("Keyed find for '" + targetType.getName() + "' id '" + id
+						+ "' failed: " + e.getMessage(), e);
+			}
+			EObject proxy = EcoreUtil.create(targetType);
+			((InternalEObject) proxy).eSetProxyURI(toProxyUri(id, targetType));
+			return proxy;
+		};
 	}
 
 	/** Command selectors are plain filters — everything shape-changing is refused. */

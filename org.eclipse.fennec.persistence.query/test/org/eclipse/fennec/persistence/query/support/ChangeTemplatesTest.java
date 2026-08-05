@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -40,11 +41,16 @@ import org.junit.jupiter.api.Test;
 class ChangeTemplatesTest {
 
 	private EClass personClass;
+	private EAttribute pid;
 	private EAttribute name;
 	private EAttribute age;
 	private EAttribute nicknames;
 	private EReference friend;
+	private EReference friends;
+	private EReference home;
 	private EObject person;
+	private EObject bob;
+	private EObject carl;
 
 	@BeforeEach
 	void setUp() {
@@ -61,13 +67,28 @@ class ChangeTemplatesTest {
 		nicknames.setName("nicknames");
 		nicknames.setEType(EcorePackage.Literals.ESTRING);
 		nicknames.setUpperBound(-1);
+		pid = ecore.createEAttribute();
+		pid.setName("pid");
+		pid.setEType(EcorePackage.Literals.ESTRING);
+		pid.setID(true);
 		friend = ecore.createEReference();
 		friend.setName("friend");
 		friend.setEType(personClass);
+		friends = ecore.createEReference();
+		friends.setName("friends");
+		friends.setEType(personClass);
+		friends.setUpperBound(-1);
+		home = ecore.createEReference();
+		home.setName("home");
+		home.setEType(personClass);
+		home.setContainment(true);
+		personClass.getEStructuralFeatures().add(pid);
 		personClass.getEStructuralFeatures().add(name);
 		personClass.getEStructuralFeatures().add(age);
 		personClass.getEStructuralFeatures().add(nicknames);
 		personClass.getEStructuralFeatures().add(friend);
+		personClass.getEStructuralFeatures().add(friends);
+		personClass.getEStructuralFeatures().add(home);
 		// the dynamic EFactory needs a containing package
 		EPackage ePackage = ecore.createEPackage();
 		ePackage.setName("tck");
@@ -76,8 +97,28 @@ class ChangeTemplatesTest {
 		ePackage.getEClassifiers().add(personClass);
 
 		person = ePackage.getEFactoryInstance().create(personClass);
+		person.eSet(pid, "1");
 		person.eSet(name, "Alice");
 		person.eSet(age, 30);
+		bob = ePackage.getEFactoryInstance().create(personClass);
+		bob.eSet(pid, "2");
+		bob.eSet(name, "Bob");
+		carl = ePackage.getEFactoryInstance().create(personClass);
+		carl.eSet(pid, "3");
+		carl.eSet(name, "Carl");
+	}
+
+	/** Map-backed keyed find — the memory shape of the backend resolvers (issue #107). */
+	private ReferenceResolver resolver() {
+		Map<String, EObject> universe = Map.of("2", bob, "3", carl);
+		return (reference, id) -> universe.get(id);
+	}
+
+	private ChangeEntry refEntry(DeltaKind kind, EReference reference) {
+		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
+		entry.setKind(kind);
+		entry.setFeatureId(personClass.getFeatureID(reference));
+		return entry;
 	}
 
 	private ChangeSet template(ChangeEntry... entries) {
@@ -191,20 +232,142 @@ class ChangeTemplatesTest {
 	}
 
 	@Test
-	void referencesAndUnknownFeaturesAreRefused() {
-		ChangeEntry onReference = StreamFactory.eINSTANCE.createChangeEntry();
-		onReference.setKind(DeltaKind.SET);
-		onReference.setFeatureId(personClass.getFeatureID(friend));
-		assertThatThrownBy(() -> ChangeTemplates.validate(template(onReference), personClass))
-				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("reference");
-
+	void unknownFeaturesAreRefused() {
 		ChangeEntry unknown = StreamFactory.eINSTANCE.createChangeEntry();
 		unknown.setKind(DeltaKind.SET);
 		unknown.setFeatureId(999);
 		assertThatThrownBy(() -> ChangeTemplates.validate(template(unknown), personClass))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("Unknown feature id");
+	}
+
+	@Test
+	void referenceSetBindsTheResolvedTarget() throws QueryException {
+		// reference values are target ids, resolved via the keyed-find contract (issue #107)
+		ChangeEntry set = refEntry(DeltaKind.SET, friend);
+		set.setValueNew("2");
+		ChangeTemplates.validate(template(set), personClass);
+		ChangeTemplates.apply(template(set), person, resolver());
+		assertThat(person.eGet(friend)).isSameAs(bob);
+
+		// a null valueNew clears without touching the resolver
+		ChangeEntry clear = refEntry(DeltaKind.SET, friend);
+		ChangeTemplates.apply(template(clear), person, resolver());
+		assertThat(person.eGet(friend)).isNull();
+	}
+
+	@Test
+	void referenceSetWithDanglingTargetIsRefused() {
+		ChangeEntry set = refEntry(DeltaKind.SET, friend);
+		set.setValueNew("99");
+		assertThatThrownBy(() -> ChangeTemplates.apply(template(set), person, resolver()))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("no Person with id '99'");
+	}
+
+	@Test
+	void referenceUnsetClears() throws QueryException {
+		person.eSet(friend, bob);
+		ChangeTemplates.apply(template(refEntry(DeltaKind.UNSET, friend)), person, resolver());
+		assertThat(person.eGet(friend)).isNull();
+	}
+
+	@Test
+	void manyReferenceAddsAndRemovesById() throws QueryException {
+		ChangeEntry add = refEntry(DeltaKind.ADD, friends);
+		add.setValueNew("2");
+		ChangeEntry addMore = refEntry(DeltaKind.ADD, friends);
+		addMore.setValueNew("3");
+		ChangeTemplates.apply(template(add, addMore), person, resolver());
+		assertThat(person.eGet(friends)).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+				.containsExactly(bob, carl);
+
+		// REMOVE is by id identity, never by index (issue #107)
+		ChangeEntry remove = refEntry(DeltaKind.REMOVE, friends);
+		remove.setValueOld("2");
+		ChangeTemplates.apply(template(remove), person, resolver());
+		assertThat(person.eGet(friends)).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+				.containsExactly(carl);
+
+		ChangeEntry missing = refEntry(DeltaKind.REMOVE, friends);
+		missing.setValueOld("2");
+		assertThatThrownBy(() -> ChangeTemplates.apply(template(missing), person, resolver()))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("no member with id '2'");
+
+		ChangeEntry byIndex = refEntry(DeltaKind.REMOVE, friends);
+		byIndex.setIndex(0);
+		assertThatThrownBy(() -> ChangeTemplates.apply(template(byIndex), person, resolver()))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("by id");
+	}
+
+	@Test
+	void containmentAndMoveOnReferencesStayRefused() {
+		ChangeEntry containment = refEntry(DeltaKind.SET, home);
+		containment.setValueNew("2");
+		assertThatThrownBy(() -> ChangeTemplates.validate(template(containment), personClass))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("containment");
+
+		ChangeEntry move = refEntry(DeltaKind.MOVE, friends);
+		move.setIndex(0);
+		move.setToIndex(1);
+		assertThatThrownBy(() -> ChangeTemplates.validate(template(move), personClass))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("MOVE");
+	}
+
+	@Test
+	void insertBindingResolvesExternalTargetsAndKeepsPayloadInternalOnes() throws QueryException {
+		// alice's friend is EXTERNAL (bob, exists), friends mixes a payload pal and carl
+		EObject pal = person.eClass().getEPackage().getEFactoryInstance().create(personClass);
+		pal.eSet(pid, "11");
+		person.eSet(friend, bob);
+		((List<Object>) person.eGet(friends)).add(pal);
+		((List<Object>) person.eGet(friends)).add(carl);
+
+		org.eclipse.emf.ecore.util.EcoreUtil.Copier copier = new org.eclipse.emf.ecore.util.EcoreUtil.Copier();
+		List<EObject> copies = new java.util.ArrayList<>(copier.copyAll(List.of(person, pal)));
+		copier.copyReferences();
+		ChangeTemplates.bindInsertReferences(copier, resolver());
+
+		EObject personCopy = copies.get(0);
+		assertThat(personCopy.eGet(friend)).as("external single ref binds the resolved target").isSameAs(bob);
+		assertThat(personCopy.eGet(friends)).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
+				.as("payload-internal member stays the copy, external member resolves")
+				.containsExactly(copier.get(pal), carl);
+	}
+
+	@Test
+	void insertBindingRefusesDanglingAndIdLessTargets() {
+		EObject stub = person.eClass().getEPackage().getEFactoryInstance().create(personClass);
+		stub.eSet(pid, "99");
+		person.eSet(friend, stub);
+		org.eclipse.emf.ecore.util.EcoreUtil.Copier dangling = new org.eclipse.emf.ecore.util.EcoreUtil.Copier();
+		dangling.copyAll(List.of(person));
+		dangling.copyReferences();
+		assertThatThrownBy(() -> ChangeTemplates.bindInsertReferences(dangling, resolver()))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("no Person with id '99'");
+
+		EObject idLess = person.eClass().getEPackage().getEFactoryInstance().create(personClass);
+		person.eSet(friend, idLess);
+		org.eclipse.emf.ecore.util.EcoreUtil.Copier noId = new org.eclipse.emf.ecore.util.EcoreUtil.Copier();
+		noId.copyAll(List.of(person));
+		noId.copyReferences();
+		assertThatThrownBy(() -> ChangeTemplates.bindInsertReferences(noId, resolver()))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("carries no id");
+	}
+
+	@Test
+	void referenceEntriesWithoutResolverAreRefused() {
+		ChangeEntry set = refEntry(DeltaKind.SET, friend);
+		set.setValueNew("2");
+		assertThatThrownBy(() -> ChangeTemplates.apply(template(set), person))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("ReferenceResolver");
 	}
 
 	@Test

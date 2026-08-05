@@ -1779,11 +1779,11 @@ public abstract class AbstractPersistenceTCK {
 				.isInstanceOf(IOException.class)
 				.hasMessageContaining("Unsupported template kind");
 
-		// reference patching is not part of the v1 engine
-		ChangeEntry onReference = changeEntry(DeltaKind.SET, personAddresses);
-		assertThatThrownBy(() -> resource.execute(updateCommand(all, onReference)))
+		// containment references are object lifecycle, not patchable state (issue #107)
+		ChangeEntry onContainment = changeEntry(DeltaKind.SET, personAddresses);
+		assertThatThrownBy(() -> resource.execute(updateCommand(all, onContainment)))
 				.isInstanceOf(IOException.class)
-				.hasMessageContaining("reference");
+				.hasMessageContaining("containment");
 
 		// an empty template patches nothing — refused, not a silent no-op
 		assertThatThrownBy(() -> resource.execute(updateCommand(all)))
@@ -1793,6 +1793,120 @@ public abstract class AbstractPersistenceTCK {
 		// nothing may have been changed by the refused commands
 		Resource loaded = loadAll(createBackendResourceSet(), "Person");
 		assertThat(loaded.getContents()).hasSize(3);
+	}
+
+	@Test
+	public void commandUpdateSetsAndUnsetsSingleReferencesById() throws Exception {
+		saveQueryFixture();
+		// OData link semantics (issue #107): SET binds the target resolved by id
+		ChangeEntry link = changeEntry(DeltaKind.SET, personBestFriend);
+		link.setValueNew(id(1));
+		long affected = commands(createBackendResourceSet()).execute(updateCommand(
+				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
+				link));
+		assertThat(affected).isEqualTo(1);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject bob = findById(loadAll(readSet, "Person"), "2");
+		EObject bestFriend = resolved((EObject) bob.eGet(personBestFriend), readSet);
+		assertThat(bestFriend.eGet(personName)).isEqualTo("Alice");
+
+		// unlink = UNSET
+		long cleared = commands(createBackendResourceSet()).execute(updateCommand(
+				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
+				changeEntry(DeltaKind.UNSET, personBestFriend)));
+		assertThat(cleared).isEqualTo(1);
+		EObject reloaded = findById(loadAll(createBackendResourceSet(), "Person"), "2");
+		assertThat(reloaded.eGet(personBestFriend)).isNull();
+
+		// dangling target → refusal, not a silent null bind
+		ChangeEntry dangling = changeEntry(DeltaKind.SET, personBestFriend);
+		dangling.setValueNew("99");
+		CommandResource resource = commands(createBackendResourceSet());
+		UpdateCommand broken = updateCommand(
+				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
+				dangling);
+		assertThatThrownBy(() -> resource.execute(broken))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("99");
+	}
+
+	@Test
+	public void commandUpdateAddsAndRemovesManyReferenceMembersById() throws Exception {
+		saveQueryFixture();
+		ChangeEntry addAlice = changeEntry(DeltaKind.ADD, personFriends);
+		addAlice.setValueNew(id(1));
+		ChangeEntry addCarol = changeEntry(DeltaKind.ADD, personFriends);
+		addCarol.setValueNew(id(3));
+		long added = commands(createBackendResourceSet()).execute(updateCommand(
+				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
+				addAlice, addCarol));
+		assertThat(added).isEqualTo(1);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject bob = findById(loadAll(readSet, "Person"), "2");
+		// membership, not order — JPA join tables carry no order column
+		assertThat(listOf(bob, personFriends).stream()
+				.map(friend -> resolved(friend, readSet).eGet(personName)))
+				.containsExactlyInAnyOrder("Alice", "Carol");
+
+		// REMOVE is by member id (valueOld), robust against reordering (issue #107)
+		ChangeEntry removeAlice = changeEntry(DeltaKind.REMOVE, personFriends);
+		removeAlice.setValueOld(id(1));
+		long removed = commands(createBackendResourceSet()).execute(updateCommand(
+				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
+				removeAlice));
+		assertThat(removed).isEqualTo(1);
+
+		ResourceSet verifySet = createBackendResourceSet();
+		EObject reloaded = findById(loadAll(verifySet, "Person"), "2");
+		assertThat(listOf(reloaded, personFriends).stream()
+				.map(friend -> resolved(friend, verifySet).eGet(personName)))
+				.containsExactly("Carol");
+	}
+
+	@Test
+	public void commandInsertBindsExistingReferenceTargetsById() throws Exception {
+		// existing world: Alice (Person) and a company
+		EObject company = newCompany(21, "Data In Motion");
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource companyResource = writeSet.createResource(uriFor("Company"));
+		companyResource.getContents().add(company);
+		companyResource.save(null);
+		save(writeSet, "Person", newPerson(1, "Alice", 30));
+
+		// the insert payload references BOTH by detached id-stubs (@odata.bind shape);
+		// employer is bidirectional — exactly what the EMF copier would drop (issue #107)
+		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBestFriend, newPerson(1, "ignored", 0));
+		bob.eSet(personEmployer, newCompany(21, "ignored"));
+		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
+		insert.getObjects().add(bob);
+		long affected = commands(createBackendResourceSet()).execute(insert);
+		assertThat(affected).isEqualTo(1);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject loaded = findById(loadAll(readSet, "Person"), "2");
+		assertThat(resolved((EObject) loaded.eGet(personBestFriend), readSet).eGet(personName))
+				.isEqualTo("Alice");
+		assertThat(resolved((EObject) loaded.eGet(personEmployer), readSet).eGet(companyName))
+				.isEqualTo("Data In Motion");
+
+		// a dangling stub refuses the whole insert
+		EObject dave = newPerson(4, "Dave", 25);
+		dave.eSet(personBestFriend, newPerson(99, "nope", 0));
+		InsertCommand broken = CommandFactory.eINSTANCE.createInsertCommand();
+		broken.getObjects().add(dave);
+		CommandResource resource = commands(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.execute(broken))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("99");
+		assertThat(findById(loadAll(createBackendResourceSet(), "Person"), "4")).isNull();
+	}
+
+	/** The string form of a person id, matching the model's id type via {@code EcoreUtil.getID}. */
+	private String id(int value) {
+		return String.valueOf(value);
 	}
 
 	@Test

@@ -70,6 +70,7 @@ import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
+import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
@@ -728,9 +729,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
 
-	/** Insert = the resource's save semantics over copies of the contained payload. */
+	/**
+	 * Insert = the resource's save semantics over copies of the contained payload.
+	 * Non-containment references to EXISTING targets bind by id (issue #107): verified
+	 * via keyed find, rebound on the copies — including the bidirectional references
+	 * the EMF copier drops; unknown or id-less targets refuse.
+	 */
 	private long executeInsert(InsertCommand insert) throws IOException {
-		List<EObject> copies = new ArrayList<>(EcoreUtil.copyAll(insert.getObjects()));
+		EcoreUtil.Copier copier = new EcoreUtil.Copier();
+		List<EObject> copies = new ArrayList<>(copier.copyAll(insert.getObjects()));
+		copier.copyReferences();
+		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
+			ChangeTemplates.bindInsertReferences(copier, insertBindingResolver(em));
+		} catch (QueryException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Insert rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Insert rejected: " + e.getMessage(), e);
+		}
 		getContents().addAll(copies);
 		try {
 			save(null);
@@ -797,23 +811,76 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				jakarta.persistence.Query select = em.createQuery(plan.jpql());
 				plan.parameters().forEach(select::setParameter);
 				List<?> matches = select.getResultList();
+				ReferenceResolver resolver = referenceResolver(em);
 				long applied = 0;
 				for (Object match : matches) {
 					if (match instanceof EObject eObject) {
-						ChangeTemplates.apply(update.getTemplate(), eObject);
+						ChangeTemplates.apply(update.getTemplate(), eObject, resolver);
 						applied++;
 					}
 				}
 				em.getTransaction().commit();
+				if (applied > 0 && hasReferenceEntries(update.getTemplate(), update.getSelector().getFrom())) {
+					// the accessor's collection writes accumulate by design (AP-47 proxy
+					// rebuild paths), so member REMOVALS can never reach the shared-cache
+					// original — and invalidation alone refreshes IN PLACE through the
+					// same accumulating accessor. Drop the cached instances entirely; the
+					// next read builds fresh objects from the database.
+					getServer().getIdentityMapAccessor().initializeIdentityMap(matches.get(0).getClass());
+				}
 				return applied;
 			} catch (QueryException | RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
 				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
-				throw new IOException("Update failed for selector on '" + plan.jpql() + "'", e);
+				throw new IOException("Update failed for selector on '" + plan.jpql() + "': "
+						+ e.getMessage(), e);
 			}
 		}
+	}
+
+	/** Whether any template entry addresses an {@link EReference} of the type (issue #107). */
+	private static boolean hasReferenceEntries(org.eclipse.fennec.model.stream.ChangeSet template, EClass type) {
+		return template.getEntries().stream()
+				.anyMatch(entry -> type.getEStructuralFeature(entry.getFeatureId()) instanceof EReference);
+	}
+
+	/**
+	 * The insert-binding variant of the resolver (issue #107): verifies existence via
+	 * the keyed find, but binds a <em>plain</em> id stub instead of the found entity —
+	 * a detached EclipseLink instance would be class-detected as "already managed" by
+	 * the save pipeline's sanitizing pass and cascade-inserted as a duplicate, while a
+	 * plain stub with a usable id takes the {@code em.getReference} FK path.
+	 */
+	private ReferenceResolver insertBindingResolver(EntityManager em) {
+		ReferenceResolver managed = referenceResolver(em);
+		return (reference, id) -> {
+			if (isNull(managed.resolve(reference, id))) {
+				return null;
+			}
+			EObject stub = EcoreUtil.create(reference.getEReferenceType());
+			EcoreUtil.setID(stub, id);
+			return stub;
+		};
+	}
+
+	/**
+	 * The JPA {@link ReferenceResolver} (issue #107): a keyed find in the command's own
+	 * {@link EntityManager}, so the bound target is managed and EclipseLink's change
+	 * detection persists the FK on commit.
+	 */
+	private ReferenceResolver referenceResolver(EntityManager em) {
+		return (reference, id) -> {
+			String targetType = reference.getEReferenceType().getName();
+			ClassDescriptor descriptor = getDescriptor(targetType);
+			if (isNull(descriptor)) {
+				throw new QueryException("Reference target type '" + targetType
+						+ "' is not a known entity of this unit");
+			}
+			Object found = em.find(descriptor.getJavaClass(), convertId(id, descriptor));
+			return found instanceof EObject eObject ? eObject : null;
+		};
 	}
 
 	private void removeChildrenFirst(EntityManager em, EObject object) {
