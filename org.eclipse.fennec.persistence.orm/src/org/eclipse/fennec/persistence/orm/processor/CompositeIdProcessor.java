@@ -93,7 +93,14 @@ public class CompositeIdProcessor {
     
     /**
      * Creates multiple ID mappings for EmbeddedId strategy.
-     * 
+     * <p>
+     * Composite-key components never receive a <em>default</em> generation strategy
+     * (issue #111): generating the halves of a composite key independently — one UUID
+     * or sequence per PK column — is not a meaningful identity. Composite keys are
+     * natural/assigned keys; if generation is ever wanted for a component, it must be
+     * an explicit eorm declaration, not a derived default. Unset components surface as
+     * NOT-NULL violations at save.
+     *
      * TODO: This needs EORM model support for @EmbeddedId
      * For now, we'll create individual @Id mappings as a temporary solution.
      */
@@ -104,14 +111,10 @@ public class CompositeIdProcessor {
             .map(attr -> {
                 Id id = EORMFactory.eINSTANCE.createId();
                 MappingHelper.createBase(id, attr, strict, context);
-                
+
                 // Note: In a full implementation, these would be part of an @EmbeddedId
                 // but for now we create separate @Id mappings
-                
-                if (!strict) {
-                    addGenerationStrategy(id, attr);
-                }
-                
+
                 LOG.log(Level.FINER, "Created ID mapping: {0} ({1})",
                     new Object[]{id.getName(), attr.getEAttributeType().getName()});
 
@@ -150,12 +153,10 @@ public class CompositeIdProcessor {
                 id.setColumn(column);
                 
                 // Note: In a full implementation, this would use @IdClass annotation
-                // but for now we create flattened @Id mappings
-                
-                if (!strict) {
-                    addGenerationStrategyForType(id, attr.getEAttributeType().getInstanceClass());
-                }
-                
+                // but for now we create flattened @Id mappings. Like EMBEDDED_ID
+                // components, IdClass components never get a default generation
+                // strategy (issue #111).
+
                 LOG.log(Level.FINER, "Created flattened ID mapping: {0} -> {1}",
                     new Object[]{flattenedName, attr.getName()});
 

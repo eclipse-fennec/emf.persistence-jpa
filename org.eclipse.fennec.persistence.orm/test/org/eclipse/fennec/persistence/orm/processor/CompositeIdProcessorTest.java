@@ -145,7 +145,10 @@ public class CompositeIdProcessorTest {
 		}
 
 		@Test
-		void testEmbeddedIdGenerationStrategies() {
+		void testEmbeddedIdComponentsGetNoDefaultGeneration() {
+			// issue #111: generating the halves of a composite key independently is
+			// not a meaningful identity — composite keys are natural/assigned keys,
+			// generation must be an explicit eorm declaration
 			EClass eClass = createEClass("MixedPK");
 			addIdAttribute(eClass, "strId", EcorePackage.Literals.ESTRING);
 			addIdAttribute(eClass, "numId", EcorePackage.Literals.ELONG_OBJECT);
@@ -153,15 +156,11 @@ public class CompositeIdProcessorTest {
 			CompositeIdProcessor processor = new CompositeIdProcessor(false);
 			List<Id> ids = processor.createIds(eClass, context);
 
-			Id strId = ids.stream().filter(id -> "strId".equals(id.getName())).findFirst().orElseThrow();
-			Id numId = ids.stream().filter(id -> "numId".equals(id.getName())).findFirst().orElseThrow();
-
-			// String → UUID
-			assertThat(strId.getGeneratedValue()).isNotNull();
-			assertThat(strId.getGeneratedValue().getStrategy()).isEqualTo(GenerationType.UUID);
-
-			// Long → Sequence
-			assertThat(numId.getSequenceGenerator()).isNotNull();
+			assertThat(ids).hasSize(2);
+			for (Id id : ids) {
+				assertThat(id.getGeneratedValue()).as("no default generation on '%s'", id.getName()).isNull();
+				assertThat(id.getSequenceGenerator()).as("no default sequence on '%s'", id.getName()).isNull();
+			}
 		}
 	}
 
