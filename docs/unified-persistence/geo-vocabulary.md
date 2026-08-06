@@ -106,5 +106,26 @@ the differential corpus (memory vs. Mongo) applies, and the TCK pins the numbers
    binding is defined with the Mongo work in G-P2 (GeoJSON point) — until then the
    reference engine refuses packed subjects with a precise message.
 2. **G-P2** — Mongo `2dsphere` translation + differential corpus memory vs. Mongo.
+   Implemented 2026-08-06 (issue #113):
+   - **Canonical PACKED value shape**: a GeoJSON-style point — an EObject whose EClass
+     exposes a many-valued numeric `coordinates` feature in `[lon, lat]` order (plus an
+     optional `type` string, `"Point"`). Stored form in Mongo:
+     `{type: "Point", coordinates: [lon, lat]}` — exactly what a `2dsphere` index accepts;
+     `org.geojson.model` (fennec.common.models) is a compatible producer, not a
+     dependency. A packed value of any other shape is the packed analogue of a null
+     coordinate: UNKNOWN under §5.5. The memory reference reads the same shape and
+     dropped its packed refusal.
+   - **Mongo translation**: planar shapes go against the `<point>.coordinates` legacy
+     pair to keep the §5.3 planar box/polygon semantics of the reference engine —
+     `GeoWithin(box)` → `$geoWithin $box` (wrap-around boxes split into an `$or` of two),
+     `GeoWithin(polygon)` → `$geoWithin $polygon`; `GeoDistance ≤/<` → `$geoWithin
+     $centerSphere` (radians over the §5.4 mean earth radius — same great-circle math as
+     the haversine reference). Split subjects: boxes become plain range filters (wrap →
+     `$or`), distance computes via `$expr` haversine (`$degreesToRadians`/`$atan2`).
+     Negations carry explicit non-null guards (§5.5, issue-#97 discipline). Refused with
+     precise messages: polygon over a split subject (no index form, ray-casting is not
+     expressible in `$expr` without unrolling), distance `EQ`/`NE` (measure-zero
+     comparisons on a continuum). `$geoNear` nearest-first recognition remains an open
+     optimisation.
 3. **G-P3** — Lucene translation (in `emf.search`, against the published vocabulary).
 4. **G-P4** — PostGIS dialect for JPA (own issue, own concept note).

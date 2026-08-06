@@ -42,6 +42,8 @@ import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
 import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
@@ -158,7 +160,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 					QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY, QueryFeature.PIPELINE,
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
-					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED)
+					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
+					QueryFeature.GEO_WITHIN, QueryFeature.GEO_DISTANCE)
 			.maxFeaturePathDepth(-1)
 			.build();
 
@@ -283,6 +286,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 			// against the codec type discriminator, config-driven (issue #88)
 			return MongoTypePredicates.typeCheck(typeCheck, codecResolver(context));
 		}
+		if (expression instanceof GeoWithin geoWithin) {
+			return MongoGeoPredicates.geoWithin(geoWithin, false);
+		}
 		throw new QueryException("Unsupported predicate " + expression.eClass().getName()
 				+ " for the mongo backend");
 	}
@@ -297,6 +303,16 @@ public class MongoQueryProcessor implements QueryProcessor {
 			throws QueryException {
 		boolean rightIsValue = comparison.getRight() instanceof Literal
 				|| comparison.getRight() instanceof ParameterRef;
+		if (comparison.getLeft() instanceof GeoDistance distance && rightIsValue) {
+			return MongoGeoPredicates.geoDistance(distance, operator,
+					value(comparison.getRight(), null, context));
+		}
+		if (comparison.getRight() instanceof GeoDistance distance
+				&& (comparison.getLeft() instanceof Literal || comparison.getLeft() instanceof ParameterRef)) {
+			// r <op> distance ≡ distance <mirrored op> r
+			return MongoGeoPredicates.geoDistance(distance, mirrored(operator),
+					value(comparison.getLeft(), null, context));
+		}
 		if (comparison.getLeft() instanceof AliasRef aliasRef && rightIsValue) {
 			// pipeline output columns are plain top-level fields after the flatten
 			Object bound = value(comparison.getRight(), null, context);
@@ -395,6 +411,11 @@ public class MongoQueryProcessor implements QueryProcessor {
 			// the discriminator is always present — the two-valued complement is exact
 			return Filters.nor(MongoTypePredicates.typeCheck(typeCheck, codecResolver(context)));
 		}
+		if (expression instanceof GeoWithin geoWithin) {
+			// $geoWithin excludes missing coordinates natively; the negated form adds
+			// explicit guards so an UNKNOWN subject stays excluded (§5.5)
+			return MongoGeoPredicates.geoWithin(geoWithin, true);
+		}
 		throw new QueryException("Unsupported negated predicate " + expression.eClass().getName()
 				+ " for the mongo backend");
 	}
@@ -407,6 +428,17 @@ public class MongoQueryProcessor implements QueryProcessor {
 		case LE -> ComparisonOperator.GT;
 		case GT -> ComparisonOperator.LE;
 		case GE -> ComparisonOperator.LT;
+		};
+	}
+
+	/** Operand-swap mirror: {@code r <op> x ≡ x <mirror(op)> r}. */
+	private static ComparisonOperator mirrored(ComparisonOperator operator) {
+		return switch (operator) {
+		case LT -> ComparisonOperator.GT;
+		case LE -> ComparisonOperator.GE;
+		case GT -> ComparisonOperator.LT;
+		case GE -> ComparisonOperator.LE;
+		default -> operator;
 		};
 	}
 

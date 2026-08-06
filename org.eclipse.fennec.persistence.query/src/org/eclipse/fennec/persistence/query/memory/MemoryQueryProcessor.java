@@ -121,22 +121,6 @@ public class MemoryQueryProcessor implements QueryProcessor {
 		return CAPABILITIES;
 	}
 
-	/**
-	 * The reference engine serves the SPLIT coordinate binding; the PACKED binding's
-	 * canonical value shape is defined with the Mongo translation (issue #101, G-P2) —
-	 * until then it is refused with a precise message instead of guessing a value form.
-	 */
-	private static void refusePackedGeoSubjects(Query query) throws QueryException {
-		var iterator = query.eAllContents();
-		while (iterator.hasNext()) {
-			if (iterator.next() instanceof GeoSubject subject && subject.getPathPoint() != null) {
-				throw new QueryException("Packed geo subjects (pathPoint) are not supported by the"
-						+ " memory engine yet — their canonical value shape is defined with the"
-						+ " Mongo translation (issue #101, G-P2); use the lat/lon pair binding");
-			}
-		}
-	}
-
 	@Override
 	public Diagnostic validate(Query query, EClass rootEClass) {
 		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
@@ -151,7 +135,6 @@ public class MemoryQueryProcessor implements QueryProcessor {
 		if (query.getApply() != null && !query.getSelect().isEmpty()) {
 			throw new QueryException("select and apply are mutually exclusive — aggregation defines its own columns");
 		}
-		refusePackedGeoSubjects(query);
 		Resolution resolution = new Resolution(context);
 		resolution.walk(query.getPredicate(), Set.of());
 
@@ -281,6 +264,9 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (subject.getPathLon() != null) {
 				path(subject.getPathLon(), scope);
+			}
+			if (subject.getPathPoint() != null) {
+				path(subject.getPathPoint(), scope);
 			}
 		}
 

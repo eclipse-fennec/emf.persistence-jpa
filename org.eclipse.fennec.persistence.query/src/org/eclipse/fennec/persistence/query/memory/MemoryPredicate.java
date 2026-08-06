@@ -363,11 +363,17 @@ final class MemoryPredicate {
 
 	/**
 	 * The subject's position as {@code [lon, lat]}, or {@code null} when a coordinate
-	 * is null/non-numeric (→ UNKNOWN). Packed subjects are refused at translation
-	 * (G-P2 defines their canonical value shape) — only the split binding reaches here.
+	 * is null/non-numeric (→ UNKNOWN). Packed subjects carry the canonical GeoJSON
+	 * point shape (issue #113, G-P2).
 	 */
 	private double[] position(GeoSubject subject, EObject candidate, Map<Variable, Object> bindings) {
-		if (subject == null || subject.getPathLat() == null || subject.getPathLon() == null) {
+		if (subject == null) {
+			return null;
+		}
+		if (subject.getPathPoint() != null) {
+			return packedPosition(pathValue(subject.getPathPoint(), candidate, bindings));
+		}
+		if (subject.getPathLat() == null || subject.getPathLon() == null) {
 			return null;
 		}
 		Object lat = pathValue(subject.getPathLat(), candidate, bindings);
@@ -376,6 +382,27 @@ final class MemoryPredicate {
 			return null;
 		}
 		return new double[] { longitude.doubleValue(), latitude.doubleValue() };
+	}
+
+	/**
+	 * Reads the canonical PACKED value shape (issue #113, G-P2): a GeoJSON-style point,
+	 * i.e. an EObject exposing a many-valued numeric {@code coordinates} feature in
+	 * {@code [lon, lat]} order. Any other value is UNKNOWN — the packed analogue of a
+	 * null coordinate.
+	 */
+	private static double[] packedPosition(Object value) {
+		if (!(value instanceof EObject point)) {
+			return null;
+		}
+		EStructuralFeature coordinates = point.eClass().getEStructuralFeature("coordinates");
+		if (coordinates == null || !coordinates.isMany()
+				|| !(point.eGet(coordinates) instanceof List<?> components) || components.size() < 2) {
+			return null;
+		}
+		if (components.get(0) instanceof Number lon && components.get(1) instanceof Number lat) {
+			return new double[] { lon.doubleValue(), lat.doubleValue() };
+		}
+		return null;
 	}
 
 	private static boolean contains(GeoShape shape, double lon, double lat) {

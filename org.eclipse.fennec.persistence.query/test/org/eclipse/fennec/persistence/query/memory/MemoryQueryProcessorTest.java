@@ -71,6 +71,9 @@ class MemoryQueryProcessorTest {
 	private EAttribute personHired;
 	private EAttribute lat;
 	private EAttribute lon;
+	private EClass geoPointClass;
+	private EAttribute geoPointCoordinates;
+	private EReference personLocation;
 	private EEnum colorEnum;
 	private EAttribute personFavoriteColor;
 	private EReference personAddresses;
@@ -118,6 +121,22 @@ class MemoryQueryProcessorTest {
 		lon = ecore.createEAttribute();
 		lon.setName("lon");
 		lon.setEType(EcorePackage.Literals.EDOUBLE_OBJECT);
+		// canonical PACKED shape (issue #113, G-P2): GeoJSON-style point
+		geoPointClass = ecore.createEClass();
+		geoPointClass.setName("GeoPoint");
+		EAttribute geoPointType = ecore.createEAttribute();
+		geoPointType.setName("type");
+		geoPointType.setEType(EcorePackage.Literals.ESTRING);
+		geoPointClass.getEStructuralFeatures().add(geoPointType);
+		geoPointCoordinates = ecore.createEAttribute();
+		geoPointCoordinates.setName("coordinates");
+		geoPointCoordinates.setEType(EcorePackage.Literals.EDOUBLE_OBJECT);
+		geoPointCoordinates.setUpperBound(-1);
+		geoPointClass.getEStructuralFeatures().add(geoPointCoordinates);
+		personLocation = ecore.createEReference();
+		personLocation.setName("location");
+		personLocation.setEType(geoPointClass);
+		personLocation.setContainment(true);
 		colorEnum = ecore.createEEnum();
 		colorEnum.setName("Color");
 		// RED first — the first literal is the dynamic-EMF default for unset values
@@ -146,6 +165,7 @@ class MemoryQueryProcessorTest {
 		personClass.getEStructuralFeatures().add(personFavoriteColor);
 		personClass.getEStructuralFeatures().add(lat);
 		personClass.getEStructuralFeatures().add(lon);
+		personClass.getEStructuralFeatures().add(personLocation);
 		personClass.getEStructuralFeatures().add(personAddresses);
 
 		ePackage = ecore.createEPackage();
@@ -154,6 +174,7 @@ class MemoryQueryProcessorTest {
 		ePackage.setNsPrefix("memtest");
 		ePackage.getEClassifiers().add(addressClass);
 		ePackage.getEClassifiers().add(personClass);
+		ePackage.getEClassifiers().add(geoPointClass);
 		ePackage.getEClassifiers().add(colorEnum);
 
 		// the TCK query fixture: Alice 30, Bob 40 with two addresses, Carol 50 —
@@ -166,6 +187,7 @@ class MemoryQueryProcessorTest {
 		alice.eSet(personFavoriteColor, green.getInstance());
 		alice.eSet(lat, 50.927d); // Jena
 		alice.eSet(lon, 11.586d);
+		location(alice, 11.586d, 50.927d);
 		persons.add(alice);
 		EObject bob = person("Bob", 40);
 		address(bob, "Main Street 5");
@@ -175,6 +197,7 @@ class MemoryQueryProcessorTest {
 		bob.eSet(personRank, 1);
 		bob.eSet(lat, 50.880d); // Gera
 		bob.eSet(lon, 12.083d);
+		location(bob, 12.083d, 50.880d);
 		persons.add(bob);
 		EObject carol = person("Carol", 50);
 		carol.eSet(personScore, 12.5d);
@@ -187,6 +210,14 @@ class MemoryQueryProcessorTest {
 		person.eSet(personName, name);
 		person.eSet(personAge, age);
 		return person;
+	}
+
+	@SuppressWarnings("unchecked")
+	private void location(EObject person, double lonValue, double latValue) {
+		EObject point = ePackage.getEFactoryInstance().create(geoPointClass);
+		point.eSet(geoPointClass.getEStructuralFeature("type"), "Point");
+		((List<Double>) point.eGet(geoPointCoordinates)).addAll(List.of(lonValue, latValue));
+		person.eSet(personLocation, point);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -403,15 +434,39 @@ class MemoryQueryProcessorTest {
 	}
 
 	@Test
-	void geoPackedSubjectIsRefusedByTheMemoryEngine() {
+	void geoPackedSubjectEvaluatesTheCanonicalPointShape() throws QueryException {
+		// canonical PACKED shape (issue #113): GeoJSON point, coordinates [lon, lat];
+		// Carol has no location — UNKNOWN excludes her from match and negation alike
 		Query packed = QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(personLocation)),
+						Expressions.geoBox(Expressions.geoPoint(11.0, 50.5), Expressions.geoPoint(12.0, 51.5))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(packed, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		Query notPacked = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(personLocation)),
+						Expressions.geoBox(Expressions.geoPoint(11.0, 50.5), Expressions.geoPoint(12.0, 51.5)))))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(notPacked, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
+	void geoPackedSubjectWithMalformedValueShapeIsUnknown() throws QueryException {
+		// a packed path addressing a non-point value (a Double attribute) is the packed
+		// analogue of a null coordinate: UNKNOWN, never a match
+		Query malformed = QueryBuilder.from(personClass)
 				.where(Expressions.geoWithin(
 						Expressions.geoSubject(Expressions.propertyPath(lat)),
 						Expressions.geoBox(Expressions.geoPoint(10.0, 50.0), Expressions.geoPoint(13.0, 51.5))))
 				.build();
-		assertThatThrownBy(() -> MemoryQueries.execute(packed, persons, null))
-				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("Packed geo subjects");
+		try (QueryResult result = MemoryQueries.execute(malformed, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
 	}
 
 	@Test

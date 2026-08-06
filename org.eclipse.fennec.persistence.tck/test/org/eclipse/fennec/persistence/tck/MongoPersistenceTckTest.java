@@ -60,6 +60,12 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	// composite ids map to a compound structured _id via the codec id plane since
 	// issue #110 — the inherited supportsCompositeIds() default applies
 
+	/** 2dsphere geo translation since issue #113 (G-P2). */
+	@Override
+	protected boolean supportsGeo() {
+		return true;
+	}
+
 	// command transactions run for real since issue #112: the factory carries the
 	// session-capable client and the test container is a single-node replica set
 

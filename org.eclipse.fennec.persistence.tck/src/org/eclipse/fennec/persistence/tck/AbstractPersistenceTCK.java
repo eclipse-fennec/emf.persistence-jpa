@@ -44,6 +44,9 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.model.expression.GeoBox;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
@@ -1941,6 +1944,149 @@ public abstract class AbstractPersistenceTCK {
 		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
 			assertThat(result.objects()).isNotNull();
 		}
+	}
+
+	// geo differential corpus (issue #113, G-P2): every case pins the reference
+	// semantics on the memory oracle AND asserts the backend returns the same set —
+	// thresholds and shape edges stay clear of boundaries (tolerance band G5)
+
+	@SuppressWarnings("unchecked")
+	private EObject place(int id, String name, Double lonValue, Double latValue) {
+		EClass placeClass = (EClass) tckPackage.getEClassifier("Place");
+		EObject place = EcoreUtil.create(placeClass);
+		place.eSet(placeClass.getEStructuralFeature("plid"), idValue(placeClass, id));
+		place.eSet(placeClass.getEStructuralFeature("name"), name);
+		if (latValue != null) {
+			place.eSet(placeClass.getEStructuralFeature("lat"), latValue);
+			place.eSet(placeClass.getEStructuralFeature("lon"), lonValue);
+			// canonical PACKED shape: GeoJSON point, coordinates [lon, lat]
+			EClass geoPointClass = (EClass) tckPackage.getEClassifier("GeoPoint");
+			EObject point = EcoreUtil.create(geoPointClass);
+			point.eSet(geoPointClass.getEStructuralFeature("gid"), idValue(geoPointClass, id));
+			point.eSet(geoPointClass.getEStructuralFeature("type"), "Point");
+			((List<Double>) point.eGet(geoPointClass.getEStructuralFeature("coordinates")))
+					.addAll(List.of(lonValue, latValue));
+			place.eSet(placeClass.getEStructuralFeature("location"), point);
+		}
+		return place;
+	}
+
+	/** Thuringian triple + a null-coordinate row + an antimeridian pair (Fiji/Samoa). */
+	private List<EObject> geoPlaces() {
+		return List.of(
+				place(1, "Jena", 11.586, 50.927),
+				place(2, "Gera", 12.083, 50.880),
+				place(3, "Erfurt", 11.029, 50.984),
+				place(4, "Nowhere", null, null),
+				place(5, "Suva", 178.442, -18.141),
+				place(6, "Apia", -171.760, -13.833));
+	}
+
+	private GeoSubject splitSubject() {
+		EClass placeClass = (EClass) tckPackage.getEClassifier("Place");
+		return Expressions.geoSubject(
+				Expressions.propertyPath(placeClass.getEStructuralFeature("lat")),
+				Expressions.propertyPath(placeClass.getEStructuralFeature("lon")));
+	}
+
+	private GeoSubject packedSubject() {
+		EClass placeClass = (EClass) tckPackage.getEClassifier("Place");
+		return Expressions.geoSubject(
+				Expressions.propertyPath(placeClass.getEStructuralFeature("location")));
+	}
+
+	/**
+	 * The differential contract: the memory oracle over the fixture must yield
+	 * {@code expectedNames}, and the backend must agree with the oracle.
+	 */
+	private void assertGeoDifferential(Query query, String... expectedNames) throws Exception {
+		EClass placeClass = (EClass) tckPackage.getEClassifier("Place");
+		EStructuralFeature placeName = placeClass.getEStructuralFeature("name");
+		try (QueryResult oracle = MemoryQueries.execute(query, geoPlaces(), null)) {
+			assertThat(oracle.objects().map(found -> found.eGet(placeName)))
+					.containsExactlyInAnyOrder((Object[]) expectedNames);
+		}
+		save(createBackendResourceSet(), "Place", geoPlaces().toArray(EObject[]::new));
+		QueryableResource resource = (QueryableResource) createBackendResourceSet()
+				.createResource(uriFor("Place"));
+		try (QueryResult result = resource.query(query)) {
+			assertThat(result.objects().map(found -> found.eGet(placeName)))
+					.containsExactlyInAnyOrder((Object[]) expectedNames);
+		}
+	}
+
+	@Test
+	public void geoBoxOverSplitAndPackedSubjects() throws Exception {
+		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
+		GeoBox thuringia = Expressions.geoBox(
+				Expressions.geoPoint(11.3, 50.5), Expressions.geoPoint(12.5, 51.5));
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoWithin(splitSubject(), thuringia)).build(),
+				"Jena", "Gera");
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoWithin(packedSubject(), thuringia)).build(),
+				"Jena", "Gera");
+	}
+
+	@Test
+	public void geoWrapAroundBoxCrossesTheAntimeridian() throws Exception {
+		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
+		// west > east is the legal wrap-around box (§5.3) — catches Fiji AND Samoa
+		GeoBox pacific = Expressions.geoBox(
+				Expressions.geoPoint(170.0, -25.0), Expressions.geoPoint(-165.0, -10.0));
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoWithin(splitSubject(), pacific)).build(),
+				"Suva", "Apia");
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoWithin(packedSubject(), pacific)).build(),
+				"Suva", "Apia");
+	}
+
+	@Test
+	public void geoPolygonOverThePackedSubject() throws Exception {
+		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
+		// triangle around Jena and Gera, Erfurt stays west of it
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoWithin(packedSubject(), Expressions.geoPolygon(
+						Expressions.geoPoint(11.3, 50.6),
+						Expressions.geoPoint(12.5, 50.6),
+						Expressions.geoPoint(11.9, 51.4))))
+				.build(),
+				"Jena", "Gera");
+	}
+
+	@Test
+	public void geoDistanceThresholdsOnBothBindings() throws Exception {
+		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
+		// Jena↔Gera ≈ 35 km, Jena↔Erfurt ≈ 39 km — 37 km around Jena splits the two
+		GeoPointLiteral jena = Expressions.geoPoint(11.586, 50.927);
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoDistance(packedSubject(), jena).le(37_000)).build(),
+				"Jena", "Gera");
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoDistance(splitSubject(), jena).le(37_000)).build(),
+				"Jena", "Gera");
+		// the outside band excludes the null-coordinate row on both bindings (3VL)
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoDistance(packedSubject(), jena).gt(37_000)).build(),
+				"Erfurt", "Suva", "Apia");
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.geoDistance(splitSubject(), jena).gt(37_000)).build(),
+				"Erfurt", "Suva", "Apia");
+	}
+
+	@Test
+	public void geoNegationExcludesUnknownSubjects() throws Exception {
+		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
+		GeoBox thuringia = Expressions.geoBox(
+				Expressions.geoPoint(11.3, 50.5), Expressions.geoPoint(12.5, 51.5));
+		// NOT within must not surface the null-coordinate row (§5.5, issue-#97 discipline)
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.not(Expressions.geoWithin(splitSubject(), thuringia))).build(),
+				"Erfurt", "Suva", "Apia");
+		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
+				.where(Expressions.not(Expressions.geoWithin(packedSubject(), thuringia))).build(),
+				"Erfurt", "Suva", "Apia");
 	}
 
 	// -------------------------------------------------- command transactions (issue #108)
