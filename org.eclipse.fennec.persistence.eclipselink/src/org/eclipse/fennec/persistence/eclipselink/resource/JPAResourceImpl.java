@@ -66,9 +66,12 @@ import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
+import org.eclipse.fennec.persistence.query.api.CommandFeature;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.CommandCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
@@ -743,19 +746,49 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	// -------------------------------------------------------------- commands
 
+	/** The JPA backend serves the full write surface — one static declaration (issue #114). */
+	private static final CommandCapabilities COMMAND_CAPABILITIES = CommandCapabilitiesBuilder.create()
+			.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
+					CommandFeature.UPDATE_BY_SELECTOR, CommandFeature.TRANSACTION_BRACKET)
+			.build();
+
 	@Override
 	public long execute(Command command) throws IOException {
 		requireNonNull(command, "command must not be null");
 		if (command instanceof InsertCommand insert) {
+			for (EObject payload : insert.getObjects()) {
+				ensureCommandSupported(CommandFeature.INSERT, payload.eClass());
+			}
 			return executeInsert(insert);
 		}
 		if (command instanceof DeleteCommand delete) {
+			ensureCommandSupported(CommandFeature.DELETE_BY_SELECTOR, delete.getSelector().getFrom());
 			return executeDelete(delete);
 		}
 		if (command instanceof UpdateCommand update) {
+			ensureCommandSupported(CommandFeature.UPDATE_BY_SELECTOR, update.getSelector().getFrom());
 			return executeUpdate(update);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
+	}
+
+	@Override
+	public CommandCapabilities capabilities() {
+		return COMMAND_CAPABILITIES;
+	}
+
+	/**
+	 * Refuses an undeclared command feature before any work (issue #114): a Diagnostic
+	 * naming the {@link CommandFeature} lands in the resource errors before the
+	 * IOException — 'refused' stays distinguishable from 'failed'.
+	 */
+	private void ensureCommandSupported(CommandFeature feature, EClass target) throws IOException {
+		if (!capabilities().supports(feature, target)) {
+			String message = "Command feature " + feature.getName() + " is not supported by this"
+					+ " jpa resource for EClass '" + target.getName() + "'";
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI(), null));
+			throw new IOException(message);
+		}
 	}
 
 	/** The open command bracket (issue #108); resources are single-threaded per EMF semantics. */

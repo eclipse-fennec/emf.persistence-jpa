@@ -67,6 +67,12 @@
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AS_OF"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SERIES_RANGE"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query-api.ecore#//CommandFeature">
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/INSERT"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/DELETE_BY_SELECTOR"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/UPDATE_BY_SELECTOR"/>
+      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/TRANSACTION_BRACKET"/>
+    </genEnums>
     <genDataTypes ecoreDataType="query-api.ecore#//Diagnostic"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ConverterService"/>
     <genDataTypes ecoreDataType="query-api.ecore#//QueryException"/>
@@ -75,10 +81,21 @@
     <genDataTypes ecoreDataType="query-api.ecore#//EObjectStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//CommandFeatureSet"/>
     <genDataTypes ecoreDataType="query-api.ecore#//QueryFeatureSet"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
     <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//AutoCloseable"/>
+    <genClasses image="false" ecoreClass="query-api.ecore#//CommandCapabilities">
+      <genOperations ecoreOperation="query-api.ecore#//CommandCapabilities/supports">
+        <genParameters ecoreParameter="query-api.ecore#//CommandCapabilities/supports/feature"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//CommandCapabilities/supports.1">
+        <genParameters ecoreParameter="query-api.ecore#//CommandCapabilities/supports.1/feature"/>
+        <genParameters ecoreParameter="query-api.ecore#//CommandCapabilities/supports.1/eClass"/>
+      </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//CommandCapabilities/supported"/>
+    </genClasses>
     <genClasses image="false" ecoreClass="query-api.ecore#//QueryCapabilities">
       <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/supports">
         <genParameters ecoreParameter="query-api.ecore#//QueryCapabilities/supports/feature"/>
@@ -144,6 +161,7 @@
         <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute/command"/>
       </genOperations>
       <genOperations ecoreOperation="query-api.ecore#//CommandResource/begin"/>
+      <genOperations ecoreOperation="query-api.ecore#//CommandResource/capabilities"/>
     </genClasses>
   </genPackages>
 </genmodel:GenModel>

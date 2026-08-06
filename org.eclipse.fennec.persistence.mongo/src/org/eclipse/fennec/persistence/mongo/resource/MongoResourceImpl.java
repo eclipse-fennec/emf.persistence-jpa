@@ -93,12 +93,15 @@ import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
+import org.eclipse.fennec.persistence.query.api.CommandFeature;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.CommandCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
@@ -164,6 +167,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private volatile MongoClient client;
 	/** The open command bracket (issue #112); resources are single-threaded per EMF semantics. */
 	private MongoCommandTransaction activeTransaction;
+	/** Cached hello-probe result (issue #114); {@code null} until first successful probe. */
+	private volatile Boolean transactionalDeployment;
 
 	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -595,15 +600,55 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	public long execute(Command command) throws IOException {
 		requireNonNull(command, "command must not be null");
 		if (command instanceof InsertCommand insert) {
+			for (EObject payload : insert.getObjects()) {
+				ensureCommandSupported(CommandFeature.INSERT, payload.eClass());
+			}
 			return executeInsert(insert);
 		}
 		if (command instanceof DeleteCommand delete) {
+			ensureCommandSupported(CommandFeature.DELETE_BY_SELECTOR, delete.getSelector().getFrom());
 			return executeDelete(delete);
 		}
 		if (command instanceof UpdateCommand update) {
+			ensureCommandSupported(CommandFeature.UPDATE_BY_SELECTOR, update.getSelector().getFrom());
 			return executeUpdate(update);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
+	}
+
+	/**
+	 * The write commands this resource serves (issue #114) — per resource instance:
+	 * {@code TRANSACTION_BRACKET} depends on the deployment (replica set/mongos) and
+	 * the factory-injected session-capable client, not just the backend.
+	 */
+	@Override
+	public CommandCapabilities capabilities() {
+		CommandCapabilitiesBuilder builder = CommandCapabilitiesBuilder.create()
+				.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
+						CommandFeature.UPDATE_BY_SELECTOR);
+		if (nonNull(client) && transactionalDeployment()) {
+			builder.support(CommandFeature.TRANSACTION_BRACKET);
+		}
+		return builder.build();
+	}
+
+	/** Refuses an undeclared command feature before any work (issue #114). */
+	private void ensureCommandSupported(CommandFeature feature, EClass target) throws IOException {
+		if (!capabilities().supports(feature, target)) {
+			throw refused(feature, "for EClass '" + target.getName() + "'");
+		}
+	}
+
+	/**
+	 * The issue-#114 refusal contract: a Diagnostic naming the {@link CommandFeature}
+	 * lands in the resource errors before the IOException — 'refused because this
+	 * backend cannot' stays distinguishable from 'failed while trying'.
+	 */
+	private IOException refused(CommandFeature feature, String detail) {
+		String message = "Command feature " + feature.getName() + " is not supported by this"
+				+ " mongo resource: " + detail;
+		getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI(), null));
+		return new IOException(message);
 	}
 
 	/** Injects the session-capable client — wired by the {@code MongoResourceFactory} (issue #112). */
@@ -624,22 +669,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					+ " — commit or close it before opening another");
 		}
 		if (isNull(client)) {
-			throw new IOException("Command transactions are not supported without a session-capable"
-					+ " MongoClient — construct the MongoResourceFactory with the client (issue #112)");
+			throw refused(CommandFeature.TRANSACTION_BRACKET, "no session-capable MongoClient"
+					+ " — construct the MongoResourceFactory with the client (issue #112)");
 		}
-		try {
-			BsonDocument hello = database.runCommand(new BsonDocument("hello", new BsonInt32(1)),
-					BsonDocument.class);
-			boolean transactional = hello.containsKey("setName")
-					|| "isdbgrid".equals(hello.containsKey("msg") ? hello.getString("msg").getValue() : null);
-			if (!transactional) {
-				throw new IOException("Command transactions require a replica set or mongos"
-						+ " — this MongoDB deployment is standalone (issue #112)");
-			}
-		} catch (RuntimeException e) {
-			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
-					"Cannot probe the deployment for transaction support: " + e.getMessage(), getURI(), e));
-			throw new IOException("Cannot probe the deployment for transaction support: " + e.getMessage(), e);
+		if (!transactionalDeployment()) {
+			throw refused(CommandFeature.TRANSACTION_BRACKET, "transactions require a replica set"
+					+ " or mongos — this MongoDB deployment is standalone (issue #112)");
 		}
 		ClientSession session;
 		try {
@@ -652,6 +687,28 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		activeTransaction = new MongoCommandTransaction(session);
 		return activeTransaction;
+	}
+
+	/**
+	 * The hello-probe of issue #112, cached on success: replica set ({@code setName})
+	 * or mongos ({@code isdbgrid}) unlock multi-document transactions. A failed probe
+	 * is NOT cached — a transient error must not stick as 'standalone'.
+	 */
+	private boolean transactionalDeployment() {
+		Boolean probed = transactionalDeployment;
+		if (isNull(probed)) {
+			try {
+				BsonDocument hello = database.runCommand(new BsonDocument("hello", new BsonInt32(1)),
+						BsonDocument.class);
+				probed = hello.containsKey("setName")
+						|| "isdbgrid".equals(hello.containsKey("msg") ? hello.getString("msg").getValue() : null);
+				transactionalDeployment = probed;
+			} catch (RuntimeException e) {
+				LOG.log(Level.FINE, "Transaction-support probe failed", e);
+				return false;
+			}
+		}
+		return probed;
 	}
 
 	/** The session the open bracket rides, or {@code null} outside a bracket. */

@@ -17,6 +17,7 @@ import org.eclipse.emf.ecore.EPackage;
 
 import org.eclipse.emf.ecore.util.Switch;
 
+import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
@@ -90,6 +91,12 @@ public class QueryApiSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case QueryApiPackage.COMMAND_CAPABILITIES: {
+				CommandCapabilities commandCapabilities = (CommandCapabilities)theEObject;
+				T result = caseCommandCapabilities(commandCapabilities);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case QueryApiPackage.QUERY_CAPABILITIES: {
 				QueryCapabilities queryCapabilities = (QueryCapabilities)theEObject;
 				T result = caseQueryCapabilities(queryCapabilities);
@@ -155,6 +162,21 @@ public class QueryApiSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseAutoCloseable(AutoCloseable object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Command Capabilities</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Command Capabilities</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseCommandCapabilities(CommandCapabilities object) {
 		return null;
 	}
 

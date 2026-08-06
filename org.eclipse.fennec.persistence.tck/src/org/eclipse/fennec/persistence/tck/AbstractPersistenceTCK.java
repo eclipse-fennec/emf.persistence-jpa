@@ -64,6 +64,8 @@ import org.eclipse.fennec.model.stream.ChangeEntry;
 import org.eclipse.fennec.model.stream.ChangeSet;
 import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
+import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
+import org.eclipse.fennec.persistence.query.api.CommandFeature;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
@@ -2098,6 +2100,38 @@ public abstract class AbstractPersistenceTCK {
 	 */
 	protected boolean supportsCommandTransactions() {
 		return true;
+	}
+
+	/**
+	 * The issue-#114 contract: the declaration matches behaviour. Every declared
+	 * feature executes (the command/transaction cases above cover that), an undeclared
+	 * one refuses before any work with a Diagnostic naming the {@link CommandFeature},
+	 * and the per-EClass answer defaults to the backend-wide one.
+	 */
+	@Test
+	public void commandCapabilitiesMatchDeclaredBehaviour() throws Exception {
+		saveQueryFixture();
+		CommandResource resource = commands(createBackendResourceSet());
+		CommandCapabilities capabilities = resource.capabilities();
+		assertThat(capabilities).isNotNull();
+		for (CommandFeature feature : List.of(CommandFeature.INSERT,
+				CommandFeature.DELETE_BY_SELECTOR, CommandFeature.UPDATE_BY_SELECTOR)) {
+			assertThat(capabilities.supports(feature)).isTrue();
+			// unnarrowed features answer per EClass exactly like backend-wide
+			assertThat(capabilities.supports(feature, personClass)).isTrue();
+			assertThat(capabilities.supported()).contains(feature);
+		}
+		assertThat(capabilities.supports(CommandFeature.TRANSACTION_BRACKET))
+				.isEqualTo(supportsCommandTransactions());
+		if (!supportsCommandTransactions()) {
+			assertThatThrownBy(resource::begin)
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining("TRANSACTION_BRACKET");
+			assertThat(((Resource) resource).getErrors()).anySatisfy(diagnostic ->
+					assertThat(diagnostic.getMessage()).contains("TRANSACTION_BRACKET"));
+			// the refusal changed nothing
+			assertThat(loadAll(createBackendResourceSet(), "Person").getContents()).hasSize(3);
+		}
 	}
 
 	@Test

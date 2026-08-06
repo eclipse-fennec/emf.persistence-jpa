@@ -44,6 +44,8 @@ import org.eclipse.fennec.persistence.api.ConverterService;
 
 import org.eclipse.fennec.persistence.query.QueryException;
 
+import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
+import org.eclipse.fennec.persistence.query.api.CommandFeature;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryApiFactory;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
@@ -72,6 +74,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EClass autoCloseableEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass commandCapabilitiesEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -148,6 +157,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EEnum commandFeatureEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EDataType diagnosticEDataType = null;
 
 	/**
@@ -198,6 +214,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EDataType objectListEDataType = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EDataType commandFeatureSetEDataType = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -294,6 +317,46 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	@Override
 	public EClass getAutoCloseable() {
 		return autoCloseableEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getCommandCapabilities() {
+		return commandCapabilitiesEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getCommandCapabilities__Supports__CommandFeature() {
+		return commandCapabilitiesEClass.getEOperations().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getCommandCapabilities__Supports__CommandFeature_EClass() {
+		return commandCapabilitiesEClass.getEOperations().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getCommandCapabilities__Supported() {
+		return commandCapabilitiesEClass.getEOperations().get(2);
 	}
 
 	/**
@@ -642,6 +705,16 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
+	public EOperation getCommandResource__Capabilities() {
+		return commandResourceEClass.getEOperations().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getQueryShape() {
 		return queryShapeEEnum;
 	}
@@ -654,6 +727,16 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	@Override
 	public EEnum getQueryFeature() {
 		return queryFeatureEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getCommandFeature() {
+		return commandFeatureEEnum;
 	}
 
 	/**
@@ -742,6 +825,16 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
+	public EDataType getCommandFeatureSet() {
+		return commandFeatureSetEDataType;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EDataType getQueryFeatureSet() {
 		return queryFeatureSetEDataType;
 	}
@@ -797,6 +890,11 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		// Create classes and their features
 		autoCloseableEClass = createEClass(AUTO_CLOSEABLE);
 
+		commandCapabilitiesEClass = createEClass(COMMAND_CAPABILITIES);
+		createEOperation(commandCapabilitiesEClass, COMMAND_CAPABILITIES___SUPPORTS__COMMANDFEATURE);
+		createEOperation(commandCapabilitiesEClass, COMMAND_CAPABILITIES___SUPPORTS__COMMANDFEATURE_ECLASS);
+		createEOperation(commandCapabilitiesEClass, COMMAND_CAPABILITIES___SUPPORTED);
+
 		queryCapabilitiesEClass = createEClass(QUERY_CAPABILITIES);
 		createEOperation(queryCapabilitiesEClass, QUERY_CAPABILITIES___SUPPORTS__QUERYFEATURE);
 		createEOperation(queryCapabilitiesEClass, QUERY_CAPABILITIES___SUPPORTED);
@@ -838,10 +936,12 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		commandResourceEClass = createEClass(COMMAND_RESOURCE);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___BEGIN);
+		createEOperation(commandResourceEClass, COMMAND_RESOURCE___CAPABILITIES);
 
 		// Create enums
 		queryShapeEEnum = createEEnum(QUERY_SHAPE);
 		queryFeatureEEnum = createEEnum(QUERY_FEATURE);
+		commandFeatureEEnum = createEEnum(COMMAND_FEATURE);
 
 		// Create data types
 		diagnosticEDataType = createEDataType(DIAGNOSTIC);
@@ -852,6 +952,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		eObjectStreamEDataType = createEDataType(EOBJECT_STREAM);
 		rowStreamEDataType = createEDataType(ROW_STREAM);
 		objectListEDataType = createEDataType(OBJECT_LIST);
+		commandFeatureSetEDataType = createEDataType(COMMAND_FEATURE_SET);
 		queryFeatureSetEDataType = createEDataType(QUERY_FEATURE_SET);
 		parameterMapEDataType = createEDataType(PARAMETER_MAP);
 		optionsMapEDataType = createEDataType(OPTIONS_MAP);
@@ -894,9 +995,20 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		// Initialize classes, features, and operations; add parameters
 		initEClass(autoCloseableEClass, AutoCloseable.class, "AutoCloseable", IS_ABSTRACT, IS_INTERFACE, !IS_GENERATED_INSTANCE_CLASS);
 
+		initEClass(commandCapabilitiesEClass, CommandCapabilities.class, "CommandCapabilities", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		EOperation op = initEOperation(getCommandCapabilities__Supports__CommandFeature(), ecorePackage.getEBoolean(), "supports", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, this.getCommandFeature(), "feature", 1, 1, IS_UNIQUE, IS_ORDERED);
+
+		op = initEOperation(getCommandCapabilities__Supports__CommandFeature_EClass(), ecorePackage.getEBoolean(), "supports", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, this.getCommandFeature(), "feature", 1, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, ecorePackage.getEClass(), "eClass", 1, 1, IS_UNIQUE, IS_ORDERED);
+
+		initEOperation(getCommandCapabilities__Supported(), this.getCommandFeatureSet(), "supported", 0, 1, IS_UNIQUE, IS_ORDERED);
+
 		initEClass(queryCapabilitiesEClass, QueryCapabilities.class, "QueryCapabilities", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
-		EOperation op = initEOperation(getQueryCapabilities__Supports__QueryFeature(), ecorePackage.getEBoolean(), "supports", 0, 1, IS_UNIQUE, IS_ORDERED);
+		op = initEOperation(getQueryCapabilities__Supports__QueryFeature(), ecorePackage.getEBoolean(), "supports", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, this.getQueryFeature(), "feature", 1, 1, IS_UNIQUE, IS_ORDERED);
 
 		initEOperation(getQueryCapabilities__Supported(), this.getQueryFeatureSet(), "supported", 0, 1, IS_UNIQUE, IS_ORDERED);
@@ -983,6 +1095,8 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		op = initEOperation(getCommandResource__Begin(), this.getCommandTransaction(), "begin", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, this.getIOException());
 
+		initEOperation(getCommandResource__Capabilities(), this.getCommandCapabilities(), "capabilities", 0, 1, IS_UNIQUE, IS_ORDERED);
+
 		// Initialize enums and add enum literals
 		initEEnum(queryShapeEEnum, QueryShape.class, "QueryShape");
 		addEEnumLiteral(queryShapeEEnum, QueryShape.OBJECTS);
@@ -1042,6 +1156,12 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AS_OF);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SERIES_RANGE);
 
+		initEEnum(commandFeatureEEnum, CommandFeature.class, "CommandFeature");
+		addEEnumLiteral(commandFeatureEEnum, CommandFeature.INSERT);
+		addEEnumLiteral(commandFeatureEEnum, CommandFeature.DELETE_BY_SELECTOR);
+		addEEnumLiteral(commandFeatureEEnum, CommandFeature.UPDATE_BY_SELECTOR);
+		addEEnumLiteral(commandFeatureEEnum, CommandFeature.TRANSACTION_BRACKET);
+
 		// Initialize data types
 		initEDataType(diagnosticEDataType, Diagnostic.class, "Diagnostic", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(converterServiceEDataType, ConverterService.class, "ConverterService", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
@@ -1051,6 +1171,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		initEDataType(eObjectStreamEDataType, Stream.class, "EObjectStream", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.stream.Stream<org.eclipse.emf.ecore.EObject>");
 		initEDataType(rowStreamEDataType, Stream.class, "RowStream", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.stream.Stream<org.eclipse.fennec.persistence.query.api.QueryResultRow>");
 		initEDataType(objectListEDataType, List.class, "ObjectList", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.List<java.lang.Object>");
+		initEDataType(commandFeatureSetEDataType, Set.class, "CommandFeatureSet", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Set<org.eclipse.fennec.persistence.query.api.CommandFeature>");
 		initEDataType(queryFeatureSetEDataType, Set.class, "QueryFeatureSet", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Set<org.eclipse.fennec.persistence.query.api.QueryFeature>");
 		initEDataType(parameterMapEDataType, Map.class, "ParameterMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<java.lang.String, java.lang.Object>");
 		initEDataType(optionsMapEDataType, Map.class, "OptionsMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<?, ?>");

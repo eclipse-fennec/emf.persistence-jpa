@@ -35,6 +35,7 @@ import org.eclipse.fennec.persistence.api.ConverterService;
 
 import org.eclipse.fennec.persistence.query.QueryException;
 
+import org.eclipse.fennec.persistence.query.api.CommandFeature;
 import org.eclipse.fennec.persistence.query.api.QueryApiFactory;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryFeature;
@@ -104,6 +105,8 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return createQueryShapeFromString(eDataType, initialValue);
 			case QueryApiPackage.QUERY_FEATURE:
 				return createQueryFeatureFromString(eDataType, initialValue);
+			case QueryApiPackage.COMMAND_FEATURE:
+				return createCommandFeatureFromString(eDataType, initialValue);
 			case QueryApiPackage.DIAGNOSTIC:
 				return createDiagnosticFromString(eDataType, initialValue);
 			case QueryApiPackage.CONVERTER_SERVICE:
@@ -120,6 +123,8 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return createRowStreamFromString(eDataType, initialValue);
 			case QueryApiPackage.OBJECT_LIST:
 				return createObjectListFromString(eDataType, initialValue);
+			case QueryApiPackage.COMMAND_FEATURE_SET:
+				return createCommandFeatureSetFromString(eDataType, initialValue);
 			case QueryApiPackage.QUERY_FEATURE_SET:
 				return createQueryFeatureSetFromString(eDataType, initialValue);
 			case QueryApiPackage.PARAMETER_MAP:
@@ -143,6 +148,8 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return convertQueryShapeToString(eDataType, instanceValue);
 			case QueryApiPackage.QUERY_FEATURE:
 				return convertQueryFeatureToString(eDataType, instanceValue);
+			case QueryApiPackage.COMMAND_FEATURE:
+				return convertCommandFeatureToString(eDataType, instanceValue);
 			case QueryApiPackage.DIAGNOSTIC:
 				return convertDiagnosticToString(eDataType, instanceValue);
 			case QueryApiPackage.CONVERTER_SERVICE:
@@ -159,6 +166,8 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return convertRowStreamToString(eDataType, instanceValue);
 			case QueryApiPackage.OBJECT_LIST:
 				return convertObjectListToString(eDataType, instanceValue);
+			case QueryApiPackage.COMMAND_FEATURE_SET:
+				return convertCommandFeatureSetToString(eDataType, instanceValue);
 			case QueryApiPackage.QUERY_FEATURE_SET:
 				return convertQueryFeatureSetToString(eDataType, instanceValue);
 			case QueryApiPackage.PARAMETER_MAP:
@@ -207,6 +216,26 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 	 * @generated
 	 */
 	public String convertQueryFeatureToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public CommandFeature createCommandFeatureFromString(EDataType eDataType, String initialValue) {
+		CommandFeature result = CommandFeature.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertCommandFeatureToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 
@@ -354,6 +383,25 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 	 * @generated
 	 */
 	public String convertObjectListToString(EDataType eDataType, Object instanceValue) {
+		return super.convertToString(instanceValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@SuppressWarnings("unchecked")
+	public Set<CommandFeature> createCommandFeatureSetFromString(EDataType eDataType, String initialValue) {
+		return (Set<CommandFeature>)super.createFromString(initialValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertCommandFeatureSetToString(EDataType eDataType, Object instanceValue) {
 		return super.convertToString(instanceValue);
 	}
 

@@ -51,11 +51,22 @@ public interface CommandResource {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back.
+	 * Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal, declared as TRANSACTION_BRACKET); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back.
 	 * <!-- end-model-doc -->
 	 * @model dataType="org.eclipse.fennec.persistence.query.api.CommandTransaction" exceptions="org.eclipse.fennec.persistence.query.api.IOException"
 	 * @generated
 	 */
 	CommandTransaction begin() throws IOException;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The write commands this resource serves (issue #114) — per resource instance, since deployment can decide (mongo TRANSACTION_BRACKET). execute()/begin() refuse an undeclared feature before any work with a Diagnostic naming it.
+	 * <!-- end-model-doc -->
+	 * @model
+	 * @generated
+	 */
+	CommandCapabilities capabilities();
 
 } // CommandResource

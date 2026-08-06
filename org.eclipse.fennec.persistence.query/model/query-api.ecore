@@ -53,6 +53,11 @@
       <details key="documentation" value="An immutable java.util.List of row cell values in subject order."/>
     </eAnnotations>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="CommandFeatureSet" instanceTypeName="java.util.Set&lt;org.eclipse.fennec.persistence.query.api.CommandFeature&gt;">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An immutable java.util.Set of CommandFeatures."/>
+    </eAnnotations>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EDataType" name="QueryFeatureSet" instanceTypeName="java.util.Set&lt;org.eclipse.fennec.persistence.query.api.QueryFeature&gt;">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="An immutable java.util.Set of QueryFeatures."/>
@@ -356,6 +361,54 @@
     </eLiterals>
   </eClassifiers>
   <!-- ==================== Capability model ==================== -->
+  <eClassifiers xsi:type="ecore:EEnum" name="CommandFeature">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A single, backend-neutral write-command capability (issue #114) — the command-side mirror of QueryFeature, deliberately a separate enum: QueryCapabilities is the query-validate contract and stays untouched. Literal values are grouped with gaps: commands 0+, structural 20+."/>
+    </eAnnotations>
+    <eLiterals name="INSERT">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="InsertCommand: persist the payload objects."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DELETE_BY_SELECTOR" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="DeleteCommand: remove every object the plain-filter selector matches."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="UPDATE_BY_SELECTOR" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="UpdateCommand: apply the ChangeSet template to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TRANSACTION_BRACKET" value="20">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="begin(): an atomic multi-command bracket (issue #108). May depend on the deployment, not just the backend — mongo answers per hello-probe (replica set vs. standalone) — so capabilities are per resource instance."/>
+      </eAnnotations>
+    </eLiterals>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CommandCapabilities" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The set of CommandFeatures a CommandResource serves (issue #114). Two-level contract: supports(feature) is the backend-wide answer — TRUE means the feature exists in this backend/deployment at all; supports(feature, eClass) is the routing truth and may narrow it per type (decision 2026-08-06: a backend that can serve a feature for some classes only declares it backend-wide and narrows per EClass instead of answering conservatively). An undeclared command is refused before any work with a Diagnostic naming the CommandFeature — 'refused' and 'failed' stay distinguishable."/>
+    </eAnnotations>
+    <eOperations name="supports" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The backend-wide answer: true if this resource serves the feature at all."/>
+      </eAnnotations>
+      <eParameters name="feature" lowerBound="1" eType="#//CommandFeature"/>
+    </eOperations>
+    <eOperations name="supports" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The per-type routing answer: true if this resource serves the feature for the given EClass. Defaults to the backend-wide answer; backends narrow it where the mapping decides (e.g. update only for materialized classes)."/>
+      </eAnnotations>
+      <eParameters name="feature" lowerBound="1" eType="#//CommandFeature"/>
+      <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
+    </eOperations>
+    <eOperations name="supported" eType="#//CommandFeatureSet">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Returns the immutable set of backend-wide supported features."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="QueryCapabilities" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The set of QueryFeatures a QueryProcessor serves natively, plus structural limits. Used to validate a query before translation so unsupported constructs are rejected with a Diagnostic rather than silently post-filtered."/>
@@ -544,7 +597,12 @@
     </eOperations>
     <eOperations name="begin" eType="#//CommandTransaction" eExceptions="#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back."/>
+        <details key="documentation" value="Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal, declared as TRANSACTION_BRACKET); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="capabilities" eType="#//CommandCapabilities">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The write commands this resource serves (issue #114) — per resource instance, since deployment can decide (mongo TRANSACTION_BRACKET). execute()/begin() refuse an undeclared feature before any work with a Diagnostic naming it."/>
       </eAnnotations>
     </eOperations>
   </eClassifiers>
