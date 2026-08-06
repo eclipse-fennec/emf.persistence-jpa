@@ -1034,12 +1034,20 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		if (isNull(uriFragment) || uriFragment.isEmpty()) {
 			return super.getEObject(uriFragment);
 		}
+		// the in-memory lookup comes FIRST (issue #116): it preserves identity for
+		// already-loaded objects — including embedded containment children, which a
+		// keyed find can never see — where the keyed find would decode a fresh twin
+		// and attach it beside the original
+		EObject loaded = super.getEObject(uriFragment);
+		if (nonNull(loaded)) {
+			return loaded;
+		}
 		String idValue = uriFragment;
 		if (uriFragment.startsWith("//")) {
 			// Fragment format: //refName/idAttrName/idValue
 			String[] parts = uriFragment.substring(2).split("/");
 			if (parts.length < 3) {
-				return super.getEObject(uriFragment);
+				return null;
 			}
 			idValue = parts[2];
 		}
@@ -1053,8 +1061,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(idValue, eClass)))
 					.first();
 			if (isNull(document)) {
-				// Fall back to the EMF default (intrinsic id lookup in loaded contents)
-				return super.getEObject(uriFragment);
+				return null;
 			}
 			EObject resolved = decode(document, eClass);
 			if (nonNull(resolved) && isNull(resolved.eResource()) && !getContents().contains(resolved)) {
@@ -1064,7 +1071,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			return resolved;
 		} catch (RuntimeException | IOException e) {
-			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE,
 					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(), getURI(), e));
 			return null;
 		}
@@ -1087,87 +1094,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			throw new IOException("Failed to encode EObject of type "
 					+ eObject.eClass().getName(), e);
 		}
-		BsonDocument document = delegate.getTarget();
-		rewriteCrossResourceReferences(eObject, document);
-		return document;
-	}
-
-	/**
-	 * The codec's format-delegate path cannot detect cross-document references (the
-	 * generator carries no {@code CodecWriteContext}), so targets living in other
-	 * resources are serialised as bare fragments and unresolved proxies as their type
-	 * URI. Rewrite such reference values to absolute EMF URIs
-	 * ({@code EcoreUtil.getURI}/{@code eProxyURI}) so they resolve across resources and
-	 * backends. Same-resource targets keep their id fragment; the rewrite is idempotent
-	 * and becomes a no-op once the codec writes absolute URIs itself.
-	 * <p>
-	 * Interim workaround for
-	 * <a href="https://github.com/eclipse-fennec/emf.codec/issues/50">emf.codec#50</a> —
-	 * remove when the codec supports a writer-side {@code ContextHelper.RESOURCE}
-	 * fallback. Limitation: only the root object's references are rewritten, not those
-	 * of nested containment children.
-	 */
-	private void rewriteCrossResourceReferences(EObject source, BsonDocument document) {
-		for (EReference reference : source.eClass().getEAllReferences()) {
-			if (reference.isContainment() || reference.isTransient() || reference.isDerived()
-					|| !source.eIsSet(reference)) {
-				continue;
-			}
-			BsonValue field = document.get(reference.getName());
-			if (isNull(field)) {
-				continue;
-			}
-			if (reference.isMany()) {
-				@SuppressWarnings("unchecked")
-				List<EObject> targets = ((InternalEList<EObject>)
-						source.eGet(reference)).basicList();
-				if (field.isArray()) {
-					BsonArray array = field.asArray();
-					for (int i = 0; i < array.size() && i < targets.size(); i++) {
-						BsonValue rewritten = rewriteReferenceValue(array.get(i), targets.get(i));
-						if (nonNull(rewritten)) {
-							array.set(i, rewritten);
-						}
-					}
-				}
-			} else {
-				Object value = ((InternalEObject) source).eGet(reference, false);
-				if (value instanceof EObject target) {
-					BsonValue rewritten = rewriteReferenceValue(field, target);
-					if (nonNull(rewritten)) {
-						document.put(reference.getName(), rewritten);
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * Returns the replacement value for a serialised reference, or {@code null} when the
-	 * stored value stays as it is (same-resource target) or was mutated in place.
-	 */
-	private BsonValue rewriteReferenceValue(BsonValue current, EObject target) {
-		String absolute;
-		if (target.eIsProxy()) {
-			absolute = ((InternalEObject) target).eProxyURI().toString();
-		} else {
-			Resource targetResource = target.eResource();
-			if (isNull(targetResource) || targetResource == this) {
-				return null;
-			}
-			absolute = EcoreUtil.getURI(target).toString();
-		}
-		if (current.isString()) {
-			return new BsonString(absolute);
-		}
-		if (current.isDocument()) {
-			BsonDocument refDocument = current.asDocument();
-			if (refDocument.containsKey("$ref")) {
-				refDocument.put("$ref", new BsonString(absolute));
-			}
-			return null;
-		}
-		return null;
+		return delegate.getTarget();
 	}
 
 	/**
