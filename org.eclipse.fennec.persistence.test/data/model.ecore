@@ -200,10 +200,12 @@
         eType="#//ClassAM2M" eOpposite="#//ClassAM2M/cNonContainmentBidi"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MultiPKClass">
+    <eAnnotations source="http://eclipse.org/fennec/persistence/1.0">
+      <details key="idFeatures" value="id,timestamp"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timestamp" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"
-        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timestamp" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TypeConverterTestEntity">

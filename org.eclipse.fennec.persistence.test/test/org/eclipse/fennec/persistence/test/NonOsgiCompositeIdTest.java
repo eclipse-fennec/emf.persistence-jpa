@@ -28,6 +28,7 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.eorm.Entity;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.eorm.Id;
 import org.eclipse.fennec.persistence.orm.CompositeIdAnalyzer;
@@ -38,8 +39,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Non-OSGi port of {@code CompositeIdTest}. Validates that the {@link EntityMapper}
- * and {@link CompositeIdAnalyzer} correctly handle an EClass with multiple
- * {@code iD="true"} attributes ({@code MultiPKClass}).
+ * and {@link CompositeIdAnalyzer} correctly handle an EClass declaring a composite
+ * identity via the {@code idFeatures} EAnnotation ({@code MultiPKClass}, issue #115).
  * <p>
  * This test operates purely on the EMF metamodel and the EORM mapping output —
  * no database is involved.
@@ -70,9 +71,7 @@ class NonOsgiCompositeIdTest {
 		EClass multiPKClass = (EClass) modelPackage.getEClassifier(MULTI_PK_CLASS);
 		assertNotNull(multiPKClass, "MultiPKClass should exist in model");
 
-		List<EAttribute> idAttributes = multiPKClass.getEAllAttributes().stream()
-				.filter(EAttribute::isID)
-				.toList();
+		List<EAttribute> idAttributes = CompositeIds.idAttributes(multiPKClass);
 		assertEquals(2, idAttributes.size(), "MultiPKClass should have exactly 2 ID attributes");
 		assertThat(idAttributes).extracting(EAttribute::getName).contains("id", "timestamp");
 

@@ -44,4 +44,17 @@ public interface MongoPersistenceConstants {
 	 * discriminator configuration through it (issue #88).
 	 */
 	String OPTION_CODEC_RESOLVER = "mongo.codec.configuration.resolver";
+
+	/**
+	 * Boolean load/save option (issue #115): take the per-EClass id serialization
+	 * configuration from the model's codec annotations instead of the resource's static
+	 * composite policy ({@code idFormat=STRUCTURED}, {@code idKeyMode=BOTH}). By default
+	 * the resource overrides the model — mongo documents are usually written by this
+	 * backend, and model annotations may serve JSON de/serialization concerns instead.
+	 * The option governs the serialization plane only; the resource's {@code _id}
+	 * contract (compound sub-document for composite classes) is backend identity and
+	 * stays. Use it consistently from the resource's first operation — the codec caches
+	 * the resolved id configuration per EClass.
+	 */
+	String OPTION_ID_CONFIG_FROM_MODEL = "mongo.codec.id.fromModel";
 }

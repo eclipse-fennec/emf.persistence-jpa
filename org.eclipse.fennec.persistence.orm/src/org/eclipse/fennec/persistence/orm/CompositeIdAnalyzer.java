@@ -23,6 +23,7 @@ import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 
 /**
  * Analyzer for detecting composite ID patterns in ECore models.
@@ -84,15 +85,16 @@ public class CompositeIdAnalyzer {
     }
     
     /**
-     * Finds all attributes marked with iD="true" in the EClass.
-     * 
+     * The id attributes in canonical order (issue #115): the {@code idFeatures}
+     * annotation when declared, otherwise the single {@code eID} attribute — several
+     * {@code isID} attributes without the annotation are refused by the contract
+     * ({@link CompositeIds#idAttributes(EClass)}).
+     *
      * @param eClass the EClass to search
      * @return list of ID attributes (may be empty)
      */
     public List<EAttribute> findDirectIdAttributes(EClass eClass) {
-        return eClass.getEAllAttributes().stream()
-            .filter(EAttribute::isID)
-            .collect(Collectors.toList());
+        return CompositeIds.idAttributes(eClass);
     }
     
     /**

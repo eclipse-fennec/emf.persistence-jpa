@@ -24,6 +24,7 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.eorm.GenerationType;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.eorm.Id;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,7 +107,8 @@ public class CompositeIdProcessorTest {
 		void testTwoIdAttributes() {
 			EClass eClass = createEClass("MultiPK");
 			addIdAttribute(eClass, "id", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "timestamp", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "timestamp", EcorePackage.Literals.ELONG);
+			declareIdFeatures(eClass, "id,timestamp");
 
 			CompositeIdProcessor processor = new CompositeIdProcessor(false);
 			List<Id> ids = processor.createIds(eClass, context);
@@ -119,8 +121,9 @@ public class CompositeIdProcessorTest {
 		void testThreeIdAttributes() {
 			EClass eClass = createEClass("TriplePK");
 			addIdAttribute(eClass, "a", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "b", EcorePackage.Literals.EINT);
-			addIdAttribute(eClass, "c", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "b", EcorePackage.Literals.EINT);
+			addAttribute(eClass, "c", EcorePackage.Literals.ELONG);
+			declareIdFeatures(eClass, "a,b,c");
 
 			CompositeIdProcessor processor = new CompositeIdProcessor(false);
 			List<Id> ids = processor.createIds(eClass, context);
@@ -132,7 +135,8 @@ public class CompositeIdProcessorTest {
 		void testEmbeddedIdStrictModeNoGeneration() {
 			EClass eClass = createEClass("StrictMulti");
 			addIdAttribute(eClass, "id", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "ts", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "ts", EcorePackage.Literals.ELONG);
+			declareIdFeatures(eClass, "id,ts");
 
 			CompositeIdProcessor processor = new CompositeIdProcessor(true);
 			List<Id> ids = processor.createIds(eClass, context);
@@ -151,7 +155,8 @@ public class CompositeIdProcessorTest {
 			// generation must be an explicit eorm declaration
 			EClass eClass = createEClass("MixedPK");
 			addIdAttribute(eClass, "strId", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "numId", EcorePackage.Literals.ELONG_OBJECT);
+			addAttribute(eClass, "numId", EcorePackage.Literals.ELONG_OBJECT);
+			declareIdFeatures(eClass, "strId,numId");
 
 			CompositeIdProcessor processor = new CompositeIdProcessor(false);
 			List<Id> ids = processor.createIds(eClass, context);
@@ -171,7 +176,8 @@ public class CompositeIdProcessorTest {
 		void testIdClassFromReferenceAnnotation() {
 			EClass keyClass = createEClass("CompositeKey");
 			addIdAttribute(keyClass, "part1", EcorePackage.Literals.ESTRING);
-			addIdAttribute(keyClass, "part2", EcorePackage.Literals.ELONG);
+			addAttribute(keyClass, "part2", EcorePackage.Literals.ELONG);
+			declareIdFeatures(keyClass, "part1,part2");
 
 			EClass eClass = createEClass("WithIdClass");
 			EReference ref = createContainmentReference(eClass, "key", keyClass);
@@ -292,7 +298,8 @@ public class CompositeIdProcessorTest {
 		void testEntityProcessorUsesCompositeId() {
 			EClass eClass = createEClass("CompositeIdEntity");
 			addIdAttribute(eClass, "pk1", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "pk2", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "pk2", EcorePackage.Literals.ELONG);
+			declareIdFeatures(eClass, "pk1,pk2");
 
 			EntityProcessor ep = new EntityProcessor(eClass, context);
 			ep.process();
@@ -332,6 +339,14 @@ public class CompositeIdProcessorTest {
 		attr.setID(true);
 		owner.getEStructuralFeatures().add(attr);
 		return attr;
+	}
+
+	/** The canonical composite declaration (issue #115): explicit idFeatures annotation. */
+	private void declareIdFeatures(EClass owner, String idFeatures) {
+		EAnnotation annotation = EcoreFactory.eINSTANCE.createEAnnotation();
+		annotation.setSource(CompositeIds.ANNOTATION_SOURCE);
+		annotation.getDetails().put(CompositeIds.ID_FEATURES, idFeatures);
+		owner.getEAnnotations().add(annotation);
 	}
 
 	private EAttribute addAttribute(EClass owner, String name, org.eclipse.emf.ecore.EClassifier type) {

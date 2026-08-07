@@ -169,6 +169,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private MongoCommandTransaction activeTransaction;
 	/** Cached hello-probe result (issue #114); {@code null} until first successful probe. */
 	private volatile Boolean transactionalDeployment;
+	/** Model annotations win over the static composite id policy (issue #115); sticky per resource. */
+	private volatile boolean idConfigFromModel;
 
 	public MongoResourceImpl(URI uri, MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -198,8 +200,21 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * serialises as the structured sub-document, and the components stay in the payload
 	 * so component predicates keep addressing plain fields.
 	 */
+	/** Reads {@code OPTION_ID_CONFIG_FROM_MODEL} (issue #115); the flag sticks per resource. */
+	private void applyIdConfigOption(Map<?, ?> options) {
+		Object value = isNull(options) ? null
+				: options.get(MongoPersistenceConstants.OPTION_ID_CONFIG_FROM_MODEL);
+		if (value instanceof Boolean flag) {
+			idConfigFromModel = flag;
+		} else if (value instanceof String text) {
+			idConfigFromModel = Boolean.parseBoolean(text);
+		}
+	}
+
 	private void ensureCompositeIdConfig(EClass eClass) {
-		if (isNull(eClass) || !CompositeIds.isComposite(eClass)) {
+		if (idConfigFromModel || isNull(eClass) || !CompositeIds.isComposite(eClass)) {
+			// OPTION_ID_CONFIG_FROM_MODEL (issue #115): the model's codec annotations
+			// decide the serialization plane — no per-class override is injected
 			return;
 		}
 		compositeIdConfigs.computeIfAbsent(eClass, ec -> Map.of(
@@ -275,6 +290,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	protected void doLoad(InputStream inputStream, Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
+		applyIdConfigOption(options);
 		String collectionName = getCollectionName(options);
 		if (isNull(collectionName)) {
 			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
@@ -342,6 +358,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
+		applyIdConfigOption(options);
 		String collectionName = getCollectionName(options);
 		if (isNull(collectionName)) {
 			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 

@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.helper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
@@ -50,9 +51,11 @@ class CompositeIdsTest {
 		lineNo = ecore.createEAttribute();
 		lineNo.setName("lineNo");
 		lineNo.setEType(EcorePackage.Literals.EINT);
-		lineNo.setID(true);
 		orderLine.getEStructuralFeatures().add(orderId);
 		orderLine.getEStructuralFeatures().add(lineNo);
+		// the canonical composite declaration (issue #115): explicit idFeatures,
+		// at most one isID — valid Ecore (validateEClass_AtMostOneID)
+		annotate(orderLine, "orderId,lineNo");
 
 		single = ecore.createEClass();
 		single.setName("Single");
@@ -68,6 +71,13 @@ class CompositeIdsTest {
 		ePackage.setNsPrefix("cid");
 		ePackage.getEClassifiers().add(orderLine);
 		ePackage.getEClassifiers().add(single);
+	}
+
+	private static void annotate(EClass eClass, String idFeatures) {
+		EAnnotation annotation = EcoreFactory.eINSTANCE.createEAnnotation();
+		annotation.setSource(CompositeIds.ANNOTATION_SOURCE);
+		annotation.getDetails().put(CompositeIds.ID_FEATURES, idFeatures);
+		eClass.getEAnnotations().add(annotation);
 	}
 
 	private EObject line(String order, int no) {
@@ -119,6 +129,59 @@ class CompositeIdsTest {
 		partial.eSet(lineNo, 4);
 		assertThat(partial.eGet(orderId)).isNull();
 		assertThat(CompositeIds.fragment(partial)).isNull();
+	}
+
+	@Test
+	void severalIsIdAttributesWithoutTheAnnotationAreRefused() {
+		// invalid Ecore (validateEClass_AtMostOneID) — never a composite declaration
+		EcoreFactory ecore = EcoreFactory.eINSTANCE;
+		EClass invalid = ecore.createEClass();
+		invalid.setName("Invalid");
+		for (String name : new String[] { "k1", "k2" }) {
+			EAttribute key = ecore.createEAttribute();
+			key.setName(name);
+			key.setEType(EcorePackage.Literals.ESTRING);
+			key.setID(true);
+			invalid.getEStructuralFeatures().add(key);
+		}
+		ePackage.getEClassifiers().add(invalid);
+		assertThatThrownBy(() -> CompositeIds.idAttributes(invalid))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("validateEClass_AtMostOneID")
+				.hasMessageContaining(CompositeIds.ID_FEATURES);
+	}
+
+	@Test
+	void annotationNamingAnUnknownFeatureIsRefused() {
+		EClass broken = EcoreFactory.eINSTANCE.createEClass();
+		broken.setName("Broken");
+		annotate(broken, "nope");
+		ePackage.getEClassifiers().add(broken);
+		assertThatThrownBy(() -> CompositeIds.idAttributes(broken))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("'nope'");
+	}
+
+	@Test
+	void singleFeatureAnnotationWorksWithoutAnEIdAttribute() {
+		// the annotation may declare an identity EMF itself does not know about
+		EcoreFactory ecore = EcoreFactory.eINSTANCE;
+		EClass keyed = ecore.createEClass();
+		keyed.setName("Keyed");
+		EAttribute code = ecore.createEAttribute();
+		code.setName("code");
+		code.setEType(EcorePackage.Literals.ESTRING);
+		keyed.getEStructuralFeatures().add(code);
+		annotate(keyed, "code");
+		ePackage.getEClassifiers().add(keyed);
+
+		assertThat(CompositeIds.isComposite(keyed)).isFalse();
+		EObject object = ePackage.getEFactoryInstance().create(keyed);
+		object.eSet(code, "k-7");
+		assertThat(CompositeIds.fragment(object)).isEqualTo("k-7");
+		EObject stub = ePackage.getEFactoryInstance().create(keyed);
+		CompositeIds.setId(stub, "k-7");
+		assertThat(stub.eGet(code)).isEqualTo("k-7");
 	}
 
 	@Test

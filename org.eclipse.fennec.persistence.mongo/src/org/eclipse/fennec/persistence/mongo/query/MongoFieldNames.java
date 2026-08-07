@@ -103,9 +103,9 @@ public final class MongoFieldNames {
 	private static String fieldName(EStructuralFeature feature, boolean rootLevel) {
 		if (rootLevel && feature instanceof EAttribute attribute && attribute.isID()
 				&& !CompositeIds.isComposite(attribute.getEContainingClass())) {
-			// only the single id maps onto _id — with a composite id (issue #109) every
-			// component would collapse onto _id and silently mis-filter; composite
-			// classes cannot be saved on this backend anyway (see MongoResourceImpl)
+			// only the single id maps onto _id — composite components (issue #110,
+			// idKeyMode BOTH) stay plain payload fields; collapsing them onto _id
+			// would silently mis-filter
 			return MongoPersistenceConstants.ID_FIELD;
 		}
 		return feature.getName();

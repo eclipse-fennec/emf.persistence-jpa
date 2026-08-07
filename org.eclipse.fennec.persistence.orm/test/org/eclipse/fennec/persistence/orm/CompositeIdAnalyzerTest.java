@@ -24,6 +24,7 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.orm.IdConfiguration.IdStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -72,7 +73,8 @@ public class CompositeIdAnalyzerTest {
 		void testMultipleIdAttributesEmbeddedId() {
 			EClass eClass = createEClass("MultiPK");
 			addIdAttribute(eClass, "id", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "timestamp", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "timestamp", EcorePackage.Literals.ELONG);
+			declareIdFeatures(eClass, "id,timestamp");
 
 			IdConfiguration config = analyzer.analyzeIdStructure(eClass);
 
@@ -137,8 +139,9 @@ public class CompositeIdAnalyzerTest {
 		void testThreeIdAttributesEmbeddedId() {
 			EClass eClass = createEClass("TriplePK");
 			addIdAttribute(eClass, "a", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "b", EcorePackage.Literals.EINT);
-			addIdAttribute(eClass, "c", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "b", EcorePackage.Literals.EINT);
+			addAttribute(eClass, "c", EcorePackage.Literals.ELONG);
+			declareIdFeatures(eClass, "a,b,c");
 
 			IdConfiguration config = analyzer.analyzeIdStructure(eClass);
 
@@ -176,8 +179,9 @@ public class CompositeIdAnalyzerTest {
 		void testMultipleIdAttributes() {
 			EClass eClass = createEClass("MultiId");
 			addIdAttribute(eClass, "id1", EcorePackage.Literals.ESTRING);
-			addIdAttribute(eClass, "id2", EcorePackage.Literals.ELONG);
+			addAttribute(eClass, "id2", EcorePackage.Literals.ELONG);
 			addAttribute(eClass, "data", EcorePackage.Literals.ESTRING);
+			declareIdFeatures(eClass, "id1,id2");
 
 			List<EAttribute> ids = analyzer.findDirectIdAttributes(eClass);
 
@@ -247,8 +251,9 @@ public class CompositeIdAnalyzerTest {
 		void testComponentsFromIdAttributes() {
 			EClass keyClass = createEClass("CompositeKey");
 			addIdAttribute(keyClass, "part1", EcorePackage.Literals.ESTRING);
-			addIdAttribute(keyClass, "part2", EcorePackage.Literals.ELONG);
+			addAttribute(keyClass, "part2", EcorePackage.Literals.ELONG);
 			addAttribute(keyClass, "notId", EcorePackage.Literals.ESTRING);
+			declareIdFeatures(keyClass, "part1,part2");
 
 			EClass owner = createEClass("Owner");
 			EReference ref = createContainmentReference(owner, "key", keyClass);
@@ -341,6 +346,14 @@ public class CompositeIdAnalyzerTest {
 		attr.setID(true);
 		owner.getEStructuralFeatures().add(attr);
 		return attr;
+	}
+
+	/** The canonical composite declaration (issue #115): explicit idFeatures annotation. */
+	private void declareIdFeatures(EClass owner, String idFeatures) {
+		org.eclipse.emf.ecore.EAnnotation annotation = EcoreFactory.eINSTANCE.createEAnnotation();
+		annotation.setSource(CompositeIds.ANNOTATION_SOURCE);
+		annotation.getDetails().put(CompositeIds.ID_FEATURES, idFeatures);
+		owner.getEAnnotations().add(annotation);
 	}
 
 	private EAttribute addAttribute(EClass owner, String name, org.eclipse.emf.ecore.EClassifier type) {
