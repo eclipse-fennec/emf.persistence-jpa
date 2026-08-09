@@ -17,15 +17,16 @@ is all the mapping the backend needs.
 1. [Prerequisites](#prerequisites)
 2. [Configuring the backend (OSGi)](#configuring-the-backend-osgi)
 3. [Connection liveness](#connection-liveness)
-4. [Plain-Java setup (non-OSGi)](#plain-java-setup-non-osgi)
+4. [Server flavors: MongoDB, FerretDB, DocumentDB](#server-flavors-mongodb-ferretdb-documentdb)
+6. [Plain-Java setup (non-OSGi)](#plain-java-setup-non-osgi)
 5. [The `mongodb://` URI scheme](#the-mongodb-uri-scheme)
-6. [CRUD through an EMF Resource](#crud-through-an-emf-resource)
-7. [Identity: EMF ids and `_id`](#identity-emf-ids-and-_id)
-8. [How the codec maps EObjects to BSON](#how-the-codec-maps-eobjects-to-bson)
-9. [References and proxies](#references-and-proxies)
-10. [Mixing JPA and MongoDB in one ResourceSet](#mixing-jpa-and-mongodb-in-one-resourceset)
-11. [Error handling and diagnostics](#error-handling-and-diagnostics)
-12. [What is not (yet) supported](#what-is-not-yet-supported)
+7. [CRUD through an EMF Resource](#crud-through-an-emf-resource)
+8. [Identity: EMF ids and `_id`](#identity-emf-ids-and-_id)
+9. [How the codec maps EObjects to BSON](#how-the-codec-maps-eobjects-to-bson)
+10. [References and proxies](#references-and-proxies)
+11. [Mixing JPA and MongoDB in one ResourceSet](#mixing-jpa-and-mongodb-in-one-resourceset)
+12. [Error handling and diagnostics](#error-handling-and-diagnostics)
+13. [What is not (yet) supported](#what-is-not-yet-supported)
 
 ## Prerequisites
 
@@ -63,6 +64,7 @@ connectionString=mongodb://localhost:27017
 |-----|----------|---------|
 | `ident` | yes | Unique client identifier; becomes the service property `mongo.client.ident` and the liveness condition id `fennec.liveness.<ident>` |
 | `connectionString` | yes | Standard MongoDB connection string, e.g. `mongodb://user:pass@host:27017` |
+| `flavor` | no | Server behind the wire protocol: `mongo` (default), `ferretdb`, `documentdb-pg`; see [Server flavors](#server-flavors-mongodb-ferretdb-documentdb) |
 | `liveness.*` | no | Probe tuning, see [Connection liveness](#connection-liveness) |
 
 ### 2. The database — factory PID `persistence.mongo.database`
@@ -204,6 +206,127 @@ See the [Configuration Reference](configuration-reference.md#connection-liveness
 for the full key table and defaults (`liveness.enabled`,
 `liveness.checkInterval`, `liveness.checkTimeout`,
 `liveness.failureThreshold`, `liveness.retryMin`/`liveness.retryMax`).
+
+## Server flavors: MongoDB, FerretDB, DocumentDB
+
+The MongoDB wire protocol is no longer served only by MongoDB. **FerretDB 2.x** speaks it on
+top of PostgreSQL with the **DocumentDB extension** (`pg_documentdb_core` /
+`pg_documentdb_api` — originally Microsoft, now under the Linux Foundation), which stores
+documents in a native Postgres `bson` type; Microsoft ships its own gateway in front of the
+same engine.
+
+This backend reaches all of them through the same Mongo Java driver, so nothing changes for
+your model or your code:
+
+- the URI scheme stays `mongodb://<alias>/<collection>`
+- the query backend id stays `mongo`
+- the same `MongoResourceFactory` and the same translation are used
+
+What differs is the **query capability set** the server can serve. The `flavor` declares which
+server is at the other end, so an unsupported construct is refused up front with a
+`Diagnostic` instead of failing inside the driver.
+
+> A native PostgreSQL backend — JDBC, `jsonb`/`bson` columns, TimescaleDB hypertables — is
+> *not* a flavor. Different driver, different configuration, different resource
+> implementation; that belongs in a backend of its own (see issue #96 for the time-series
+> store).
+
+### Configuring the flavor
+
+`flavor` belongs to the **client** configuration, because it describes the server. It is
+propagated from there to the database services and on to the resources, so there is exactly one
+place to set it:
+
+```properties
+# filename: persistence.mongo.client~ferret.cfg
+ident=ferret
+connectionString=mongodb://postgres:secret@localhost:27017/
+flavor=ferretdb
+```
+
+| Value | Server |
+|-------|--------|
+| `mongo` (default) | MongoDB itself |
+| `ferretdb` | FerretDB 2.x over PostgreSQL + DocumentDB extension |
+| `documentdb-pg` | Microsoft/Linux-Foundation DocumentDB gateway over the same extension |
+
+There is deliberately no `postgres` flavor: the capability boundary is drawn by the DocumentDB
+extension, not by PostgreSQL, and `ferretdb` and `documentdb-pg` are two gateways in front of
+that same engine. There is no bare `documentdb` either — Amazon DocumentDB is an unrelated
+product with different gaps, and the short name would invite confusing the two.
+
+An unknown value fails the client configuration instead of silently falling back, since a wrong
+flavor means a capability declaration that does not describe the server.
+
+On the first successful liveness probe the client verifies the configured flavor against the
+server's `buildInfo` and logs a warning on mismatch. Detection cannot *replace* the
+configuration — the capability set has to be known before any connection exists, because
+`validate()` may be called first — and note that FerretDB reports a MongoDB version
+(`version: 7.0.77` when this was measured); only a nested `ferretdb` document identifies it, so
+a version check alone would conclude "real MongoDB".
+
+### Capability matrix
+
+| Capability | `mongo` | `ferretdb` | `documentdb-pg` |
+|------------|---------|------------|-----------------|
+| Query features (`where`, `sort`, projection, aggregation, pipelines, geo, type/temporal/string functions) | all | all | all (unmeasured) |
+| Multi-document transactions (`CommandFeature.TRANSACTION_BRACKET`) | replica set / mongos only | no | no |
+
+<!-- flavor-gaps:ferretdb -->
+No measured query-feature gaps.
+<!-- /flavor-gaps -->
+
+<!-- flavor-gaps:documentdb-pg -->
+No measured query-feature gaps.
+<!-- /flavor-gaps -->
+
+The FerretDB row is a **measurement**: the full persistence TCK was run against
+`ghcr.io/ferretdb/ferretdb-eval:2` (FerretDB 2.7.0) and passed in its entirety — including the
+constructs one would expect to be missing: 2dsphere geo predicates, `$convert`/`$type`,
+`$filter` + `$size` collection counts, temporal and extended string functions, and
+count-distinct aggregation. Scope of that claim is "no gap in what the TCK exercises"; a
+feature the suite does not reach is untested rather than proven.
+
+The `documentdb-pg` row is **not measured yet**. It mirrors `ferretdb` because the same Postgres
+extension does the query work and only the wire gateway differs — inherited until measured, not
+verified.
+
+Transactions need no flavor declaration: the resource probes the deployment at runtime, so a
+gateway (a single logical server, never a replica set) simply does not declare
+`TRANSACTION_BRACKET`, and `begin()` refuses with a `Diagnostic` naming the feature. The table
+above is verified against the code by `MongoFlavorDocumentationTest`, so it cannot quietly rot.
+
+### Running the servers
+
+MongoDB — a single-node replica set, which is what unlocks multi-document transactions:
+
+```bash
+docker run -d -p 27017:27017 mongo:7 --replSet rs0
+docker exec <container> mongosh --quiet --eval 'rs.initiate()'
+```
+
+FerretDB 2.x — the evaluation image bundles PostgreSQL, the DocumentDB extension and the
+gateway in one container:
+
+```bash
+docker run -d -p 27017:27017 -e POSTGRES_PASSWORD=secret ghcr.io/ferretdb/ferretdb-eval:2
+```
+
+Two things to know: `POSTGRES_PASSWORD` is **mandatory** (without it the container exits
+immediately), and the connection string needs credentials —
+`mongodb://postgres:secret@localhost:27017/`. The container also needs a moment longer to come
+up than MongoDB, because it initializes PostgreSQL and installs the extension before opening
+the wire port.
+
+For a split setup (separate Postgres and gateway containers) use
+`ghcr.io/ferretdb/postgres-documentdb` plus `ghcr.io/ferretdb/ferretdb`; the eval image exists
+to keep evaluation and CI at one container.
+
+To run the test suite against a flavor:
+
+```bash
+./gradlew :org.eclipse.fennec.persistence.tck:test -Dmongo.test.flavor=ferretdb
+```
 
 ## Plain-Java setup (non-OSGi)
 
