@@ -28,7 +28,10 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
+import org.eclipse.fennec.persistence.mongo.MongoFlavor;
+import org.eclipse.fennec.persistence.mongo.MongoFlavorCapabilities;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
+import org.eclipse.fennec.persistence.query.api.QueryFeature;
 import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoClient;
@@ -60,10 +63,37 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	// composite ids map to a compound structured _id via the codec id plane since
 	// issue #110 — the inherited supportsCompositeIds() default applies
 
-	/** 2dsphere geo translation since issue #113 (G-P2). */
+	/**
+	 * 2dsphere geo translation since issue #113 (G-P2) — subject to the flavor: the
+	 * PostgreSQL-backed gateways do not necessarily serve the geo operators, which is
+	 * measured rather than assumed (issue #119).
+	 */
 	@Override
 	protected boolean supportsGeo() {
-		return true;
+		return MongoFlavorCapabilities.of(flavor()).supports(QueryFeature.GEO_WITHIN);
+	}
+
+	/**
+	 * Measured (issue #119): the FerretDB gateway is a single logical server — there is no
+	 * replica set to start — so {@code MongoResourceImpl}'s runtime probe correctly leaves
+	 * {@code TRANSACTION_BRACKET} undeclared and {@code begin()} refuses with a Diagnostic.
+	 * The TCK then asserts the refusal shape instead of the transactional behaviour, which is
+	 * the honest contract: nothing here pretends a bracket that commits per command.
+	 */
+	@Override
+	protected boolean supportsCommandTransactions() {
+		return !MongoTestSupport.isFerretDb();
+	}
+
+	/**
+	 * The server flavor under test, from {@code -Dmongo.test.flavor} (issue #118). Unknown
+	 * ids fail loudly: silently testing MongoDB while believing it is FerretDB would make a
+	 * green run meaningless.
+	 */
+	private static MongoFlavor flavor() {
+		return MongoFlavor.byId(MongoTestSupport.flavor())
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Unknown -Dmongo.test.flavor=" + MongoTestSupport.flavor()));
 	}
 
 	// command transactions run for real since issue #112: the factory carries the
@@ -103,9 +133,10 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(tckPackage.getNsURI(), tckPackage);
 		// the session-capable client unlocks command transactions (issue #112) — the
-		// test container runs a single-node replica set
+		// test container runs a single-node replica set. The flavor (issue #118) narrows the
+		// declared query capabilities to what this server actually serves.
 		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
-				.put("mongodb", new MongoResourceFactory(database, metadataService, null, null, client));
+				.put("mongodb", new MongoResourceFactory(database, metadataService, null, null, client, flavor()));
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put("*", new XMIResourceFactoryImpl());
 		return resourceSet;
