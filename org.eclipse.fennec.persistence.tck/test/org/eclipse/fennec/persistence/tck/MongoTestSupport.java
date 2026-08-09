@@ -35,8 +35,30 @@ import java.util.logging.Logger;
 final class MongoTestSupport {
 
 	private static final Logger LOG = Logger.getLogger(MongoTestSupport.class.getName());
-	private static final String IMAGE = System.getProperty("mongo.test.image", "docker.io/library/mongo:7");
 	private static final String CLI_OVERRIDE = System.getProperty("mongo.container.cli");
+
+	/**
+	 * The server flavor under test (issue #119): {@code mongo} (default) or {@code ferretdb}.
+	 * The wire protocol is identical, so the whole suite runs unchanged — what differs is how
+	 * the container starts and which query capabilities the backend may declare.
+	 */
+	private static final String FLAVOR = System.getProperty("mongo.test.flavor", "mongo").trim().toLowerCase();
+
+	static final String FLAVOR_MONGO = "mongo";
+	static final String FLAVOR_FERRETDB = "ferretdb";
+
+	/**
+	 * FerretDB 2.x bundles PostgreSQL, the DocumentDB extension and the wire gateway in this
+	 * single evaluation image, which keeps the harness at one container. Pinned: an unpinned
+	 * tag would make capability drift look like a random test failure.
+	 */
+	private static final String FERRETDB_IMAGE = "ghcr.io/ferretdb/ferretdb-eval:2";
+
+	/** Mandatory for the FerretDB image — without it the container exits immediately. */
+	private static final String FERRETDB_PASSWORD = "fennec";
+
+	private static final String IMAGE = System.getProperty("mongo.test.image",
+			isFerretDb() ? FERRETDB_IMAGE : "docker.io/library/mongo:7");
 
 	private static volatile String uri;
 	private static volatile String containerId;
@@ -44,6 +66,15 @@ final class MongoTestSupport {
 	private static volatile String cli;
 
 	private MongoTestSupport() {
+	}
+
+	/** @return the flavor id under test, as configured by {@code -Dmongo.test.flavor} */
+	static String flavor() {
+		return FLAVOR;
+	}
+
+	static boolean isFerretDb() {
+		return FLAVOR_FERRETDB.equals(FLAVOR);
 	}
 
 	private static String resolveCli() {
@@ -77,27 +108,70 @@ final class MongoTestSupport {
 			return uri;
 		}
 		try {
-			// single-node replica set: functionally identical for plain operations, and
-			// it unlocks multi-document transactions for the command-bracket TCK cases
-			// (issue #112); directConnection keeps the driver off RS discovery, which
-			// would resolve the container-internal hostname
-			String id = exec(180, resolveCli(), "run", "-d", "--rm",
-					"-p", "127.0.0.1::27017", IMAGE, "--replSet", "rs0");
+			String id = isFerretDb() ? startFerretDb() : startMongo();
 			if (nonNull(id) && !id.isBlank()) {
 				containerId = id.trim();
 				String mapping = exec(20, resolveCli(), "port", containerId, "27017/tcp");
 				if (nonNull(mapping) && mapping.contains(":")) {
 					String port = mapping.trim().lines().findFirst().orElse("");
 					port = port.substring(port.lastIndexOf(':') + 1);
-					initiateReplicaSet();
-					uri = "mongodb://127.0.0.1:" + port + "/?directConnection=true";
+					if (isFerretDb()) {
+						awaitWireProtocol();
+						// the gateway authenticates against the Postgres role
+						uri = "mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:" + port + "/";
+					} else {
+						initiateReplicaSet();
+						uri = "mongodb://127.0.0.1:" + port + "/?directConnection=true";
+					}
 					Runtime.getRuntime().addShutdownHook(new Thread(MongoTestSupport::shutdown));
 				}
 			}
 		} catch (Exception e) {
-			LOG.log(Level.INFO, "No MongoDB available for TCK tests: " + e.getMessage());
+			LOG.log(Level.INFO, "No " + FLAVOR + " server available for TCK tests: " + e.getMessage());
 		}
 		return uri;
+	}
+
+	/**
+	 * Starts MongoDB as a single-node replica set: functionally identical for plain
+	 * operations, and it unlocks multi-document transactions for the command-bracket TCK
+	 * cases (issue #112).
+	 */
+	private static String startMongo() throws Exception {
+		return exec(180, resolveCli(), "run", "-d", "--rm", "-p", "127.0.0.1::27017", IMAGE, "--replSet", "rs0");
+	}
+
+	/**
+	 * Starts the FerretDB evaluation image. No replica set: the gateway is a single logical
+	 * server, so {@code rs.initiate()} does not apply — which is exactly why the
+	 * {@code TRANSACTION_BRACKET} command feature stays undeclared there (issue #112's
+	 * runtime probe in {@code MongoResourceImpl.capabilities()} handles that on its own).
+	 */
+	private static String startFerretDb() throws Exception {
+		return exec(300, resolveCli(), "run", "-d", "--rm", "-p", "127.0.0.1::27017",
+				"-e", "POSTGRES_PASSWORD=" + FERRETDB_PASSWORD, IMAGE);
+	}
+
+	/**
+	 * Waits until the gateway answers on the wire. The image starts PostgreSQL, installs the
+	 * DocumentDB extension and only then opens the Mongo port, so a connection attempt right
+	 * after {@code run} is refused.
+	 */
+	private static void awaitWireProtocol() throws Exception {
+		long deadline = System.currentTimeMillis() + 120_000;
+		Exception last = null;
+		while (System.currentTimeMillis() < deadline) {
+			try {
+				exec(20, resolveCli(), "exec", containerId, "mongosh",
+						"mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:27017/", "--quiet",
+						"--eval", "db.adminCommand({ping:1})");
+				return;
+			} catch (Exception e) {
+				last = e;
+				Thread.sleep(2_000);
+			}
+		}
+		throw new IllegalStateException("FerretDB did not answer on the wire within 120s", last);
 	}
 
 	/** Initiates the single-node replica set and waits until the node is PRIMARY. */
