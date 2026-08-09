@@ -33,13 +33,12 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.bson.BsonArray;
 import org.bson.BsonDocument;
-import org.bson.conversions.Bson;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
 import org.bson.BsonString;
 import org.bson.BsonValue;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
@@ -49,16 +48,8 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
-import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
-import org.eclipse.emf.ecore.util.InternalEList;
-import org.eclipse.fennec.persistence.Options;
-import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
-import org.eclipse.fennec.persistence.helper.CompositeIds;
-import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
-import org.eclipse.fennec.persistence.resource.PersistenceResource;
-import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.eclipse.fennec.codec.bson.BsonFormatDelegate;
 import org.eclipse.fennec.codec.bson.BsonFormatReaderDelegate;
 import org.eclipse.fennec.codec.config.ConfigProperty;
@@ -72,45 +63,50 @@ import org.eclipse.fennec.codec.module.CodecModule;
 import org.eclipse.fennec.codec.resource.CodecResource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.model.command.Command;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.command.InsertCommand;
+import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
+import org.eclipse.fennec.persistence.mongo.query.BsonValues;
+import org.eclipse.fennec.persistence.mongo.query.MongoQueries;
+import org.eclipse.fennec.persistence.mongo.query.MongoQueryPlan;
+import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
+import org.eclipse.fennec.persistence.query.QueryException;
+import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
+import org.eclipse.fennec.persistence.query.api.CommandFeature;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.api.QueryProcessor;
+import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryResultRow;
+import org.eclipse.fennec.persistence.query.api.QueryShape;
+import org.eclipse.fennec.persistence.query.api.QueryableResource;
+import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
+import org.eclipse.fennec.persistence.query.support.CommandCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+import org.eclipse.fennec.persistence.query.support.PersistedQueries;
+import org.eclipse.fennec.persistence.query.support.QueryResultRows;
+import org.eclipse.fennec.persistence.query.support.QueryResults;
+import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
+import org.eclipse.fennec.persistence.resource.PersistenceResource;
+import org.eclipse.fennec.persistence.resource.StreamingResource;
 
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
-import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
-
-import org.eclipse.fennec.model.query.Query;
-import org.eclipse.fennec.persistence.query.QueryException;
-import org.eclipse.fennec.persistence.query.api.QueryProcessor;
-import org.eclipse.fennec.model.command.Command;
-import org.eclipse.fennec.model.command.DeleteCommand;
-import org.eclipse.fennec.model.command.InsertCommand;
-import org.eclipse.fennec.model.command.UpdateCommand;
-import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
-import org.eclipse.fennec.persistence.query.api.CommandFeature;
-import org.eclipse.fennec.persistence.query.api.CommandResource;
-import org.eclipse.fennec.persistence.query.api.QueryableResource;
-import org.eclipse.fennec.persistence.query.api.QueryResult;
-import org.eclipse.fennec.persistence.query.api.QueryResultRow;
-import org.eclipse.fennec.persistence.query.api.QueryShape;
-import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
-import org.eclipse.fennec.persistence.query.support.CommandCapabilitiesBuilder;
-import org.eclipse.fennec.persistence.query.support.CommandTransaction;
-import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
-import org.eclipse.fennec.persistence.query.support.PersistedQueries;
-import org.eclipse.fennec.persistence.query.support.QueryResultRows;
-import org.eclipse.fennec.persistence.query.support.QueryResults;
-import org.eclipse.fennec.persistence.mongo.query.BsonValues;
-import org.eclipse.fennec.persistence.mongo.query.MongoQueries;
-import org.eclipse.fennec.persistence.mongo.query.MongoQueryPlan;
-import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
 
 import tools.jackson.core.ErrorReportConfiguration;
 import tools.jackson.core.JsonEncoding;
@@ -192,14 +188,6 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		this.compositeIdConfigs = compositeIdConfigs;
 	}
 
-	/**
-	 * Registers the codec id configuration for a composite-id EClass (issue #110,
-	 * decision: STRUCTURED + BOTH, composite classes only): the id features derive from
-	 * the {@code isID} attributes in declaration order (the codec requires the explicit
-	 * list — its own fallback is the single eID attribute, emf.codec#99), {@code _id}
-	 * serialises as the structured sub-document, and the components stay in the payload
-	 * so component predicates keep addressing plain fields.
-	 */
 	/** Reads {@code OPTION_ID_CONFIG_FROM_MODEL} (issue #115); the flag sticks per resource. */
 	private void applyIdConfigOption(Map<?, ?> options) {
 		Object value = isNull(options) ? null
@@ -211,6 +199,14 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 	}
 
+	/**
+	 * Registers the codec id configuration for a composite-id EClass (issue #110,
+	 * decision: STRUCTURED + BOTH, composite classes only): the id features derive from
+	 * the {@code isID} attributes in declaration order (the codec requires the explicit
+	 * list — its own fallback is the single eID attribute, emf.codec#99), {@code _id}
+	 * serialises as the structured sub-document, and the components stay in the payload
+	 * so component predicates keep addressing plain fields.
+	 */
 	private void ensureCompositeIdConfig(EClass eClass) {
 		if (idConfigFromModel || isNull(eClass) || !CompositeIds.isComposite(eClass)) {
 			// OPTION_ID_CONFIG_FROM_MODEL (issue #115): the model's codec annotations
