@@ -81,6 +81,21 @@ final class MongoTestSupport {
 	/** The container port the wire protocol is served on, per flavor. */
 	private static final int WIRE_PORT = isDocumentDbPg() ? DOCUMENTDB_PORT : 27017;
 
+	/** Marks containers started by this harness, so orphans can be identified and reaped. */
+	private static final String LABEL_OWNER = "fennec.persistence.tck";
+
+	/** Carries the start time in epoch millis — the age filter of the reaper depends on it. */
+	private static final String LABEL_STARTED = "fennec.persistence.tck.started";
+
+	/**
+	 * How long an orphan is left alone. Containers are removed on JVM shutdown, but a hard kill
+	 * (a build timeout, {@code ^C}, an OOM) skips the hook and {@code --rm} only applies on
+	 * stop — so the container keeps running, sometimes for days. Reaping is therefore done at
+	 * startup, and the grace period keeps a concurrent run of the same flavor from having its
+	 * server pulled out from under it: a suite takes minutes, never an hour.
+	 */
+	private static final long ORPHAN_GRACE_MILLIS = 60 * 60 * 1000L;
+
 	private static volatile String uri;
 	private static volatile String containerId;
 	private static volatile boolean initialized;
@@ -145,6 +160,7 @@ final class MongoTestSupport {
 			return uri;
 		}
 		try {
+			reapOrphans();
 			String id = startContainer();
 			if (nonNull(id) && !id.isBlank()) {
 				containerId = id.trim();
@@ -179,17 +195,53 @@ final class MongoTestSupport {
 	 */
 	private static String startContainer() throws Exception {
 		String publish = "127.0.0.1::" + WIRE_PORT;
+		String owner = "--label=" + LABEL_OWNER + "=" + FLAVOR;
+		String started = "--label=" + LABEL_STARTED + "=" + System.currentTimeMillis();
 		if (isFerretDb()) {
-			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish,
+			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish, owner, started,
 					"-e", "POSTGRES_PASSWORD=" + FERRETDB_PASSWORD, IMAGE);
 		}
 		if (isDocumentDbPg()) {
 			// ALLOW_EXTERNAL_CONNECTIONS defaults to false — without it the gateway binds
 			// container-locally and the published port refuses every connection
-			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish,
+			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish, owner, started,
 					"-e", "ALLOW_EXTERNAL_CONNECTIONS=true", "-e", "ENFORCE_SSL=false", IMAGE);
 		}
-		return exec(180, resolveCli(), "run", "-d", "--rm", "-p", publish, IMAGE, "--replSet", "rs0");
+		return exec(180, resolveCli(), "run", "-d", "--rm", "-p", publish, owner, started,
+				IMAGE, "--replSet", "rs0");
+	}
+
+	/**
+	 * Removes containers this harness leaked in earlier runs (same flavor, older than
+	 * {@link #ORPHAN_GRACE_MILLIS}).
+	 * <p>
+	 * Best-effort throughout: reaping is housekeeping, so a failure here must never fail a test
+	 * run — every error is logged at FINE and the suite proceeds with a fresh container. A
+	 * container whose start-time label is missing or unparsable is left alone rather than
+	 * guessed about.
+	 */
+	private static void reapOrphans() {
+		try {
+			String listed = exec(30, resolveCli(), "ps", "--all", "--quiet",
+					"--filter", "label=" + LABEL_OWNER + "=" + FLAVOR);
+			long now = System.currentTimeMillis();
+			listed.lines().map(String::trim).filter(id -> !id.isEmpty()).forEach(id -> {
+				try {
+					String startedAt = exec(20, resolveCli(), "inspect", id,
+							"--format", "{{index .Config.Labels \"" + LABEL_STARTED + "\"}}").trim();
+					if (now - Long.parseLong(startedAt) < ORPHAN_GRACE_MILLIS) {
+						return;
+					}
+					exec(30, resolveCli(), "rm", "--force", id);
+					LOG.log(Level.INFO, () -> "Removed leaked " + FLAVOR + " test container " + id
+							+ " from an earlier run");
+				} catch (Exception e) {
+					LOG.log(Level.FINE, () -> "Could not reap container " + id + ": " + e.getMessage());
+				}
+			});
+		} catch (Exception e) {
+			LOG.log(Level.FINE, () -> "Orphan reaping skipped: " + e.getMessage());
+		}
 	}
 
 	/**
