@@ -74,11 +74,17 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	}
 
 	/**
-	 * Measured (issue #119): the FerretDB gateway is a single logical server — there is no
-	 * replica set to start — so {@code MongoResourceImpl}'s runtime probe correctly leaves
-	 * {@code TRANSACTION_BRACKET} undeclared and {@code begin()} refuses with a Diagnostic.
-	 * The TCK then asserts the refusal shape instead of the transactional behaviour, which is
-	 * the honest contract: nothing here pretends a bracket that commits per command.
+	 * Measured (issues #119/#122) — and the two PostgreSQL-backed gateways differ here, which
+	 * is why they are separate flavors rather than one:
+	 * <ul>
+	 * <li>FerretDB presents a standalone server, so {@code MongoResourceImpl}'s runtime probe
+	 * leaves {@code TRANSACTION_BRACKET} undeclared and {@code begin()} refuses with a
+	 * Diagnostic — the TCK asserts that refusal shape instead of the behaviour.</li>
+	 * <li>The DocumentDB gateway announces itself as mongos ({@code hello.msg=isdbgrid}) and
+	 * genuinely serves client-session transactions — verified by committing one against the
+	 * emulator. The probe is right to declare the feature, so the full transactional contract
+	 * is exercised.</li>
+	 * </ul>
 	 */
 	@Override
 	protected boolean supportsCommandTransactions() {

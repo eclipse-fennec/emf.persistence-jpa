@@ -269,8 +269,9 @@ a version check alone would conclude "real MongoDB".
 
 | Capability | `mongo` | `ferretdb` | `documentdb-pg` |
 |------------|---------|------------|-----------------|
-| Query features (`where`, `sort`, projection, aggregation, pipelines, geo, type/temporal/string functions) | all | all | all (unmeasured) |
-| Multi-document transactions (`CommandFeature.TRANSACTION_BRACKET`) | replica set / mongos only | no | no |
+| Query features (`where`, `sort`, projection, aggregation, pipelines, geo, type/temporal/string functions) | all | all | all |
+| Multi-document transactions (`CommandFeature.TRANSACTION_BRACKET`) | replica set / mongos only | no | yes |
+| Reports itself in `buildInfo` as | MongoDB (`gitVersion`) | `ferretdb` sub-document | nothing |
 
 <!-- flavor-gaps:ferretdb -->
 No measured query-feature gaps.
@@ -280,21 +281,25 @@ No measured query-feature gaps.
 No measured query-feature gaps.
 <!-- /flavor-gaps -->
 
-The FerretDB row is a **measurement**: the full persistence TCK was run against
-`ghcr.io/ferretdb/ferretdb-eval:2` (FerretDB 2.7.0) and passed in its entirety — including the
-constructs one would expect to be missing: 2dsphere geo predicates, `$convert`/`$type`,
-`$filter` + `$size` collection counts, temporal and extended string functions, and
-count-distinct aggregation. Scope of that claim is "no gap in what the TCK exercises"; a
-feature the suite does not reach is untested rather than proven.
+Both gateway rows are **measurements**, not estimates: the full persistence TCK was run against
+`ghcr.io/ferretdb/ferretdb-eval:2` (FerretDB 2.7.0) and against
+`ghcr.io/microsoft/documentdb/documentdb-local` (PostgreSQL 17 + DocumentDB extension +
+`documentdb_gateway`), and both passed in their entirety — including the constructs one would
+expect to be missing: 2dsphere geo predicates, `$convert`/`$type`, `$filter` + `$size`
+collection counts, temporal and extended string functions, and count-distinct aggregation. Scope
+of that claim is "no gap in what the TCK exercises"; a feature the suite does not reach is
+untested rather than proven.
 
-The `documentdb-pg` row is **not measured yet**. It mirrors `ferretdb` because the same Postgres
-extension does the query work and only the wire gateway differs — inherited until measured, not
-verified.
+Query-wise the two gateways are identical, which is unsurprising — the same Postgres extension
+does the query work. **They are not interchangeable, though**, and the difference is
+transactions: the DocumentDB gateway announces itself as mongos (`hello.msg=isdbgrid`) and
+genuinely serves client-session transactions, while FerretDB presents a standalone server and
+cannot. That needs no flavor declaration — the resource probes the deployment at runtime, so
+FerretDB simply does not declare `TRANSACTION_BRACKET` and `begin()` refuses with a `Diagnostic`
+naming the feature, while on DocumentDB brackets commit for real.
 
-Transactions need no flavor declaration: the resource probes the deployment at runtime, so a
-gateway (a single logical server, never a replica set) simply does not declare
-`TRANSACTION_BRACKET`, and `begin()` refuses with a `Diagnostic` naming the feature. The table
-above is verified against the code by `MongoFlavorDocumentationTest`, so it cannot quietly rot.
+The table above is verified against the code by `MongoFlavorDocumentationTest`, so it cannot
+quietly rot.
 
 ### Running the servers
 
@@ -322,11 +327,61 @@ For a split setup (separate Postgres and gateway containers) use
 `ghcr.io/ferretdb/postgres-documentdb` plus `ghcr.io/ferretdb/ferretdb`; the eval image exists
 to keep evaluation and CI at one container.
 
+DocumentDB gateway — the Microsoft/Linux-Foundation emulator, PostgreSQL plus the extension plus
+`documentdb_gateway` in one container:
+
+```bash
+docker run -d -p 10260:10260 \
+  -e ALLOW_EXTERNAL_CONNECTIONS=true \
+  -e ENFORCE_SSL=false \
+  ghcr.io/microsoft/documentdb/documentdb-local:latest
+```
+
+```properties
+# filename: persistence.mongo.client~docdb.cfg
+ident=docdb
+connectionString=mongodb://default_user:Admin100@localhost:10260/?directConnection=true
+flavor=documentdb-pg
+```
+
+Four things differ from MongoDB and each one costs an afternoon if you hit it blind:
+
+- **The port is 10260**, not 27017 (`DOCUMENTDB_PORT`).
+- **`ALLOW_EXTERNAL_CONNECTIONS` defaults to `false`.** Without it the gateway binds
+  container-locally and the published port refuses every connection.
+- **Credentials are required**; the image creates the role `default_user` / `Admin100` on first
+  start (`USERNAME` / `PASSWORD`).
+- **TLS.** The image defaults to `ENFORCE_SSL=true` with a self-signed certificate. `mongosh`
+  waves that through with `tlsAllowInvalidCertificates=true`, but **that is not a MongoDB Java
+  driver option** — the driver ignores the unknown parameter, PKIX validation then fails with
+  `SSLHandshakeException: unable to find valid certification path`, and because every operation
+  burns a full `serverSelectionTimeout` the symptom is a *hang*, not an error. `tlsInsecure`
+  does not disable chain validation for the Java driver either.
+
+  For a local example, `ENFORCE_SSL=false` (above) is the honest simplification. For anything
+  real, keep TLS on and make the JVM trust the certificate — mount your own via `CERT_PATH` /
+  `KEY_FILE`, or import the gateway's into a truststore:
+
+  ```bash
+  docker cp <container>:/home/documentdb/gateway/certs/documentdb.pem ./documentdb.pem
+  keytool -importcert -alias documentdb -file documentdb.pem \
+    -keystore documentdb.jks -storepass changeit -noprompt
+  # then run the JVM with:
+  #   -Djavax.net.ssl.trustStore=documentdb.jks -Djavax.net.ssl.trustStorePassword=changeit
+  ```
+
+  and connect with `?tls=true` (no `tlsInsecure`).
+
 To run the test suite against a flavor:
 
 ```bash
 ./gradlew :org.eclipse.fennec.persistence.tck:test -Dmongo.test.flavor=ferretdb
+./gradlew :org.eclipse.fennec.persistence.tck:test -Dmongo.test.flavor=documentdb-pg
 ```
+
+When checking such a run, look at the number of *executed* tests, not at the build result: the
+suite skips itself via JUnit assumptions when no server is reachable, so an unreachable container
+produces a green build that measured nothing.
 
 ## Plain-Java setup (non-OSGi)
 

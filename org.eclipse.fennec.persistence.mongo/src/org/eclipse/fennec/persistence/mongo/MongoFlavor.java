@@ -58,8 +58,17 @@ public enum MongoFlavor {
 	 */
 	private static final String BUILD_INFO_FERRETDB = "ferretdb";
 
-	/** The analogous marker of the Microsoft/LF DocumentDB gateway. */
-	private static final String BUILD_INFO_DOCUMENTDB = "documentdb";
+	/**
+	 * {@code buildInfo} field every real MongoDB build reports, and no measured gateway does.
+	 * <p>
+	 * The DocumentDB gateway announces itself nowhere: its whole reply is
+	 * {@code {version, versionArray, bits, maxBsonObjectSize, ok}} (measured against
+	 * {@code documentdb-local}, reporting version {@code 7.0.0}). There is no positive marker
+	 * to match, so the only available signal is the <em>absence</em> of the build metadata a
+	 * genuine server always carries. That is deliberately used to answer "is this MongoDB?"
+	 * — never to claim "this is DocumentDB", which the reply simply does not say.
+	 */
+	private static final String BUILD_INFO_MONGO_BUILD = "gitVersion";
 
 	private final String id;
 
@@ -99,8 +108,10 @@ public enum MongoFlavor {
 	 *
 	 * @param buildInfo the reply of {@code db.adminCommand({buildInfo: 1})} (an
 	 *            {@code org.bson.Document} is a {@code Map}); may be {@code null}
-	 * @return the detected flavor, or {@link Optional#empty()} if the reply carries no
-	 *         gateway marker — which means "indistinguishable from MongoDB", not "MongoDB"
+	 * @return the detected flavor, or {@link Optional#empty()} when the reply names no
+	 *         gateway — which means "did not say", not "MongoDB". Only FerretDB can be
+	 *         identified positively; see {@link #looksLikeMongoDb(Map)} for the other
+	 *         direction.
 	 */
 	public static Optional<MongoFlavor> detect(Map<String, Object> buildInfo) {
 		if (buildInfo == null) {
@@ -109,10 +120,26 @@ public enum MongoFlavor {
 		if (buildInfo.get(BUILD_INFO_FERRETDB) != null) {
 			return Optional.of(FERRETDB);
 		}
-		if (buildInfo.get(BUILD_INFO_DOCUMENTDB) != null) {
-			return Optional.of(DOCUMENTDB_PG);
-		}
 		return Optional.empty();
+	}
+
+	/**
+	 * Whether a {@code buildInfo} reply looks like a genuine MongoDB build.
+	 * <p>
+	 * Used for the direction {@link #detect(Map)} cannot serve: the DocumentDB gateway
+	 * publishes no marker, so a configured {@code documentdb-pg} can only be cross-checked by
+	 * asking whether the server looks like real MongoDB instead. Measured basis: MongoDB
+	 * reports {@code gitVersion} (plus {@code sysInfo}, {@code buildEnvironment}, …), the
+	 * gateway reports none of it.
+	 * <p>
+	 * A negative signal by design, so it is used only to warn, never to switch a capability
+	 * set: a future server might omit the field for unrelated reasons.
+	 *
+	 * @param buildInfo the reply; may be {@code null}
+	 * @return {@code true} if the reply carries MongoDB's build metadata
+	 */
+	public static boolean looksLikeMongoDb(Map<String, Object> buildInfo) {
+		return buildInfo != null && buildInfo.get(BUILD_INFO_MONGO_BUILD) != null;
 	}
 
 	@Override
