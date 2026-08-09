@@ -14,13 +14,19 @@ package org.eclipse.fennec.persistence.mongo.config;
 
 import static java.util.Objects.nonNull;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.bson.Document;
 import org.eclipse.fennec.persistence.liveness.LivenessConfig;
 import org.eclipse.fennec.persistence.liveness.LivenessConstants;
 import org.eclipse.fennec.persistence.liveness.LivenessGate;
+import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
@@ -30,6 +36,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
+import org.osgi.service.metatype.annotations.Option;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -72,6 +79,18 @@ public class MongoClientComponent {
 				description = "MongoDB connection string, e.g. mongodb://localhost:27017")
 		String connectionString();
 
+		@AttributeDefinition(name = "Flavor",
+				description = "Server implementation behind the wire protocol: 'mongo' (default), "
+						+ "'ferretdb' or 'documentdb-pg'. Selects the query capability set; "
+						+ "verified against the server on connect. Configured here because the "
+						+ "flavor is a property of the connection, and propagated to the database "
+						+ "services from here",
+				options = {
+						@Option(label = "MongoDB", value = "mongo"),
+						@Option(label = "FerretDB", value = "ferretdb"),
+						@Option(label = "DocumentDB (PostgreSQL)", value = "documentdb-pg") })
+		String flavor() default "mongo";
+
 		@AttributeDefinition(name = "Liveness enabled",
 				description = "false registers the client immediately without probing")
 		boolean liveness_enabled() default true;
@@ -97,13 +116,23 @@ public class MongoClientComponent {
 		long liveness_retryMax() default LivenessConfig.DEFAULT_RETRY_MAX_SECONDS;
 	}
 
+	private static final Logger LOG = Logger.getLogger(MongoClientComponent.class.getName());
+
 	private static final Document PING = new Document("ping", 1);
+	private static final Document BUILD_INFO = new Document("buildInfo", 1);
 
 	private MongoClient client;
 	private volatile LivenessGate<MongoClient> gate;
+	/** The configured flavor whose capability set the resources will use (issue #118). */
+	private final MongoFlavor flavor;
+	/** Guards the one-shot handshake verification — it runs on the first successful probe. */
+	private final AtomicBoolean flavorVerified = new AtomicBoolean();
 
 	@Activate
 	public MongoClientComponent(BundleContext context, ClientConfig config) {
+		flavor = MongoFlavor.byId(config.flavor())
+				.orElseThrow(() -> new IllegalArgumentException("Unknown mongo flavor '" + config.flavor()
+						+ "' for client '" + config.ident() + "' — expected one of mongo, ferretdb, documentdb-pg"));
 		MongoClientSettings settings = MongoClientSettings.builder()
 				.applyConnectionString(new ConnectionString(config.connectionString()))
 				.applyToClusterSettings(cluster -> cluster.addClusterListener(new GateClusterListener()))
@@ -116,16 +145,73 @@ public class MongoClientComponent {
 		gate = LivenessGate.builder(context, MongoClient.class, client)
 				.ident(config.ident())
 				.backendType(LivenessConstants.BACKEND_MONGO)
-				.serviceProperties(Map.of(MongoPersistenceConstants.CLIENT_IDENT, config.ident()))
+				.serviceProperties(Map.of(MongoPersistenceConstants.CLIENT_IDENT, config.ident(),
+						MongoPersistenceConstants.FLAVOR, flavor.id()))
 				// withTimeout (CSOT) bounds the whole probe including server selection -
 				// without it a probe against an unreachable server would block for the
 				// full serverSelectionTimeout (default 30s)
-				.probe(timeout -> client.getDatabase("admin")
-						.withTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
-						.runCommand(PING))
+				.probe(timeout -> {
+					client.getDatabase("admin")
+							.withTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+							.runCommand(PING);
+					verifyFlavor(timeout);
+				})
 				.config(livenessConfig)
 				.build();
 		gate.open();
+	}
+
+	/**
+	 * Verifies the configured {@link MongoFlavor} against the server, once, on the first
+	 * successful probe (issue #118).
+	 * <p>
+	 * The flavor has to be <em>configured</em> — the capability set must be known before any
+	 * connection exists, since {@code validate()} may be called first. Detection therefore
+	 * does not replace the configuration, it checks it, and a mismatch is reported rather
+	 * than silently corrected: swapping the capability set underneath a running resource
+	 * would change which queries are legal mid-flight.
+	 * <p>
+	 * A wrong declaration is not cosmetic in either direction. Claiming MongoDB on a gateway
+	 * lets unsupported operators through to a driver error deep inside a pipeline; claiming a
+	 * gateway on real MongoDB refuses queries the server would happily serve.
+	 * <p>
+	 * Failures of the {@code buildInfo} command itself are swallowed deliberately: liveness
+	 * is decided by the {@code ping} above, and a server that answers ping but refuses
+	 * buildInfo must not be reported as down.
+	 */
+	private void verifyFlavor(Duration timeout) {
+		if (!flavorVerified.compareAndSet(false, true)) {
+			return;
+		}
+		Document buildInfo;
+		try {
+			buildInfo = client.getDatabase("admin")
+					.withTimeout(timeout.toMillis(), TimeUnit.MILLISECONDS)
+					.runCommand(BUILD_INFO);
+		} catch (RuntimeException e) {
+			LOG.log(Level.FINE, e, () -> "Could not read buildInfo to verify the configured flavor '"
+					+ flavor.id() + "' — the flavor stays as configured");
+			flavorVerified.set(false);
+			return;
+		}
+		Optional<MongoFlavor> detected = MongoFlavor.detect(buildInfo);
+		if (detected.isPresent()) {
+			if (detected.get() != flavor) {
+				LOG.log(Level.WARNING,
+						"Configured mongo flavor ''{0}'' does not match the server, which identifies as ''{1}'' —"
+								+ " the declared query capabilities do not describe this server",
+						new Object[] { flavor.id(), detected.get().id() });
+			}
+			return;
+		}
+		if (flavor != MongoFlavor.MONGO) {
+			// No gateway marker means "indistinguishable from MongoDB", not "is MongoDB" -
+			// a future gateway may simply not announce itself, so this stays a warning.
+			LOG.log(Level.WARNING,
+					"Configured mongo flavor ''{0}'' but the server carries no gateway marker in buildInfo"
+							+ " (version ''{1}'') — verify the configuration if queries are refused unexpectedly",
+					new Object[] { flavor.id(), buildInfo.get("version") });
+		}
 	}
 
 	@Deactivate

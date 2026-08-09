@@ -45,6 +45,51 @@ public final class QueryCapabilitiesBuilder {
 	}
 
 	/**
+	 * Derives a builder from an existing declaration — everything {@code base} supports,
+	 * including its {@code maxFeaturePathDepth}.
+	 * <p>
+	 * Intended for variants of one backend that differ only by what they <em>lack</em>
+	 * (issue #118: the same Mongo translation served by MongoDB, FerretDB or the DocumentDB
+	 * gateway). Restating a full set per variant would drift: a newly supported feature
+	 * would have to be added in every list, and a forgotten entry is invisible. Derived
+	 * plus {@link #exclude(QueryFeature...)} makes a new feature available everywhere by
+	 * default, so a genuine gap has to be discovered — and declared — deliberately.
+	 *
+	 * @param base the declaration to derive from
+	 * @return a builder pre-filled from {@code base}
+	 */
+	public static QueryCapabilitiesBuilder from(QueryCapabilities base) {
+		QueryCapabilitiesBuilder builder = new QueryCapabilitiesBuilder();
+		builder.features.addAll(base.supported());
+		builder.maxFeaturePathDepth = base.maxFeaturePathDepth();
+		return builder;
+	}
+
+	/**
+	 * Removes features from this declaration; unsupported entries are ignored.
+	 *
+	 * @param toExclude the features this variant does not serve natively
+	 * @return this builder
+	 */
+	public QueryCapabilitiesBuilder exclude(QueryFeature... toExclude) {
+		for (QueryFeature feature : toExclude) {
+			features.remove(feature);
+		}
+		return this;
+	}
+
+	/**
+	 * Removes features from this declaration; unsupported entries are ignored.
+	 *
+	 * @param toExclude the features this variant does not serve natively
+	 * @return this builder
+	 */
+	public QueryCapabilitiesBuilder excludeAll(Collection<QueryFeature> toExclude) {
+		features.removeAll(toExclude);
+		return this;
+	}
+
+	/**
 	 * Declares the given features as natively supported.
 	 *
 	 * @param toSupport the features to add

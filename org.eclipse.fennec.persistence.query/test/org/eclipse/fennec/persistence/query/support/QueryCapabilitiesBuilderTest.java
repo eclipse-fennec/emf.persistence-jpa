@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.EnumSet;
+import java.util.List;
 
 import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryFeature;
@@ -64,6 +65,38 @@ class QueryCapabilitiesBuilderTest {
 		assertThat(second.supports(QueryFeature.SORT)).isTrue();
 		assertThatThrownBy(() -> first.supported().add(QueryFeature.DISTINCT))
 				.isInstanceOf(UnsupportedOperationException.class);
+	}
+
+	@Test
+	void derivesFromABaselineIncludingDepth() {
+		QueryCapabilities baseline = QueryCapabilitiesBuilder.create()
+				.support(QueryFeature.WHERE_EQ, QueryFeature.SORT, QueryFeature.LIMIT)
+				.maxFeaturePathDepth(-1)
+				.build();
+
+		QueryCapabilities derived = QueryCapabilitiesBuilder.from(baseline).build();
+
+		assertThat(derived.supported()).isEqualTo(baseline.supported());
+		assertThat(derived.maxFeaturePathDepth()).isEqualTo(-1);
+	}
+
+	@Test
+	void excludesFeaturesFromADerivedDeclaration() {
+		QueryCapabilities baseline = QueryCapabilitiesBuilder.create()
+				.support(QueryFeature.WHERE_EQ, QueryFeature.SORT, QueryFeature.LIMIT, QueryFeature.GEO_WITHIN)
+				.build();
+
+		QueryCapabilities derived = QueryCapabilitiesBuilder.from(baseline)
+				.exclude(QueryFeature.GEO_WITHIN)
+				.excludeAll(List.of(QueryFeature.LIMIT))
+				// excluding something never supported is a no-op, not an error: a variant
+				// should be able to name a gap without knowing the baseline by heart
+				.exclude(QueryFeature.DISTINCT)
+				.build();
+
+		assertThat(derived.supported()).containsExactlyInAnyOrder(QueryFeature.WHERE_EQ, QueryFeature.SORT);
+		// the baseline is untouched — deriving must not mutate what it derives from
+		assertThat(baseline.supported()).contains(QueryFeature.GEO_WITHIN, QueryFeature.LIMIT);
 	}
 
 	@Test

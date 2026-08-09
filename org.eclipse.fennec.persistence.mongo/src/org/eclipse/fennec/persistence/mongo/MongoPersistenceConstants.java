@@ -35,6 +35,15 @@ public interface MongoPersistenceConstants {
 	/** Service property carrying the database alias. */
 	String DATABASE_ALIAS = "mongo.database.alias";
 
+	/**
+	 * Service property carrying the {@link MongoFlavor#id() flavor id} of the server behind
+	 * a client or database service (issue #118). Configured once on the client — the server
+	 * is a property of the connection, not of a database — and propagated from there, so the
+	 * resource factory can derive the query capabilities per alias. Absent means
+	 * {@link MongoFlavor#MONGO}.
+	 */
+	String FLAVOR = "mongo.flavor";
+
 	/** The MongoDB document identifier field. */
 	String ID_FIELD = "_id";
 
