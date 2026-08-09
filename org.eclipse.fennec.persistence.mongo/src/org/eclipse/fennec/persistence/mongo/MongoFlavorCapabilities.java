@@ -94,12 +94,19 @@ public final class MongoFlavorCapabilities {
 	public static final Set<QueryFeature> FERRETDB_GAPS = gaps();
 
 	/**
-	 * DocumentDB gateway gaps — not measured yet (no TCK run against that gateway), so this
-	 * mirrors {@link #FERRETDB_GAPS}: the same Postgres extension does the query work, only
-	 * the wire gateway in front of it differs. Treat it as inherited-until-measured, not as
-	 * verified.
+	 * DocumentDB gateway gaps — also <strong>empty</strong>, and also measured (issue #122):
+	 * the full TCK passes against {@code documentdb-local} (PostgreSQL 17 + DocumentDB
+	 * extension + {@code documentdb_gateway}).
+	 * <p>
+	 * Identical to {@link #FERRETDB_GAPS} on the query plane, which is unsurprising — the same
+	 * Postgres extension does the query work. The two flavors are <em>not</em> interchangeable
+	 * though, and the difference is outside this class: the DocumentDB gateway announces itself
+	 * as mongos ({@code hello.msg=isdbgrid}) and genuinely serves client-session transactions,
+	 * while FerretDB presents a standalone server and cannot. Command capabilities are probed
+	 * per resource at runtime (issues #112/#114), so that distinction needs no declaration
+	 * here — but it is the measured reason the flavors stay separate.
 	 */
-	public static final Set<QueryFeature> DOCUMENTDB_PG_GAPS = FERRETDB_GAPS;
+	public static final Set<QueryFeature> DOCUMENTDB_PG_GAPS = gaps();
 
 	private static final Map<MongoFlavor, QueryCapabilities> BY_FLAVOR = Map.of(
 			MongoFlavor.MONGO, BASELINE,

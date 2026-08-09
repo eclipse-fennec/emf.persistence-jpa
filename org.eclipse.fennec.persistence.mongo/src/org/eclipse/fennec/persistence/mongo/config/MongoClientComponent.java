@@ -204,12 +204,22 @@ public class MongoClientComponent {
 			}
 			return;
 		}
-		if (flavor != MongoFlavor.MONGO) {
-			// No gateway marker means "indistinguishable from MongoDB", not "is MongoDB" -
-			// a future gateway may simply not announce itself, so this stays a warning.
+		// Only FerretDB identifies itself; the DocumentDB gateway names nothing at all
+		// (measured: version/versionArray/bits/maxBsonObjectSize and nothing else). So the
+		// remaining check runs the other way round — does the server look like real MongoDB?
+		boolean looksLikeMongo = MongoFlavor.looksLikeMongoDb(buildInfo);
+		if (flavor == MongoFlavor.MONGO && !looksLikeMongo) {
 			LOG.log(Level.WARNING,
-					"Configured mongo flavor ''{0}'' but the server carries no gateway marker in buildInfo"
-							+ " (version ''{1}'') — verify the configuration if queries are refused unexpectedly",
+					"Configured mongo flavor ''mongo'' but the server (version ''{0}'') carries none of MongoDB''s"
+							+ " build metadata — if this is a gateway, configure its flavor, otherwise unsupported"
+							+ " operators will fail inside the driver instead of being refused up front",
+					new Object[] { buildInfo.get("version") });
+			return;
+		}
+		if (flavor != MongoFlavor.MONGO && looksLikeMongo) {
+			LOG.log(Level.WARNING,
+					"Configured mongo flavor ''{0}'' but the server reports MongoDB build metadata (version ''{1}'')"
+							+ " — a gateway capability set on real MongoDB refuses queries the server would serve",
 					new Object[] { flavor.id(), buildInfo.get("version") });
 		}
 	}

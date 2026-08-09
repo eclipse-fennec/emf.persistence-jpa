@@ -11,8 +11,8 @@ name: Mongo Flavor Matrix
 #
 # Two modes on purpose:
 #   * push / pull_request run against a DIGEST-PINNED image, so a PR is never reddened by an
-#     upstream FerretDB release it has nothing to do with
-#   * the weekly schedule runs against the floating :2 tag, which is what actually discovers
+#     upstream gateway release it has nothing to do with
+#   * the weekly schedule runs against the floating tag, which is what actually discovers
 #     drift — a pin alone would only ever reveal it when somebody bumps the pin
 
 on:
@@ -58,7 +58,7 @@ jobs:
       # fine is the whole point
       fail-fast: false
       matrix:
-        flavor: [ferretdb]
+        flavor: [ferretdb, documentdb-pg]
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,11 +74,23 @@ jobs:
         run: |
           # scheduled and manual runs float, so upstream drift is actually discovered;
           # PR/push runs pin by digest so they stay reproducible
+          case "${{ matrix.flavor }}" in
+            ferretdb)
+              floating='ghcr.io/ferretdb/ferretdb-eval:2'
+              pinned='ghcr.io/ferretdb/ferretdb-eval@sha256:1bf47a449dd65839aabfc1a535d1370c98326f8a90de20437eda0aeb30bd8dd5'
+              ;;
+            documentdb-pg)
+              floating='ghcr.io/microsoft/documentdb/documentdb-local:latest'
+              pinned='ghcr.io/microsoft/documentdb/documentdb-local@sha256:2dd1f8875e59b77a679dac82c1b3e7b2179f920db702515f006a82397d9e3b13'
+              ;;
+            *)
+              echo "::error::no image configured for flavor ${{ matrix.flavor }}"; exit 1 ;;
+          esac
           if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "image=ghcr.io/ferretdb/ferretdb-eval:2" >> "$GITHUB_OUTPUT"
+            echo "image=$floating" >> "$GITHUB_OUTPUT"
             echo "mode=floating" >> "$GITHUB_OUTPUT"
           else
-            echo "image=ghcr.io/ferretdb/ferretdb-eval@sha256:1bf47a449dd65839aabfc1a535d1370c98326f8a90de20437eda0aeb30bd8dd5" >> "$GITHUB_OUTPUT"
+            echo "image=$pinned" >> "$GITHUB_OUTPUT"
             echo "mode=pinned" >> "$GITHUB_OUTPUT"
           fi
 
@@ -94,6 +106,25 @@ jobs:
             -Dmongo.test.image=${{ steps.image.outputs.image }} \
             -Dmongo.container.cli=docker \
             --console=plain
+
+      - name: Verify the suite actually ran
+        # A green build proves nothing on its own: the suite skips itself via JUnit
+        # assumptions when the server is unreachable, so an image that fails to come up
+        # reports success having measured exactly nothing. Fail unless tests executed.
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          total = skipped = 0
+          for f in glob.glob("org.eclipse.fennec.persistence.tck/generated/test-reports/test/TEST-*Mongo*.xml"):
+              r = ET.parse(f).getroot()
+              total += int(r.get("tests")); skipped += int(r.get("skipped") or 0)
+          executed = total - skipped
+          print(f"tests={total} skipped={skipped} executed={executed}")
+          if executed == 0:
+              print("::error::the ${{ matrix.flavor }} suite executed 0 tests — the server was unreachable, so nothing was verified")
+              sys.exit(1)
+          PY
 
       - name: Upload test report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

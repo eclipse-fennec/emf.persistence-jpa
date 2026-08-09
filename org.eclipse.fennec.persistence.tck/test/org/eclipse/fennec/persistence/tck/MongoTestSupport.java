@@ -18,6 +18,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.bson.Document;
+
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+
 /**
  * Provides a MongoDB instance for the TCK:
  * <ol>
@@ -38,27 +43,43 @@ final class MongoTestSupport {
 	private static final String CLI_OVERRIDE = System.getProperty("mongo.container.cli");
 
 	/**
-	 * The server flavor under test (issue #119): {@code mongo} (default) or {@code ferretdb}.
-	 * The wire protocol is identical, so the whole suite runs unchanged — what differs is how
-	 * the container starts and which query capabilities the backend may declare.
+	 * The server flavor under test (issues #119/#122): {@code mongo} (default),
+	 * {@code ferretdb} or {@code documentdb-pg}. The wire protocol is identical, so the whole
+	 * suite runs unchanged — what differs is how the container starts, on which port, whether
+	 * it needs TLS, and which capabilities the backend may declare.
 	 */
 	private static final String FLAVOR = System.getProperty("mongo.test.flavor", "mongo").trim().toLowerCase();
 
 	static final String FLAVOR_MONGO = "mongo";
 	static final String FLAVOR_FERRETDB = "ferretdb";
+	static final String FLAVOR_DOCUMENTDB_PG = "documentdb-pg";
 
 	/**
 	 * FerretDB 2.x bundles PostgreSQL, the DocumentDB extension and the wire gateway in this
-	 * single evaluation image, which keeps the harness at one container. Pinned: an unpinned
-	 * tag would make capability drift look like a random test failure.
+	 * single evaluation image, which keeps the harness at one container.
 	 */
 	private static final String FERRETDB_IMAGE = "ghcr.io/ferretdb/ferretdb-eval:2";
 
 	/** Mandatory for the FerretDB image — without it the container exits immediately. */
 	private static final String FERRETDB_PASSWORD = "fennec";
 
-	private static final String IMAGE = System.getProperty("mongo.test.image",
-			isFerretDb() ? FERRETDB_IMAGE : "docker.io/library/mongo:7");
+	/**
+	 * The Microsoft/Linux-Foundation DocumentDB emulator: PostgreSQL 17 with the DocumentDB
+	 * extension plus the {@code documentdb_gateway}.
+	 */
+	private static final String DOCUMENTDB_IMAGE = "ghcr.io/microsoft/documentdb/documentdb-local:latest";
+
+	/** The gateway's own port — not 27017. */
+	private static final int DOCUMENTDB_PORT = 10260;
+
+	/** Image defaults; the gateway creates this role on first start. */
+	private static final String DOCUMENTDB_USER = "default_user";
+	private static final String DOCUMENTDB_PASSWORD = "Admin100";
+
+	private static final String IMAGE = System.getProperty("mongo.test.image", defaultImage());
+
+	/** The container port the wire protocol is served on, per flavor. */
+	private static final int WIRE_PORT = isDocumentDbPg() ? DOCUMENTDB_PORT : 27017;
 
 	private static volatile String uri;
 	private static volatile String containerId;
@@ -75,6 +96,22 @@ final class MongoTestSupport {
 
 	static boolean isFerretDb() {
 		return FLAVOR_FERRETDB.equals(FLAVOR);
+	}
+
+	static boolean isDocumentDbPg() {
+		return FLAVOR_DOCUMENTDB_PG.equals(FLAVOR);
+	}
+
+	/** True for any PostgreSQL-backed wire gateway — never a replica set, so no transactions. */
+	static boolean isGateway() {
+		return isFerretDb() || isDocumentDbPg();
+	}
+
+	private static String defaultImage() {
+		if (isFerretDb()) {
+			return FERRETDB_IMAGE;
+		}
+		return isDocumentDbPg() ? DOCUMENTDB_IMAGE : "docker.io/library/mongo:7";
 	}
 
 	private static String resolveCli() {
@@ -108,21 +145,19 @@ final class MongoTestSupport {
 			return uri;
 		}
 		try {
-			String id = isFerretDb() ? startFerretDb() : startMongo();
+			String id = startContainer();
 			if (nonNull(id) && !id.isBlank()) {
 				containerId = id.trim();
-				String mapping = exec(20, resolveCli(), "port", containerId, "27017/tcp");
+				String mapping = exec(20, resolveCli(), "port", containerId, WIRE_PORT + "/tcp");
 				if (nonNull(mapping) && mapping.contains(":")) {
 					String port = mapping.trim().lines().findFirst().orElse("");
 					port = port.substring(port.lastIndexOf(':') + 1);
-					if (isFerretDb()) {
+					if (isGateway()) {
 						awaitWireProtocol();
-						// the gateway authenticates against the Postgres role
-						uri = "mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:" + port + "/";
 					} else {
 						initiateReplicaSet();
-						uri = "mongodb://127.0.0.1:" + port + "/?directConnection=true";
 					}
+					uri = connectionUri(port);
 					Runtime.getRuntime().addShutdownHook(new Thread(MongoTestSupport::shutdown));
 				}
 			}
@@ -133,45 +168,97 @@ final class MongoTestSupport {
 	}
 
 	/**
-	 * Starts MongoDB as a single-node replica set: functionally identical for plain
-	 * operations, and it unlocks multi-document transactions for the command-bracket TCK
-	 * cases (issue #112).
+	 * Starts the server for the configured flavor.
+	 * <p>
+	 * MongoDB runs as a single-node replica set: functionally identical for plain operations,
+	 * and it unlocks multi-document transactions for the command-bracket TCK cases
+	 * (issue #112). The gateways get no replica set — they are a single logical server, so
+	 * {@code rs.initiate()} does not apply, which is exactly why {@code TRANSACTION_BRACKET}
+	 * stays undeclared there (the runtime probe in {@code MongoResourceImpl.capabilities()}
+	 * handles that on its own).
 	 */
-	private static String startMongo() throws Exception {
-		return exec(180, resolveCli(), "run", "-d", "--rm", "-p", "127.0.0.1::27017", IMAGE, "--replSet", "rs0");
+	private static String startContainer() throws Exception {
+		String publish = "127.0.0.1::" + WIRE_PORT;
+		if (isFerretDb()) {
+			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish,
+					"-e", "POSTGRES_PASSWORD=" + FERRETDB_PASSWORD, IMAGE);
+		}
+		if (isDocumentDbPg()) {
+			// ALLOW_EXTERNAL_CONNECTIONS defaults to false — without it the gateway binds
+			// container-locally and the published port refuses every connection
+			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish,
+					"-e", "ALLOW_EXTERNAL_CONNECTIONS=true", "-e", "ENFORCE_SSL=false", IMAGE);
+		}
+		return exec(180, resolveCli(), "run", "-d", "--rm", "-p", publish, IMAGE, "--replSet", "rs0");
 	}
 
 	/**
-	 * Starts the FerretDB evaluation image. No replica set: the gateway is a single logical
-	 * server, so {@code rs.initiate()} does not apply — which is exactly why the
-	 * {@code TRANSACTION_BRACKET} command feature stays undeclared there (issue #112's
-	 * runtime probe in {@code MongoResourceImpl.capabilities()} handles that on its own).
+	 * The driver connection string for the started container.
+	 * <p>
+	 * Both gateways authenticate: FerretDB against the PostgreSQL role, the DocumentDB
+	 * emulator against a role it creates on first start. The DocumentDB gateway additionally
+	 * enforces TLS ({@code ENFORCE_SSL=true}) with a self-signed certificate, hence
+	 * {@code tlsAllowInvalidCertificates} — acceptable for a throwaway test container, and
+	 * called out in the user guide so nobody copies it into production.
 	 */
-	private static String startFerretDb() throws Exception {
-		return exec(300, resolveCli(), "run", "-d", "--rm", "-p", "127.0.0.1::27017",
-				"-e", "POSTGRES_PASSWORD=" + FERRETDB_PASSWORD, IMAGE);
+	private static String connectionUri(String port) {
+		if (isFerretDb()) {
+			return "mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:" + port + "/";
+		}
+		if (isDocumentDbPg()) {
+			// No TLS: the container runs with ENFORCE_SSL=false. The gateway's default
+			// certificate is self-signed, and the Java driver validates the chain regardless
+			// of connection-string options — tlsInsecure and tlsAllowInvalidCertificates do
+			// not disable PKIX validation for it (the latter is not even a Java driver
+			// option), so trusting it would mean a truststore. For a throwaway test container
+			// turning TLS off is the honest simplification; the user guide shows the
+			// certificate route for real deployments.
+			// serverSelectionTimeoutMS keeps a broken setup a fast failure instead of a
+			// half-hour hang across the suite.
+			return "mongodb://" + DOCUMENTDB_USER + ":" + DOCUMENTDB_PASSWORD + "@127.0.0.1:" + port
+					+ "/?directConnection=true&serverSelectionTimeoutMS=5000";
+		}
+		return "mongodb://127.0.0.1:" + port + "/?directConnection=true";
 	}
 
 	/**
-	 * Waits until the gateway answers on the wire. The image starts PostgreSQL, installs the
-	 * DocumentDB extension and only then opens the Mongo port, so a connection attempt right
+	 * Waits until the gateway answers on the wire. Both images start PostgreSQL, install the
+	 * DocumentDB extension and only then open the wire port, so a connection attempt right
 	 * after {@code run} is refused.
+	 * <p>
+	 * Probed with {@code mongosh} inside the container for FerretDB, which ships it. The
+	 * DocumentDB image does not, so its readiness is probed from the outside with the driver
+	 * itself — which also proves the TLS handshake works before the suite starts.
 	 */
 	private static void awaitWireProtocol() throws Exception {
-		long deadline = System.currentTimeMillis() + 120_000;
+		long deadline = System.currentTimeMillis() + 180_000;
 		Exception last = null;
 		while (System.currentTimeMillis() < deadline) {
 			try {
-				exec(20, resolveCli(), "exec", containerId, "mongosh",
-						"mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:27017/", "--quiet",
-						"--eval", "db.adminCommand({ping:1})");
+				if (isFerretDb()) {
+					exec(20, resolveCli(), "exec", containerId, "mongosh",
+							"mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:27017/", "--quiet",
+							"--eval", "db.adminCommand({ping:1})");
+				} else {
+					probeWithDriver();
+				}
 				return;
 			} catch (Exception e) {
 				last = e;
 				Thread.sleep(2_000);
 			}
 		}
-		throw new IllegalStateException("FerretDB did not answer on the wire within 120s", last);
+		throw new IllegalStateException(FLAVOR + " did not answer on the wire within 180s", last);
+	}
+
+	/** Pings the published port with the Mongo driver, TLS handshake included. */
+	private static void probeWithDriver() throws Exception {
+		String mapping = exec(20, resolveCli(), "port", containerId, WIRE_PORT + "/tcp");
+		String port = mapping.trim().lines().findFirst().orElse("");
+		port = port.substring(port.lastIndexOf(':') + 1);
+		try (MongoClient probe = MongoClients.create(connectionUri(port))) {
+			probe.getDatabase("admin").runCommand(new Document("ping", 1));
+		}
 	}
 
 	/** Initiates the single-node replica set and waits until the node is PRIMARY. */

@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.mongo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -67,10 +68,19 @@ class MongoFlavorTest {
 	}
 
 	@Test
-	@DisplayName("the DocumentDB gateway is detected by its own marker")
-	void detectsDocumentDbGateway() {
-		assertThat(MongoFlavor.detect(Map.of("version", "7.0.0", "documentdb", Map.of("version", "0.1"))))
-				.contains(MongoFlavor.DOCUMENTDB_PG);
+	@DisplayName("the DocumentDB gateway announces nothing, so nothing is detected")
+	void doesNotDetectDocumentDbGateway() {
+		// measured against documentdb-local: this is the gateway's ENTIRE buildInfo reply —
+		// no marker to match, so claiming DOCUMENTDB_PG here would be a guess (issue #122)
+		Map<String, Object> buildInfo = Map.of(
+				"version", "7.0.0",
+				"versionArray", List.of(7, 0, 0, 0),
+				"bits", 64,
+				"maxBsonObjectSize", 16777216);
+
+		assertThat(MongoFlavor.detect(buildInfo)).isEmpty();
+		// but it is recognisably NOT MongoDB, which is the usable signal
+		assertThat(MongoFlavor.looksLikeMongoDb(buildInfo)).isFalse();
 	}
 
 	@Test
@@ -79,6 +89,16 @@ class MongoFlavorTest {
 		// MONGO would be a claim; empty lets the caller keep the configured flavor and warn
 		assertThat(MongoFlavor.detect(Map.of("version", "7.0.14"))).isEmpty();
 		assertThat(MongoFlavor.detect(null)).isEmpty();
+	}
+
+	@Test
+	@DisplayName("MongoDB is recognised by its build metadata")
+	void recognisesRealMongoDb() {
+		assertThat(MongoFlavor.looksLikeMongoDb(Map.of("version", "7.0.14", "gitVersion", "abc123"))).isTrue();
+		// FerretDB reports a MongoDB version but no gitVersion
+		assertThat(MongoFlavor.looksLikeMongoDb(Map.of("version", "7.0.77", "ferretdb", Map.of("version", "v2.7.0"))))
+				.isFalse();
+		assertThat(MongoFlavor.looksLikeMongoDb(null)).isFalse();
 	}
 
 	@Test
