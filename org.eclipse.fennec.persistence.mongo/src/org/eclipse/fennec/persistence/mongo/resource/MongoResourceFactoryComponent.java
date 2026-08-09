@@ -28,6 +28,7 @@ import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.annotation.ConfiguratorType;
 import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
@@ -178,19 +179,43 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 		String alias = uri.authority();
 		if (isNull(alias) || alias.isEmpty()) {
 			return newResource(uri, unavailable(
-					"URI '" + uri + "' does not name a database alias (expected mongodb://<alias>/<collection>)"));
+					"URI '" + uri + "' does not name a database alias (expected mongodb://<alias>/<collection>)"),
+					MongoFlavor.MONGO);
 		}
 		MongoDatabase database = resolveDatabase(alias);
 		if (isNull(database)) {
 			return newResource(uri, unavailable(
-					"No MongoDB database with alias '" + alias + "' is available for URI '" + uri + "'"));
+					"No MongoDB database with alias '" + alias + "' is available for URI '" + uri + "'"),
+					MongoFlavor.MONGO);
 		}
-		return newResource(uri, database);
+		return newResource(uri, database, flavor(alias));
 	}
 
-	private Resource newResource(URI uri, MongoDatabase database) {
-		return new MongoResourceFactory(database, metadataService, valueRegistry.get(), queryProcessor.get())
-				.createResource(uri);
+	private Resource newResource(URI uri, MongoDatabase database, MongoFlavor flavor) {
+		return new MongoResourceFactory(database, metadataService, valueRegistry.get(), queryProcessor.get(), null,
+				flavor).createResource(uri);
+	}
+
+	/**
+	 * The server flavor declared by the aliased database service (issue #118), propagated
+	 * there from the client configuration. An unknown id is reported and falls back to
+	 * {@link MongoFlavor#MONGO} — the resource stays usable, and the baseline is the honest
+	 * choice here: it claims what this translation can express, so a genuine gateway gap
+	 * surfaces as a driver error the logged warning explains, rather than as queries
+	 * mysteriously refused.
+	 */
+	private MongoFlavor flavor(String alias) {
+		ServiceReference<MongoDatabase> reference = databaseRefs.get(alias);
+		if (isNull(reference)) {
+			return MongoFlavor.MONGO;
+		}
+		String id = reference.getProperty(MongoPersistenceConstants.FLAVOR) instanceof String value ? value : null;
+		return MongoFlavor.byId(id).orElseGet(() -> {
+			LOG.log(Level.WARNING,
+					"MongoDatabase alias ''{0}'' declares unknown flavor ''{1}'' — using ''{2}'' capabilities",
+					new Object[] { alias, id, MongoFlavor.MONGO.id() });
+			return MongoFlavor.MONGO;
+		});
 	}
 
 	/**

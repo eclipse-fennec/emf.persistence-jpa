@@ -77,6 +77,8 @@ import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.codec.config.ConfigurationResolver;
+import org.eclipse.fennec.persistence.mongo.MongoFlavor;
+import org.eclipse.fennec.persistence.mongo.MongoFlavorCapabilities;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -89,7 +91,6 @@ import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.expr.ExpressionAnalyzer;
 import org.eclipse.fennec.persistence.query.expr.ExpressionValues;
 import org.eclipse.fennec.persistence.query.support.QueryAnalysis;
-import org.eclipse.fennec.persistence.query.support.QueryCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.query.support.QueryValidator;
 import org.osgi.service.component.annotations.Component;
 
@@ -143,41 +144,44 @@ public class MongoQueryProcessor implements QueryProcessor {
 	/** Diagnostic code: {@code distinct} without a projection. */
 	public static final int CODE_DISTINCT_WITHOUT_PROJECTION = 101;
 
-	private static final QueryCapabilities CAPABILITIES = QueryCapabilitiesBuilder.create()
-			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
-					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
-					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
-					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
-					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
-					QueryFeature.COLLECTION_COUNT_FILTERED,
-					QueryFeature.PIPELINE_COMPUTE, QueryFeature.GROUP_EXPRESSION,
-					QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
-					QueryFeature.FIELD_TO_FIELD,
-					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
-					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
-					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
-					QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY, QueryFeature.PIPELINE,
-					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
-					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
-					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
-					QueryFeature.GEO_WITHIN, QueryFeature.GEO_DISTANCE)
-			.maxFeaturePathDepth(-1)
-			.build();
+	private final MongoFlavor flavor;
+	private final QueryCapabilities capabilities;
+
+	/** Creates a processor for {@link MongoFlavor#MONGO} — the DS component default. */
+	public MongoQueryProcessor() {
+		this(MongoFlavor.MONGO);
+	}
+
+	/**
+	 * Creates a processor whose capability declaration matches {@code flavor}. Translation
+	 * itself is flavor-independent — every flavor speaks the same wire protocol, so the
+	 * generated filters and pipelines are identical; only what may be asked for differs.
+	 *
+	 * @param flavor the server flavor; {@code null} is treated as {@link MongoFlavor#MONGO}
+	 */
+	public MongoQueryProcessor(MongoFlavor flavor) {
+		this.flavor = flavor == null ? MongoFlavor.MONGO : flavor;
+		this.capabilities = MongoFlavorCapabilities.of(this.flavor);
+	}
 
 	@Override
 	public String backend() {
 		return BACKEND;
 	}
 
+	/** @return the server flavor this processor declares capabilities for */
+	public MongoFlavor flavor() {
+		return flavor;
+	}
+
 	@Override
 	public QueryCapabilities capabilities() {
-		return CAPABILITIES;
+		return capabilities;
 	}
 
 	@Override
 	public Diagnostic validate(Query query, EClass rootEClass) {
-		Diagnostic base = QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
+		Diagnostic base = QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, capabilities);
 		BasicDiagnostic result = new BasicDiagnostic(QueryValidator.DIAGNOSTIC_SOURCE, 0,
 				"Mongo query validation", new Object[] { query });
 		if (base.getSeverity() != Diagnostic.OK) {

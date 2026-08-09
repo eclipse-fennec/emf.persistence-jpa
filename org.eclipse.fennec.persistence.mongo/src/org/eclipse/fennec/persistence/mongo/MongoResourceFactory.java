@@ -14,10 +14,14 @@ package org.eclipse.fennec.persistence.mongo;
 
 import static java.util.Objects.requireNonNull;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceImpl;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 
@@ -39,11 +43,14 @@ import com.mongodb.client.MongoDatabase;
  */
 public class MongoResourceFactory implements Resource.Factory {
 
+	private static final Logger LOG = Logger.getLogger(MongoResourceFactory.class.getName());
+
 	private final MongoDatabase database;
 	private final MetadataService metadataService;
 	private final CodecValueRegistry valueRegistry;
 	private final QueryProcessor queryProcessor;
 	private final MongoClient client;
+	private final MongoFlavor flavor;
 
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -68,13 +75,68 @@ public class MongoResourceFactory implements Resource.Factory {
 	 */
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client) {
+		this(database, metadataService, valueRegistry, queryProcessor, client, MongoFlavor.MONGO);
+	}
+
+	/**
+	 * Variant declaring the server {@link MongoFlavor} behind the database (issue #118).
+	 * <p>
+	 * The wire protocol is also served by gateways over PostgreSQL, which cover fewer
+	 * operators and stages. Translation is unaffected — the generated filters and pipelines
+	 * are identical — so the flavor only narrows the <em>declared query capabilities</em>, so
+	 * that an unsupported construct is refused with a Diagnostic up front instead of failing
+	 * inside the driver.
+	 *
+	 * @param flavor the server flavor; {@code null} means {@link MongoFlavor#MONGO}
+	 */
+	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client,
+			MongoFlavor flavor) {
 		requireNonNull(database, "MongoDatabase is required");
 		requireNonNull(metadataService, "MetadataService is required");
 		this.database = database;
 		this.metadataService = metadataService;
 		this.valueRegistry = valueRegistry;
-		this.queryProcessor = queryProcessor;
 		this.client = client;
+		this.flavor = flavor == null ? MongoFlavor.MONGO : flavor;
+		this.queryProcessor = processorFor(queryProcessor, this.flavor);
+	}
+
+	/** The processor handed to created resources after flavor reconciliation; may be null. */
+	QueryProcessor queryProcessor() {
+		return queryProcessor;
+	}
+
+	/** The server flavor this factory declares capabilities for. */
+	MongoFlavor flavor() {
+		return flavor;
+	}
+
+	/**
+	 * Reconciles an externally supplied processor with the flavor.
+	 * <p>
+	 * For {@link MongoFlavor#MONGO} nothing changes. For a gateway flavor the stock
+	 * processor is replaced by one declaring that flavor's capabilities — but a
+	 * <em>foreign</em> processor (decorated or higher-ranked, the point of issue #61) is left
+	 * alone: it publishes its own capabilities and overriding them here would silently undo a
+	 * deliberate customization. That combination is logged, because the configured flavor
+	 * then has no effect on validation.
+	 */
+	private static QueryProcessor processorFor(QueryProcessor supplied, MongoFlavor flavor) {
+		if (flavor == MongoFlavor.MONGO) {
+			return supplied;
+		}
+		if (supplied == null) {
+			return new MongoQueryProcessor(flavor);
+		}
+		if (supplied instanceof MongoQueryProcessor stock) {
+			return stock.flavor() == flavor ? stock : new MongoQueryProcessor(flavor);
+		}
+		LOG.log(Level.WARNING,
+				"A custom QueryProcessor ({0}) is bound while flavor ''{1}'' is configured — the processor''s own"
+						+ " capability declaration applies, the flavor does not narrow it",
+				new Object[] { supplied.getClass().getName(), flavor.id() });
+		return supplied;
 	}
 
 	@Override
