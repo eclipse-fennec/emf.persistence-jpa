@@ -39,12 +39,12 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.eclipse.persistence.jpa;version=latest,\
 	org.eclipse.daanse.jdbc.datasource.h2;version=latest,\
 	org.eclipse.fennec.emf.osgi.example.model.basic;version=latest,\
-	org.eclipse.fennec.persistence.orm;version=snapshot,\
-	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
-	org.eclipse.fennec.persistence,\
+	org.eclipse.fennec.persistence.orm;version=snapshot;packages='*',\
+	org.eclipse.fennec.persistence.eclipselink;version=snapshot;packages='*',\
+	org.eclipse.fennec.persistence;version=snapshot,\
 	org.osgi.service.condition;version=latest,\
 	org.osgi.dto;version=latest,\
-	com.h2database,\
+	com.h2database;version=latest,\
 	org.eclipse.fennec.persistence.mongo;version=snapshot,\
 	org.mongodb.bson;version=latest,\
 	org.mongodb.driver-core;version=latest,\

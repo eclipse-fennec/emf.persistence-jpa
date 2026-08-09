@@ -146,7 +146,6 @@ class NonOsgiManyToManyProxyTest extends NonOsgiPersistenceTestBase {
 
 	// -------------------------------------------------------------------- tests
 
-	@SuppressWarnings("restriction")
 	@Test
 	void testIndirectionPolicyInstalled() {
 		ClassDescriptor aDesc = serverSession.getDescriptorForAlias(classAEClass.getName());

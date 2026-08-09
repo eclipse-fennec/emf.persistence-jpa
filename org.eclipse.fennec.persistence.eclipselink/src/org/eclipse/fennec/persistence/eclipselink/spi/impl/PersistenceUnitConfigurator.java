@@ -13,8 +13,6 @@
 package org.eclipse.fennec.persistence.eclipselink.spi.impl;
 
 import static java.util.Objects.isNull;
-import static org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator.PROPERTY_PREFIX;
-import static org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator.DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;
 import static java.util.Objects.nonNull;
 
 import java.io.IOException;
@@ -27,8 +25,8 @@ import javax.sql.DataSource;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.emf.osgi.constants.EMFNamespaces;
-import org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator;
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
 import org.eclipse.fennec.persistence.eorm.EORMPackage;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
