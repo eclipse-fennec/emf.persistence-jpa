@@ -186,7 +186,6 @@ class NonOsgiFetchModeTest extends NonOsgiPersistenceTestBase {
 				.allSatisfy(e -> assertThat(e.eIsProxy()).isFalse());
 	}
 
-	@SuppressWarnings("restriction")
 	@Test
 	void testBatchManyResolvesInOneInQuery() {
 		annotate(classAO2M, "eNonContainmentBidi", "batch", "true");

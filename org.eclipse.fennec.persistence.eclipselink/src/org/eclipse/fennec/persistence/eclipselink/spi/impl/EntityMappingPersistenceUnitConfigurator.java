@@ -13,8 +13,6 @@
 package org.eclipse.fennec.persistence.eclipselink.spi.impl;
 
 import static java.util.Objects.isNull;
-import static org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator.PROPERTY_PREFIX;
-import static org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator.DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -23,8 +21,8 @@ import java.util.logging.Logger;
 
 import javax.sql.DataSource;
 
-import org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator;
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.eclipselink.spi.AbstractPersistenceUnitConfigurator;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.osgi.framework.BundleContext;
