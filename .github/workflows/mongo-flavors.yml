@@ -1,0 +1,104 @@
+name: Mongo Flavor Matrix
+
+# Capability-drift check for the non-MongoDB servers of the mongo backend (issue #121).
+#
+# The per-flavor capability declarations in MongoFlavorCapabilities are claims about a server
+# the default build never contacts. Claims nothing checks go stale — and staleness is silent in
+# both directions:
+#   * a feature the server has lost still declared -> users hit a driver error
+#   * a gap the server has since closed still declared -> validate() refuses queries the
+#     server would happily serve, and nothing fails, so nobody notices
+#
+# Two modes on purpose:
+#   * push / pull_request run against a DIGEST-PINNED image, so a PR is never reddened by an
+#     upstream FerretDB release it has nothing to do with
+#   * the weekly schedule runs against the floating :2 tag, which is what actually discovers
+#     drift — a pin alone would only ever reveal it when somebody bumps the pin
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - snapshot
+    paths:
+      - 'org.eclipse.fennec.persistence.mongo/**'
+      - 'org.eclipse.fennec.persistence.query/**'
+      - 'org.eclipse.fennec.persistence.tck/**'
+      - '.github/workflows/mongo-flavors.yml'
+  pull_request:
+    branches:
+      - '*'
+    paths:
+      - 'org.eclipse.fennec.persistence.mongo/**'
+      - 'org.eclipse.fennec.persistence.query/**'
+      - 'org.eclipse.fennec.persistence.tck/**'
+      - '.github/workflows/mongo-flavors.yml'
+  schedule:
+    # Mondays 04:17 UTC — off the hour to avoid the scheduling stampede
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mongo-flavors-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  flavor-tck:
+    name: TCK against ${{ matrix.flavor }}
+    runs-on: ubuntu-latest
+    strategy:
+      # one flavor must not cancel the other: knowing that ferretdb broke while mongo is
+      # fine is the whole point
+      fail-fast: false
+      matrix:
+        flavor: [ferretdb]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: "temurin"
+          java-version: 21
+
+      - name: Select the server image
+        id: image
+        run: |
+          # scheduled and manual runs float, so upstream drift is actually discovered;
+          # PR/push runs pin by digest so they stay reproducible
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "image=ghcr.io/ferretdb/ferretdb-eval:2" >> "$GITHUB_OUTPUT"
+            echo "mode=floating" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=ghcr.io/ferretdb/ferretdb-eval@sha256:1bf47a449dd65839aabfc1a535d1370c98326f8a90de20437eda0aeb30bd8dd5" >> "$GITHUB_OUTPUT"
+            echo "mode=pinned" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run the persistence TCK against ${{ matrix.flavor }}
+        # The TCK is the drift detector: every capability the flavor declares has to execute,
+        # and every one it does not declare has to be refused with a Diagnostic. A green run
+        # means declaration and server still agree.
+        run: |
+          echo "::notice::Running the ${{ matrix.flavor }} TCK against ${{ steps.image.outputs.image }} (${{ steps.image.outputs.mode }})"
+          ./gradlew :org.eclipse.fennec.persistence.tck:test \
+            --tests 'org.eclipse.fennec.persistence.tck.Mongo*' \
+            -Dmongo.test.flavor=${{ matrix.flavor }} \
+            -Dmongo.test.image=${{ steps.image.outputs.image }} \
+            -Dmongo.container.cli=docker \
+            --console=plain
+
+      - name: Upload test report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: tck-report-${{ matrix.flavor }}
+          path: org.eclipse.fennec.persistence.tck/generated/test-reports/
+          if-no-files-found: warn
