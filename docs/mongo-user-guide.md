@@ -301,37 +301,114 @@ naming the feature, while on DocumentDB brackets commit for real.
 The table above is verified against the code by `MongoFlavorDocumentationTest`, so it cannot
 quietly rot.
 
-### Running the servers
+### Complete setups per flavor
 
-MongoDB — a single-node replica set, which is what unlocks multi-document transactions:
+Each block below is self-contained: container, both configurations, and the resource URI. Two
+configurations are always needed — the client (server and flavor) and the database (the alias the
+URI addresses). A client alone registers no resource factory, and `mongodb://…` would fail with
+*"No MongoDB database with alias … is available"*.
+
+Every `docker` command works unchanged with `podman`.
+
+#### MongoDB
+
+A single-node replica set — that is what unlocks multi-document transactions; a plain standalone
+works for everything except `CommandResource.begin()`.
 
 ```bash
-docker run -d -p 27017:27017 mongo:7 --replSet rs0
-docker exec <container> mongosh --quiet --eval 'rs.initiate()'
+docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
+docker exec mongo mongosh --quiet --eval 'rs.initiate()'
 ```
 
-FerretDB 2.x — the evaluation image bundles PostgreSQL, the DocumentDB extension and the
-gateway in one container:
-
-```bash
-docker run -d -p 27017:27017 -e POSTGRES_PASSWORD=secret ghcr.io/ferretdb/ferretdb-eval:2
+```properties
+# filename: persistence.mongo.client~main.cfg
+ident=main
+connectionString=mongodb://localhost:27017/?directConnection=true
+# flavor=mongo is the default and may be omitted
 ```
 
-Two things to know: `POSTGRES_PASSWORD` is **mandatory** (without it the container exits
-immediately), and the connection string needs credentials —
-`mongodb://postgres:secret@localhost:27017/`. The container also needs a moment longer to come
-up than MongoDB, because it initializes PostgreSQL and installs the extension before opening
-the wire port.
+```properties
+# filename: persistence.mongo.database~library.cfg
+alias=library
+database=library
+client.target=(mongo.client.ident=main)
+```
 
-For a split setup (separate Postgres and gateway containers) use
-`ghcr.io/ferretdb/postgres-documentdb` plus `ghcr.io/ferretdb/ferretdb`; the eval image exists
-to keep evaluation and CI at one container.
+Resources: `mongodb://library/<collection>`
 
-DocumentDB gateway — the Microsoft/Linux-Foundation emulator, PostgreSQL plus the extension plus
-`documentdb_gateway` in one container:
+#### FerretDB 2.x
+
+The evaluation image bundles PostgreSQL, the DocumentDB extension and the gateway in one
+container:
 
 ```bash
-docker run -d -p 10260:10260 \
+docker run -d --name ferretdb -p 27017:27017 \
+  -e POSTGRES_PASSWORD=secret \
+  ghcr.io/ferretdb/ferretdb-eval:2
+```
+
+```properties
+# filename: persistence.mongo.client~ferret.cfg
+ident=ferret
+connectionString=mongodb://postgres:secret@localhost:27017/
+flavor=ferretdb
+```
+
+```properties
+# filename: persistence.mongo.database~ferretlibrary.cfg
+alias=ferretlibrary
+database=library
+client.target=(mongo.client.ident=ferret)
+```
+
+Resources: `mongodb://ferretlibrary/<collection>`
+
+What to know:
+
+- **`POSTGRES_PASSWORD` is mandatory** — without it the container exits immediately.
+- **Credentials belong in the connection string**; the gateway authenticates against the
+  PostgreSQL role (`postgres` in the eval image).
+- It takes noticeably longer to start than MongoDB: PostgreSQL comes up and the extension is
+  installed before the wire port opens. The liveness gate handles that on its own — the service
+  simply appears later.
+- **No transactions.** FerretDB presents a standalone server, so `TRANSACTION_BRACKET` stays
+  undeclared and `begin()` refuses with a `Diagnostic`.
+
+For a split setup — separate PostgreSQL and gateway, which is what you want beyond evaluation:
+
+```yaml
+# filename: docker-compose.yml
+services:
+  postgres:
+    image: ghcr.io/ferretdb/postgres-documentdb:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  ferretdb:
+    image: ghcr.io/ferretdb/ferretdb:2
+    depends_on:
+      - postgres
+    environment:
+      FERRETDB_POSTGRESQL_URL: postgres://postgres:secret@postgres:5432/postgres
+    ports:
+      - "27017:27017"
+volumes:
+  pgdata:
+```
+
+The client configuration is identical — only the credentials follow whatever the PostgreSQL role
+uses.
+
+#### DocumentDB gateway
+
+The Microsoft/Linux-Foundation emulator: PostgreSQL, the extension and `documentdb_gateway` in one
+container.
+
+```bash
+docker run -d --name documentdb -p 10260:10260 \
   -e ALLOW_EXTERNAL_CONNECTIONS=true \
   -e ENFORCE_SSL=false \
   ghcr.io/microsoft/documentdb/documentdb-local:latest
@@ -344,7 +421,16 @@ connectionString=mongodb://default_user:Admin100@localhost:10260/?directConnecti
 flavor=documentdb-pg
 ```
 
-Four things differ from MongoDB and each one costs an afternoon if you hit it blind:
+```properties
+# filename: persistence.mongo.database~docdblibrary.cfg
+alias=docdblibrary
+database=library
+client.target=(mongo.client.ident=docdb)
+```
+
+Resources: `mongodb://docdblibrary/<collection>`
+
+Four things differ from MongoDB, and each one costs an afternoon if you hit it blind:
 
 - **The port is 10260**, not 27017 (`DOCUMENTDB_PORT`).
 - **`ALLOW_EXTERNAL_CONNECTIONS` defaults to `false`.** Without it the gateway binds
@@ -358,12 +444,12 @@ Four things differ from MongoDB and each one costs an afternoon if you hit it bl
   burns a full `serverSelectionTimeout` the symptom is a *hang*, not an error. `tlsInsecure`
   does not disable chain validation for the Java driver either.
 
-  For a local example, `ENFORCE_SSL=false` (above) is the honest simplification. For anything
-  real, keep TLS on and make the JVM trust the certificate — mount your own via `CERT_PATH` /
+  `ENFORCE_SSL=false` above is the honest simplification for a local example. For anything real,
+  keep TLS on and make the JVM trust the certificate — mount your own via `CERT_PATH` /
   `KEY_FILE`, or import the gateway's into a truststore:
 
   ```bash
-  docker cp <container>:/home/documentdb/gateway/certs/documentdb.pem ./documentdb.pem
+  docker cp documentdb:/home/documentdb/gateway/certs/documentdb.pem ./documentdb.pem
   keytool -importcert -alias documentdb -file documentdb.pem \
     -keystore documentdb.jks -storepass changeit -noprompt
   # then run the JVM with:
@@ -372,7 +458,51 @@ Four things differ from MongoDB and each one costs an afternoon if you hit it bl
 
   and connect with `?tls=true` (no `tlsInsecure`).
 
-To run the test suite against a flavor:
+Unlike FerretDB it **does** serve transactions: it announces itself as mongos, and command
+brackets commit for real.
+
+### Verifying a setup
+
+You do not have to run a query to find out whether it worked — the services answer that by
+existing. Both backends follow *"presence indicates functionality"* (see
+[Connection liveness](#connection-liveness)): creating a Mongo client performs no I/O, so the
+`MongoClient` service is registered only after a `ping` succeeds, and it disappears again when the
+connection breaks. So:
+
+- **`MongoClient` service present** (property `mongo.client.ident=<ident>`) → the server is
+  reachable and authenticated.
+- **`MongoDatabase` service present** (property `mongo.database.alias=<alias>`) → the alias your
+  URI addresses exists. It carries `mongo.flavor` too, propagated from the client — that is the
+  value the resource factory uses, so reading it tells you which capability set your resources
+  actually got.
+- **Condition `osgi.condition.id=fennec.liveness.<ident>`** present → the same signal for
+  `@Reference` targets, so your own components can wait for it.
+
+In the Gogo shell:
+
+```
+services (mongo.client.ident=ferret)
+services (mongo.database.alias=ferretlibrary)
+```
+
+**Distinguishing the two failure classes** matters when nothing shows up, and the liveness runtime
+is what separates them:
+
+| Symptom | Meaning |
+|---|---|
+| No service, but a gate exists reporting `DOWN` with a failure message | The configuration was accepted; the **server** is unreachable, wrong credentials, wrong port |
+| No service and **no gate** | The **configuration** was rejected — e.g. an unknown `flavor` value. The component never activated, so nothing ever probed |
+
+Both are covered by OSGi integration tests (`MongoLivenessTest`,
+`MongoFlavorConfigurationTest`), including the negative case: a client configured with
+`flavor=postgres` registers no service *and* produces no gate.
+
+If the flavor does not match the server, the client logs a warning on its first successful probe
+(JUL, logger `org.eclipse.fennec.persistence.mongo.config.MongoClientComponent`, level `WARNING`)
+naming both the configured and the detected side. It is a warning rather than a correction: the
+capability set must not change underneath a running resource.
+
+### Running the test suite against a flavor
 
 ```bash
 ./gradlew :org.eclipse.fennec.persistence.tck:test -Dmongo.test.flavor=ferretdb
