@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.helper;
 import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.emf.ecore.EAnnotation;
@@ -185,10 +186,9 @@ public final class CompositeIds {
 			throw new IllegalArgumentException("Type '" + eClass.getName()
 					+ "' has no composite id — the fragment is the bare id value");
 		}
-		List<String> values = new ArrayList<>(ids.size());
-		for (EAttribute id : ids) {
-			values.add(null);
-		}
+		// pre-filled with placeholders, not merely sized: the loop below assigns by index
+		// (set), which needs the slots to exist — a capacity-only ArrayList has size 0
+		List<String> values = new ArrayList<>(Collections.nCopies(ids.size(), null));
 		for (String pair : fragment.split(",", -1)) {
 			int separator = pair.indexOf('=');
 			if (separator <= 0) {
