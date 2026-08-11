@@ -32,9 +32,9 @@ MongoDB shares the same EMF resource contract.
 
 | Module | Role |
 |--------|------|
-| `org.eclipse.fennec.persistence` | Core API: `PersistenceResource`, `Options`, `ConverterService`, type converters, connection-liveness support |
+| `org.eclipse.fennec.persistence` | Core API: `PersistenceResource`, `Options`, `ConverterService`, type converters, connection-liveness core (gate, runtime) |
 | `org.eclipse.fennec.persistence.orm` | Ecore-based ORM metadata model (`eorm.ecore`) + processors transforming EClass→Entity, EAttribute→Basic, EReference→relationships |
-| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard |
+| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard, the gated `DataSource` factory |
 | `org.eclipse.fennec.persistence.mongo` | MongoDB backend: liveness-gated client/database services, `mongodb://` resources, codec-based BSON mapping |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — reverse-engineers Ecore models from database schemas |
 | `org.eclipse.fennec.persistence.pushstreams` | OSGi PushStream integration for persistence results |

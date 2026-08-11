@@ -123,8 +123,11 @@ A small, backend-agnostic helper (plain class, no DS) that owns the state machin
   others. `@Activate` stays cheap and never blocks on I/O — it only schedules the first
   probe.
 - **Location**: `org.eclipse.fennec.persistence` (core), package
-  `org.eclipse.fennec.persistence.liveness`. `javax.sql` is JavaSE, so the JDBC probe can
-  live there too; the Mongo probe lives in the Mongo bundle.
+  `org.eclipse.fennec.persistence.liveness`. The backend bindings live in their backend
+  bundles: the Mongo probe in the Mongo bundle, the JDBC probe in the Eclipselink bundle.
+  `javax.sql` itself is JavaSE, but a `@Reference` to `DataSource` puts a mandatory
+  `osgi.service` requirement into the manifest — that must not happen in the
+  backend-neutral core (#124).
 - **Logging**: `java.util.logging`, state transitions at `INFO`, probe failures while
   `DOWN` at `FINE` (avoid log spam during a long outage).
 
@@ -157,7 +160,8 @@ A small, backend-agnostic helper (plain class, no DS) that owns the state machin
 
 ### 5.2 JDBC — new `GatedDataSourceComponent`
 
-New factory component (suggested PID `persistence.jdbc.gate`) in the core bundle:
+New factory component (PID `persistence.jdbc.gate`) in the Eclipselink bundle, package
+`org.eclipse.fennec.persistence.eclipselink.liveness`:
 
 - `@Reference(name = "dataSource")` — binds the upstream `DataSource` via the standard
   `dataSource.target` filter in the factory configuration.

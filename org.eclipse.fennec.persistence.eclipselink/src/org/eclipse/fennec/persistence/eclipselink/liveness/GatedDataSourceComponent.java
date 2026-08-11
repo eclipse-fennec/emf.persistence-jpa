@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.liveness.jdbc;
+package org.eclipse.fennec.persistence.eclipselink.liveness;
 
 import static java.util.Objects.nonNull;
 
@@ -46,6 +46,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * {@code fennec.jpa.dataSource.target=(&(fennec.liveness=checked)(name=mydb))}. All
  * public configuration properties except {@code liveness.*}, {@code *.target} and
  * framework-internal keys are forwarded to the gated registration for such filters.
+ * <p>
+ * The gate itself ({@link LivenessGate}) is backend-neutral and lives in the core bundle;
+ * only this JDBC binding lives here, so that the mandatory {@code DataSource} service
+ * requirement stays out of the backend-neutral base bundle.
  *
  * @author Mark Hoffmann
  * @since 20.07.2026

@@ -25,9 +25,9 @@ On the relational path it maps ECore metamodels (EClass, EAttribute, EReference)
 
 | Module | Role |
 |--------|------|
-| `org.eclipse.fennec.persistence` | Core API: `PersistenceResource`, `Options`, `ConverterService`, type converters, connection-liveness support |
+| `org.eclipse.fennec.persistence` | Core API: `PersistenceResource`, `Options`, `ConverterService`, type converters, connection-liveness core (gate, runtime) |
 | `org.eclipse.fennec.persistence.orm` | EORM metadata model (`eorm.ecore`) + processors (Entity, Basic, OneToMany, ManyToOne, etc.) |
-| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard |
+| `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard, the gated `DataSource` factory |
 | `org.eclipse.fennec.persistence.mongo` | MongoDB backend: liveness-gated client/database services, `mongodb://` resources, codec-based BSON mapping |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` -- reverse-engineers Ecore models from database schemas |
 | `org.eclipse.fennec.persistence.query` | Backend-neutral query SPI: the canonical query model translated per backend via `QueryProcessor` |
