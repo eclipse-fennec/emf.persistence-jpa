@@ -63,6 +63,13 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 	}
 
 	@Override
+	protected void evictBackendCaches() {
+		// EclipseLink's shared cache sits on the factory and outlives any ResourceSet, so
+		// without this a "fresh ResourceSet" read can be answered from memory.
+		emf.getCache().evictAll();
+	}
+
+	@Override
 	protected ResourceSet createBackendResourceSet() {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(tckPackage.getNsURI(), tckPackage);

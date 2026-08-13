@@ -290,4 +290,5 @@ class JpaCascadeDeleteTest {
 				.as("the owned grandchild row must go with its root")
 				.isZero();
 	}
+
 }

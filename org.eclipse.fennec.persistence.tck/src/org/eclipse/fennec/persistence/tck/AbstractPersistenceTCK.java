@@ -231,8 +231,26 @@ public abstract class AbstractPersistenceTCK {
 		resource.save(null);
 	}
 
-	/** Loads all objects of the type into a resource of the given ResourceSet. */
+	/**
+	 * Drops whatever second-level cache the backend keeps, so a read really goes to the store.
+	 * <p>
+	 * A fresh {@link ResourceSet} is not enough on its own: EclipseLink's shared object cache
+	 * lives on the {@code EntityManagerFactory} and outlives every ResourceSet, so a "round
+	 * trip" could be answered entirely from memory and prove nothing about what was written.
+	 * Bindings whose backend caches must override this; the default is a no-op because Mongo
+	 * keeps no such cache.
+	 */
+	protected void evictBackendCaches() {
+		// no-op by default
+	}
+
+	/**
+	 * Loads all objects of the type into a resource of the given ResourceSet, after dropping
+	 * backend caches — so this is the only read path the TCK offers, and it cannot
+	 * accidentally be served from a cache (see {@link #evictBackendCaches()}).
+	 */
 	protected Resource loadAll(ResourceSet resourceSet, String typeName) throws IOException {
+		evictBackendCaches();
 		Resource resource = resourceSet.getResource(uriFor(typeName), false);
 		if (resource == null) {
 			resource = resourceSet.createResource(uriFor(typeName));
