@@ -728,9 +728,18 @@ directly.
 The backend follows standard EMF cross-document semantics — the same
 contract as the JPA backend and XMI:
 
-- **Containment references** are embedded: children are stored inside the
-  owner's document and materialised eagerly with it (single-document
-  ownership).
+- **Containment references** are embedded *by default*: children are stored
+  inside the owner's document and materialised eagerly with it
+  (single-document ownership).
+- **Cross-document containment** is supported as the exception. Attach a
+  containment child to a resource of its own and it is stored as a reference
+  marker instead of being inlined; on load `eGet` gives you the resolved
+  child, owned by the parent and resident in its own resource. You never see
+  a proxy — `eContents` and `EcoreUtil.getAllContents` resolve too. Two
+  caveats: such a child is invisible to queries filtering over that path
+  (the query layer assumes containment is embedded and refuses the path), and
+  deleting or dropping the owning subtree currently leaves the child document
+  behind ([#133](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/133)).
 - **Non-containment references** are stored as reference values (ids or EMF
   URIs) and loaded as **EMF proxies**. The first `eGet` resolves the proxy
   through the ResourceSet: the target resource's `getEObject` runs a
@@ -745,12 +754,11 @@ EObject loaded = findByIdInContents(books, "1");
 EObject author = EcoreUtil.resolve((EObject) loaded.eGet(bookAuthor), resourceSet);
 ```
 
-**In-flux caveat:** references from a Mongo document to objects in *other*
-resources are currently rewritten to absolute EMF URIs by a workaround for
-[emf.codec#50](https://github.com/eclipse-fennec/emf.codec/issues/50). The
-rewrite covers only the references of the **root** object — cross-resource
-references held by nested containment children are not yet rewritten. This
-limitation disappears once the codec writes absolute URIs itself.
+Nested containment children carry cross-resource references just as roots do —
+the earlier limitation (a post-save rewrite that only covered the root object's
+references, a workaround for
+[emf.codec#50](https://github.com/eclipse-fennec/emf.codec/issues/50)) is gone
+since #116. The codec decides per reference while writing.
 
 ## Mixing JPA and MongoDB in one ResourceSet
 
@@ -802,9 +810,10 @@ verifies:
 - **No eorm-style tuning** — fetch/batch/column configuration from the JPA
   backend has no Mongo counterpart (page size for load/stream is the only
   knob).
-- **Cross-resource references of nested children** are not yet rewritten to
-  absolute URIs (see the caveat in
-  [References and proxies](#references-and-proxies)).
+- **Cross-document containment children are not covered by queries** and are
+  not deleted with their owning subtree
+  ([#133](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/133)) —
+  see [References and proxies](#references-and-proxies).
 - `updateDefaultOptions` on the resource is a no-op (as in the JPA backend).
 
 Both backends pass the same backend-agnostic TCK

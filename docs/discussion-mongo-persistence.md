@@ -322,6 +322,11 @@ gemeldet als https://github.com/eclipse-fennec/emf.codec/issues/50.
 Bis dahin zieht `MongoResourceImpl.rewriteCrossResourceReferences` die URIs nach (idempotent);
 der Workaround wird mit dem Fix entfernt. Achtung: er behandelt nur Referenzen des Wurzelobjekts,
 nicht die verschachtelter Containment-Kinder — ein Grund mehr für den Codec-Fix.
+
+> **Erledigt (#116, Commit 1521ac0):** Der Codec-Fix ist da — `resolveSourceResource(...)`
+> fällt auf `source.eResource()` zurück (emf.codec#113), womit auch verschachtelte
+> Containment-Kinder abgedeckt sind. `rewriteCrossResourceReferences` wurde entfernt. Der
+> obige Absatz ist ab hier historisch.
 Konsequenz bis zum nächsten Snapshot-Publish: der Gradle-Build des Mongo-Bundles ist grün
 (javac kennt keine Access-Rules), aber die IDE markiert die Imports und das Bundle würde in
 OSGi nicht resolven. Nach dem Publish: TypeDiscriminator-Service in
