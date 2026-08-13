@@ -58,9 +58,11 @@ import jakarta.persistence.EntityManagerFactory;
  * <p>
  * The contract is not backend-specific: whatever Mongo delivers here, JPA has to deliver
  * too. Mongo returns a fully resolved child that is owned by the parent and resident in
- * its own resource. JPA delivers the data and the ownership in either save order since
- * #130; what it still does not deliver is the <b>residency</b>, and that case stays
- * {@code @Disabled} — see its javadoc for why it needs stored state rather than a fix.
+ * its own resource. Since #130 JPA delivers the data and the ownership in either save order,
+ * and the child is <b>addressable</b> — a reference to it resolves, because the fragment is
+ * qualified with the containing reference. What differs is only which resource object the
+ * child reports when the parent alone was loaded; that case stays {@code @Disabled}, since
+ * telling a cross-document child from an embedded one on load would need stored state.
  *
  * @author Mark Hoffmann
  * @since 13.08.2026
@@ -326,7 +328,7 @@ class JpaCrossDocumentContainmentTest {
 	 * is nothing to resolve through the child's own resource.
 	 */
 	@Test
-	@Disabled("issue #130 — residency needs stored state: a JPA row is identical whether the child was a resource root or not, so the load cannot tell. Measured consequence: EcoreUtil.getURI gives jpa://<pu>/Place#<geoPointId>, which does not resolve")
+	@Disabled("issue #130 — eResource() parity alone: a JPA row is identical whether the child was a resource root or not, so the load cannot tell without stored state. The substance is covered — aReferenceToACrossDocumentChildResolves shows the child is addressable — so what is left here is which resource object it reports")
 	void crossDocumentContainmentKeepsTheChildResidentInItsOwnResource() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 5, "name", "Bree");
@@ -506,5 +508,46 @@ class JpaCrossDocumentContainmentTest {
 		assertThat(countRows("GeoPoint"))
 				.as("nothing claims the child any more, so the row must go")
 				.isZero();
+	}
+
+	/**
+	 * The substance of residency: a reference <em>to</em> a cross-document containment child
+	 * has to resolve. Its URI used to name the parent's type while the row lived in the child's
+	 * table — {@code jpa://xdoc/Place#191} for a GeoPoint — and resolved to nothing.
+	 * <p>
+	 * Fixed without storing residency: the fragment is qualified with the containing reference,
+	 * which carries the missing type information, and resolution honours it. The URI stays
+	 * rooted at the parent's resource, so this does not make {@code eResource()} the child's own
+	 * — that half is a separate question — but the child is addressable, which is what a
+	 * reference needs.
+	 */
+	@Test
+	void aReferenceToACrossDocumentChildResolves() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 31, "name", "Addressable");
+		EObject point = create(geoPointClass, "gid", 131, "type", "Point");
+		place.eSet(placeLocation, point);
+		Resource pointResource = writeSet.createResource(uriFor("GeoPoint"));
+		pointResource.getContents().add(point);
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		pointResource.save(null);
+
+		emf.getCache().evictAll();
+		ResourceSet readSet = resourceSet();
+		EObject loadedPlace = findById(readSet.getResource(uriFor("Place"), true), "31");
+		EObject child = (EObject) loadedPlace.eGet(placeLocation);
+		assertThat(child).isNotNull();
+
+		URI childUri = EcoreUtil.getURI(child);
+		assertThat(childUri.fragment())
+				.as("the fragment carries the containing reference, hence the target type")
+				.isEqualTo("//location/gid/131");
+
+		EObject resolved = readSet.getEObject(childUri, true);
+		assertThat(resolved).as("a reference to the child must resolve").isNotNull();
+		assertThat(value(resolved, "gid")).isEqualTo(131);
+		assertThat(resolved.eClass()).isEqualTo(geoPointClass);
 	}
 }

@@ -49,11 +49,13 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
+import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPolicy;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueries;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryPlan;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
@@ -786,7 +788,30 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		// composite-id types use the k1=v1,k2=v2 shape (issue #109) — EcoreUtil.getID
 		// would return only the first component and could not round-trip
 		String id = CompositeIds.fragment(eObject);
-		return nonNull(id) ? id : super.getURIFragment(eObject);
+		if (isNull(id)) {
+			return super.getURIFragment(eObject);
+		}
+		// A cross-document containment child lives in THIS resource's contents tree but in its
+		// own table, so a bare id would name the wrong one: the URI's resource segment says
+		// Place while the row is a GeoPoint, and nothing resolves it (issue #130). Qualifying
+		// the fragment with the containing reference carries the missing type information —
+		// the reference names the feature of the owner, and its target type is the table. The
+		// shape is the backend's established one, already produced by the indirection policy
+		// for lazy non-containment targets.
+		EReference containment = eObject.eContainmentFeature();
+		if (nonNull(containment) && !isOwnEntityType(eObject.eClass())) {
+			EAttribute idAttribute = eObject.eClass().getEIDAttribute();
+			if (nonNull(idAttribute)) {
+				return "//" + containment.getName() + "/" + idAttribute.getName() + "/" + id;
+			}
+		}
+		return id;
+	}
+
+	/** Whether the type is the one this resource's URI addresses. */
+	private boolean isOwnEntityType(EClass eClass) {
+		String entityName = getEntityName();
+		return nonNull(entityName) && entityName.equals(eClass.getName());
 	}
 
 	/**
@@ -804,12 +829,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return super.getEObject(uriFragment);
 		}
 		String idValue;
+		String referenceName = null;
 		if (uriFragment.startsWith("//")) {
 			// Fragment format: //refName/idAttrName/idValue
 			String[] parts = uriFragment.substring(2).split("/");
 			if (parts.length < 3) {
 				return super.getEObject(uriFragment);
 			}
+			referenceName = parts[0];
 			idValue = parts[2];
 		} else if (uriFragment.startsWith("/")) {
 			// Path-based fragment — EMF default semantics
@@ -817,7 +844,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		} else {
 			idValue = uriFragment;
 		}
-		String entityName = getEntityName();
+		// The reference name carries the type when the fragment points at something that is
+		// NOT of this resource's type — a cross-document containment child (issue #130). It
+		// names a feature of the owner, so it only applies when this resource addresses the
+		// owner; for the indirection policy's proxy URIs the resource segment already names
+		// the target type and the lookup below correctly finds nothing, falling back.
+		String entityName = targetEntityName(referenceName);
 		try (Lease lease = unit.lease()) {
 			ClassDescriptor descriptor = getDescriptor(entityName);
 			if (isNull(descriptor)) {
@@ -854,6 +886,31 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * attached to this resource's <em>raw</em> contents so it has an {@code eResource()}
 	 * and later accesses need no DB round-trip.
 	 */
+	/**
+	 * The entity to resolve a fragment against: the target type of {@code referenceName} when
+	 * that is a reference of this resource's own type, otherwise this resource's type.
+	 */
+	private String targetEntityName(String referenceName) {
+		String entityName = getEntityName();
+		if (isNull(referenceName) || isNull(entityName)) {
+			return entityName;
+		}
+		ClassDescriptor descriptor = getDescriptor(entityName);
+		if (isNull(descriptor)
+				|| !(descriptor.getInstantiationPolicy() instanceof EInstantiationPolicy policy)) {
+			return entityName;
+		}
+		EClass ownType = policy.getEClass();
+		if (isNull(ownType)) {
+			return entityName;
+		}
+		EStructuralFeature feature = ownType.getEStructuralFeature(referenceName);
+		if (feature instanceof EReference reference && nonNull(reference.getEReferenceType())) {
+			return reference.getEReferenceType().getName();
+		}
+		return entityName;
+	}
+
 	private EObject findAndCache(EntityManager em, ClassDescriptor descriptor, Object typedId) {
 		Object result = em.find(descriptor.getJavaClass(), typedId);
 		if (result instanceof EObject resolved) {
