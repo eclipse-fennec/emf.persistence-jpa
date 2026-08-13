@@ -23,8 +23,11 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,7 +43,9 @@ import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.common.util.WrappedException;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
@@ -163,6 +168,20 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private volatile MongoClient client;
 	/** The open command bracket (issue #112); resources are single-threaded per EMF semantics. */
 	private MongoCommandTransaction activeTransaction;
+	/** Options captured by {@link #load(Map)} for the deferred population (issue #146). */
+	private Map<?, ?> loadOptions;
+	/**
+	 * {@code true} once {@link #load(Map)} was called — the trigger for deferred population.
+	 * Deliberately distinct from EMF's {@code isLoaded}: attaching a single keyed-resolved
+	 * object to the contents flips {@code isLoaded} via {@code ContentsEList.loaded()}, which
+	 * must not cause the whole collection to be read on a later {@link #getContents()}.
+	 */
+	private boolean loadRequested;
+	/** {@code true} once the collection-wide population has run. */
+	private boolean contentsPopulated;
+	/** Re-entrancy guard so internal contents access during population does not recurse. */
+	private boolean populating;
+
 	/** Cached hello-probe result (issue #114); {@code null} until first successful probe. */
 	private volatile Boolean transactionalDeployment;
 	/** Model annotations win over the static composite id policy (issue #115); sticky per resource. */
@@ -273,13 +292,71 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	// ------------------------------------------------------------------- load
 
+	/**
+	 * Lazy load (issue #146): marks the resource loaded and remembers the options, but does
+	 * <em>not</em> run the collection-wide {@code find()}. The full population is deferred to
+	 * the first {@link #getContents()} access.
+	 * <p>
+	 * This is what keeps demand-load-driven proxy resolution bounded. EMF resolves a proxy via
+	 * {@code ResourceSet.getEObject(uri, true)} → {@code getResource(trimFragment, true)} →
+	 * {@code demandLoad} → {@code load()}. With eager loading that step materialised the entire
+	 * target collection before the fragment — which already carries the target id — was ever
+	 * looked at, so referencing one object in a million-document collection read all million.
+	 * Now {@code load()} is a no-op marker and the keyed find in {@link #getEObject(String)}
+	 * does the work. Mirrors the JPA backend's fix for the same defect (issue #17).
+	 */
 	@Override
 	public void load(Map<?, ?> options) throws IOException {
 		if (isLoaded) {
 			return;
 		}
-		doLoad((InputStream) null, options);
+		// Deferring the data must not defer the diagnosis: an unresolvable database (missing
+		// authority, unknown alias, withdrawn service) has to surface here as a checked
+		// IOException, not later as an unchecked WrappedException out of getContents(). The
+		// handle is touched, never queried — MongoDatabase.getName() is a field read on a real
+		// database and throws on the factory's unavailable() proxy, so this costs no I/O.
+		try {
+			database.getName();
+		} catch (RuntimeException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Failed to load resource: " + e.getMessage(), getURI(), e));
+			throw new IOException("Failed to load resource: " + getURI(), e);
+		}
+		this.loadOptions = options;
+		this.loadRequested = true;
 		isLoaded = true;
+	}
+
+	/**
+	 * Returns the contents, running the deferred population on first access of a loaded but
+	 * not yet populated resource. Internal callers that must not trigger it — fragment
+	 * resolution, the population itself, {@code doUnload} — use {@code super.getContents()}.
+	 */
+	@Override
+	public EList<EObject> getContents() {
+		populateIfNeeded();
+		return super.getContents();
+	}
+
+	/**
+	 * Runs the deferred population exactly once. Guarded against re-entrancy so that
+	 * {@code super.getContents()} calls made from within the population do not recurse; a
+	 * failure surfaces as a {@link WrappedException} because {@link #getContents()} cannot
+	 * throw a checked {@link IOException}, and is also recorded in {@link #getErrors()}.
+	 */
+	private void populateIfNeeded() {
+		if (!loadRequested || contentsPopulated || populating) {
+			return;
+		}
+		populating = true;
+		try {
+			doLoad((InputStream) null, loadOptions);
+			contentsPopulated = true;
+		} catch (IOException e) {
+			throw new WrappedException(e);
+		} finally {
+			populating = false;
+		}
 	}
 
 	@Override
@@ -289,12 +366,20 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		applyIdConfigOption(options);
 		String collectionName = getCollectionName(options);
 		if (isNull(collectionName)) {
-			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE, 
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE,
 					"Resource URI has no collection segment — nothing to load", getURI()));
 			return;
 		}
-		if (!getContents().isEmpty()) {
-			getContents().clear();
+		// Raw access throughout: this IS the population, so it must not re-enter the hook.
+		// Objects already attached by a keyed fragment resolution are KEPT — incoming
+		// documents carrying an id that is already present are skipped below, so identity
+		// survives for anyone already holding a reference (mirrors the JPA backend).
+		Set<String> present = new HashSet<>();
+		for (EObject existing : super.getContents()) {
+			String existingId = CompositeIds.fragment(existing);
+			if (nonNull(existingId)) {
+				present.add(existingId);
+			}
 		}
 		try {
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
@@ -306,9 +391,9 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			int pageSize = Options.getPageSize(options);
 			if (pageSize > 0) {
-				loadPaginated(collection, find, eClass, pageSize);
+				loadPaginated(collection, find, eClass, pageSize, present);
 			} else {
-				decodeInto(find, eClass, getContents());
+				decodeInto(find, eClass, super.getContents(), present);
 			}
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
@@ -318,29 +403,42 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	private void loadPaginated(MongoCollection<BsonDocument> collection, FindIterable<BsonDocument> find,
-			EClass eClass, int pageSize) throws IOException {
+			EClass eClass, int pageSize, Set<String> present) throws IOException {
 		int offset = 0;
 		while (true) {
 			List<EObject> page = new ArrayList<>(pageSize);
-			decodeInto(find.skip(offset).limit(pageSize), eClass, page);
-			getContents().addAll(page);
-			if (page.size() < pageSize) {
+			int decoded = decodeInto(find.skip(offset).limit(pageSize), eClass, page, present);
+			super.getContents().addAll(page);
+			if (decoded < pageSize) {
 				return;
 			}
-			offset += page.size();
+			offset += decoded;
 		}
 	}
 
-	private void decodeInto(FindIterable<BsonDocument> find, EClass eClass, List<EObject> target)
-			throws IOException {
+	/**
+	 * Decodes the cursor into {@code target}, skipping documents whose EMF id is already
+	 * attached to this resource. Returns the number of documents seen — not the number added
+	 * — so paging keeps advancing correctly when duplicates are skipped.
+	 */
+	private int decodeInto(FindIterable<BsonDocument> find, EClass eClass, List<EObject> target,
+			Set<String> present) throws IOException {
+		int seen = 0;
 		try (MongoCursor<BsonDocument> cursor = find.iterator()) {
 			while (cursor.hasNext()) {
-				EObject eObject = decode(cursor.next(), eClass);
+				BsonDocument document = cursor.next();
+				seen++;
+				BsonValue rawId = document.get(MongoPersistenceConstants.ID_FIELD);
+				if (nonNull(rawId) && rawId.isString() && present.contains(rawId.asString().getValue())) {
+					continue;
+				}
+				EObject eObject = decode(document, eClass);
 				if (nonNull(eObject)) {
 					target.add(eObject);
 				}
 			}
 		}
+		return seen;
 	}
 
 	// ------------------------------------------------------------------- save
@@ -1017,7 +1115,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	@Override
 	protected void doUnload() {
 		isLoaded = false;
-		getContents().clear();
+		loadRequested = false;
+		contentsPopulated = false;
+		loadOptions = null;
+		super.getContents().clear();
 	}
 
 	// -------------------------------------------------------- proxy resolution
@@ -1051,9 +1152,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		// already-loaded objects — including embedded containment children, which a
 		// keyed find can never see — where the keyed find would decode a fresh twin
 		// and attach it beside the original
-		EObject loaded = super.getEObject(uriFragment);
-		if (nonNull(loaded)) {
-			return loaded;
+		if (uriFragment.startsWith("/") && !uriFragment.startsWith("//")) {
+			// XMI-style path fragment ("/0", "/1/@children.0"): positional, so it needs the
+			// populated contents by definition — hand it to EMF unchanged.
+			return super.getEObject(uriFragment);
 		}
 		String idValue = uriFragment;
 		if (uriFragment.startsWith("//")) {
@@ -1063,6 +1165,16 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				return null;
 			}
 			idValue = parts[2];
+		}
+		// The in-memory lookup comes FIRST (issue #116): it preserves identity for objects
+		// already present — including embedded containment children, which a keyed find can
+		// never see — where the keyed find would decode a fresh twin beside the original.
+		// Deliberately NOT via super.getEObject: that routes through getEObjectByID, which
+		// iterates getContents() and would populate the whole collection (issue #146) —
+		// exactly what the lazy load exists to avoid.
+		EObject loaded = findInRawContents(idValue);
+		if (nonNull(loaded)) {
+			return loaded;
 		}
 		String collectionName = getCollectionName(null);
 		if (isNull(collectionName)) {
@@ -1074,13 +1186,24 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					.find(eq(MongoPersistenceConstants.ID_FIELD, toBsonId(idValue, eClass)))
 					.first();
 			if (isNull(document)) {
+				// No document of its own — so this is very likely an EMBEDDED containment
+				// child, whose id lives inside some other document and which no keyed find
+				// can ever see (issue #116). That case genuinely needs the documents that
+				// might contain it, so fall back to the collection-wide population exactly
+				// here, once, rather than paying for it on every resolution (issue #146).
+				if (loadRequested && !contentsPopulated) {
+					populateIfNeeded();
+					return findInRawContents(idValue);
+				}
 				return null;
 			}
 			EObject resolved = decode(document, eClass);
-			if (nonNull(resolved) && isNull(resolved.eResource()) && !getContents().contains(resolved)) {
+			if (nonNull(resolved) && isNull(resolved.eResource())
+					&& !super.getContents().contains(resolved)) {
 				// Standard EMF pattern: attach the resolved object so it has an
-				// eResource() and subsequent accesses need no further round trip.
-				getContents().add(resolved);
+				// eResource() and subsequent accesses need no further round trip. Raw, so a
+				// keyed resolution does not drag in the whole collection (issue #146).
+				super.getContents().add(resolved);
 			}
 			return resolved;
 		} catch (RuntimeException | IOException e) {
@@ -1088,6 +1211,26 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					"Failed to resolve fragment " + uriFragment + ": " + e.getMessage(), getURI(), e));
 			return null;
 		}
+	}
+
+	/**
+	 * Searches the already-materialised object graph for an EMF id, without resolving proxies
+	 * and without touching {@link #getContents()} — so a fragment resolution never triggers
+	 * the deferred population (issue #146).
+	 */
+	private EObject findInRawContents(String idValue) {
+		for (EObject root : super.getContents()) {
+			if (idValue.equals(CompositeIds.fragment(root))) {
+				return root;
+			}
+			for (Iterator<EObject> it = EcoreUtil.getAllProperContents(root, false); it.hasNext();) {
+				EObject candidate = it.next();
+				if (!candidate.eIsProxy() && idValue.equals(CompositeIds.fragment(candidate))) {
+					return candidate;
+				}
+			}
+		}
+		return null;
 	}
 
 	// ------------------------------------------------------------ codec bridge

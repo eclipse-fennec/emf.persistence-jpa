@@ -292,12 +292,11 @@ class MongoDeleteWalkCostTest {
 
 	/**
 	 * One cross-document child under an embedded child — the nested shape of #133. The walk
-	 * discovers it, which a delete scoped to its own collection never would, and pays one
-	 * query. That query is the finding: it is <b>unfiltered</b>, so it materialises the whole
-	 * target collection rather than the one document that was asked for.
+	 * discovers it, which a delete scoped to its own collection never would, and pays exactly
+	 * one keyed query for it.
 	 */
 	@Test
-	void oneCrossDocumentChildCostsOneUnfilteredCollectionLoad() throws Exception {
+	void oneCrossDocumentChildCostsOneKeyedQuery() throws Exception {
 		saveFixture(5, 1);
 		EObject root = loadRoot();
 
@@ -306,24 +305,20 @@ class MongoDeleteWalkCostTest {
 		System.out.printf("### one-cross-document(5 sections, 1 archive): found=%d finds=%s%n",
 				result.found().size(), result.finds());
 		assertThat(result.found()).as("five sections plus the resolved archive").hasSize(6);
-		assertThat(result.finds()).containsExactly("Archive UNFILTERED");
+		assertThat(result.finds())
+				.as("keyed, not a collection scan (#146)")
+				.containsExactly("Archive filter={\"_id\": \"a0\"}");
 	}
 
 	/**
-	 * The fan-out, and the reason the cost shape is counter-intuitive: twenty cross-document
-	 * children still cost <b>one</b> query, because resolving the first one demand-loads the
-	 * whole {@code Archive} resource and the other nineteen are then found in memory.
-	 * <p>
-	 * Query count is therefore O(distinct child collections), not O(children) — the same order
-	 * as the ownership-record alternative of #139. The price sits in the data volume instead:
-	 * the load is unfiltered, so it reads every document of that type, including those owned
-	 * by other roots — filed as #146. The fix there is a lazy {@code load()} plus batched
-	 * resolution via {@code $in} (the counterpart of the JPA indirection policy's batch mode),
-	 * so the count stays at one query per collection and only the result set shrinks; this
-	 * assertion should then expect the {@code $in} filter instead of {@code UNFILTERED}.
+	 * The fan-out, and the number that decides the design of #138: resolving proxy by proxy
+	 * costs one keyed query per cross-document child. Bounded in volume, but linear in round
+	 * trips — which is why a caller that knows the whole set (a delete walking the tree)
+	 * should collect the ids and issue a single {@code $in} per collection instead, the
+	 * counterpart of the JPA indirection policy's batch mode.
 	 */
 	@Test
-	void fanOutStillCostsOneQueryBecauseTheWholeCollectionIsLoaded() throws Exception {
+	void fanOutCostsOneKeyedQueryPerCrossDocumentChild() throws Exception {
 		saveFixture(MANY, MANY);
 		EObject root = loadRoot();
 
@@ -333,7 +328,46 @@ class MongoDeleteWalkCostTest {
 				MANY, MANY, result.found().size(), result.finds());
 		assertThat(result.found()).as("sections plus their archives").hasSize(2 * MANY);
 		assertThat(result.finds())
-				.as("constant in the child count — one demand-load of the target collection")
-				.containsExactly("Archive UNFILTERED");
+				.as("one keyed find per child — bounded in volume, linear in round trips")
+				.hasSize(MANY)
+				.allSatisfy(find -> assertThat(find).startsWith("Archive filter="));
+	}
+
+	/**
+	 * The limit of the keyed fast path, pinned so nobody optimises the fallback away: an
+	 * <b>embedded</b> containment child has no document of its own, so its id can never be
+	 * found by a keyed {@code _id} lookup. Resolving a reference to one therefore still needs
+	 * the documents that might contain it — and that is exactly where {@code getEObject} falls
+	 * back to the collection-wide population, once (issue #146, preserving #116).
+	 * <p>
+	 * Measured through the wire: the keyed attempt happens first and misses, then the
+	 * unfiltered load follows, and the child comes back resolved rather than as a dead proxy.
+	 */
+	@Test
+	void embeddedChildFragmentFallsBackToACollectionLoad() throws Exception {
+		saveFixture(3, 0);
+
+		ResourceSet readSet = resourceSet();
+		Resource resource = readSet.createResource(uriFor("Library"));
+		resource.load(null);
+		synchronized (wireFinds) {
+			wireFinds.clear();
+		}
+
+		// resolve by fragment WITHOUT touching the contents first, so the resource is still
+		// unpopulated — "s1" is embedded in the library document, not a root of its own
+		EObject embedded = resource.getEObject("s1");
+
+		List<String> finds;
+		synchronized (wireFinds) {
+			finds = new ArrayList<>(wireFinds);
+		}
+		System.out.printf("### embedded-fragment(s1): resolved=%s finds=%s%n",
+				embedded != null, finds);
+		assertThat(embedded).as("the embedded child must still be resolvable by fragment").isNotNull();
+		assertThat(embedded.eGet(sectionClass.getEStructuralFeature("title"))).isEqualTo("Section 1");
+		assertThat(finds)
+				.as("keyed attempt first, then the fallback load that alone can see embedded children")
+				.containsExactly("Library filter={\"_id\": \"s1\"}", "Library UNFILTERED");
 	}
 }
