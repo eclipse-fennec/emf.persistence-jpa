@@ -367,6 +367,35 @@ final class MongoTestSupport {
 		throw new IllegalStateException(FLAVOR + " did not answer on the wire within 180s", last);
 	}
 
+	/**
+	 * Waits until mongod accepts connections, before {@code rs.initiate()} is attempted.
+	 * <p>
+	 * {@code docker run -d} returns as soon as the container exists, not when the process
+	 * inside it is listening, so initiating the replica set right away raced mongod's
+	 * startup and failed with {@code ECONNREFUSED 127.0.0.1:27017}. The gateways always had
+	 * {@link #awaitWireProtocol()}; plain MongoDB had no such wait because no CI job ever
+	 * ran it (issue #132) — locally the image is warm and the race rarely lost.
+	 * <p>
+	 * A {@code ping} against {@code admin} is the right probe: a mongod started with
+	 * {@code --replSet} answers it while still refusing writes, which is exactly the state
+	 * {@code rs.initiate()} needs.
+	 */
+	private static void awaitMongodListening() throws Exception {
+		long deadline = System.currentTimeMillis() + 120_000;
+		Exception last = null;
+		while (System.currentTimeMillis() < deadline) {
+			try {
+				exec(20, resolveCli(), "exec", containerId, "mongosh", "--quiet",
+						"--eval", "db.adminCommand({ping:1})");
+				return;
+			} catch (Exception e) {
+				last = e;
+				Thread.sleep(1_000);
+			}
+		}
+		throw new IllegalStateException("mongod did not accept connections within 120s", last);
+	}
+
 	/** Pings the published port with the Mongo driver, TLS handshake included. */
 	private static void probeWithDriver() throws Exception {
 		String mapping = exec(20, resolveCli(), "port", containerId, WIRE_PORT + "/tcp");
@@ -379,6 +408,7 @@ final class MongoTestSupport {
 
 	/** Initiates the single-node replica set and waits until the node is PRIMARY. */
 	private static void initiateReplicaSet() throws Exception {
+		awaitMongodListening();
 		exec(60, resolveCli(), "exec", containerId, "mongosh", "--quiet", "--eval", "rs.initiate()");
 		long deadline = System.currentTimeMillis() + 60_000;
 		while (System.currentTimeMillis() < deadline) {
