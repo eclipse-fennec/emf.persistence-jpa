@@ -19,8 +19,13 @@ import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isContainm
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isNonContainmentOppositeRelation;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.setValue;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -29,6 +34,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicTypeContext;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 import org.eclipse.persistence.exceptions.DescriptorException;
+import org.eclipse.persistence.indirection.IndirectContainer;
 import org.eclipse.persistence.indirection.ValueHolder;
 import org.eclipse.persistence.indirection.ValueHolderInterface;
 import org.eclipse.persistence.internal.dynamic.ValuesAccessor;
@@ -98,6 +104,21 @@ public class EReferenceAccessor extends ValuesAccessor {
 				nonNull(reference)) {
 			value = unwrapValueHolder(value);
 			//			value = calculateReferenceValue(eObject, value);
+			if (value instanceof Collection<?> collection &&
+					reference.isMany() &&
+					AuthoritativeFill.active() &&
+					isMaterialized(collection)) {
+				/*
+				 * Row fill (build or refresh, issue #144): the incoming collection is the
+				 * store's complete truth for this reference, so this is the one write that
+				 * may also SHRINK the list. Everything below accumulates only — correct for
+				 * merge/backup/indirection bookkeeping, but a refresh routed through it could
+				 * never drop a member, and EclipseLink refreshes into the SAME cached
+				 * instance, so children deleted in the database were resurrected on read.
+				 */
+				reconcileById(eObject, collection);
+				return;
+			}
 			if (nonNull(value) &&
 					value instanceof Collection<?> collection &&
 					reference.isMany() &&
@@ -134,6 +155,75 @@ public class EReferenceAccessor extends ValuesAccessor {
 			} else {
 				setValue(eObject, value, reference);
 			}
+		}
+	}
+
+	/**
+	 * An uninstantiated indirect container must not be reconciled — iterating it would
+	 * trigger the very query the indirection defers. It cannot be authoritative content
+	 * anyway, since nothing has been read for it yet.
+	 */
+	private static boolean isMaterialized(Collection<?> collection) {
+		return !(collection instanceof IndirectContainer<?> container) || container.isInstantiated();
+	}
+
+	/**
+	 * Brings the list in line with the incoming row content: members whose EMF id (or
+	 * instance) is absent from the incoming collection are stale and removed; incoming
+	 * elements not yet present are added. A member matched by id stays as the instance the
+	 * list already holds — consumers keep their object identity, and the member's own
+	 * attribute state is the concern of its own cache entry, not of this collection.
+	 * <p>
+	 * Removal and addition mirror the two fill styles below: containment members leave and
+	 * join with full EMF semantics (their {@code eContainer} must follow), non-containment
+	 * members via {@code basicRemove}/{@code basicAdd} for the reasons documented on
+	 * {@link #addCollectionValueById}.
+	 */
+	private void reconcileById(EObject eObject, Collection<?> incoming) {
+		@SuppressWarnings("unchecked")
+		InternalEList<Object> current = (InternalEList<Object>) eObject.eGet(reference);
+		if (current == incoming) {
+			return;
+		}
+		Set<String> incomingIds = new HashSet<>();
+		Set<Object> incomingInstances = Collections.newSetFromMap(new IdentityHashMap<>());
+		for (Object element : incoming) {
+			incomingInstances.add(element);
+			if (element instanceof EObject eo) {
+				String id = EcoreUtil.getID(eo);
+				if (nonNull(id)) {
+					incomingIds.add(id);
+				}
+			}
+		}
+		for (Object member : new ArrayList<>(current.basicList())) {
+			if (incomingInstances.contains(member)) {
+				continue;
+			}
+			String id = member instanceof EObject eo ? EcoreUtil.getID(eo) : null;
+			if (nonNull(id) && incomingIds.contains(id)) {
+				continue; // same row, arriving as a rebuilt twin — keep our instance
+			}
+			if (reference.isContainment()) {
+				current.remove(member);
+			} else {
+				current.basicRemove(member, null);
+			}
+		}
+		if (reference.isContainment()) {
+			for (Object element : incoming) {
+				if (element instanceof EObject eo) {
+					String id = EcoreUtil.getID(eo);
+					if (nonNull(id) && containsId(current.basicList(), eo, id)) {
+						continue;
+					}
+				}
+				if (!current.contains(element)) {
+					current.add(element);
+				}
+			}
+		} else {
+			addCollectionValueById(eObject, incoming);
 		}
 	}
 

@@ -16,6 +16,12 @@ import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
+import org.eclipse.fennec.persistence.eclipselink.mappings.AuthoritativeFill;
+import org.eclipse.persistence.exceptions.DatabaseException;
+import org.eclipse.persistence.internal.queries.JoinedAttributeManager;
+import org.eclipse.persistence.internal.sessions.AbstractRecord;
+import org.eclipse.persistence.queries.FetchGroup;
+import org.eclipse.persistence.queries.ObjectBuildingQuery;
 import org.eclipse.fennec.persistence.eclipselink.indirection.ETransparentIndirectionPolicy;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.descriptors.DescriptorEvent;
@@ -47,7 +53,30 @@ public class EObjectBuilder extends ObjectBuilder {
 		super(descriptor);
 	}
 
-	/* 
+	/**
+	 * The one funnel through which an object's attributes are filled <b>from a database
+	 * row</b> — both the initial build and the refresh of an invalidated cache hit
+	 * ({@code refreshObjectIfRequired}) arrive here. Marked as an authoritative fill so
+	 * {@code EReferenceAccessor} may treat incoming collection content as the store's truth
+	 * and drop stale members (issue #144). The clone, backup and merge paths below do
+	 * <em>not</em> set the mark: their collection writes may carry partial content and must
+	 * keep accumulating.
+	 */
+	@Override
+	public void buildAttributesIntoObject(Object domainObject, CacheKey cacheKey,
+			AbstractRecord databaseRow, ObjectBuildingQuery query, JoinedAttributeManager joinManager,
+			FetchGroup executionFetchGroup, boolean forRefresh, AbstractSession targetSession)
+			throws DatabaseException {
+		AuthoritativeFill.enter();
+		try {
+			super.buildAttributesIntoObject(domainObject, cacheKey, databaseRow, query, joinManager,
+					executionFetchGroup, forRefresh, targetSession);
+		} finally {
+			AuthoritativeFill.exit();
+		}
+	}
+
+	/*
 	 * (non-Javadoc)
 	 * @see org.eclipse.persistence.internal.descriptors.ObjectBuilder#buildBackupClone(java.lang.Object, org.eclipse.persistence.internal.sessions.UnitOfWorkImpl)
 	 */
