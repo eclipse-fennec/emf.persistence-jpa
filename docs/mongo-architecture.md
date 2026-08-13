@@ -198,9 +198,20 @@ backend never invents numeric ids. An EClass without an ID attribute cannot be s
 
 ### Containment, references, proxies
 
-- **Containment children are embedded** in the parent's document — one root EObject =
-  one document, including its containment tree. Loading materializes the children
-  (no proxies) with correct `eContainer()` wiring.
+- **Containment children are embedded** in the parent's document *by default* — one root
+  EObject = one document, including its containment tree. Loading materializes the
+  children (no proxies) with correct `eContainer()` wiring.
+- **Cross-document containment is the documented exception.** A containment child that is
+  also a root of its own `Resource` (`eDirectResource`) is written as a `{"$ref": <uri>}`
+  marker instead of being inlined, and comes back resolved: `eGet` hands out the child
+  itself, owned by the parent and resident in its own resource. The `$ref` and the proxy
+  behind it are storage internals — no consumer-facing API exposes them, `eContents` and
+  `EcoreUtil.getAllContents` resolve as well (`MongoCrossResourceReferenceTest`). The
+  decision is per reference in the codec (`ReferenceSerializationEntry`, emf.codec#123 /
+  #128). Two consequences worth knowing: the query layer assumes containment is embedded,
+  so a `$ref` child is invisible to filters and `$elemMatch` over that path (refused with
+  `CODE_NON_EMBEDDED_PATH`); and dropping such a subtree currently leaves the child
+  document behind as an orphan ([#133](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/133)).
 - **Non-containment references are stored as URIs/ids**, not foreign keys.
   `getURIFragment` returns the target's EMF id, so a same-resource reference is a bare
   id fragment; on decode, unresolved references become EMF proxies. A bare id is
@@ -216,19 +227,25 @@ backend never invents numeric ids. An EClass without an ID attribute cannot be s
   JPA stores references as foreign keys within its own database. Verified by
   `MixedBackendResourceSetTest`.
 
-### Known workaround: cross-document serialization ([emf.codec#50](https://github.com/eclipse-fennec/emf.codec/issues/50))
+### Cross-resource references: no workaround anymore
 
-The codec's format-delegate write path carries no `CodecWriteContext`, so it cannot
-detect that a reference target lives in a *different* resource — such targets would be
-serialized as bare fragments (and unresolved proxies as their type URI), which do not
-resolve across resources. `MongoResourceImpl.rewriteCrossResourceReferences` therefore
-post-processes the encoded document: reference values whose targets live in another
-resource (or are proxies) are rewritten to absolute EMF URIs
-(`EcoreUtil.getURI` / `eProxyURI`). The rewrite is idempotent and becomes a no-op once
-the codec writes absolute URIs itself. **Known limitation:** only the root object's
-references are rewritten, not those of nested containment children. This is interim
-code, to be removed when emf.codec#50 lands a writer-side `ContextHelper.RESOURCE`
-fallback.
+Historically the codec's format-delegate write path carried no `CodecWriteContext` and
+could not tell that a reference target lived in a *different* resource, so
+`MongoResourceImpl.rewriteCrossResourceReferences` post-processed the encoded document —
+with the known limitation that only the root object's references were rewritten, not those
+of nested containment children (emf.codec#50).
+
+That workaround is **gone** (removed in 1521ac0, #116). The codec now decides per
+reference on the write path: `ReferenceSerializationEntry.isCrossDocument(...)` mirrors
+`XMLSaveImpl.saveElement` — a target that is a proxy, or resident in a resource other than
+the source's, gets a reference marker with a URI deresolved against the source resource;
+same-resource targets stay bare fragments. Nested containment children are covered because
+`resolveSourceResource(...)` falls back to `source.eResource()` (emf.codec#113), which is
+what the Mongo `encode()` relies on since it does not set `ContextHelper.RESOURCE` itself.
+
+The round-trip matrix — including deep containment targets resolved by identity rather than
+position, and unresolved proxies surviving with their URI — is pinned by
+`MongoCrossResourceReferenceTest`.
 
 ## Comparison: Mongo backend vs. JPA backend
 
