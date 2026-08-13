@@ -16,6 +16,7 @@ import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -357,6 +358,22 @@ class MongoCrossResourceReferenceTest {
 
 		ResourceSet readSet = resourceSet();
 		EObject loadedBook = load(readSet, "Book").getContents().get(0);
+
+		// The fetch is lazy — until something resolves it, the raw slot holds a proxy.
+		// That is implementation freedom and deliberately not asserted: what must hold is
+		// that no consumer-facing API ever hands out an unresolved object. Generic tree
+		// walks are what would leak it, since EcoreUtil.copy, validation and serialization
+		// all traverse eContents.
+		assertThat(loadedBook.eContents())
+				.as("eContents resolves instead of exposing the proxy")
+				.allSatisfy(child -> assertThat(child.eIsProxy()).isFalse())
+				.extracting(child -> child.eClass().getName())
+				.containsExactly("Chapter");
+		Iterator<EObject> all = EcoreUtil.getAllContents(loadedBook, false);
+		while (all.hasNext()) {
+			assertThat(all.next().eIsProxy()).as("getAllContents resolves too").isFalse();
+		}
+
 		EObject resolved = (EObject) loadedBook.eGet(bookAppendix);
 		// resolved via its own resource — a value copy or empty object fails here
 		assertThat(resolved.eIsProxy()).isFalse();
