@@ -24,6 +24,8 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.codec.bson.BsonFormatDelegate;
@@ -154,6 +157,14 @@ import tools.jackson.databind.json.JsonMapper;
 public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource, CommandResource {
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
+
+	/**
+	 * Bookkeeping collection for containment ownership across document boundaries (issue #139).
+	 * Deliberately a collection of its own rather than a field inside the child documents: the
+	 * codec owns their shape, and an injected key would read as an unknown feature there
+	 * (eclipse-fennec/emf.codec#151).
+	 */
+	static final String OWNERSHIP_COLLECTION = "_fennec_ownership";
 
 	/** Diagnostic source of this resource layer (issue #19): the bundle namespace. */
 	static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.mongo";
@@ -463,10 +474,16 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
 			// snapshot: encoding may resolve proxies, and a keyed-find resolution against
 			// this very resource attaches its result to the contents (issue #107)
-			List<WriteModel<BsonDocument>> writes = writeModels(List.copyOf(getContents()));
+			List<EObject> roots = List.copyOf(getContents());
+			List<WriteModel<BsonDocument>> writes = writeModels(roots);
 			if (!writes.isEmpty()) {
 				collection.bulkWrite(writes);
 			}
+			// After the roots are written: whatever they no longer own is deleted, and the
+			// ownership records are brought in line (issue #139). Deliberately after, so a
+			// crash leaves a recoverable orphan rather than a root referencing a deleted
+			// document — and the records make that orphan re-derivable for the sweep (#140).
+			reconcileOwnership(roots, collectionName);
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to save resource: " + e.getMessage(), getURI(), e));
@@ -500,12 +517,28 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		try {
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			// Collect the owned cross-document documents BEFORE anything is removed: they are
+			// only discoverable from the roots that own them, so deleting the roots first
+			// would lose the information (issue #138).
+			Map<String, Set<BsonValue>> owned = new LinkedHashMap<>();
+			for (EObject eObject : getContents()) {
+				collectOwnedDocuments(eObject, owned);
+			}
+			List<BsonValue> deletedIds = new ArrayList<>();
 			for (EObject eObject : getContents()) {
 				BsonValue id = extractId(eObject);
 				if (nonNull(id)) {
+					deletedIds.add(id);
 					collection.deleteOne(eq(MongoPersistenceConstants.ID_FIELD, id));
 				}
 			}
+			// Owned children go after their roots: a crash then leaves a recoverable orphan
+			// rather than a root pointing at documents that no longer exist. One deleteMany
+			// per collection, never one per child.
+			deleteOwned(owned);
+			// the roots are gone, so their ownership bookkeeping goes too (issue #139)
+			removeOwnershipRecords(owned);
+			removeOwnershipOf(deletedIds, collectionName);
 			getContents().clear();
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
@@ -1119,6 +1152,238 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		contentsPopulated = false;
 		loadOptions = null;
 		super.getContents().clear();
+	}
+
+	// ------------------------------------------------------- containment ownership
+
+	/**
+	 * Collects the documents a root owns <b>outside its own document</b>, grouped by
+	 * collection: cross-document containment children, transitively (issue #138).
+	 * <p>
+	 * Containment is ownership, but a cross-document child lives in its own document, so
+	 * deleting the root's document alone leaves it behind. The collection is deliberately done
+	 * from the object graph rather than from the stored document, and deliberately without
+	 * resolving anything that does not have to be resolved:
+	 * <ul>
+	 * <li>an <b>unresolved proxy</b> already carries collection and id in its URI, so it is
+	 *     recorded without a single query;</li>
+	 * <li>a <b>resolved child in another resource</b> is recorded from that resource's URI;</li>
+	 * <li>an <b>embedded child</b> is not recorded — it goes with the root's document — but it
+	 *     is walked, because it may own cross-document children of its own.</li>
+	 * </ul>
+	 * Recursion into a target only happens when the target's type can own containment at all,
+	 * which the metamodel answers statically. For a leaf child type the whole collection
+	 * therefore costs zero reads.
+	 */
+	private void collectOwnedDocuments(EObject object, Map<String, Set<BsonValue>> owned) {
+		for (EReference ref : object.eClass().getEAllReferences()) {
+			if (!ref.isContainment() || ref.isDerived() || ref.isTransient()) {
+				continue;
+			}
+			Object raw = ((InternalEObject) object).eGet(ref, false);
+			if (isNull(raw)) {
+				continue;
+			}
+			if (ref.isMany()) {
+				for (Object element : (List<?>) raw) {
+					collectOwnedChild(element, ref, owned);
+				}
+			} else {
+				collectOwnedChild(raw, ref, owned);
+			}
+		}
+	}
+
+	private void collectOwnedChild(Object value, EReference reference, Map<String, Set<BsonValue>> owned) {
+		if (!(value instanceof EObject child)) {
+			return;
+		}
+		URI documentUri = ownedDocumentUri(child);
+		if (isNull(documentUri)) {
+			// embedded: part of the root's own document, but it may own children itself
+			collectOwnedDocuments(child, owned);
+			return;
+		}
+		String collectionName = collectionOf(documentUri);
+		String id = documentUri.fragment();
+		EClass targetType = reference.getEReferenceType();
+		if (nonNull(collectionName) && nonNull(id)) {
+			owned.computeIfAbsent(collectionName, key -> new LinkedHashSet<>())
+					.add(toBsonId(id, targetType));
+		}
+		if (!ownsContainment(targetType)) {
+			// leaf type — nothing deeper can exist, so it need not be read at all
+			return;
+		}
+		// Deeper cross-document ownership is only visible in the child's own document, so this
+		// is the one case that costs a read. Resolving through the ResourceSet keeps identity
+		// and reuses the target resource.
+		EObject resolved = child.eIsProxy() ? EcoreUtil.resolve(child, getResourceSet()) : child;
+		if (!resolved.eIsProxy()) {
+			collectOwnedDocuments(resolved, owned);
+		}
+	}
+
+	/**
+	 * The URI of the child's <em>own</em> document, or {@code null} when it has none — i.e.
+	 * when it is embedded in its parent's document.
+	 */
+	private URI ownedDocumentUri(EObject child) {
+		if (child.eIsProxy()) {
+			return ((InternalEObject) child).eProxyURI();
+		}
+		Resource childResource = ((InternalEObject) child).eDirectResource();
+		if (isNull(childResource) || childResource == this) {
+			return null;
+		}
+		String fragment = childResource.getURIFragment(child);
+		return isNull(fragment) ? null : childResource.getURI().appendFragment(fragment);
+	}
+
+	/** Whether instances of this type can own containment at all — a static metamodel question. */
+	private static boolean ownsContainment(EClass eClass) {
+		return eClass.getEAllReferences().stream().anyMatch(EReference::isContainment);
+	}
+
+	/** The collection a document URI addresses: {@code mongodb://<db>/<collection>[#id]}. */
+	private static String collectionOf(URI documentUri) {
+		URI trimmed = documentUri.trimFragment();
+		return trimmed.segmentCount() > 0 ? trimmed.segment(0) : null;
+	}
+
+	/**
+	 * Deletes the collected owned documents, one {@code deleteMany} with an {@code $in} per
+	 * collection — never one delete per child.
+	 */
+	private void deleteOwned(Map<String, Set<BsonValue>> owned) {
+		for (Map.Entry<String, Set<BsonValue>> entry : owned.entrySet()) {
+			if (entry.getValue().isEmpty()) {
+				continue;
+			}
+			getCollection(entry.getKey())
+					.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, entry.getValue()));
+		}
+	}
+
+	/**
+	 * Reconciles the ownership records of the given roots and deletes what they no longer own
+	 * (issue #139).
+	 * <p>
+	 * The delete path can rediscover a root's owned documents by walking it (#138); an
+	 * <b>update</b> cannot — a dropped subtree is simply gone from the graph, and nothing in the
+	 * new document says it was ever there. Transitively it is worse: the orphan may hang off an
+	 * intermediate node that no longer exists, so no future save of that root could ever notice.
+	 * <p>
+	 * Hence a record per owned child document, in {@value #OWNERSHIP_COLLECTION}:
+	 * <pre>{ _id: { c: &lt;childCollection&gt;, id: &lt;childId&gt; }, owner: { c: …, id: … } }</pre>
+	 * The child is the primary key, which makes the store enforce EMF's single-container
+	 * invariant — a child cannot have two owners — and makes <b>re-parenting</b> correct for
+	 * free: when another root takes the child over, its save rewrites the record's owner, and
+	 * the former owner's reconciliation no longer sees the child as its own and leaves it alone.
+	 * A read-before-write diff of the stored document cannot do that; it would see "gone from
+	 * me" and delete a child that now belongs elsewhere.
+	 * <p>
+	 * Cost: one indexed query and one bulk write per save, and only for types that can own
+	 * containment at all — a static metamodel question. Types without containment references
+	 * skip this entirely.
+	 */
+	private void reconcileOwnership(List<EObject> roots, String collectionName) {
+		List<EObject> owners = roots.stream().filter(root -> ownsContainment(root.eClass())).toList();
+		if (owners.isEmpty()) {
+			return;
+		}
+		Map<BsonValue, Map<String, Set<BsonValue>>> ownedByRoot = new LinkedHashMap<>();
+		List<BsonValue> ownerIds = new ArrayList<>();
+		for (EObject root : owners) {
+			BsonValue ownerId = extractId(root);
+			if (isNull(ownerId)) {
+				continue;
+			}
+			ownerIds.add(ownerId);
+			Map<String, Set<BsonValue>> owned = new LinkedHashMap<>();
+			collectOwnedDocuments(root, owned);
+			ownedByRoot.put(ownerId, owned);
+		}
+		if (ownerIds.isEmpty()) {
+			return;
+		}
+		MongoCollection<BsonDocument> records = getCollection(OWNERSHIP_COLLECTION);
+		// one query for every root of this save, not one per root
+		Map<BsonValue, Map<String, Set<BsonValue>>> storedByRoot = new LinkedHashMap<>();
+		try (MongoCursor<BsonDocument> cursor = records
+				.find(Filters.and(eq("owner.c", collectionName), Filters.in("owner.id", ownerIds)))
+				.iterator()) {
+			while (cursor.hasNext()) {
+				BsonDocument record = cursor.next();
+				BsonDocument key = record.getDocument(MongoPersistenceConstants.ID_FIELD);
+				BsonValue ownerId = record.getDocument("owner").get("id");
+				storedByRoot.computeIfAbsent(ownerId, k -> new LinkedHashMap<>())
+						.computeIfAbsent(key.getString("c").getValue(), k -> new LinkedHashSet<>())
+						.add(key.get("id"));
+			}
+		}
+
+		// The union across ALL roots of this save, not per root: a child handed from one root
+		// to another within the same save is re-parented, not orphaned, and the losing root
+		// must not delete it (issue #139). Across saves the same case is already correct,
+		// because the record's owner has been rewritten and the former owner's query no longer
+		// returns the child at all.
+		Map<String, Set<BsonValue>> stillOwned = new LinkedHashMap<>();
+		ownedByRoot.values().forEach(owned -> owned.forEach((childCollection, ids) ->
+				stillOwned.computeIfAbsent(childCollection, k -> new LinkedHashSet<>()).addAll(ids)));
+
+		Map<String, Set<BsonValue>> orphans = new LinkedHashMap<>();
+		List<WriteModel<BsonDocument>> recordWrites = new ArrayList<>();
+		ReplaceOptions upsert = new ReplaceOptions().upsert(true);
+		for (Map.Entry<BsonValue, Map<String, Set<BsonValue>>> entry : ownedByRoot.entrySet()) {
+			BsonValue ownerId = entry.getKey();
+			Map<String, Set<BsonValue>> owned = entry.getValue();
+			Map<String, Set<BsonValue>> stored = storedByRoot.getOrDefault(ownerId, Map.of());
+			// no longer owned by anyone in this save -> the child document and its record go
+			stored.forEach((childCollection, ids) -> {
+				for (BsonValue id : ids) {
+					if (!stillOwned.getOrDefault(childCollection, Set.of()).contains(id)) {
+						orphans.computeIfAbsent(childCollection, k -> new LinkedHashSet<>()).add(id);
+					}
+				}
+			});
+			owned.forEach((childCollection, ids) -> {
+				for (BsonValue id : ids) {
+					BsonDocument key = new BsonDocument("c", new BsonString(childCollection))
+							.append("id", id);
+					BsonDocument record = new BsonDocument(MongoPersistenceConstants.ID_FIELD, key)
+							.append("owner", new BsonDocument("c", new BsonString(collectionName))
+									.append("id", ownerId));
+					recordWrites.add(new ReplaceOneModel<>(
+							eq(MongoPersistenceConstants.ID_FIELD, key), record, upsert));
+				}
+			});
+		}
+		deleteOwned(orphans);
+		removeOwnershipRecords(orphans);
+		if (!recordWrites.isEmpty()) {
+			records.bulkWrite(recordWrites);
+		}
+	}
+
+	/** Drops the ownership records of the given child documents. */
+	private void removeOwnershipRecords(Map<String, Set<BsonValue>> children) {
+		List<BsonDocument> keys = new ArrayList<>();
+		children.forEach((childCollection, ids) -> ids.forEach(id -> keys.add(
+				new BsonDocument("c", new BsonString(childCollection)).append("id", id))));
+		if (!keys.isEmpty()) {
+			getCollection(OWNERSHIP_COLLECTION)
+					.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, keys));
+		}
+	}
+
+	/** Drops the ownership records owned by the given roots of this collection. */
+	private void removeOwnershipOf(List<BsonValue> ownerIds, String collectionName) {
+		if (ownerIds.isEmpty()) {
+			return;
+		}
+		getCollection(OWNERSHIP_COLLECTION).deleteMany(
+				Filters.and(eq("owner.c", collectionName), Filters.in("owner.id", ownerIds)));
 	}
 
 	// -------------------------------------------------------- proxy resolution

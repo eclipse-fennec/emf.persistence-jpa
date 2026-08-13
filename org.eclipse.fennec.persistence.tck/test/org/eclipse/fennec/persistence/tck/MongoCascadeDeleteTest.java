@@ -261,7 +261,6 @@ class MongoCascadeDeleteTest {
 	 * so its document must go.
 	 */
 	@Test
-	@Disabled("issue #133 — the dropped subtree's cross-document grandchild is left as an orphan document")
 	void droppingIntermediateContainmentDeletesTheCrossDocumentGrandchild() throws Exception {
 		ResourceSet writeSet = saveNestedFixture();
 		assertThat(documentCount("Archive")).isEqualTo(1);
@@ -283,7 +282,6 @@ class MongoCascadeDeleteTest {
 	 * The flat variant: a cross-document containment child hanging directly off the root.
 	 */
 	@Test
-	@Disabled("issue #133 — the dropped cross-document child is left as an orphan document")
 	void droppingCrossDocumentContainmentChildDeletesItsDocument() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject library = create(libraryClass, "lid", "l2", "name", "Annex Holder");
@@ -311,7 +309,6 @@ class MongoCascadeDeleteTest {
 	 * ownership rule, triggered through {@code Resource.delete} rather than an update.
 	 */
 	@Test
-	@Disabled("issue #133 — Resource.delete is scoped to its own collection and leaves the child document")
 	void deletingTheRootDeletesTheCrossDocumentChildDocument() throws Exception {
 		ResourceSet writeSet = saveNestedFixture();
 		Resource libraryResource = writeSet.getResource(uriFor("Library"), false);
@@ -321,5 +318,110 @@ class MongoCascadeDeleteTest {
 		assertThat(documentCount("Archive"))
 				.as("the owned grandchild document must be deleted with its root")
 				.isZero();
+	}
+
+	// ------------------------------------------------------------------ ownership edges
+
+	/**
+	 * The case that justifies ownership records over a read-before-write diff (issue #139):
+	 * the child is <b>re-parented</b>, not dropped. The former owner's save must leave it
+	 * alone.
+	 * <p>
+	 * A diff of the stored document would see "no longer mine" and delete a child that now
+	 * belongs elsewhere. The record is keyed by the child, so the new owner's save rewrites the
+	 * owner and the old owner simply no longer sees it as its own.
+	 */
+	@Test
+	void reParentedChildSurvivesTheFormerOwnersSave() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject first = create(libraryClass, "lid", "l1", "name", "First");
+		EObject second = create(libraryClass, "lid", "l2", "name", "Second");
+		EObject archive = create(archiveClass, "arid", "a1", "label", "Vault");
+		first.eSet(libraryAnnex, archive);
+
+		Resource archiveResource = writeSet.createResource(uriFor("Archive"));
+		archiveResource.getContents().add(archive);
+		Resource libraryResource = writeSet.createResource(uriFor("Library"));
+		libraryResource.getContents().add(first);
+		libraryResource.getContents().add(second);
+		libraryResource.save(null);
+		archiveResource.save(null);
+		assertThat(documentCount("Archive")).isEqualTo(1);
+
+		// hand the archive over: EMF moves it, so first.annex becomes empty by itself
+		second.eSet(libraryAnnex, archive);
+		assertThat(first.eGet(libraryAnnex)).as("EMF moved the child").isNull();
+		libraryResource.save(null);
+
+		assertThat(documentCount("Archive"))
+				.as("re-parented, not orphaned — the new owner keeps it alive")
+				.isEqualTo(1);
+
+		ResourceSet readSet = resourceSet();
+		Resource loaded = readSet.createResource(uriFor("Library"));
+		loaded.load(null);
+		EObject reloadedSecond = loaded.getEObject("l2");
+		EObject annex = (EObject) reloadedSecond.eGet(libraryAnnex);
+		assertThat(annex).as("the child now hangs off the second library").isNotNull();
+		assertThat(value(annex, "label")).isEqualTo("Vault");
+	}
+
+	/**
+	 * The cost guard: a root whose type cannot own containment at all must not touch the
+	 * ownership bookkeeping. Verified through the wire, since the collection would otherwise be
+	 * created lazily and silently on every save.
+	 */
+	@Test
+	void aTypeWithoutContainmentNeverTouchesTheOwnershipCollection() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject archive = create(archiveClass, "arid", "solo", "label", "Standalone");
+		Resource archiveResource = writeSet.createResource(uriFor("Archive"));
+		archiveResource.getContents().add(archive);
+		archiveResource.save(null);
+
+		assertThat(database.listCollectionNames())
+				.as("Archive owns no containment — no ownership bookkeeping may appear")
+				.doesNotContain("_fennec_ownership");
+	}
+
+	/**
+	 * The other re-parenting direction: the hand-over is saved <em>before</em> the former owner
+	 * is. This one is correct by construction rather than by the union above — the new owner's
+	 * save rewrote the record, so the former owner's reconciliation queries by its own id and
+	 * does not see the child at all.
+	 */
+	@Test
+	void reParentedChildSurvivesWhenTheNewOwnerIsSavedFirst() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject first = create(libraryClass, "lid", "l1", "name", "First");
+		EObject archive = create(archiveClass, "arid", "a1", "label", "Vault");
+		first.eSet(libraryAnnex, archive);
+		Resource archiveResource = writeSet.createResource(uriFor("Archive"));
+		archiveResource.getContents().add(archive);
+		Resource firstResource = writeSet.createResource(uriFor("Library"));
+		firstResource.getContents().add(first);
+		firstResource.save(null);
+		archiveResource.save(null);
+
+		// second library in its OWN resource, saved first after taking the child over
+		ResourceSet secondSet = resourceSet();
+		Resource secondResource = secondSet.createResource(uriFor("Library"));
+		secondResource.load(null);
+		EObject second = create(libraryClass, "lid", "l2", "name", "Second");
+		EObject movedArchive = create(archiveClass, "arid", "a1", "label", "Vault");
+		second.eSet(libraryAnnex, movedArchive);
+		Resource movedArchiveResource = secondSet.createResource(uriFor("Archive"));
+		movedArchiveResource.getContents().add(movedArchive);
+		secondResource.getContents().add(second);
+		secondResource.save(null);
+		assertThat(documentCount("Archive")).isEqualTo(1);
+
+		// now the former owner drops it and saves — the record already names l2 as owner
+		first.eSet(libraryAnnex, null);
+		firstResource.save(null);
+
+		assertThat(documentCount("Archive"))
+				.as("the record's owner is already the new one, so the old save must not delete")
+				.isEqualTo(1);
 	}
 }
