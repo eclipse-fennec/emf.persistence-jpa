@@ -1,10 +1,16 @@
 name: Mongo Flavor Matrix
 
-# Capability-drift check for the non-MongoDB servers of the mongo backend (issue #121).
+# The only place the mongo backend is measured against a real server (issues #121, #132).
 #
-# The per-flavor capability declarations in MongoFlavorCapabilities are claims about a server
-# the default build never contacts. Claims nothing checks go stale — and staleness is silent in
-# both directions:
+# MongoDB itself is in the matrix because the default build never contacts a server either:
+# build.yml has no Mongo service, so without a job here the reference implementation is
+# verified nowhere and its whole suite skips itself green (issue #132). It is also the
+# baseline the gateway results are only meaningful against — "ferretdb refuses this" says
+# nothing unless mongo accepts it.
+#
+# For the gateways there is a second purpose: the per-flavor capability declarations in
+# MongoFlavorCapabilities are claims about a server nothing else contacts. Claims nothing
+# checks go stale — and staleness is silent in both directions:
 #   * a feature the server has lost still declared -> users hit a driver error
 #   * a gap the server has since closed still declared -> validate() refuses queries the
 #     server would happily serve, and nothing fails, so nobody notices
@@ -58,7 +64,7 @@ jobs:
       # fine is the whole point
       fail-fast: false
       matrix:
-        flavor: [ferretdb, documentdb-pg]
+        flavor: [mongo, ferretdb, documentdb-pg]
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,6 +81,10 @@ jobs:
           # scheduled and manual runs float, so upstream drift is actually discovered;
           # PR/push runs pin by digest so they stay reproducible
           case "${{ matrix.flavor }}" in
+            mongo)
+              floating='docker.io/library/mongo:7'
+              pinned='docker.io/library/mongo@sha256:be3d6353f3ea3fd3d22e016d19da20fcd6937eda0739eb6d2aeed335baa60f90'
+              ;;
             ferretdb)
               floating='ghcr.io/ferretdb/ferretdb-eval:2'
               pinned='ghcr.io/ferretdb/ferretdb-eval@sha256:1bf47a449dd65839aabfc1a535d1370c98326f8a90de20437eda0aeb30bd8dd5'
