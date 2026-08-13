@@ -43,6 +43,17 @@ public class EInstantiationPolicy extends InstantiationPolicy {
         super();
         this.eClass = eClass;
     }
+
+    /**
+     * The {@link EClass} this policy instantiates — the descriptor's model type. Exposed so
+     * callers can reach the metamodel from a descriptor without building an instance just to
+     * ask {@code eClass()} (issue #130).
+     *
+     * @return the EClass, or {@code null} before the descriptor has been set
+     */
+    public EClass getEClass() {
+        return eClass;
+    }
 //    
 //    /* 
 //     * (non-Javadoc)
