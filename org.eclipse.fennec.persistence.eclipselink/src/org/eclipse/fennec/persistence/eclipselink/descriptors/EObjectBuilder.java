@@ -12,9 +12,15 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.descriptors;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
+import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.mappings.AuthoritativeFill;
 import org.eclipse.persistence.exceptions.DatabaseException;
@@ -83,10 +89,24 @@ public class EObjectBuilder extends ObjectBuilder {
 	@Override
 	public Object buildBackupClone(Object clone, UnitOfWorkImpl unitOfWork) {
 		if (clone instanceof EObject eClone) {
-			// The copy policy builds clone    .
-			EClassDescriptor descriptor = (EClassDescriptor) this.descriptor;
-			EObject backup = (EObject) descriptor.getCopyPolicy().buildClone(clone, unitOfWork);
+			// A guaranteed-fresh instance, deliberately NOT the copy policy: ECopyPolicy's
+			// cloneToOriginals shortcut hands back the CACHE ORIGINAL, which made the backup
+			// the original — every commit then compared the clone against the merge products
+			// of the previous commit. Change comparison keys on instance identity
+			// (ContainerPolicy.compareCollectionsForChange uses an IdentityHashMap), so every
+			// untouched child read as removed-plus-added, and private ownership (#142) turned
+			// the removes into DELETEs of kept children (#143). It also meant the ECopier
+			// below wrote the clone's attributes onto the shared-cache original mid-transaction.
+			EObject backup = (EObject) this.descriptor.getInstantiationPolicy().buildNewInstance();
 			new ECopier(backup, null).copy(eClone);
+			// EclipseLink's backup contract for references: a snapshot holding the SAME
+			// instances as the clone, so an untouched slot compares as unchanged and a
+			// genuine removal (or unset) surfaces with the real instance. EMF forbids a
+			// plain add/set — containment would steal the child from the clone, and an
+			// eOpposite would wire the backup into live objects — hence the raw,
+			// inverse-free writes. Relation-table collections (AP-47) are excluded here:
+			// the mapping loop below snapshots them through their indirection policy.
+			snapshotReferencesInto(eClone, backup, transparentAttributeNames());
 			// ECopier.copy only covers attributes and containments — cross references
 			// stay empty in the backup. For relation-table collections (AP-47) an empty
 			// backup makes commit's change comparison treat every element as newly
@@ -104,6 +124,48 @@ public class EObjectBuilder extends ObjectBuilder {
 			return backup;
 		}
 		return super.buildBackupClone(clone, unitOfWork);
+	}
+
+	/** The attribute names whose backup is built through their transparent indirection. */
+	private Set<String> transparentAttributeNames() {
+		Set<String> names = new HashSet<>();
+		for (DatabaseMapping mapping : getRelationshipMappings()) {
+			if (mapping instanceof ForeignReferenceMapping frm
+					&& frm.getIndirectionPolicy() instanceof ETransparentIndirectionPolicy) {
+				names.add(mapping.getAttributeName());
+			}
+		}
+		return names;
+	}
+
+	/**
+	 * Copies the clone's reference slots into the backup by <em>reference</em>, without
+	 * EMF inverse maintenance: {@code basicAdd} for lists, a raw settings write for
+	 * single-valued features. The instances stay where they are — the backup is
+	 * EclipseLink bookkeeping and never leaves the unit of work.
+	 */
+	private static void snapshotReferencesInto(EObject clone, EObject backup,
+			Set<String> handledByIndirection) {
+		for (EReference ref : clone.eClass().getEAllReferences()) {
+			if (ref.isDerived() || ref.isTransient() || !ref.isChangeable()
+					|| handledByIndirection.contains(ref.getName())) {
+				continue;
+			}
+			if (ref.isMany()) {
+				@SuppressWarnings("unchecked")
+				InternalEList<Object> backupList = (InternalEList<Object>) backup.eGet(ref);
+				for (Object child : ((InternalEList<?>) clone.eGet(ref)).basicList()) {
+					backupList.basicAdd(child, null);
+				}
+			} else {
+				Object child = ((InternalEObject) clone).eGet(ref, false);
+				if (child != null && backup instanceof DynamicEObjectImpl dynamicBackup) {
+					// dynamicSet writes the settings slot directly — no inverse, no
+					// container move; featureID is the dynamic index for dynamic EObjects
+					dynamicBackup.dynamicSet(backup.eClass().getFeatureID(ref), child);
+				}
+			}
+		}
 	}
 
 	/* 
