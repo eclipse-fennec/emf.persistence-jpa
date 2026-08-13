@@ -75,7 +75,7 @@ mean the backend is defective, it is core.
 | References, non-containment | single/many, order preserved, object identity, resolution through the `ResourceSet` |
 | Bidirectional references | `eOpposite` consistent after reload, both directions |
 | Containment | single/many, order preserved, ownership |
-| Cross-document containment | child owned by the parent **and** resident in its own resource (#130, #133) |
+| Cross-document containment | child owned by the parent, resolved, addressable, save-order independent; residency itself is form, not semantics — see §4b |
 | Resolution transparency | no consumer-facing API hands out an unresolved proxy — `eGet`, `eContents`, `EcoreUtil.getAllContents` (#116) |
 | Cascade-delete | dropping a containment subtree deletes what it owned, transitively, across document/table boundaries. Implemented on both backends (#138/#139 for Mongo, #142/#143 for JPA); the timing guarantee is qualified in §4a |
 | Inheritance | polymorphic write and read of a subtype through a supertype resource |
@@ -192,6 +192,44 @@ owned and no longer does, and it cannot know another resource has taken it over 
 Cross-resource changes require saving both resources — standard EMF practice — but here the cost
 of not doing so is silent data loss rather than a stale reference. Re-parenting *within* one
 save, and re-parenting where the new owner is saved first, are both correct.
+
+### 4b. Residency is form, not semantics — the one documented divergence
+
+Cross-document containment (a child owned by a parent *and* a root of its own `Resource`) is
+core, and both backends honour it: the child comes back resolved, owned by its parent,
+addressable by reference, with its ownership round-tripping in either save order and its
+lifecycle cascading. One thing differs, deliberately.
+
+**On Mongo the child reports its own resource; on JPA it reports the parent's.** Loading the
+child's own resource explicitly hands it over as a root there on both backends, so the child is
+reachable either way — the difference only shows when the parent alone was loaded.
+
+The reason is in the storage model, not in the implementation. A Mongo document records the
+shape: the parent carries `{"$ref": …}` where an embedded child would sit. **A JPA row does
+not** — the foreign key to the parent is identical whether the object was an ordinary
+containment child or additionally a root of its own resource. Reconstructing the difference on
+load would mean persisting it in a side table, and that was built and then withdrawn: the shape's
+substance does not need it. What the record bought was the `eResource()` identity and the shape
+surviving a load/save round trip, at the price of schema the model does not describe.
+
+So this is the precedent for the boundary drawn in §2: **semantics are uniform, form is not.**
+Uniform and required of every backend are the resolved child, the container link, addressability,
+save-order independence and the ownership cascade. Which resource object the child reports is
+form, and it follows from how the store represents containment.
+
+What this costs a consumer, stated plainly:
+
+- `child.eResource()` on JPA is the parent's resource, so `child.eResource().save(null)` saves the
+  parent's resource — with the child in it, but not only the child.
+- On JPA the cross-document shape lives in memory for as long as the objects do. Load the parent
+  and save it again and the child is an ordinary containment child; nothing recorded that it had
+  been a resource root. Re-establish it by attaching the child to its own resource again.
+- Code that must work identically on both backends should not ask a containment child which
+  resource it belongs to. Ask its container, or address it by reference.
+
+Pinned by `JpaCrossDocumentContainmentTest.crossDocumentChildReportsTheParentsResource` — as an
+assertion rather than a skipped test, so that a future change which removes the divergence has to
+come here and update the contract.
 
 ## 5. The rules that make it work
 

@@ -235,6 +235,54 @@ The EMF reference kind drives both cascade and fetch semantics:
 The proxy contract for lazy references (single- and many-valued) is described
 in [How references are loaded](getting-started.md#how-references-are-loaded-lazy-by-default).
 
+### Cross-document containment, and its one limitation
+
+EMF lets a containment child be a root of its own `Resource` while staying owned by its
+parent — containment references have `resolveProxies=true`, so attaching the child
+elsewhere keeps the container link. The JPA backend supports that shape:
+
+```java
+EObject place = …, point = …;
+place.eSet(location, point);
+
+Resource points = resourceSet.createResource(URI.createURI("jpa://app/GeoPoint"));
+points.getContents().add(point);          // owned by place AND a root here
+Resource places = resourceSet.createResource(URI.createURI("jpa://app/Place"));
+places.getContents().add(place);
+
+places.save(null);
+points.save(null);                        // either order works
+```
+
+What holds:
+
+- **Save order does not matter.** Whichever resource is saved first, the other's save
+  updates the existing row instead of trying to insert it again.
+- **The child is addressable.** A reference to it resolves, because its URI fragment is
+  qualified with the containing reference, which names the target type.
+- **Ownership cascades.** Dropping the child from its parent deletes it, transitively.
+- **The child's own resource is a first-class entry point.** Loading `jpa://app/GeoPoint`
+  hands the child over as a root there.
+
+**The limitation:** after loading the parent alone, `child.eResource()` is the *parent's*
+resource, not the child's. A JPA row is identical whether its object was an ordinary
+containment child or additionally a resource root — the foreign key is the same — so
+nothing on load can tell the two apart. The Mongo backend can, because the parent document
+records it with a `{"$ref": …}` marker; JPA has nowhere for that fact to live, and
+persisting it in a side table was judged not worth schema the model does not describe.
+
+Practical consequences:
+
+- `child.eResource().save(null)` saves the **parent's** resource. The child is included, but
+  so is everything else in it.
+- The shape is not persistent: load the parent, save it again, and the child is an ordinary
+  containment child. Re-attach it to its own resource to re-establish it.
+- Code meant to behave identically on Mongo and JPA should not ask a containment child which
+  resource it belongs to — ask its container, or address it by reference.
+
+Recorded as a deliberate divergence in
+[Conformance and capabilities](unified-persistence/conformance-and-capabilities.md) §4b.
+
 ### Overriding fetch and batch per reference
 
 Fetch behaviour is recorded on each eorm reference as two attributes — `fetch`
