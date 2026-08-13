@@ -384,4 +384,100 @@ class JpaCrossDocumentContainmentTest {
 		assertThat(loaded).hasSize(1);
 		assertThat(loaded.get(0).eGet(street)).isEqualTo("Gamgee Lane");
 	}
+
+	// ------------------------------------------------------- orphan removal (issue #136)
+
+	/**
+	 * Baseline for the orphan-removal measurement: a plain containment child, never
+	 * attached to a resource of its own. Dropping it from the parent and saving must delete
+	 * the row — {@code OneToOneProcessor} sets {@code orphanRemoval=true} for containment.
+	 * <p>
+	 * Without this case a surviving row in the cross-document variants below could equally
+	 * well mean that orphan removal does not work at all in this setup.
+	 */
+	@Test
+	@Disabled("issue #142 — EMappingSupport hardwires privateOwned=false, so EclipseLink never deletes containment orphans")
+	void plainContainmentOrphanIsRemoved() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 6, "name", "Hobbiton");
+		EObject point = create(geoPointClass, "gid", 16, "type", "Point");
+		place.eSet(placeLocation, point);
+
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		assertThat(countRows("GeoPoint")).as("child written").isEqualTo(1);
+
+		place.eSet(placeLocation, null);
+		placeResource.save(null);
+
+		assertThat(countRows("GeoPoint"))
+				.as("orphanRemoval must delete the dropped containment child")
+				.isZero();
+	}
+
+	/**
+	 * The measurement of issue #136: the same drop, but the child is also a root of its own
+	 * resource. Does {@code orphanRemoval} still delete the row?
+	 * <p>
+	 * This is deliberately built parent-first, the order that works today — the
+	 * child-resource-first order is blocked by #130 and would fail before reaching the
+	 * question. The child stays in its own resource's contents, which is the ambiguous and
+	 * therefore interesting case: EMF-wise the object is still a legitimate root of that
+	 * resource, so whether ownership or residency wins is exactly what is being measured.
+	 */
+	@Test
+	@Disabled("issue #142 — EMappingSupport hardwires privateOwned=false, so EclipseLink never deletes containment orphans")
+	void crossDocumentContainmentOrphanIsRemovedWhileStillAResourceRoot() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 7, "name", "Bywater");
+		EObject point = create(geoPointClass, "gid", 17, "type", "Point");
+		place.eSet(placeLocation, point);
+
+		Resource pointResource = writeSet.createResource(uriFor("GeoPoint"));
+		pointResource.getContents().add(point);
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		pointResource.save(null);
+		assertThat(countRows("GeoPoint")).as("child written").isEqualTo(1);
+
+		place.eSet(placeLocation, null);
+		placeResource.save(null);
+
+		assertThat(countRows("GeoPoint"))
+				.as("containment is ownership, so the dropped child must go")
+				.isZero();
+	}
+
+	/**
+	 * The unambiguous variant: the child is dropped from the parent <em>and</em> from its
+	 * own resource's contents, so nothing claims it any more. If even this leaves the row,
+	 * the JPA backend has no orphan removal for the cross-document shape at all.
+	 */
+	@Test
+	@Disabled("issue #142 — EMappingSupport hardwires privateOwned=false, so EclipseLink never deletes containment orphans")
+	void crossDocumentContainmentOrphanIsRemovedWhenDroppedFromBoth() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 8, "name", "Frogmorton");
+		EObject point = create(geoPointClass, "gid", 18, "type", "Point");
+		place.eSet(placeLocation, point);
+
+		Resource pointResource = writeSet.createResource(uriFor("GeoPoint"));
+		pointResource.getContents().add(point);
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		pointResource.save(null);
+		assertThat(countRows("GeoPoint")).as("child written").isEqualTo(1);
+
+		place.eSet(placeLocation, null);
+		pointResource.getContents().remove(point);
+		placeResource.save(null);
+		pointResource.save(null);
+
+		assertThat(countRows("GeoPoint"))
+				.as("nothing claims the child any more, so the row must go")
+				.isZero();
+	}
 }
