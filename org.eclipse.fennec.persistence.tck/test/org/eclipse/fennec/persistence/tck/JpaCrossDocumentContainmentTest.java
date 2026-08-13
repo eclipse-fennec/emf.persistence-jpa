@@ -56,10 +56,12 @@ import jakarta.persistence.EntityManagerFactory;
  * ({@code Person.addresses}). Every read runs against a fresh {@link ResourceSet} after
  * {@code emf.getCache().evictAll()}, so nothing is answered from a cache.
  * <p>
- * The JPA backend does not support the shape yet: the cases where the child's own
- * resource is saved <em>first</em> are {@code @Disabled} for issue #130. The two enabled
- * tests pin what does hold today — plain containment, and the parent-saved-first order
- * including the fact that the cross-document shape is not restored on read.
+ * The contract is not backend-specific: whatever Mongo delivers here, JPA has to deliver
+ * too. Mongo returns a fully resolved child that is owned by the parent and resident in
+ * its own resource. JPA does not support the shape yet, so the cases demanding it are
+ * {@code @Disabled} for issue #130 — the save-order-dependent ones and the residency one.
+ * The two enabled tests pin what genuinely holds today: plain containment, and that the
+ * data round-trips when the parent is saved first.
  *
  * @author Mark Hoffmann
  * @since 13.08.2026
@@ -314,16 +316,45 @@ class JpaCrossDocumentContainmentTest {
 		EObject loadedPlace = findById(readSet.getResource(uriFor("Place"), true), "4");
 		EObject location = (EObject) loadedPlace.eGet(placeLocation);
 		assertThat(location).as("containment child resolved").isNotNull();
-		assertThat(value(location, "gid")).isEqualTo(14);
-
-		// The data round-trips, but the cross-document *shape* does not: the JPA backend
-		// never proxies a containment child (EMappingSupport dontUseIndirection), so the
-		// child comes back as an ordinary child inside the parent's own resource. Its
-		// separate residency in jpa://xdoc/GeoPoint is lost.
-		assertThat(location.eResource())
-				.as("child re-attached to the parent's resource, not its own")
-				.isSameAs(loadedPlace.eResource());
 		assertThat(location.eIsProxy()).isFalse();
+		assertThat(value(location, "gid")).isEqualTo(14);
+		assertThat(location.eContainer()).as("owned by the place").isSameAs(loadedPlace);
+	}
+
+	/**
+	 * The residency half of the contract, which the data round-trip above does not cover:
+	 * the child must come back resident in <em>its own</em> resource, exactly as the Mongo
+	 * backend delivers it ({@code MongoCrossResourceReferenceTest}). The JPA backend
+	 * collapses it into the parent's resource instead — it never proxies a containment
+	 * child at all ({@code EMappingSupport} calls {@code dontUseIndirection()}), so there
+	 * is nothing to resolve through the child's own resource.
+	 */
+	@Test
+	@Disabled("issue #130 — the child is re-attached to the parent's resource, losing its own residency")
+	void crossDocumentContainmentKeepsTheChildResidentInItsOwnResource() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 5, "name", "Bree");
+		EObject point = create(geoPointClass, "gid", 15, "type", "Point");
+		place.eSet(placeLocation, point);
+
+		Resource pointResource = writeSet.createResource(uriFor("GeoPoint"));
+		pointResource.getContents().add(point);
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		pointResource.save(null);
+
+		emf.getCache().evictAll();
+
+		ResourceSet readSet = resourceSet();
+		EObject loadedPlace = findById(readSet.getResource(uriFor("Place"), true), "5");
+		EObject location = (EObject) loadedPlace.eGet(placeLocation);
+		assertThat(location.eIsProxy()).isFalse();
+		assertThat(location.eContainer()).as("owned by the place").isSameAs(loadedPlace);
+		assertThat(location.eResource()).as("resident in its own resource").isNotNull();
+		assertThat(location.eResource().getURI())
+				.as("residency must match what Mongo delivers")
+				.isEqualTo(uriFor("GeoPoint"));
 	}
 
 	/**

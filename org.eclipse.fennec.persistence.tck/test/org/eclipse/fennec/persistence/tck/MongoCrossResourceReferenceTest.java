@@ -335,9 +335,11 @@ class MongoCrossResourceReferenceTest {
 	}
 
 	@Test
-	void crossDocumentContainmentComesBackAsAResolvableProxy() throws Exception {
+	void crossDocumentContainmentResolvesToTheContainedChild() throws Exception {
 		// the child is contained by the book AND a root of its own resource
-		// (eDirectResource) — the emf.codec#123 shape; pinned as SUPPORTED
+		// (eDirectResource) — the emf.codec#123 shape; pinned as SUPPORTED.
+		// The $ref marker and the proxy behind it are storage internals: what the contract
+		// requires is that eGet hands back the resolved child, never a proxy.
 		ResourceSet writeSet = resourceSet();
 		EObject book = book("b1", "Anthology");
 		EObject chapter = chapter("c1", "Standalone");
@@ -360,6 +362,12 @@ class MongoCrossResourceReferenceTest {
 		assertThat(resolved.eIsProxy()).isFalse();
 		assertThat(value(resolved, "cid")).isEqualTo("c1");
 		assertThat(value(resolved, "title")).isEqualTo("Standalone");
+		// the full cross-document shape, restored: owned by the book, resident in its own
+		// resource. This is the part a backend can get wrong while still returning correct
+		// data — collapsing the child into the parent's resource loses its residency.
+		assertThat(resolved.eContainer()).as("still owned by the book").isSameAs(loadedBook);
+		assertThat(resolved.eResource()).as("resident in its own resource").isNotNull();
+		assertThat(resolved.eResource().getURI()).isEqualTo(uriFor("Chapter"));
 	}
 
 	/** The multi-valued analogue — the {@code $ref} check per array element (emf.codec#128). */
