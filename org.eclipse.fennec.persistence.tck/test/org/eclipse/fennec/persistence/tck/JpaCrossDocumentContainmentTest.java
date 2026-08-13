@@ -328,7 +328,6 @@ class JpaCrossDocumentContainmentTest {
 	 * is nothing to resolve through the child's own resource.
 	 */
 	@Test
-	@Disabled("issue #150 — eResource() parity alone: a JPA row is identical whether the child was a resource root or not, so the load cannot tell without stored state. The substance is covered — aReferenceToACrossDocumentChildResolves shows the child is addressable — so what is left here is which resource object it reports")
 	void crossDocumentContainmentKeepsTheChildResidentInItsOwnResource() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 5, "name", "Bree");
@@ -515,10 +514,11 @@ class JpaCrossDocumentContainmentTest {
 	 * has to resolve. Its URI used to name the parent's type while the row lived in the child's
 	 * table — {@code jpa://xdoc/Place#191} for a GeoPoint — and resolved to nothing.
 	 * <p>
-	 * Fixed without storing residency: the fragment is qualified with the containing reference,
-	 * which carries the missing type information, and resolution honours it. The URI stays
-	 * rooted at the parent's resource, so this does not make {@code eResource()} the child's own
-	 * — that half is a separate question — but the child is addressable, which is what a
+	 * Two mechanisms cover it now, and this test pins the outcome rather than either of them.
+	 * With residency recorded (#150) the child is resident in its own resource, so the URI names
+	 * the right table by itself. Where no residency is recorded — an ordinary containment child —
+	 * the fragment is qualified with the containing reference instead, which carries the type,
+	 * and resolution honours it (#130). Either way the child is addressable, which is what a
 	 * reference needs.
 	 */
 	@Test
@@ -541,13 +541,62 @@ class JpaCrossDocumentContainmentTest {
 		assertThat(child).isNotNull();
 
 		URI childUri = EcoreUtil.getURI(child);
-		assertThat(childUri.fragment())
-				.as("the fragment carries the containing reference, hence the target type")
-				.isEqualTo("//location/gid/131");
+		assertThat(childUri)
+				.as("the URI names the child's own type, since residency puts it in its own resource")
+				.isEqualTo(uriFor("GeoPoint").appendFragment("131"));
 
 		EObject resolved = readSet.getEObject(childUri, true);
 		assertThat(resolved).as("a reference to the child must resolve").isNotNull();
 		assertThat(value(resolved, "gid")).isEqualTo(131);
 		assertThat(resolved.eClass()).isEqualTo(geoPointClass);
+	}
+
+	/**
+	 * The cost guard: an ordinary save must not touch the residency bookkeeping at all. Checked
+	 * against the schema rather than by inspection, because the table would otherwise appear
+	 * silently on every save — and an extra EntityManager and transaction with it.
+	 */
+	@Test
+	void anOrdinarySaveNeverCreatesTheResidencyTable() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject person = create(personClass, "pid", 41, "name", "Plain");
+		EObject address = create(addressClass, "aid", 141, "street", "Only Embedded");
+		@SuppressWarnings("unchecked")
+		List<EObject> addresses = (List<EObject>) person.eGet(personAddresses);
+		addresses.add(address);
+		Resource personResource = writeSet.createResource(uriFor("Person"));
+		personResource.getContents().add(person);
+		personResource.save(null);
+
+		assertThat(tableExists("FENNEC_RESIDENCY"))
+				.as("plain containment needs no residency bookkeeping")
+				.isFalse();
+	}
+
+	/** The counterpart: the cross-document shape does create it. */
+	@Test
+	void theCrossDocumentShapeCreatesTheResidencyTable() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 42, "name", "Needs It");
+		EObject point = create(geoPointClass, "gid", 142, "type", "Point");
+		place.eSet(placeLocation, point);
+		Resource pointResource = writeSet.createResource(uriFor("GeoPoint"));
+		pointResource.getContents().add(point);
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		pointResource.save(null);
+
+		assertThat(tableExists("FENNEC_RESIDENCY")).isTrue();
+	}
+
+	/** Asks the schema directly, so the assertion cannot be fooled by a cache. */
+	private boolean tableExists(String table) {
+		try (EntityManager em = emf.createEntityManager()) {
+			em.createNativeQuery("SELECT COUNT(*) FROM " + table).getSingleResult();
+			return true;
+		} catch (RuntimeException e) {
+			return false;
+		}
 	}
 }

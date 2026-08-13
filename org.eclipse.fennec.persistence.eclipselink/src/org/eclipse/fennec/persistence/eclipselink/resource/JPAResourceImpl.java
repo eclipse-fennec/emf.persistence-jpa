@@ -43,6 +43,8 @@ import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import java.util.Arrays;
@@ -311,6 +313,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				raw.add(eo);
 			}
 		}
+		attachResidentChildren(results);
 	}
 
 	@Override
@@ -336,6 +339,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
 				}
 				: null;
+		// Only when there is residency to write: otherwise an ordinary save would pay for an
+		// extra EntityManager and transaction it has no use for (issue #150). Before the
+		// save's transaction, because a statement failing inside it would poison it.
+		if (hasResidentRoot()) {
+			ensureResidencyTable(lease);
+		}
 		try (EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			applyCacheNewObjectsOption(em, options);
@@ -348,6 +357,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						managedPairs.add(new EObject[] { eo, source });
 					}
 				}
+				recordResidency(em);
 				em.getTransaction().commit();
 				writeBackGeneratedIds(managedPairs);
 			} catch (RuntimeException e) {
@@ -358,6 +368,157 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						"Failed to save resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
+		}
+	}
+
+	/**
+	 * Whether any root of this resource is <em>also</em> a containment child of something else.
+	 * That is the only shape needing residency written, and gating on it keeps an ordinary save
+	 * free of the extra EntityManager and transaction the bookkeeping would otherwise cost.
+	 */
+	private boolean hasResidentRoot() {
+		for (EObject root : super.getContents()) {
+			if (nonNull(root.eContainer())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Creates the residency table if needed, in its own EntityManager and its <em>own</em>
+	 * transaction — outside the save's.
+	 * <p>
+	 * Own EntityManager, because a statement failing inside the caller's transaction would mark
+	 * it rollback-only and take the user's save down with the bookkeeping. Own transaction,
+	 * because {@code executeUpdate} requires one; without it the DDL never ran and the table
+	 * stayed missing while everything downstream silently gave up.
+	 */
+	private void ensureResidencyTable(Lease lease) {
+		try (EntityManager em = lease.createEntityManager()) {
+			em.getTransaction().begin();
+			try {
+				ResidencyRegistry.prepare(em);
+				em.getTransaction().commit();
+			} catch (RuntimeException e) {
+				if (em.getTransaction().isActive()) {
+					em.getTransaction().rollback();
+				}
+				throw e;
+			}
+		} catch (RuntimeException e) {
+			LOG.log(Level.FINE, "Could not prepare the residency table", e);
+		}
+	}
+
+	/**
+	 * Records which of this resource's roots are <b>also</b> a containment child of something
+	 * else, and forgets the ones that are not (issue #150).
+	 * <p>
+	 * A root with an {@code eContainer} is exactly the cross-document shape: owned by a parent,
+	 * resident here. Nothing in the row says so — the foreign key looks the same for an
+	 * ordinary containment child — so this is the only place the fact survives a round trip.
+	 */
+	private void recordResidency(EntityManager em) {
+		String entityName = getEntityName();
+		if (isNull(entityName)) {
+			return;
+		}
+		List<String> resident = new ArrayList<>();
+		List<String> plain = new ArrayList<>();
+		for (EObject root : super.getContents()) {
+			String id = CompositeIds.fragment(root);
+			if (nonNull(id)) {
+				(nonNull(root.eContainer()) ? resident : plain).add(id);
+			}
+		}
+		if (resident.isEmpty() && plain.isEmpty()) {
+			return;
+		}
+		if (!ResidencyRegistry.isPrepared(em)) {
+			// no table, so nothing to record — and nothing may be attempted, or the failing
+			// statement would roll back the caller's save
+			return;
+		}
+		// forgetting the plain ones matters: a child that stops being a resource root must
+		// stop being handed back as one
+		ResidencyRegistry.forget(em, entityName, plain);
+		ResidencyRegistry.record(em, entityName, resident);
+	}
+
+	/**
+	 * Hands recorded containment children back <b>resident in their own resource</b> — the shape
+	 * Mongo delivers (issue #150).
+	 * <p>
+	 * Skipped entirely for units that never record residency, so the cross-document shape costs
+	 * nothing to those who do not use it. Otherwise one query per distinct child type for
+	 * everything just loaded. Attaching a child to another resource keeps its container, because
+	 * containment references resolve proxies — which is exactly what makes the shape legal in
+	 * EMF, and why the child ends up owned by its parent <em>and</em> a root here.
+	 */
+	private void attachResidentChildren(List<?> loaded) {
+		ResourceSet resourceSet = getResourceSet();
+		if (isNull(resourceSet) || loaded.isEmpty()) {
+			return;
+		}
+		Map<String, List<EObject>> byType = new LinkedHashMap<>();
+		for (Object root : loaded) {
+			if (root instanceof EObject eo) {
+				collectContainmentChildren(eo, byType);
+			}
+		}
+		if (byType.isEmpty()) {
+			return;
+		}
+		try (Lease lease = unit.lease()) {
+			// the table must exist before it can be asked, and creating it needs a transaction
+			ensureResidencyTable(lease);
+			try (EntityManager em = lease.createEntityManager()) {
+				if (!ResidencyRegistry.isPrepared(em) || !ResidencyRegistry.inUse(em)) {
+					return;
+				}
+				for (Map.Entry<String, List<EObject>> entry : byType.entrySet()) {
+					attachResidentsOfType(resourceSet, em, entry.getKey(), entry.getValue());
+				}
+			}
+		} catch (RuntimeException e) {
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE,
+					"Could not restore cross-document residency: " + e.getMessage(), getURI(), e));
+		}
+	}
+
+	private void attachResidentsOfType(ResourceSet resourceSet, EntityManager em, String childEntity,
+			List<EObject> children) {
+		Map<String, EObject> byId = new LinkedHashMap<>();
+		for (EObject child : children) {
+			String id = CompositeIds.fragment(child);
+			if (nonNull(id)) {
+				byId.put(id, child);
+			}
+		}
+		Set<String> resident = ResidencyRegistry.resident(em, childEntity, byId.keySet());
+		if (resident.isEmpty()) {
+			return;
+		}
+		URI base = getURI();
+		URI childResourceUri = base.trimSegments(base.segmentCount()).appendSegment(childEntity);
+		Resource childResource = resourceSet.getResource(childResourceUri, false);
+		if (isNull(childResource)) {
+			childResource = resourceSet.createResource(childResourceUri);
+		}
+		for (String id : resident) {
+			EObject child = byId.get(id);
+			if (nonNull(child) && !childResource.getContents().contains(child)) {
+				childResource.getContents().add(child);
+			}
+		}
+	}
+
+	/** The materialised containment children of the object, grouped by EClass name. */
+	private static void collectContainmentChildren(EObject object, Map<String, List<EObject>> byType) {
+		for (EObject child : object.eContents()) {
+			byType.computeIfAbsent(child.eClass().getName(), key -> new ArrayList<>()).add(child);
+			collectContainmentChildren(child, byType);
 		}
 	}
 
