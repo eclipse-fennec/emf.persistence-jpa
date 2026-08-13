@@ -76,6 +76,7 @@ import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.osgi.util.pushstream.PushStream;
 
@@ -292,6 +293,98 @@ public abstract class AbstractPersistenceTCK {
 		});
 		assertThat(addresses).extracting(a -> a.eGet(addressStreet))
 				.containsExactlyInAnyOrder("Main Street 1", "Second Street 2");
+	}
+
+	/**
+	 * Containment is ownership, so removing a child and saving the parent must destroy the
+	 * child — the plain, single-document case that every backend owes (issue #142).
+	 * <p>
+	 * Asserted through the reloaded parent rather than by counting rows or documents, because
+	 * that is the only backend-neutral observation: JPA gives the child a row of its own,
+	 * Mongo embeds it in the parent's document, so there is no shared place to count. The
+	 * storage-level proof belongs in the backend suites.
+	 */
+	@Test
+	@Disabled("issue #143 — JPA drops many-valued containment changes on an existing parent; Mongo passes this")
+	public void containmentOrphanIsRemovedOnSave() throws Exception {
+		EObject person = newPerson(1, "Emil", 30);
+		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));
+		listOf(person, personAddresses).add(newAddress(12, "Second Street 2", "Gera"));
+
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Person", person);
+
+		// drop one child through the very resource that wrote it, then save again
+		Resource written = writeSet.getResource(uriFor("Person"), false);
+		EObject owner = findById(written, "1");
+		assertThat(owner).as("the saved person is addressable in its resource").isNotNull();
+		List<EObject> owned = listOf(owner, personAddresses);
+		owned.removeIf(address -> "Main Street 1".equals(address.eGet(addressStreet)));
+		assertThat(owned).hasSize(1);
+		written.save(null);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject loaded = findById(loadAll(readSet, "Person"), "1");
+		assertThat(loaded).isNotNull();
+		List<EObject> addresses = listOf(loaded, personAddresses);
+		assertThat(addresses).as("the dropped child must be gone, not merely unreferenced")
+				.hasSize(1);
+		assertThat(addresses.get(0).eGet(addressStreet)).isEqualTo("Second Street 2");
+	}
+
+	/**
+	 * The counterpart of the removal case: a child <em>added</em> to an already persisted
+	 * parent has to reach the store. Same code path, opposite direction — if collection
+	 * changes on an existing parent are dropped, this fails too, and the severity is not
+	 * "orphans linger" but "containment updates are lost".
+	 */
+	@Test
+	@Disabled("issue #143 — JPA drops many-valued containment changes on an existing parent; Mongo passes this")
+	public void containmentChildAddedToAnExistingParentIsPersisted() throws Exception {
+		EObject person = newPerson(1, "Emil", 30);
+		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));
+
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Person", person);
+
+		Resource written = writeSet.getResource(uriFor("Person"), false);
+		EObject owner = findById(written, "1");
+		listOf(owner, personAddresses).add(newAddress(12, "Second Street 2", "Gera"));
+		written.save(null);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject loaded = findById(loadAll(readSet, "Person"), "1");
+		assertThat(loaded).isNotNull();
+		assertThat(listOf(loaded, personAddresses))
+				.as("a child added to an existing parent must be persisted")
+				.extracting(a -> a.eGet(addressStreet))
+				.containsExactlyInAnyOrder("Main Street 1", "Second Street 2");
+	}
+
+	/**
+	 * Clearing the containment feature entirely — the same ownership rule with nothing left
+	 * to keep.
+	 */
+	@Test
+	@Disabled("issue #143 — JPA drops many-valued containment changes on an existing parent; Mongo passes this")
+	public void clearingContainmentDestroysAllChildren() throws Exception {
+		EObject person = newPerson(1, "Emil", 30);
+		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));
+
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Person", person);
+
+		Resource written = writeSet.getResource(uriFor("Person"), false);
+		EObject owner = findById(written, "1");
+		listOf(owner, personAddresses).clear();
+		written.save(null);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject loaded = findById(loadAll(readSet, "Person"), "1");
+		assertThat(loaded).isNotNull();
+		assertThat(listOf(loaded, personAddresses))
+				.as("clearing the containment feature must destroy the children")
+				.isEmpty();
 	}
 
 	@Test
