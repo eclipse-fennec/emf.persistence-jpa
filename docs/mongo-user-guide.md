@@ -734,8 +734,10 @@ contract as the JPA backend and XMI:
 - **Cross-document containment** is supported as the exception. Attach a
   containment child to a resource of its own and it is stored as a reference
   marker instead of being inlined; on load `eGet` gives you the resolved
-  child, owned by the parent and resident in its own resource. You never see
-  a proxy — `eContents` and `EcoreUtil.getAllContents` resolve too.
+  child, owned by the parent and resident in its own resource — the residency is
+  a Mongo property, the JPA backend reports the parent's resource instead (see
+  its [user guide](jpa-user-guide.md#cross-document-containment-and-its-one-limitation)).
+  You never see a proxy — `eContents` and `EcoreUtil.getAllContents` resolve too.
   **Ownership is honoured**: deleting the root, or dropping the owning
   subtree and saving, deletes the child document too — transitively, so a
   child hanging off a removed intermediate node goes as well. One caveat
