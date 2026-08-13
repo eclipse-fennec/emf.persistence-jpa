@@ -61,7 +61,7 @@ import jakarta.persistence.EntityManagerFactory;
  * its own resource. Since #130 JPA delivers the data and the ownership in either save order,
  * and the child is <b>addressable</b> — a reference to it resolves, because the fragment is
  * qualified with the containing reference. What differs is only which resource object the
- * child reports when the parent alone was loaded; that case stays {@code @Disabled}, since
+ * child reports when the parent alone was loaded; that case stays {@code @Disabled} for #150, since
  * telling a cross-document child from an embedded one on load would need stored state.
  *
  * @author Mark Hoffmann
@@ -328,7 +328,7 @@ class JpaCrossDocumentContainmentTest {
 	 * is nothing to resolve through the child's own resource.
 	 */
 	@Test
-	@Disabled("issue #130 — eResource() parity alone: a JPA row is identical whether the child was a resource root or not, so the load cannot tell without stored state. The substance is covered — aReferenceToACrossDocumentChildResolves shows the child is addressable — so what is left here is which resource object it reports")
+	@Disabled("issue #150 — eResource() parity alone: a JPA row is identical whether the child was a resource root or not, so the load cannot tell without stored state. The substance is covered — aReferenceToACrossDocumentChildResolves shows the child is addressable — so what is left here is which resource object it reports")
 	void crossDocumentContainmentKeepsTheChildResidentInItsOwnResource() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 5, "name", "Bree");
