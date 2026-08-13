@@ -36,32 +36,27 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
 /**
- * Pins the read-side half of the containment-lifecycle problem: a loaded parent whose
- * children were deleted in the database keeps presenting them, even across
- * {@code emf.getCache().evictAll()}.
+ * Pins the read-side half of the containment lifecycle (issue #144): a refreshed read must
+ * reflect the store, even though EclipseLink's cache invalidation keeps object identity —
+ * a hit on an invalidated entry refreshes <em>the same instance</em>
+ * ({@code ObjectBuilder.buildObject} hands {@code cacheKey.getObject()} to
+ * {@code refreshObjectIfRequired}). Historically that instance could never lose collection
+ * members, because every collection write-back was an add-only merge; children deleted in
+ * the database were resurrected on every read for the lifetime of the factory.
  * <p>
- * The mechanism has two halves that only bite together:
- * <ul>
- * <li>EclipseLink's cache invalidation keeps object identity — a hit on an invalidated
- *     entry refreshes <em>the same instance</em> ({@code ObjectBuilder.buildObject}
- *     hands {@code cacheKey.getObject()} to {@code refreshObjectIfRequired}).</li>
- * <li>Every collection write-back into an EObject is a <b>merge that can only add</b>:
- *     {@code EReferenceAccessor.setAttributeValueInObject} routes many-valued containment
- *     through {@code MappingHelper.setValue}, which does {@code addAll}; the
- *     non-containment route ({@code addCollectionValueById}) skips-by-id and adds. No
- *     write-back path ever removes an element.</li>
- * </ul>
- * So the refresh runs its SELECT, gets fewer rows than the list holds, and the surplus
- * children survive — resurrected from the instance the cache kept. The children are
- * deleted here with native SQL precisely so the write path (#143) is out of the picture:
- * this is a defect of the read path alone.
+ * Guarded by {@code AuthoritativeFill}: {@code EObjectBuilder.buildAttributesIntoObject}
+ * marks row fills, and {@code EReferenceAccessor} reconciles collection content by EMF id
+ * under that mark — dropping stale members, keeping matched instances (identity), adding
+ * new ones — while the merge/backup/indirection fills keep their accumulating semantics.
+ * <p>
+ * The children are deleted here with native SQL precisely so the write path (#143) is out
+ * of the picture: this class measures the read path alone.
  *
  * @author Mark Hoffmann
  * @since 13.08.2026
@@ -191,7 +186,6 @@ class JpaStaleCollectionRefreshTest {
 	 * presents both children.
 	 */
 	@Test
-	@Disabled("issue #144 — the refresh rebuilds the cache-preserved instance through an add-only merge, so the children come back")
 	void refreshedReadReflectsTheStore() throws Exception {
 		saveAndDeleteChildrenNatively();
 		assertThat(addressRows()).as("the table really is empty").isZero();
