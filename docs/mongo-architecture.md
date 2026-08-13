@@ -208,10 +208,10 @@ backend never invents numeric ids. An EClass without an ID attribute cannot be s
   behind it are storage internals — no consumer-facing API exposes them, `eContents` and
   `EcoreUtil.getAllContents` resolve as well (`MongoCrossResourceReferenceTest`). The
   decision is per reference in the codec (`ReferenceSerializationEntry`, emf.codec#123 /
-  #128). Two consequences worth knowing: the query layer assumes containment is embedded,
+  #128). One consequence worth knowing: the query layer assumes containment is embedded,
   so a `$ref` child is invisible to filters and `$elemMatch` over that path (refused with
-  `CODE_NON_EMBEDDED_PATH`); and dropping such a subtree currently leaves the child
-  document behind as an orphan ([#133](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/133)).
+  `CODE_NON_EMBEDDED_PATH`). Its **lifecycle** is covered — see
+  [Cross-document ownership](#cross-document-ownership).
 - **Non-containment references are stored as URIs/ids**, not foreign keys.
   `getURIFragment` returns the target's EMF id, so a same-resource reference is a bare
   id fragment; on decode, unresolved references become EMF proxies. A bare id is
@@ -246,6 +246,47 @@ what the Mongo `encode()` relies on since it does not set `ContextHelper.RESOURC
 The round-trip matrix — including deep containment targets resolved by identity rather than
 position, and unresolved proxies surviving with their URI — is pinned by
 `MongoCrossResourceReferenceTest`.
+
+## Cross-document ownership
+
+Containment is ownership across document boundaries too, and the two directions need
+different mechanisms because they have different information available.
+
+**Delete** (`delete(Map)`) collects what the roots own *before* removing anything, since
+owned documents are only discoverable from their owners. `collectOwnedDocuments` walks the
+containment tree and is deliberately frugal: an unresolved proxy carries collection and id
+in its `eProxyURI` and is recorded without a query; a resolved child in another resource
+comes from that resource's URI; an embedded child is walked but not recorded, because it
+goes with the root's own document. Recursion into a target happens only when the target's
+`EClass` can own containment at all — a static metamodel question — so a leaf child type
+costs zero reads. Removal is one `deleteMany` with `$in` per collection, after the roots.
+
+**Update** (`doSave`) cannot rediscover anything, so `reconcileOwnership` keeps one record
+per owned child document in `_fennec_ownership`:
+
+```
+{ _id: { c: <childCollection>, id: <childId> }, owner: { c: <ownerCollection>, id: <ownerId> } }
+```
+
+Keyed by the child, which makes the store enforce EMF's single-container invariant and makes
+re-parenting correct without extra logic: the new owner's save rewrites the record, and the
+former owner's reconciliation no longer sees the child as its own. The orphan set spans the
+whole save rather than each root, so handing a child between two roots of one resource is
+recognised as re-parenting instead of a drop. Types whose `EClass` owns no containment skip
+the bookkeeping entirely — one indexed query and one bulk write per save is the cost for
+those that do.
+
+A separate collection rather than a field inside the child documents: the codec owns their
+shape, and an injected key would read there as an unknown feature
+(eclipse-fennec/emf.codec#151).
+
+**The crash window** exists only without multi-document transactions. The owner is written
+first and the release follows, so an interruption leaves a recoverable orphan rather than an
+owner pointing at deleted documents — and the record makes it re-derivable.
+`OwnershipMaintenance.sweepOwnership()` is the explicit backstop: it queries the records of
+one collection, settles vanished owners without reading them, reads only the surviving
+owners to see what they still claim, and deletes the rest. Idempotent, and a no-op on a
+healthy store.
 
 ## Comparison: Mongo backend vs. JPA backend
 
