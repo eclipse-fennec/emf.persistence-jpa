@@ -86,7 +86,7 @@ class MongoCascadeDeleteTest {
 	void setUp() {
 		String connectionString = MongoTestSupport.connectionString();
 		assumeTrue(nonNull(connectionString),
-				"No MongoDB available (set -Dmongo.uri or provide docker/podman)");
+				MongoTestSupport.unavailableMessage());
 		buildModel();
 		metadataService = MetadataServices.createWhiteboard();
 		metadataService.registerPackage(cascadePackage);

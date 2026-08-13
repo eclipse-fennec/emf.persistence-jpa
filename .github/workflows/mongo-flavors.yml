@@ -115,12 +115,14 @@ jobs:
             -Dmongo.test.flavor=${{ matrix.flavor }} \
             -Dmongo.test.image=${{ steps.image.outputs.image }} \
             -Dmongo.container.cli=docker \
+            -Dmongo.require=true \
             --console=plain
 
       - name: Verify the suite actually ran
-        # A green build proves nothing on its own: the suite skips itself via JUnit
-        # assumptions when the server is unreachable, so an image that fails to come up
-        # reports success having measured exactly nothing. Fail unless tests executed.
+        # -Dmongo.require=true above already turns an unreachable server into a failure, so
+        # this is the belt to that braces: it also catches a suite that executed nothing for
+        # a reason the harness cannot see (a bad --tests filter, a compile-time exclusion).
+        # A green build must never mean "measured exactly nothing".
         if: always()
         run: |
           python3 - <<'PY'

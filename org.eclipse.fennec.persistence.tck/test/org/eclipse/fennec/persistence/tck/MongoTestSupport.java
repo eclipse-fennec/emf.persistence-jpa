@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.tck;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.util.concurrent.TimeUnit;
@@ -32,7 +33,11 @@ import com.mongodb.client.MongoClients;
  *     otherwise {@code docker} is tried first and {@code podman} as fallback (relevant
  *     on macOS/Windows, where podman ships without a docker shim).</li>
  * </ol>
- * When neither is available the Mongo TCK tests are skipped via JUnit assumptions.
+ * When neither is available the Mongo TCK tests are skipped via JUnit assumptions — with a
+ * message naming the flavor and what actually failed, since a silently skipped suite is
+ * indistinguishable from a passing one (issue #132). Set {@code -Dmongo.require=true} (or
+ * {@code MONGO_REQUIRE=true}) to turn "no server" into a hard failure instead, which is
+ * what CI wants: proof the suite really ran.
  *
  * @author Mark Hoffmann
  * @since 16.07.2026
@@ -96,10 +101,20 @@ final class MongoTestSupport {
 	 */
 	private static final long ORPHAN_GRACE_MILLIS = 60 * 60 * 1000L;
 
+	/**
+	 * Turns "no server" from a skip into a failure (issue #132). A skipped suite and a
+	 * passing one are indistinguishable in a green build, so CI — and anyone who wants to
+	 * know the suite really ran — sets this and gets an exception instead of assumptions.
+	 */
+	private static final boolean REQUIRED = Boolean.parseBoolean(
+			System.getProperty("mongo.require", System.getenv().getOrDefault("MONGO_REQUIRE", "false")));
+
 	private static volatile String uri;
 	private static volatile String containerId;
 	private static volatile boolean initialized;
 	private static volatile String cli;
+	/** Why {@link #connectionString()} gave up, for the diagnostic the skip message carries. */
+	private static volatile String unavailableReason;
 
 	private MongoTestSupport() {
 	}
@@ -148,10 +163,15 @@ final class MongoTestSupport {
 		throw new IllegalStateException("No container CLI (docker/podman) available");
 	}
 
-	/** Returns the connection string, starting a container on first use; {@code null} if unavailable. */
+	/**
+	 * Returns the connection string, starting a container on first use; {@code null} if
+	 * unavailable — or, under {@code mongo.require=true}, throws. The failure is raised on
+	 * <em>every</em> call rather than only the first, so a broken setup fails the whole
+	 * suite uniformly instead of reddening one test and skipping the rest.
+	 */
 	static synchronized String connectionString() {
 		if (initialized) {
-			return uri;
+			return requireIfDemanded();
 		}
 		initialized = true;
 		String external = System.getProperty("mongo.uri", System.getenv("MONGO_URI"));
@@ -178,9 +198,53 @@ final class MongoTestSupport {
 				}
 			}
 		} catch (Exception e) {
-			LOG.log(Level.INFO, "No " + FLAVOR + " server available for TCK tests: " + e.getMessage());
+			unavailableReason = describe(e);
+		}
+		if (isNull(uri) && isNull(unavailableReason)) {
+			// startContainer returned nothing usable without throwing — say so rather than
+			// leaving the caller with an unexplained skip
+			unavailableReason = "container started but no published port for " + WIRE_PORT + "/tcp";
+		}
+		if (isNull(uri)) {
+			// WARNING, not INFO: this is the line that explains a whole skipped suite, and
+			// Gradle does not surface INFO from a forked test JVM
+			LOG.log(Level.WARNING, () -> "No " + FLAVOR + " server for the TCK: " + unavailableReason);
+			return requireIfDemanded();
 		}
 		return uri;
+	}
+
+	/**
+	 * Returns {@code uri}, or throws when it is missing and the caller demanded a server.
+	 * Never swallows: without {@code mongo.require} the {@code null} travels on to the
+	 * assumption, which skips with {@link #unavailableMessage()}.
+	 */
+	private static String requireIfDemanded() {
+		if (isNull(uri) && REQUIRED) {
+			throw new IllegalStateException("mongo.require=true but no " + FLAVOR
+					+ " server could be provided: " + unavailableReason);
+		}
+		return uri;
+	}
+
+	/**
+	 * The skip reason handed to the JUnit assumption — names the flavor and what actually
+	 * failed, so a skipped suite is diagnosable from the test report alone.
+	 */
+	static String unavailableMessage() {
+		String reason = unavailableReason;
+		return "No " + FLAVOR + " server available for the TCK"
+				+ (isNull(reason) ? "" : ": " + reason)
+				+ " (set -Dmongo.uri, or -Dmongo.require=true to fail instead of skipping)";
+	}
+
+	/** Unwraps the cause chain — the useful text is usually in the innermost message. */
+	private static String describe(Throwable failure) {
+		StringBuilder text = new StringBuilder(String.valueOf(failure.getMessage()));
+		for (Throwable cause = failure.getCause(); nonNull(cause); cause = cause.getCause()) {
+			text.append(" <- ").append(cause.getMessage());
+		}
+		return text.toString();
 	}
 
 	/**

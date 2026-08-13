@@ -89,7 +89,7 @@ class MixedBackendResourceSetTest {
 	void setUp() throws IOException {
 		String connectionString = MongoTestSupport.connectionString();
 		assumeTrue(nonNull(connectionString),
-				"No MongoDB available (set -Dmongo.uri or provide docker/podman)");
+				MongoTestSupport.unavailableMessage());
 
 		tckPackage = loadModel();
 		personClass = (EClass) tckPackage.getEClassifier("Person");

@@ -114,7 +114,7 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	protected void setUpBackend(EPackage tckPackage) {
 		String connectionString = MongoTestSupport.connectionString();
 		assumeTrue(nonNull(connectionString),
-				"No MongoDB available (set -Dmongo.uri or provide docker/podman)");
+				MongoTestSupport.unavailableMessage());
 		metadataService = MetadataServices.createWhiteboard();
 		metadataService.registerPackage(tckPackage);
 		client = MongoClients.create(connectionString);
