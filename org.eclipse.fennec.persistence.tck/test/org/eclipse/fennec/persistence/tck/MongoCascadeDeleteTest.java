@@ -36,6 +36,7 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
+import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -423,5 +424,71 @@ class MongoCascadeDeleteTest {
 		assertThat(documentCount("Archive"))
 				.as("the record's owner is already the new one, so the old save must not delete")
 				.isEqualTo(1);
+	}
+
+	// ------------------------------------------------------------------ sweep (#140)
+
+	/**
+	 * The crash window where transactions are unavailable: the root was written (or removed)
+	 * but the child deletion never ran. Simulated with the raw driver, so the interruption is
+	 * real rather than mocked — the resource layer is not asked to leave an inconsistency
+	 * behind, the store is simply put into the state a crash would leave.
+	 * <p>
+	 * Owner still there but no longer referencing the child.
+	 */
+	@Test
+	void sweepReclaimsAChildTheOwnerNoLongerReferences() throws Exception {
+		saveNestedFixture();
+		assertThat(documentCount("Archive")).isEqualTo(1);
+
+		// the state a crash between the root write and the child delete leaves: the library
+		// document no longer carries the section subtree, the archive document is still there
+		database.getCollection("Library", BsonDocument.class).updateOne(
+				new BsonDocument("_id", new BsonString("l1")),
+				new BsonDocument("$unset", new BsonDocument("section", new BsonString(""))));
+		assertThat(documentCount("Archive")).as("orphan present, as after a crash").isEqualTo(1);
+
+		ResourceSet set = resourceSet();
+		Resource resource = set.createResource(uriFor("Library"));
+		long reclaimed = ((OwnershipMaintenance) resource).sweepOwnership();
+
+		assertThat(reclaimed).isEqualTo(1);
+		assertThat(documentCount("Archive")).as("the orphan is reclaimed").isZero();
+		assertThat(database.getCollection("_fennec_ownership", BsonDocument.class).countDocuments())
+				.as("its bookkeeping goes with it")
+				.isZero();
+	}
+
+	/** The other shape: the owner document is gone entirely. */
+	@Test
+	void sweepReclaimsChildrenOfAVanishedOwner() throws Exception {
+		saveNestedFixture();
+		database.getCollection("Library", BsonDocument.class)
+				.deleteOne(new BsonDocument("_id", new BsonString("l1")));
+		assertThat(documentCount("Archive")).isEqualTo(1);
+
+		ResourceSet set = resourceSet();
+		Resource resource = set.createResource(uriFor("Library"));
+		long reclaimed = ((OwnershipMaintenance) resource).sweepOwnership();
+
+		assertThat(reclaimed).isEqualTo(1);
+		assertThat(documentCount("Archive")).isZero();
+	}
+
+	/**
+	 * Idempotence, and the guarantee that matters most: a sweep must never touch a child that
+	 * is still owned. Running it on a healthy store has to be a no-op, twice.
+	 */
+	@Test
+	void sweepLeavesAHealthyStoreAlone() throws Exception {
+		saveNestedFixture();
+
+		ResourceSet set = resourceSet();
+		Resource resource = set.createResource(uriFor("Library"));
+		assertThat(((OwnershipMaintenance) resource).sweepOwnership()).isZero();
+		assertThat(((OwnershipMaintenance) resource).sweepOwnership()).isZero();
+
+		assertThat(documentCount("Archive")).as("the owned child is untouched").isEqualTo(1);
+		assertThat(documentCount("Library")).isEqualTo(1);
 	}
 }

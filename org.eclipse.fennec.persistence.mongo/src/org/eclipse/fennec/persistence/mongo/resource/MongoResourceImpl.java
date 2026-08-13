@@ -80,6 +80,7 @@ import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
+import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
 import org.eclipse.fennec.persistence.mongo.query.BsonValues;
 import org.eclipse.fennec.persistence.mongo.query.MongoQueries;
 import org.eclipse.fennec.persistence.mongo.query.MongoQueryPlan;
@@ -154,7 +155,7 @@ import tools.jackson.databind.json.JsonMapper;
  * @author Mark Hoffmann
  * @since 16.07.2026
  */
-public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource, CommandResource {
+public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource, CommandResource, OwnershipMaintenance {
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
 
@@ -1384,6 +1385,99 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		getCollection(OWNERSHIP_COLLECTION).deleteMany(
 				Filters.and(eq("owner.c", collectionName), Filters.in("owner.id", ownerIds)));
+	}
+
+	/**
+	 * The convergence backstop of issue #140: reclaims children whose owner in this
+	 * collection no longer claims them.
+	 * <p>
+	 * Two shapes of orphan, both re-derivable from the records alone, which is why a repeated
+	 * run is idempotent:
+	 * <ul>
+	 * <li>the <b>owner document is gone</b> — an interrupted delete removed the root but not
+	 *     its children;</li>
+	 * <li>the <b>owner exists but no longer references the child</b> — an interrupted update
+	 *     replaced the root without the subtree.</li>
+	 * </ul>
+	 * Ordered so the cheap discriminator runs first: one query for the records of this
+	 * collection, one for which of those owners still exist, and only the surviving owners are
+	 * read and walked. Deletion is one {@code deleteMany} per collection.
+	 */
+	@Override
+	public long sweepOwnership() throws IOException {
+		String collectionName = getCollectionName(null);
+		if (isNull(collectionName)) {
+			return 0;
+		}
+		try {
+			MongoCollection<BsonDocument> records = getCollection(OWNERSHIP_COLLECTION);
+			Map<BsonValue, Map<String, Set<BsonValue>>> recordedByOwner = new LinkedHashMap<>();
+			try (MongoCursor<BsonDocument> cursor =
+					records.find(eq("owner.c", collectionName)).iterator()) {
+				while (cursor.hasNext()) {
+					BsonDocument record = cursor.next();
+					BsonDocument key = record.getDocument(MongoPersistenceConstants.ID_FIELD);
+					recordedByOwner
+							.computeIfAbsent(record.getDocument("owner").get("id"),
+									k -> new LinkedHashMap<>())
+							.computeIfAbsent(key.getString("c").getValue(),
+									k -> new LinkedHashSet<>())
+							.add(key.get("id"));
+				}
+			}
+			if (recordedByOwner.isEmpty()) {
+				return 0;
+			}
+
+			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			EClass eClass = resolveEClass(collectionName, null);
+			Map<String, Set<BsonValue>> orphans = new LinkedHashMap<>();
+			// which owners still exist — one query, so a vanished root is settled without
+			// reading anything
+			Set<BsonValue> existingOwners = new LinkedHashSet<>();
+			try (MongoCursor<BsonDocument> cursor = collection
+					.find(Filters.in(MongoPersistenceConstants.ID_FIELD, recordedByOwner.keySet()))
+					.iterator()) {
+				while (cursor.hasNext()) {
+					BsonDocument ownerDocument = cursor.next();
+					BsonValue ownerId = ownerDocument.get(MongoPersistenceConstants.ID_FIELD);
+					existingOwners.add(ownerId);
+					// the owner survived, so only what it no longer references is orphaned
+					Map<String, Set<BsonValue>> stillOwned = new LinkedHashMap<>();
+					EObject owner = decode(ownerDocument, eClass);
+					if (nonNull(owner)) {
+						collectOwnedDocuments(owner, stillOwned);
+					}
+					collectReleased(recordedByOwner.get(ownerId), stillOwned, orphans);
+				}
+			}
+			for (Map.Entry<BsonValue, Map<String, Set<BsonValue>>> entry : recordedByOwner.entrySet()) {
+				if (!existingOwners.contains(entry.getKey())) {
+					// owner gone: everything it was recorded to own is orphaned
+					collectReleased(entry.getValue(), Map.of(), orphans);
+				}
+			}
+			long reclaimed = orphans.values().stream().mapToLong(Set::size).sum();
+			deleteOwned(orphans);
+			removeOwnershipRecords(orphans);
+			return reclaimed;
+		} catch (RuntimeException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Ownership sweep failed: " + e.getMessage(), getURI(), e));
+			throw new IOException("Ownership sweep failed on " + getURI(), e);
+		}
+	}
+
+	/** Adds every recorded child that {@code stillOwned} does not contain to {@code orphans}. */
+	private static void collectReleased(Map<String, Set<BsonValue>> recorded,
+			Map<String, Set<BsonValue>> stillOwned, Map<String, Set<BsonValue>> orphans) {
+		recorded.forEach((childCollection, ids) -> {
+			for (BsonValue id : ids) {
+				if (!stillOwned.getOrDefault(childCollection, Set.of()).contains(id)) {
+					orphans.computeIfAbsent(childCollection, k -> new LinkedHashSet<>()).add(id);
+				}
+			}
+		});
 	}
 
 	// -------------------------------------------------------- proxy resolution

@@ -1,6 +1,7 @@
 # Conformance and capabilities — the persistence contract
 
-**Status:** target picture, approved 2026-08-13. Not implemented. Defines what a Fennec
+**Status:** target picture, approved 2026-08-13. The A/B split itself is not implemented yet; §4a
+is, and describes shipped behaviour (#138–#140). Defines what a Fennec
 persistence backend must do unconditionally (the *conformance core*) versus what it may
 declare (*capabilities*), and how the TCK proves both. Companions: `concept.md`,
 `query-ir-redesign.md` (the `QueryFeature` vocabulary), `query-processor-spi.md` (the SPI
@@ -76,7 +77,7 @@ mean the backend is defective, it is core.
 | Containment | single/many, order preserved, ownership |
 | Cross-document containment | child owned by the parent **and** resident in its own resource (#130, #133) |
 | Resolution transparency | no consumer-facing API hands out an unresolved proxy — `eGet`, `eContents`, `EcoreUtil.getAllContents` (#116) |
-| Cascade-delete | dropping a containment subtree deletes what it owned, transitively, across document/table boundaries (#133) |
+| Cascade-delete | dropping a containment subtree deletes what it owned, transitively, across document/table boundaries. Implemented on both backends (#138/#139 for Mongo, #142/#143 for JPA); the timing guarantee is qualified in §4a |
 | Inheritance | polymorphic write and read of a subtype through a supertype resource |
 | Composite ids | **core** — every store can key on a concatenation, so absence is a defect, not a limitation |
 | Command verbs | Insert / Update / Delete exist (§4) |
@@ -147,11 +148,50 @@ were never in a `ResourceSet`, so no notifications fire, no `eOpposite` is maint
 derived feature recomputes. A consumer expecting opposite consistency after a bulk update
 will not get it anywhere.
 
+**Cascade-delete converges everywhere; the transient window does not.** See §4a — the
+guarantee is about the state after an operation completes, not about every instant during it.
+
 **Delete-by-selector does not clean inverse references.** `EcoreUtil.delete` removes
 non-containment references *pointing at* the deleted object; a bulk `DELETE`/`deleteMany`
 cannot, and dangling references result. Containment cascade is still required (ownership is
 core). The decision: bulk delete is documented as not cleaning inverses, and the
 **object-level** delete path must do it properly. Core tests must distinguish the two paths.
+
+### 4a. What cascade-delete guarantees, per flavor
+
+Containment is ownership on every backend and every flavor: dropping a containment subtree
+deletes what it owned, transitively, across document and table boundaries. That is core, not a
+capability. What differs is not *whether* it happens but *when*, and the difference has to be
+stated rather than implied.
+
+**Where `TRANSACTION_BRACKET` is available** — MongoDB as a replica set, and the JPA backend
+inside its unit of work — the owner write and the removal of what it released are atomic. No
+window exists.
+
+**Where it is not** — the PostgreSQL-backed wire gateways (FerretDB, DocumentDB) — the owner is
+written first and the release follows, deliberately in that order: a crash then leaves a
+recoverable orphan rather than an owner referencing documents that no longer exist. Inside that
+window a query over the child's own collection **returns the orphan**. A reader who queries a
+cross-document containment child's collection directly can therefore observe an object whose
+owner has already let go of it.
+
+The state converges regardless, because the ownership records make the orphan re-derivable: the
+record still names an owner that no longer claims the child. The next save of that owner
+reconciles it; for an owner that is never saved again, `OwnershipMaintenance.sweepOwnership()`
+is the explicit backstop (#140). It is idempotent, scoped to one collection's owners, and finds
+nothing on a healthy store or a transactional deployment.
+
+**Selector-based deletes cascade too.** A `DeleteCommand` removes the owned cross-document
+children of every match, on the same terms as an object-level delete. This is the one place
+where the §4 statement about bulk paths does *not* apply: bulk delete may leave dangling
+*non-containment* references, but it may not leave owned children behind.
+
+**One limit, deliberately not hidden.** Moving a containment child into a *different* resource
+and then saving only the **old** resource deletes the child: that save sees a subtree it once
+owned and no longer does, and it cannot know another resource has taken it over in memory.
+Cross-resource changes require saving both resources — standard EMF practice — but here the cost
+of not doing so is silent data loss rather than a stale reference. Re-parenting *within* one
+save, and re-parenting where the new owner is saved first, are both correct.
 
 ## 5. The rules that make it work
 

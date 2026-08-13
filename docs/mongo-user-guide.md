@@ -735,11 +735,14 @@ contract as the JPA backend and XMI:
   containment child to a resource of its own and it is stored as a reference
   marker instead of being inlined; on load `eGet` gives you the resolved
   child, owned by the parent and resident in its own resource. You never see
-  a proxy — `eContents` and `EcoreUtil.getAllContents` resolve too. Two
-  caveats: such a child is invisible to queries filtering over that path
-  (the query layer assumes containment is embedded and refuses the path), and
-  deleting or dropping the owning subtree currently leaves the child document
-  behind ([#133](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/133)).
+  a proxy — `eContents` and `EcoreUtil.getAllContents` resolve too.
+  **Ownership is honoured**: deleting the root, or dropping the owning
+  subtree and saving, deletes the child document too — transitively, so a
+  child hanging off a removed intermediate node goes as well. One caveat
+  remains: such a child is invisible to queries filtering over that path,
+  because the query layer assumes containment is embedded and refuses the
+  path. See [Cross-document ownership](#cross-document-ownership) for the
+  timing guarantee and its one limit.
 - **Non-containment references** are stored as reference values (ids or EMF
   URIs) and loaded as **EMF proxies**. The first `eGet` resolves the proxy
   through the ResourceSet: the target resource's `getEObject` runs a
@@ -759,6 +762,60 @@ the earlier limitation (a post-save rewrite that only covered the root object's
 references, a workaround for
 [emf.codec#50](https://github.com/eclipse-fennec/emf.codec/issues/50)) is gone
 since #116. The codec decides per reference while writing.
+
+## Cross-document ownership
+
+Containment means ownership, and that holds across document boundaries: delete a
+root, or drop a containment subtree and save, and the cross-document children go
+with it — transitively, including a child that hung off an intermediate node the
+update removed.
+
+Two mechanisms are behind it, because the two situations know different things:
+
+- **Delete** can rediscover what a root owns by walking it, so it needs no stored
+  state. An unresolved proxy already carries collection and id in its URI, so most
+  of the walk costs no queries at all.
+- **Update** cannot: a dropped subtree is gone from the graph. So one record per
+  owned child document is kept in the `_fennec_ownership` collection, keyed by the
+  child. That key is what makes **re-parenting** correct — handing a child to
+  another owner rewrites the record, and the former owner leaves it alone — and it
+  makes the store enforce EMF's rule that a child has exactly one container.
+
+You never write to `_fennec_ownership` yourself; it is backend bookkeeping, kept
+out of your documents on purpose so the document shape stays exactly what the codec
+produces.
+
+### The timing guarantee
+
+The owner is written first, the release follows. On MongoDB as a **replica set**
+the two are atomic and there is nothing to observe in between. On the
+PostgreSQL-backed **gateways** (FerretDB, DocumentDB) there are no multi-document
+transactions, so a crash between the steps leaves the child document behind, and a
+query over that child's collection would return it until it is cleaned up.
+
+The state converges either way, because the record still names an owner that no
+longer claims the child. The next save of that owner reconciles it. For an owner
+that is never saved again, sweep explicitly:
+
+```java
+Resource resource = resourceSet.createResource(URI.createURI("mongodb://app/Library"));
+long reclaimed = ((OwnershipMaintenance) resource).sweepOwnership();
+```
+
+It is idempotent, scoped to the owners of that one collection, and finds nothing on
+a healthy store — so running it on a transactional deployment is harmless but
+pointless.
+
+### One limit worth knowing
+
+Moving a containment child into a **different resource** and then saving only the
+**old** resource deletes the child. That save sees a subtree it used to own and no
+longer does, and it cannot know that another resource has taken it over in memory.
+Cross-resource changes require saving both resources — standard EMF practice — but
+here the price of forgetting is a deleted child rather than a stale reference.
+
+Re-parenting *within* one save is correct, and so is re-parenting where the new
+owner is saved first.
 
 ## Mixing JPA and MongoDB in one ResourceSet
 
@@ -810,10 +867,10 @@ verifies:
 - **No eorm-style tuning** — fetch/batch/column configuration from the JPA
   backend has no Mongo counterpart (page size for load/stream is the only
   knob).
-- **Cross-document containment children are not covered by queries** and are
-  not deleted with their owning subtree
-  ([#133](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/133)) —
-  see [References and proxies](#references-and-proxies).
+- **Cross-document containment children are not covered by queries** —
+  filters over such a path are refused, since the query layer assumes
+  containment is embedded. Their *lifecycle* is covered, see
+  [Cross-document ownership](#cross-document-ownership).
 - `updateDefaultOptions` on the resource is a no-op (as in the JPA backend).
 
 Both backends pass the same backend-agnostic TCK
