@@ -58,10 +58,9 @@ import jakarta.persistence.EntityManagerFactory;
  * <p>
  * The contract is not backend-specific: whatever Mongo delivers here, JPA has to deliver
  * too. Mongo returns a fully resolved child that is owned by the parent and resident in
- * its own resource. JPA does not support the shape yet, so the cases demanding it are
- * {@code @Disabled} for issue #130 — the save-order-dependent ones and the residency one.
- * The two enabled tests pin what genuinely holds today: plain containment, and that the
- * data round-trips when the parent is saved first.
+ * its own resource. JPA delivers the data and the ownership in either save order since
+ * #130; what it still does not deliver is the <b>residency</b>, and that case stays
+ * {@code @Disabled} — see its javadoc for why it needs stored state rather than a fix.
  *
  * @author Mark Hoffmann
  * @since 13.08.2026
@@ -184,7 +183,6 @@ class JpaCrossDocumentContainmentTest {
 	// --------------------------------------------------------------------- the matrix
 
 	@Test
-	@Disabled("issue #130 — the parent's save re-INSERTs the child row written by the child resource")
 	void singleValuedCrossDocumentContainmentRoundTrips() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 1, "name", "Rivendell");
@@ -220,7 +218,6 @@ class JpaCrossDocumentContainmentTest {
 	}
 
 	@Test
-	@Disabled("issue #130 — the parent's save re-INSERTs the child row written by the child resource")
 	void manyValuedCrossDocumentContainmentRoundTrips() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject person = create(personClass, "pid", 1, "name", "Bilbo");
@@ -263,7 +260,6 @@ class JpaCrossDocumentContainmentTest {
 	 * child even though the child is owned by a parent living in another resource.
 	 */
 	@Test
-	@Disabled("issue #130 — the parent's save re-INSERTs the child row written by the child resource")
 	void childResourceLoadsTheContainedChildOnItsOwn() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject person = create(personClass, "pid", 2, "name", "Frodo");
@@ -330,7 +326,7 @@ class JpaCrossDocumentContainmentTest {
 	 * is nothing to resolve through the child's own resource.
 	 */
 	@Test
-	@Disabled("issue #130 — the child is re-attached to the parent's resource, losing its own residency")
+	@Disabled("issue #130 — residency needs stored state: a JPA row is identical whether the child was a resource root or not, so the load cannot tell. Measured consequence: EcoreUtil.getURI gives jpa://<pu>/Place#<geoPointId>, which does not resolve")
 	void crossDocumentContainmentKeepsTheChildResidentInItsOwnResource() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 5, "name", "Bree");

@@ -381,6 +381,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		Object id = findKey(source);
 		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
 			sanitizeNonContainmentReferences(source, original, server, em);
+			adoptExistingContainmentChildren(source, server, em);
 			em.persist(source);
 			return;
 		}
@@ -389,8 +390,81 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			copyStateInto(source, existingEO, server, em);
 		} else {
 			sanitizeNonContainmentReferences(source, original, server, em);
+			adoptExistingContainmentChildren(source, server, em);
 			em.persist(source);
 		}
+	}
+
+	/**
+	 * Replaces containment children whose row <em>already exists</em> with their managed
+	 * instances, so the cascade updates them instead of inserting them again (issue #130).
+	 * <p>
+	 * The existence check used to cover the resource root only. That is enough while a child
+	 * reaches the database exclusively through its parent — but a cross-document containment
+	 * child is also a root of its own resource, so saving that resource first writes the row,
+	 * and the parent's save then cascaded an unconditional INSERT into a primary-key violation.
+	 * Which of the two resources was saved first therefore decided whether the save worked at
+	 * all, and save order must be transparent to the caller.
+	 * <p>
+	 * Recursive, because the child may own children of its own, and applied to both arities.
+	 * A child without a usable id is left alone: it is genuinely new, and the cascade inserting
+	 * it is correct.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void adoptExistingContainmentChildren(EObject source, Server server, EntityManager em) {
+		if (isNull(server)) {
+			return;
+		}
+		for (EReference ref : source.eClass().getEAllReferences()) {
+			if (!ref.isContainment() || !ref.isChangeable() || ref.isDerived() || ref.isTransient()) {
+				continue;
+			}
+			if (ref.isMany()) {
+				List<EObject> children = (List<EObject>) source.eGet(ref);
+				for (int index = 0; index < children.size(); index++) {
+					EObject adopted = adoptChild(children.get(index), server, em);
+					if (nonNull(adopted)) {
+						children.set(index, adopted);
+					}
+				}
+			} else {
+				Object child = ((InternalEObject) source).eGet(ref, false);
+				if (child instanceof EObject childEO) {
+					EObject adopted = adoptChild(childEO, server, em);
+					if (nonNull(adopted)) {
+						source.eSet(ref, adopted);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Returns the managed instance carrying this child's state when its row already exists,
+	 * or {@code null} when the child should stay as it is. Recurses either way, so ownership
+	 * deeper in the tree is adopted too.
+	 */
+	private static EObject adoptChild(EObject child, Server server, EntityManager em) {
+		if (isNull(child) || child.eIsProxy()) {
+			return null;
+		}
+		ClassDescriptor descriptor = server.getDescriptorForAlias(child.eClass().getName());
+		if (isNull(descriptor)) {
+			return null;
+		}
+		Object childId = findKey(child);
+		if (isNull(childId) || (!(childId instanceof Object[]) && isDefaultIdValue(childId))) {
+			adoptExistingContainmentChildren(child, server, em);
+			return null;
+		}
+		Object existing = em.find(descriptor.getJavaClass(), childId);
+		if (!(existing instanceof EObject managed)) {
+			adoptExistingContainmentChildren(child, server, em);
+			return null;
+		}
+		// the row is there: update the managed instance rather than hand the cascade a twin
+		copyStateInto(child, managed, server, em);
+		return managed;
 	}
 
 	/**
