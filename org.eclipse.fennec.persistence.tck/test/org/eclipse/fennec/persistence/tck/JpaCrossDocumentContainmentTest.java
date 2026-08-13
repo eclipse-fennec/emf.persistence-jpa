@@ -396,7 +396,6 @@ class JpaCrossDocumentContainmentTest {
 	 * well mean that orphan removal does not work at all in this setup.
 	 */
 	@Test
-	@Disabled("issue #142 — EMappingSupport hardwires privateOwned=false, so EclipseLink never deletes containment orphans")
 	void plainContainmentOrphanIsRemoved() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 6, "name", "Hobbiton");
@@ -427,7 +426,6 @@ class JpaCrossDocumentContainmentTest {
 	 * resource, so whether ownership or residency wins is exactly what is being measured.
 	 */
 	@Test
-	@Disabled("issue #142 — EMappingSupport hardwires privateOwned=false, so EclipseLink never deletes containment orphans")
 	void crossDocumentContainmentOrphanIsRemovedWhileStillAResourceRoot() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 7, "name", "Bywater");
@@ -456,7 +454,6 @@ class JpaCrossDocumentContainmentTest {
 	 * the JPA backend has no orphan removal for the cross-document shape at all.
 	 */
 	@Test
-	@Disabled("issue #142 — EMappingSupport hardwires privateOwned=false, so EclipseLink never deletes containment orphans")
 	void crossDocumentContainmentOrphanIsRemovedWhenDroppedFromBoth() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject place = create(placeClass, "plid", 8, "name", "Frogmorton");

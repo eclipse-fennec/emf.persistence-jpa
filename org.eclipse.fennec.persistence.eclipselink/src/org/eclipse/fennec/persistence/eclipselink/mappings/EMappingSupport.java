@@ -27,6 +27,8 @@ import org.eclipse.fennec.persistence.eclipselink.indirection.EBasicIndirectionP
 import org.eclipse.fennec.persistence.eclipselink.indirection.ETransparentIndirectionPolicy;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.FetchType;
+import org.eclipse.fennec.persistence.eorm.OneToMany;
+import org.eclipse.fennec.persistence.eorm.OneToOne;
 import org.eclipse.persistence.expressions.Expression;
 import org.eclipse.persistence.expressions.ExpressionBuilder;
 import org.eclipse.persistence.internal.expressions.SQLSelectStatement;
@@ -83,7 +85,7 @@ final class EMappingSupport {
 		mapping.setJoinFetch(ForeignReferenceMapping.NONE);
 		mapping.setIsCascadeOnDeleteSetOnDatabase(false);
 		mapping.setDerivesId(false);
-		mapping.setIsPrivateOwned(false);
+		mapping.setIsPrivateOwned(isOrphanRemoval(baseRef, reference));
 		mapping.setIsCacheable(true);
 		mapping.setAttributeAccessor(EReferenceAccessor.create(mapping, reference, context));
 
@@ -127,6 +129,30 @@ final class EMappingSupport {
 		} else {
 			mapping.setIndirectionPolicy(new EBasicIndirectionPolicy(mapping, reference, type));
 		}
+	}
+
+	/**
+	 * Whether the relationship owns its target's lifecycle, i.e. removing the target deletes
+	 * it. EclipseLink calls this private ownership and the meaning matches EMF containment:
+	 * "the target object is a dependent part of the source object … and cannot exist on its
+	 * own" ({@code ForeignReferenceMapping#setIsPrivateOwned}).
+	 * <p>
+	 * The eorm decides, because it is the configuration surface (issue #142) — but only where
+	 * it actually states something. An <em>unset</em> {@code orphanRemoval} falls back to the
+	 * structural default, so a hand-written eorm that omits the flag still gets conformant
+	 * containment semantics rather than silently losing them to the attribute's {@code false}
+	 * default. {@code ManyToOne} and {@code ManyToMany} carry no such flag: the child side of
+	 * a containment points <em>at</em> its parent and never owns it, and
+	 * {@code reference.isContainment()} is false there anyway.
+	 */
+	private static boolean isOrphanRemoval(BaseRef baseRef, EReference reference) {
+		if (baseRef instanceof OneToOne oneToOne && oneToOne.isSetOrphanRemoval()) {
+			return oneToOne.isOrphanRemoval();
+		}
+		if (baseRef instanceof OneToMany oneToMany && oneToMany.isSetOrphanRemoval()) {
+			return oneToMany.isOrphanRemoval();
+		}
+		return reference.isContainment();
 	}
 
 	/**
