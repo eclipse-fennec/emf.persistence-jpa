@@ -323,7 +323,6 @@ public abstract class AbstractPersistenceTCK {
 	 * storage-level proof belongs in the backend suites.
 	 */
 	@Test
-	@Disabled("issue #143 — JPA drops many-valued containment changes on an existing parent; Mongo passes this")
 	public void containmentOrphanIsRemovedOnSave() throws Exception {
 		EObject person = newPerson(1, "Emil", 30);
 		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));
@@ -351,13 +350,44 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
+	 * The inverse guard of the orphan cases: updating a parent while <em>keeping</em> its
+	 * children untouched must not disturb them. This is the case a lifecycle fix can break
+	 * silently — a backend that treats "collection differs by instance identity" as
+	 * "collection changed" would delete and re-insert (or worse, just delete) children on
+	 * every parent update.
+	 */
+	@Test
+	public void updatingParentKeepsUntouchedContainmentChildren() throws Exception {
+		EObject person = newPerson(1, "Emil", 30);
+		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));
+		listOf(person, personAddresses).add(newAddress(12, "Second Street 2", "Gera"));
+
+		ResourceSet writeSet = createBackendResourceSet();
+		save(writeSet, "Person", person);
+
+		// touch only the parent's own attribute, children stay exactly as they are
+		Resource written = writeSet.getResource(uriFor("Person"), false);
+		EObject owner = findById(written, "1");
+		owner.eSet(personName, "Emil Renamed");
+		written.save(null);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject loaded = findById(loadAll(readSet, "Person"), "1");
+		assertThat(loaded).isNotNull();
+		assertThat(loaded.eGet(personName)).isEqualTo("Emil Renamed");
+		assertThat(listOf(loaded, personAddresses))
+				.as("children untouched by the update must survive it")
+				.extracting(a -> a.eGet(addressStreet))
+				.containsExactlyInAnyOrder("Main Street 1", "Second Street 2");
+	}
+
+	/**
 	 * The counterpart of the removal case: a child <em>added</em> to an already persisted
 	 * parent has to reach the store. Same code path, opposite direction — if collection
 	 * changes on an existing parent are dropped, this fails too, and the severity is not
 	 * "orphans linger" but "containment updates are lost".
 	 */
 	@Test
-	@Disabled("issue #143 — JPA drops many-valued containment changes on an existing parent; Mongo passes this")
 	public void containmentChildAddedToAnExistingParentIsPersisted() throws Exception {
 		EObject person = newPerson(1, "Emil", 30);
 		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));
@@ -384,7 +414,6 @@ public abstract class AbstractPersistenceTCK {
 	 * to keep.
 	 */
 	@Test
-	@Disabled("issue #143 — JPA drops many-valued containment changes on an existing parent; Mongo passes this")
 	public void clearingContainmentDestroysAllChildren() throws Exception {
 		EObject person = newPerson(1, "Emil", 30);
 		listOf(person, personAddresses).add(newAddress(11, "Main Street 1", "Jena"));

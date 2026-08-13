@@ -416,6 +416,40 @@ class JpaCrossDocumentContainmentTest {
 	}
 
 	/**
+	 * The single-valued inverse guard: updating the parent while <em>keeping</em> its
+	 * containment child must not disturb the child. Change comparison keys on instance
+	 * identity, so a backend that hands the comparison a copied or empty old state would
+	 * see every parent update as a child replacement — and private ownership (#142) would
+	 * turn that into a DELETE of a kept child.
+	 */
+	@Test
+	void updatingParentKeepsUntouchedSingleContainmentChild() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject place = create(placeClass, "plid", 9, "name", "Michel Delving");
+		EObject point = create(geoPointClass, "gid", 19, "type", "Point");
+		place.eSet(placeLocation, point);
+
+		Resource placeResource = writeSet.createResource(uriFor("Place"));
+		placeResource.getContents().add(place);
+		placeResource.save(null);
+		assertThat(countRows("GeoPoint")).isEqualTo(1);
+
+		place.eSet(placeClass.getEStructuralFeature("name"), "Michel Delving Renamed");
+		placeResource.save(null);
+
+		assertThat(countRows("GeoPoint"))
+				.as("the untouched child must survive the parent's update")
+				.isEqualTo(1);
+
+		emf.getCache().evictAll();
+		ResourceSet readSet = resourceSet();
+		EObject loadedPlace = findById(readSet.getResource(uriFor("Place"), true), "9");
+		EObject location = (EObject) loadedPlace.eGet(placeLocation);
+		assertThat(location).as("child still attached after the update").isNotNull();
+		assertThat(value(location, "gid")).isEqualTo(19);
+	}
+
+	/**
 	 * The measurement of issue #136: the same drop, but the child is also a root of its own
 	 * resource. Does {@code orphanRemoval} still delete the row?
 	 * <p>
@@ -477,5 +511,4 @@ class JpaCrossDocumentContainmentTest {
 				.as("nothing claims the child any more, so the row must go")
 				.isZero();
 	}
-
 }

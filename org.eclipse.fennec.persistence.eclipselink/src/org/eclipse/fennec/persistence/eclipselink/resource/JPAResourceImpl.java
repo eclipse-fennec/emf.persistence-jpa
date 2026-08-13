@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -548,17 +549,75 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				continue;
 			}
 			if (ref.isMany()) {
-				continue; // collections handled by EclipseLink's IndirectList
+				if (ref.isContainment()) {
+					syncContainmentList(source, target, ref, server, em);
+				}
+				// Non-containment collections stay untouched: their elements are lazy
+				// proxies, and touching the list would instantiate them.
+				continue;
 			}
 			Object srcValue = ((InternalEObject) source).eGet(ref, false);
 			if (ref.isContainment()) {
-				target.eSet(ref, srcValue);
+				// Same-id child: update the MANAGED instance in place rather than eSet the
+				// source's fresh copy over it — the copy is unregistered, and EclipseLink
+				// would treat the swap as remove-plus-add (INSERT of a row that exists).
+				Object current = ((InternalEObject) target).eGet(ref, false);
+				if (srcValue instanceof EObject srcChild && current instanceof EObject managedChild
+						&& Objects.equals(CompositeIds.fragment(srcChild), CompositeIds.fragment(managedChild))) {
+					copyStateInto(srcChild, managedChild, server, em);
+				} else {
+					target.eSet(ref, srcValue);
+				}
 				continue;
 			}
 			// Non-containment singular ref: use em.getReference to avoid handing a
 			// detached/proxy EObject to EclipseLink's cascade-register-new.
 			copyNonContainmentRef(target, ref, srcValue, server, em);
 		}
+	}
+
+	/**
+	 * Brings a many-valued containment collection of the managed entity in line with the
+	 * source (issue #143). This used to be skipped entirely ("collections handled by
+	 * EclipseLink's IndirectList"), which only holds when the managed collection is
+	 * mutated — and nothing mutated it, so no addition and no removal on an
+	 * already-persisted parent ever reached the unit of work.
+	 * <p>
+	 * Matching runs by id, never by position: an existing child must stay as its
+	 * <em>managed</em> instance — adding the source's fresh copy instead would make
+	 * EclipseLink INSERT a row that already exists (change comparison keys on instance
+	 * identity, {@code ContainerPolicy.compareCollectionsForChange} uses an
+	 * {@code IdentityHashMap}). Matched children have their state copied recursively;
+	 * source-only children are added and cascade-persisted; children the source no longer
+	 * has are removed from the list, which is what makes them unreachable for the
+	 * private-owned discovery (#142) that turns dropped containment into DELETEs.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void syncContainmentList(EObject source, EObject target, EReference ref,
+			Server server, EntityManager em) {
+		List<EObject> sourceChildren = (List<EObject>) source.eGet(ref);
+		List<EObject> targetChildren = (List<EObject>) target.eGet(ref);
+
+		Map<String, EObject> managedByKey = new LinkedHashMap<>();
+		for (EObject child : targetChildren) {
+			String key = CompositeIds.fragment(child);
+			if (nonNull(key)) {
+				managedByKey.put(key, child);
+			}
+		}
+		List<EObject> toAdd = new ArrayList<>();
+		for (EObject child : sourceChildren) {
+			String key = CompositeIds.fragment(child);
+			EObject managed = nonNull(key) ? managedByKey.remove(key) : null;
+			if (nonNull(managed)) {
+				copyStateInto(child, managed, server, em);
+			} else {
+				toAdd.add(child);
+			}
+		}
+		// whatever is left is an orphan; dropping it from the managed list is the signal
+		targetChildren.removeAll(managedByKey.values());
+		targetChildren.addAll(toAdd);
 	}
 
 	private static void copyNonContainmentRef(EObject target, EReference ref, Object srcValue,
