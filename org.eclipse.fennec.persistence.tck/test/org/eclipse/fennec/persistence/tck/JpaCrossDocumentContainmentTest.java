@@ -477,4 +477,5 @@ class JpaCrossDocumentContainmentTest {
 				.as("nothing claims the child any more, so the row must go")
 				.isZero();
 	}
+
 }
