@@ -70,7 +70,7 @@ class MongoIdConfigOptionTest {
 	void setUp() {
 		String connectionString = MongoTestSupport.connectionString();
 		assumeTrue(nonNull(connectionString),
-				"No MongoDB available (set -Dmongo.uri or provide docker/podman)");
+				MongoTestSupport.unavailableMessage());
 		EcoreFactory ecore = EcoreFactory.eINSTANCE;
 		orderLineClass = ecore.createEClass();
 		orderLineClass.setName("OrderLine");

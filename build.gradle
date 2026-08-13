@@ -23,7 +23,7 @@ subprojects {
     // without this, -Dmongo.test.flavor=ferretdb would silently test MongoDB instead
     // (issue #119).
     def backendSelectionProperties = ['mongo.uri', 'mongo.test.image', 'mongo.test.flavor',
-                                      'mongo.container.cli']
+                                      'mongo.container.cli', 'mongo.require']
 
     // Exclude @Tag("perf") tests from normal builds — run via perfTest task
     test {
