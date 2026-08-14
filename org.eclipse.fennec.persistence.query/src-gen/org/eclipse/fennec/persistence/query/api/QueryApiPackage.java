@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:4fdb91b6a1d6b2f9aa44bd91dd50505dbd752878944f6cd0ffbd644c9152c70d", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
+@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:642afb2b9d95da59869f8448d895996f935511aeeb4e8f4f7b00191f0861e6a3", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
 public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -500,22 +500,13 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int COMMAND_RESOURCE___BEGIN = 1;
 
 	/**
-	 * The operation id for the '<em>Capabilities</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int COMMAND_RESOURCE___CAPABILITIES = 2;
-
-	/**
 	 * The number of operations of the '<em>Command Resource</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int COMMAND_RESOURCE_OPERATION_COUNT = 3;
+	int COMMAND_RESOURCE_OPERATION_COUNT = 2;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}' enum.
@@ -618,16 +609,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int QUERY_CAPABILITIES = 17;
 
 	/**
-	 * The meta object id for the '<em>Command Capabilities</em>' data type.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.persistence.capabilities.CommandCapabilities
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandCapabilities()
-	 * @generated
-	 */
-	int COMMAND_CAPABILITIES = 18;
-
-	/**
 	 * The meta object id for the '<em>Parameter Map</em>' data type.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -635,7 +616,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getParameterMap()
 	 * @generated
 	 */
-	int PARAMETER_MAP = 19;
+	int PARAMETER_MAP = 18;
 
 	/**
 	 * The meta object id for the '<em>Options Map</em>' data type.
@@ -645,7 +626,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getOptionsMap()
 	 * @generated
 	 */
-	int OPTIONS_MAP = 20;
+	int OPTIONS_MAP = 19;
 
 
 	/**
@@ -960,16 +941,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EOperation getCommandResource__Begin();
 
 	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandResource#capabilities() <em>Capabilities</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Capabilities</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandResource#capabilities()
-	 * @generated
-	 */
-	EOperation getCommandResource__Capabilities();
-
-	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1104,20 +1075,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EDataType getQueryCapabilities();
-
-	/**
-	 * Returns the meta object for data type '{@link org.eclipse.fennec.persistence.capabilities.CommandCapabilities <em>Command Capabilities</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-     * <!-- begin-model-doc -->
-     * What a CommandResource declares it serves, backend-wide and narrowed per EClass (issue #114). Plain Java in the capabilities bundle - see QueryCapabilities.
-     * <!-- end-model-doc -->
-	 * @return the meta object for data type '<em>Command Capabilities</em>'.
-	 * @see org.eclipse.fennec.persistence.capabilities.CommandCapabilities
-	 * @model instanceClass="org.eclipse.fennec.persistence.capabilities.CommandCapabilities"
-	 * @generated
-	 */
-	EDataType getCommandCapabilities();
 
 	/**
 	 * Returns the meta object for data type '{@link java.util.Map <em>Parameter Map</em>}'.
@@ -1435,14 +1392,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		EOperation COMMAND_RESOURCE___BEGIN = eINSTANCE.getCommandResource__Begin();
 
 		/**
-		 * The meta object literal for the '<em><b>Capabilities</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation COMMAND_RESOURCE___CAPABILITIES = eINSTANCE.getCommandResource__Capabilities();
-
-		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}' enum.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -1541,16 +1490,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EDataType QUERY_CAPABILITIES = eINSTANCE.getQueryCapabilities();
-
-		/**
-		 * The meta object literal for the '<em>Command Capabilities</em>' data type.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.persistence.capabilities.CommandCapabilities
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandCapabilities()
-		 * @generated
-		 */
-		EDataType COMMAND_CAPABILITIES = eINSTANCE.getCommandCapabilities();
 
 		/**
 		 * The meta object literal for the '<em>Parameter Map</em>' data type.

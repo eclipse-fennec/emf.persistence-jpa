@@ -32,7 +32,6 @@ import org.eclipse.emf.ecore.plugin.EcorePlugin;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
 
-import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -121,8 +120,6 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return createObjectListFromString(eDataType, initialValue);
 			case QueryApiPackage.QUERY_CAPABILITIES:
 				return createQueryCapabilitiesFromString(eDataType, initialValue);
-			case QueryApiPackage.COMMAND_CAPABILITIES:
-				return createCommandCapabilitiesFromString(eDataType, initialValue);
 			case QueryApiPackage.PARAMETER_MAP:
 				return createParameterMapFromString(eDataType, initialValue);
 			case QueryApiPackage.OPTIONS_MAP:
@@ -160,8 +157,6 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return convertObjectListToString(eDataType, instanceValue);
 			case QueryApiPackage.QUERY_CAPABILITIES:
 				return convertQueryCapabilitiesToString(eDataType, instanceValue);
-			case QueryApiPackage.COMMAND_CAPABILITIES:
-				return convertCommandCapabilitiesToString(eDataType, instanceValue);
 			case QueryApiPackage.PARAMETER_MAP:
 				return convertParameterMapToString(eDataType, instanceValue);
 			case QueryApiPackage.OPTIONS_MAP:
@@ -353,24 +348,6 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 	 * @generated
 	 */
 	public String convertQueryCapabilitiesToString(EDataType eDataType, Object instanceValue) {
-		return super.convertToString(eDataType, instanceValue);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	public CommandCapabilities createCommandCapabilitiesFromString(EDataType eDataType, String initialValue) {
-		return (CommandCapabilities)super.createFromString(eDataType, initialValue);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	public String convertCommandCapabilitiesToString(EDataType eDataType, Object instanceValue) {
 		return super.convertToString(eDataType, instanceValue);
 	}
 

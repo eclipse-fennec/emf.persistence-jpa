@@ -62,6 +62,8 @@ import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.pushstreams.PersistencePushStreams;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
@@ -2251,7 +2253,9 @@ public abstract class AbstractPersistenceTCK {
 	public void commandCapabilitiesMatchDeclaredBehaviour() throws Exception {
 		saveQueryFixture();
 		CommandResource resource = commands(createBackendResourceSet());
-		CommandCapabilities capabilities = resource.capabilities();
+		PersistenceCapabilities declared = ((PersistenceResource) resource).capabilities();
+		assertThat(declared).isNotNull();
+		CommandCapabilities capabilities = declared.command();
 		assertThat(capabilities).isNotNull();
 		for (CommandFeature feature : List.of(CommandFeature.INSERT,
 				CommandFeature.DELETE_BY_SELECTOR, CommandFeature.UPDATE_BY_SELECTOR)) {
@@ -2260,8 +2264,11 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(capabilities.supports(feature, personClass)).isTrue();
 			assertThat(capabilities.supported()).contains(feature);
 		}
-		assertThat(capabilities.supports(CommandFeature.TRANSACTION_BRACKET))
+		// the transaction bracket is a store feature now, not a command verb (issue #134, §5a)
+		assertThat(declared.store().supports(StoreFeature.TRANSACTION_BRACKET))
 				.isEqualTo(supportsCommandTransactions());
+		assertThat(capabilities.supported())
+				.noneMatch(feature -> "TRANSACTION_BRACKET".equals(feature.getName()));
 		if (!supportsCommandTransactions()) {
 			assertThatThrownBy(resource::begin)
 					.isInstanceOf(IOException.class)

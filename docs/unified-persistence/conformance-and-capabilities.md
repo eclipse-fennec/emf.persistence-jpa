@@ -298,17 +298,27 @@ The name describes the first third. Split it by role, one name per role:
 
 | Type | Where | Note |
 |---|---|---|
-| `PersistenceCapabilities` | new, `org.eclipse.fennec.persistence.capabilities` in the **core** bundle | the root a backend answers; query and command become views on it |
-| `QueryCapabilities` / `QueryFeature` | unchanged | this really *is* query expression vocabulary — the prefix is correct here |
-| `CommandCapabilities` / `CommandFeature` | unchanged, minus one literal | see below |
-| `StoreCapabilities` / `StoreFeature` | new | `TRANSACTIONS`, `CHANGE_STREAMS`, `SERVER_CURSORS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` — the home for everything outside the query |
-| `StoreLimits` | new | scalars, not flags — identifier length, timestamp precision, LOB bounds, NULL ordering, and today's lone `maxFeaturePathDepth` |
+| `PersistenceCapabilities` | own bundle `org.eclipse.fennec.persistence.capabilities` | the root a backend answers; query, command and store are views on it |
+| `QueryCapabilities` / `QueryFeature` | moved there unchanged | this really *is* query expression vocabulary — the prefix is correct here |
+| `CommandCapabilities` / `CommandFeature` | moved there, minus one literal | see below |
+| `StoreCapabilities` / `StoreFeature` | new | the home for power outside query and command; today exactly `TRANSACTION_BRACKET`, with `CHANGE_STREAMS`, `SERVER_CURSORS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` as the expected neighbours — each added when something declares it, not before |
+| `StoreLimits` | **not built yet** | scalars, not flags — identifier length, timestamp precision, LOB bounds, NULL ordering. Waits for the flavor axis, which is what produces them; `maxFeaturePathDepth` stays on `QueryCapabilities` until then, since it limits the translator rather than the store |
 | query / command execution types | stay in the query bundle, `...query.api` and `...command.api` | `CommandResource` is not a query |
+
+The bundle is its own, not a package inside the core bundle: the core has no EMF codegen, and the
+vocabulary needs it. It depends on nothing but EMF, so every other bundle can depend on it.
 
 `TRANSACTION_BRACKET` moves from `CommandFeature` to `StoreFeature`. It was never a command
 capability: §4a already uses it to explain the cascade-delete window on the **save** path, and
 `OwnershipMaintenance` refers to it — reaching that statement through a `CommandResource` is
 an accident of where the literal was first needed.
+
+**The carrier is `PersistenceResource`, in the core bundle.** That is what fixes the finding
+rather than papering over it: `PersistenceResource.capabilities()` returns the aggregate, so a
+capability statement needs no optional query or command role. `CommandResource.capabilities()` is
+gone — one way to reach the answer, not two. What a resource returns is the **effective** set,
+with the deployment probe already applied; what the declaration service returns (below) is what
+the flavor can do at all.
 
 **Not named `contract` or `conformance`.** Both were considered and rejected: the conformance
 core is precisely what is *not* declared (§2A — core items do not exist as declarable values).
@@ -343,13 +353,13 @@ land immediately — an unknown enum literal in XMI is a `Resource` error but si
 default value, which reproduces the #132 failure mode one level up; renaming a literal breaks
 Java at compile time and XMI silently; and EMF joins the core bundle's startup path.
 
-What makes this reversible is the surface, not the format: `PersistenceCapabilities` is
-registered as an **OSGi service with `backend` and `flavor` properties**, so one provider may
-build it from Java constants and another from an XMI it ships — consumers and the TCK cannot
-tell. The irreversible decision is the type and the registration; where the data comes from is
-per backend and can change later. That is also the answer for JPA's open flavor set (h2,
-postgres, oracle, mssql, and whatever a deployment brings): a third party registers its own
-declaration as a bundle instead of forking ours.
+What makes this reversible is the surface, not the format: `PersistenceCapabilities` is to be
+registered as an **OSGi service with `backend` and `flavor` properties** (still to build — see
+§10.2), so one provider may build it from Java constants and another from an XMI it ships —
+consumers and the TCK cannot tell. The irreversible decision is the type and the registration;
+where the data comes from is per backend and can change later. That is also the answer for JPA's
+open flavor set (h2, postgres, oracle, mssql, and whatever a deployment brings): a third party
+registers its own declaration as a bundle instead of forking ours.
 
 **Every gap carries its evidence.** The valuable part of `MongoFlavorCapabilities` is not the
 list but the reasoning: `FERRETDB_GAPS` is empty, and above it stand the container tag it was
@@ -443,12 +453,16 @@ declaration surface with its naming, its two levels and Java-versus-XMI (§5a) �
 ## 10. Getting there
 
 1. Freeze the boundary — §3 and the four decisions in §9.
-2. Introduce the declaration surface of §5a with core items *absent by construction*: split
-   `query-api.ecore` by role, add `PersistenceCapabilities` / `StoreCapabilities` /
-   `StoreLimits` in the core bundle, move `TRANSACTION_BRACKET` to `StoreFeature`, register the
-   declaration as a service per `backend` × `flavor`, and reduce `MongoFlavorCapabilities` /
-   `CommandCapabilities` onto it. Package renames are cheap while `base-version` is `0.1.0`
-   and every consumer is workspace-internal; after 1.0 they cost a major bump.
+2. Introduce the declaration surface of §5a with core items *absent by construction*. **Done**:
+   `query-api.ecore` split by role into the new `org.eclipse.fennec.persistence.capabilities`
+   bundle, `PersistenceCapabilities` and `StoreCapabilities` added, `TRANSACTION_BRACKET` moved
+   to `StoreFeature`, and `PersistenceResource.capabilities()` made the carrier while
+   `CommandResource.capabilities()` was removed. Package renames were cheap while `base-version`
+   is `0.1.0` and every consumer is workspace-internal; after 1.0 they cost a major bump.
+   **Left**: registering the declaration as a service per `backend` × `flavor`, and reducing
+   `MongoFlavorCapabilities` onto it. That waits for step 7 rather than being guessed now — the
+   Mongo flavor is configuration already, but JPA has no flavor concept yet, so `flavor=h2`
+   today would be a declaration nobody derived from anything.
 3. Replace the seven hooks with an `ExecutionCondition` and a capability annotation, so
    gating is declarative and a skip reason is a capability statement in the report. The
    condition reads the declaration service, which is what makes "skip means undeclared

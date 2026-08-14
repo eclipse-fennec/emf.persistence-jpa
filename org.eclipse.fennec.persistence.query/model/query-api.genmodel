@@ -24,7 +24,6 @@
     <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
     <genDataTypes ecoreDataType="query-api.ecore#//QueryCapabilities"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//CommandCapabilities"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
     <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//AutoCloseable"/>
@@ -86,7 +85,6 @@
         <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute/command"/>
       </genOperations>
       <genOperations ecoreOperation="query-api.ecore#//CommandResource/begin"/>
-      <genOperations ecoreOperation="query-api.ecore#//CommandResource/capabilities"/>
     </genClasses>
   </genPackages>
 </genmodel:GenModel>

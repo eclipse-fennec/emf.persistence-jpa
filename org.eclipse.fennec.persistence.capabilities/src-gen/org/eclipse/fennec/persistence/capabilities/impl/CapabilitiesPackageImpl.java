@@ -21,6 +21,7 @@ import org.eclipse.fennec.persistence.capabilities.CapabilitiesFactory;
 import org.eclipse.fennec.persistence.capabilities.CapabilitiesPackage;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 
 /**
  * <!-- begin-user-doc -->
@@ -42,6 +43,13 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 	 * @generated
 	 */
 	private EEnum commandFeatureEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum storeFeatureEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -129,6 +137,16 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 	 * @generated
 	 */
 	@Override
+	public EEnum getStoreFeature() {
+		return storeFeatureEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public CapabilitiesFactory getCapabilitiesFactory() {
 		return (CapabilitiesFactory)getEFactoryInstance();
 	}
@@ -154,6 +172,7 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 		// Create enums
 		queryFeatureEEnum = createEEnum(QUERY_FEATURE);
 		commandFeatureEEnum = createEEnum(COMMAND_FEATURE);
+		storeFeatureEEnum = createEEnum(STORE_FEATURE);
 	}
 
 	/**
@@ -236,7 +255,9 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 		addEEnumLiteral(commandFeatureEEnum, CommandFeature.INSERT);
 		addEEnumLiteral(commandFeatureEEnum, CommandFeature.DELETE_BY_SELECTOR);
 		addEEnumLiteral(commandFeatureEEnum, CommandFeature.UPDATE_BY_SELECTOR);
-		addEEnumLiteral(commandFeatureEEnum, CommandFeature.TRANSACTION_BRACKET);
+
+		initEEnum(storeFeatureEEnum, StoreFeature.class, "StoreFeature");
+		addEEnumLiteral(storeFeatureEEnum, StoreFeature.TRANSACTION_BRACKET);
 
 		// Create resource
 		createResource(eNS_URI);

@@ -41,8 +41,8 @@ class CommandCapabilitiesBuilderTest {
 				.build();
 		assertThat(capabilities.supports(CommandFeature.INSERT)).isTrue();
 		assertThat(capabilities.supports(CommandFeature.INSERT, materialized)).isTrue();
-		assertThat(capabilities.supports(CommandFeature.TRANSACTION_BRACKET)).isFalse();
-		assertThat(capabilities.supports(CommandFeature.TRANSACTION_BRACKET, materialized)).isFalse();
+		assertThat(capabilities.supports(CommandFeature.UPDATE_BY_SELECTOR)).isFalse();
+		assertThat(capabilities.supports(CommandFeature.UPDATE_BY_SELECTOR, materialized)).isFalse();
 		assertThat(capabilities.supported())
 				.containsExactlyInAnyOrder(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR);
 	}
@@ -65,7 +65,7 @@ class CommandCapabilitiesBuilderTest {
 		CommandCapabilities capabilities = CommandCapabilitiesBuilder.create()
 				.support(CommandFeature.INSERT)
 				.build();
-		assertThatThrownBy(() -> capabilities.supported().add(CommandFeature.TRANSACTION_BRACKET))
+		assertThatThrownBy(() -> capabilities.supported().add(CommandFeature.DELETE_BY_SELECTOR))
 				.isInstanceOf(UnsupportedOperationException.class);
 	}
 }

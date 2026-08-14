@@ -60,6 +60,10 @@ import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
+import org.eclipse.fennec.persistence.capabilities.StoreCapabilities;
+import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
@@ -939,7 +943,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	/** The JPA backend serves the full write surface — one static declaration (issue #114). */
 	private static final CommandCapabilities COMMAND_CAPABILITIES = CommandCapabilitiesBuilder.create()
 			.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
-					CommandFeature.UPDATE_BY_SELECTOR, CommandFeature.TRANSACTION_BRACKET)
+					CommandFeature.UPDATE_BY_SELECTOR)
+			.build();
+
+	/**
+	 * Store features (issue #134): the JPA unit of work always brackets writes atomically, so
+	 * unlike mongo this needs no deployment probe — a relational connection either has
+	 * transactions or is not a JPA target.
+	 */
+	private static final StoreCapabilities STORE_CAPABILITIES = StoreCapabilitiesBuilder.create()
+			.support(StoreFeature.TRANSACTION_BRACKET)
 			.build();
 
 	@Override
@@ -962,9 +975,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
 
+	/**
+	 * The effective capabilities of this resource (issue #134): the query vocabulary comes from
+	 * the processor that would translate a query here, so overriding the processor changes what
+	 * this resource declares. Command and store are static on JPA — nothing about a relational
+	 * connection narrows them per deployment.
+	 */
 	@Override
-	public CommandCapabilities capabilities() {
-		return COMMAND_CAPABILITIES;
+	public PersistenceCapabilities capabilities() {
+		return PersistenceCapabilities.of(queryProcessor.capabilities(), COMMAND_CAPABILITIES,
+				STORE_CAPABILITIES);
 	}
 
 	/**
@@ -973,7 +993,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * IOException — 'refused' stays distinguishable from 'failed'.
 	 */
 	private void ensureCommandSupported(CommandFeature feature, EClass target) throws IOException {
-		if (!capabilities().supports(feature, target)) {
+		if (!COMMAND_CAPABILITIES.supports(feature, target)) {
 			String message = "Command feature " + feature.getName() + " is not supported by this"
 					+ " jpa resource for EClass '" + target.getName() + "'";
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI(), null));

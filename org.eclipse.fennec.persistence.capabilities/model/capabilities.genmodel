@@ -64,7 +64,9 @@
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/INSERT"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/DELETE_BY_SELECTOR"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/UPDATE_BY_SELECTOR"/>
-      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/TRANSACTION_BRACKET"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//StoreFeature">
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/TRANSACTION_BRACKET"/>
     </genEnums>
   </genPackages>
 </genmodel:GenModel>

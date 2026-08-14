@@ -84,6 +84,8 @@ public class CapabilitiesFactoryImpl extends EFactoryImpl implements Capabilitie
 				return createQueryFeatureFromString(eDataType, initialValue);
 			case CapabilitiesPackage.COMMAND_FEATURE:
 				return createCommandFeatureFromString(eDataType, initialValue);
+			case CapabilitiesPackage.STORE_FEATURE:
+				return createStoreFeatureFromString(eDataType, initialValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -101,6 +103,8 @@ public class CapabilitiesFactoryImpl extends EFactoryImpl implements Capabilitie
 				return convertQueryFeatureToString(eDataType, instanceValue);
 			case CapabilitiesPackage.COMMAND_FEATURE:
 				return convertCommandFeatureToString(eDataType, instanceValue);
+			case CapabilitiesPackage.STORE_FEATURE:
+				return convertStoreFeatureToString(eDataType, instanceValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -143,6 +147,26 @@ public class CapabilitiesFactoryImpl extends EFactoryImpl implements Capabilitie
 	 * @generated
 	 */
 	public String convertCommandFeatureToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public StoreFeature createStoreFeatureFromString(EDataType eDataType, String initialValue) {
+		StoreFeature result = StoreFeature.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertStoreFeatureToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 
