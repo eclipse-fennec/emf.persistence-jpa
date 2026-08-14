@@ -8,6 +8,7 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 -library: enableEMF
 
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	biz.aQute.bnd.annotation;version=latest,\
 	org.osgi.annotation.bundle;version=latest,\
 	org.osgi.annotation.versioning;version=latest,\

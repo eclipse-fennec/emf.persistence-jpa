@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:41ab104b1c05aad37b9c9e17c00eff67eab2fbb6b893bb638e7bdee71758fb3d", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
+@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:4fdb91b6a1d6b2f9aa44bd91dd50505dbd752878944f6cd0ffbd644c9152c70d", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
 public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -106,116 +106,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int AUTO_CLOSEABLE_OPERATION_COUNT = 0;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities <em>Command Capabilities</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandCapabilities()
-	 * @generated
-	 */
-	int COMMAND_CAPABILITIES = 1;
-
-	/**
-	 * The number of structural features of the '<em>Command Capabilities</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int COMMAND_CAPABILITIES_FEATURE_COUNT = 0;
-
-	/**
-	 * The operation id for the '<em>Supports</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int COMMAND_CAPABILITIES___SUPPORTS__COMMANDFEATURE = 0;
-
-	/**
-	 * The operation id for the '<em>Supports</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int COMMAND_CAPABILITIES___SUPPORTS__COMMANDFEATURE_ECLASS = 1;
-
-	/**
-	 * The operation id for the '<em>Supported</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int COMMAND_CAPABILITIES___SUPPORTED = 2;
-
-	/**
-	 * The number of operations of the '<em>Command Capabilities</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int COMMAND_CAPABILITIES_OPERATION_COUNT = 3;
-
-	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities <em>Query Capabilities</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryCapabilities()
-	 * @generated
-	 */
-	int QUERY_CAPABILITIES = 2;
-
-	/**
-	 * The number of structural features of the '<em>Query Capabilities</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int QUERY_CAPABILITIES_FEATURE_COUNT = 0;
-
-	/**
-	 * The operation id for the '<em>Supports</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int QUERY_CAPABILITIES___SUPPORTS__QUERYFEATURE = 0;
-
-	/**
-	 * The operation id for the '<em>Supported</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int QUERY_CAPABILITIES___SUPPORTED = 1;
-
-	/**
-	 * The operation id for the '<em>Max Feature Path Depth</em>' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int QUERY_CAPABILITIES___MAX_FEATURE_PATH_DEPTH = 2;
-
-	/**
-	 * The number of operations of the '<em>Query Capabilities</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int QUERY_CAPABILITIES_OPERATION_COUNT = 3;
-
-	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryPlan <em>Query Plan</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -223,7 +113,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryPlan()
 	 * @generated
 	 */
-	int QUERY_PLAN = 3;
+	int QUERY_PLAN = 1;
 
 	/**
 	 * The number of structural features of the '<em>Query Plan</em>' class.
@@ -269,7 +159,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryContext()
 	 * @generated
 	 */
-	int QUERY_CONTEXT = 4;
+	int QUERY_CONTEXT = 2;
 
 	/**
 	 * The number of structural features of the '<em>Query Context</em>' class.
@@ -333,7 +223,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryProcessor()
 	 * @generated
 	 */
-	int QUERY_PROCESSOR = 5;
+	int QUERY_PROCESSOR = 3;
 
 	/**
 	 * The number of structural features of the '<em>Query Processor</em>' class.
@@ -397,7 +287,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryResultRow()
 	 * @generated
 	 */
-	int QUERY_RESULT_ROW = 6;
+	int QUERY_RESULT_ROW = 4;
 
 	/**
 	 * The number of structural features of the '<em>Query Result Row</em>' class.
@@ -452,7 +342,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryResult()
 	 * @generated
 	 */
-	int QUERY_RESULT = 7;
+	int QUERY_RESULT = 5;
 
 	/**
 	 * The number of structural features of the '<em>Query Result</em>' class.
@@ -525,7 +415,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryableResource()
 	 * @generated
 	 */
-	int QUERYABLE_RESOURCE = 8;
+	int QUERYABLE_RESOURCE = 6;
 
 	/**
 	 * The number of structural features of the '<em>Queryable Resource</em>' class.
@@ -580,7 +470,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandResource()
 	 * @generated
 	 */
-	int COMMAND_RESOURCE = 9;
+	int COMMAND_RESOURCE = 7;
 
 	/**
 	 * The number of structural features of the '<em>Command Resource</em>' class.
@@ -635,27 +525,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryShape()
 	 * @generated
 	 */
-	int QUERY_SHAPE = 10;
-
-	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryFeature <em>Query Feature</em>}' enum.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.persistence.query.api.QueryFeature
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryFeature()
-	 * @generated
-	 */
-	int QUERY_FEATURE = 11;
-
-	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.CommandFeature <em>Command Feature</em>}' enum.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.persistence.query.api.CommandFeature
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandFeature()
-	 * @generated
-	 */
-	int COMMAND_FEATURE = 12;
+	int QUERY_SHAPE = 8;
 
 	/**
 	 * The meta object id for the '<em>Diagnostic</em>' data type.
@@ -665,7 +535,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getDiagnostic()
 	 * @generated
 	 */
-	int DIAGNOSTIC = 13;
+	int DIAGNOSTIC = 9;
 
 	/**
 	 * The meta object id for the '<em>Converter Service</em>' data type.
@@ -675,7 +545,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getConverterService()
 	 * @generated
 	 */
-	int CONVERTER_SERVICE = 14;
+	int CONVERTER_SERVICE = 10;
 
 	/**
 	 * The meta object id for the '<em>Query Exception</em>' data type.
@@ -685,7 +555,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryException()
 	 * @generated
 	 */
-	int QUERY_EXCEPTION = 15;
+	int QUERY_EXCEPTION = 11;
 
 	/**
 	 * The meta object id for the '<em>Command Transaction</em>' data type.
@@ -695,7 +565,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandTransaction()
 	 * @generated
 	 */
-	int COMMAND_TRANSACTION = 16;
+	int COMMAND_TRANSACTION = 12;
 
 	/**
 	 * The meta object id for the '<em>IO Exception</em>' data type.
@@ -705,7 +575,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getIOException()
 	 * @generated
 	 */
-	int IO_EXCEPTION = 17;
+	int IO_EXCEPTION = 13;
 
 	/**
 	 * The meta object id for the '<em>EObject Stream</em>' data type.
@@ -715,7 +585,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getEObjectStream()
 	 * @generated
 	 */
-	int EOBJECT_STREAM = 18;
+	int EOBJECT_STREAM = 14;
 
 	/**
 	 * The meta object id for the '<em>Row Stream</em>' data type.
@@ -725,7 +595,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getRowStream()
 	 * @generated
 	 */
-	int ROW_STREAM = 19;
+	int ROW_STREAM = 15;
 
 	/**
 	 * The meta object id for the '<em>Object List</em>' data type.
@@ -735,27 +605,27 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getObjectList()
 	 * @generated
 	 */
-	int OBJECT_LIST = 20;
+	int OBJECT_LIST = 16;
 
 	/**
-	 * The meta object id for the '<em>Command Feature Set</em>' data type.
+	 * The meta object id for the '<em>Query Capabilities</em>' data type.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see java.util.Set
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandFeatureSet()
+	 * @see org.eclipse.fennec.persistence.capabilities.QueryCapabilities
+	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryCapabilities()
 	 * @generated
 	 */
-	int COMMAND_FEATURE_SET = 21;
+	int QUERY_CAPABILITIES = 17;
 
 	/**
-	 * The meta object id for the '<em>Query Feature Set</em>' data type.
+	 * The meta object id for the '<em>Command Capabilities</em>' data type.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see java.util.Set
-	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryFeatureSet()
+	 * @see org.eclipse.fennec.persistence.capabilities.CommandCapabilities
+	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandCapabilities()
 	 * @generated
 	 */
-	int QUERY_FEATURE_SET = 22;
+	int COMMAND_CAPABILITIES = 18;
 
 	/**
 	 * The meta object id for the '<em>Parameter Map</em>' data type.
@@ -765,7 +635,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getParameterMap()
 	 * @generated
 	 */
-	int PARAMETER_MAP = 23;
+	int PARAMETER_MAP = 19;
 
 	/**
 	 * The meta object id for the '<em>Options Map</em>' data type.
@@ -775,7 +645,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getOptionsMap()
 	 * @generated
 	 */
-	int OPTIONS_MAP = 24;
+	int OPTIONS_MAP = 20;
 
 
 	/**
@@ -788,86 +658,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EClass getAutoCloseable();
-
-	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities <em>Command Capabilities</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Command Capabilities</em>'.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities
-	 * @generated
-	 */
-	EClass getCommandCapabilities();
-
-	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities#supports(org.eclipse.fennec.persistence.query.api.CommandFeature) <em>Supports</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Supports</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities#supports(org.eclipse.fennec.persistence.query.api.CommandFeature)
-	 * @generated
-	 */
-	EOperation getCommandCapabilities__Supports__CommandFeature();
-
-	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities#supports(org.eclipse.fennec.persistence.query.api.CommandFeature, org.eclipse.emf.ecore.EClass) <em>Supports</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Supports</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities#supports(org.eclipse.fennec.persistence.query.api.CommandFeature, org.eclipse.emf.ecore.EClass)
-	 * @generated
-	 */
-	EOperation getCommandCapabilities__Supports__CommandFeature_EClass();
-
-	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities#supported() <em>Supported</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Supported</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities#supported()
-	 * @generated
-	 */
-	EOperation getCommandCapabilities__Supported();
-
-	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities <em>Query Capabilities</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Query Capabilities</em>'.
-	 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities
-	 * @generated
-	 */
-	EClass getQueryCapabilities();
-
-	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities#supports(org.eclipse.fennec.persistence.query.api.QueryFeature) <em>Supports</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Supports</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities#supports(org.eclipse.fennec.persistence.query.api.QueryFeature)
-	 * @generated
-	 */
-	EOperation getQueryCapabilities__Supports__QueryFeature();
-
-	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities#supported() <em>Supported</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Supported</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities#supported()
-	 * @generated
-	 */
-	EOperation getQueryCapabilities__Supported();
-
-	/**
-	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities#maxFeaturePathDepth() <em>Max Feature Path Depth</em>}' operation.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the '<em>Max Feature Path Depth</em>' operation.
-	 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities#maxFeaturePathDepth()
-	 * @generated
-	 */
-	EOperation getQueryCapabilities__MaxFeaturePathDepth();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.query.api.QueryPlan <em>Query Plan</em>}'.
@@ -1190,26 +980,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EEnum getQueryShape();
 
 	/**
-	 * Returns the meta object for enum '{@link org.eclipse.fennec.persistence.query.api.QueryFeature <em>Query Feature</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for enum '<em>Query Feature</em>'.
-	 * @see org.eclipse.fennec.persistence.query.api.QueryFeature
-	 * @generated
-	 */
-	EEnum getQueryFeature();
-
-	/**
-	 * Returns the meta object for enum '{@link org.eclipse.fennec.persistence.query.api.CommandFeature <em>Command Feature</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for enum '<em>Command Feature</em>'.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandFeature
-	 * @generated
-	 */
-	EEnum getCommandFeature();
-
-	/**
 	 * Returns the meta object for data type '{@link org.eclipse.emf.common.util.Diagnostic <em>Diagnostic</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1322,32 +1092,32 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EDataType getObjectList();
 
 	/**
-	 * Returns the meta object for data type '{@link java.util.Set <em>Command Feature Set</em>}'.
+	 * Returns the meta object for data type '{@link org.eclipse.fennec.persistence.capabilities.QueryCapabilities <em>Query Capabilities</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
      * <!-- begin-model-doc -->
-     * An immutable java.util.Set of CommandFeatures.
+     * What a QueryProcessor declares it serves natively, plus its structural limits. Plain Java in the capabilities bundle rather than an EClass here (issue #134, contract §5a): a capability is a value that gets asked, not an EObject that gets loaded, and the declaration surface must not depend on the query model. Wrapped as an EDataType for the same reason ConverterService and Diagnostic are.
      * <!-- end-model-doc -->
-	 * @return the meta object for data type '<em>Command Feature Set</em>'.
-	 * @see java.util.Set
-	 * @model instanceClass="java.util.Set&lt;org.eclipse.fennec.persistence.query.api.CommandFeature&gt;"
+	 * @return the meta object for data type '<em>Query Capabilities</em>'.
+	 * @see org.eclipse.fennec.persistence.capabilities.QueryCapabilities
+	 * @model instanceClass="org.eclipse.fennec.persistence.capabilities.QueryCapabilities"
 	 * @generated
 	 */
-	EDataType getCommandFeatureSet();
+	EDataType getQueryCapabilities();
 
 	/**
-	 * Returns the meta object for data type '{@link java.util.Set <em>Query Feature Set</em>}'.
+	 * Returns the meta object for data type '{@link org.eclipse.fennec.persistence.capabilities.CommandCapabilities <em>Command Capabilities</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
      * <!-- begin-model-doc -->
-     * An immutable java.util.Set of QueryFeatures.
+     * What a CommandResource declares it serves, backend-wide and narrowed per EClass (issue #114). Plain Java in the capabilities bundle - see QueryCapabilities.
      * <!-- end-model-doc -->
-	 * @return the meta object for data type '<em>Query Feature Set</em>'.
-	 * @see java.util.Set
-	 * @model instanceClass="java.util.Set&lt;org.eclipse.fennec.persistence.query.api.QueryFeature&gt;"
+	 * @return the meta object for data type '<em>Command Capabilities</em>'.
+	 * @see org.eclipse.fennec.persistence.capabilities.CommandCapabilities
+	 * @model instanceClass="org.eclipse.fennec.persistence.capabilities.CommandCapabilities"
 	 * @generated
 	 */
-	EDataType getQueryFeatureSet();
+	EDataType getCommandCapabilities();
 
 	/**
 	 * Returns the meta object for data type '{@link java.util.Map <em>Parameter Map</em>}'.
@@ -1409,74 +1179,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EClass AUTO_CLOSEABLE = eINSTANCE.getAutoCloseable();
-
-		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities <em>Command Capabilities</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandCapabilities()
-		 * @generated
-		 */
-		EClass COMMAND_CAPABILITIES = eINSTANCE.getCommandCapabilities();
-
-		/**
-		 * The meta object literal for the '<em><b>Supports</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation COMMAND_CAPABILITIES___SUPPORTS__COMMANDFEATURE = eINSTANCE.getCommandCapabilities__Supports__CommandFeature();
-
-		/**
-		 * The meta object literal for the '<em><b>Supports</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation COMMAND_CAPABILITIES___SUPPORTS__COMMANDFEATURE_ECLASS = eINSTANCE.getCommandCapabilities__Supports__CommandFeature_EClass();
-
-		/**
-		 * The meta object literal for the '<em><b>Supported</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation COMMAND_CAPABILITIES___SUPPORTED = eINSTANCE.getCommandCapabilities__Supported();
-
-		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities <em>Query Capabilities</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryCapabilities()
-		 * @generated
-		 */
-		EClass QUERY_CAPABILITIES = eINSTANCE.getQueryCapabilities();
-
-		/**
-		 * The meta object literal for the '<em><b>Supports</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation QUERY_CAPABILITIES___SUPPORTS__QUERYFEATURE = eINSTANCE.getQueryCapabilities__Supports__QueryFeature();
-
-		/**
-		 * The meta object literal for the '<em><b>Supported</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation QUERY_CAPABILITIES___SUPPORTED = eINSTANCE.getQueryCapabilities__Supported();
-
-		/**
-		 * The meta object literal for the '<em><b>Max Feature Path Depth</b></em>' operation.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EOperation QUERY_CAPABILITIES___MAX_FEATURE_PATH_DEPTH = eINSTANCE.getQueryCapabilities__MaxFeaturePathDepth();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.QueryPlan <em>Query Plan</em>}' class.
@@ -1751,26 +1453,6 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		EEnum QUERY_SHAPE = eINSTANCE.getQueryShape();
 
 		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.QueryFeature <em>Query Feature</em>}' enum.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.persistence.query.api.QueryFeature
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryFeature()
-		 * @generated
-		 */
-		EEnum QUERY_FEATURE = eINSTANCE.getQueryFeature();
-
-		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.CommandFeature <em>Command Feature</em>}' enum.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.persistence.query.api.CommandFeature
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandFeature()
-		 * @generated
-		 */
-		EEnum COMMAND_FEATURE = eINSTANCE.getCommandFeature();
-
-		/**
 		 * The meta object literal for the '<em>Diagnostic</em>' data type.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -1851,24 +1533,24 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		EDataType OBJECT_LIST = eINSTANCE.getObjectList();
 
 		/**
-		 * The meta object literal for the '<em>Command Feature Set</em>' data type.
+		 * The meta object literal for the '<em>Query Capabilities</em>' data type.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see java.util.Set
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandFeatureSet()
+		 * @see org.eclipse.fennec.persistence.capabilities.QueryCapabilities
+		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryCapabilities()
 		 * @generated
 		 */
-		EDataType COMMAND_FEATURE_SET = eINSTANCE.getCommandFeatureSet();
+		EDataType QUERY_CAPABILITIES = eINSTANCE.getQueryCapabilities();
 
 		/**
-		 * The meta object literal for the '<em>Query Feature Set</em>' data type.
+		 * The meta object literal for the '<em>Command Capabilities</em>' data type.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see java.util.Set
-		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryFeatureSet()
+		 * @see org.eclipse.fennec.persistence.capabilities.CommandCapabilities
+		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandCapabilities()
 		 * @generated
 		 */
-		EDataType QUERY_FEATURE_SET = eINSTANCE.getQueryFeatureSet();
+		EDataType COMMAND_CAPABILITIES = eINSTANCE.getCommandCapabilities();
 
 		/**
 		 * The meta object literal for the '<em>Parameter Map</em>' data type.

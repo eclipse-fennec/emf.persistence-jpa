@@ -15,64 +15,6 @@
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/AGGREGATION"/>
       <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryShape/COUNT"/>
     </genEnums>
-    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query-api.ecore#//QueryFeature">
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_EQ"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_COMPARISON"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_STRING_MATCH"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_RANGE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LOGICAL_AND"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LOGICAL_OR"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LOGICAL_NOT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/WHERE_NE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/IS_NULL"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/IN"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/EXISTS"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FOR_ALL"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/STRING_MATCH_CASE_INSENSITIVE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FIELD_TO_FIELD"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SORT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/LIMIT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SKIP"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/DISTINCT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/COUNT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PROJECTION"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PROJECTION_NESTED"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/EXPAND"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PIPELINE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GROUP_BY"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_AVG"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_MIN"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_MAX"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_SUM"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_COUNT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AGG_COUNT_DISTINCT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/STRING_FUNCTIONS"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/ARITHMETIC"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/STRING_FUNCTIONS_EXTENDED"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/NUMERIC_FUNCTIONS"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TEMPORAL_FUNCTIONS"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_CAST"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_CHECK"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/COLLECTION_COUNT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/COLLECTION_COUNT_FILTERED"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PIPELINE_COMPUTE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SORT_EXPRESSION"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GROUP_EXPRESSION"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SCORE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GEO_WITHIN"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/GEO_DISTANCE"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/TYPE_FILTER"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/PARAMETERS"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/AS_OF"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//QueryFeature/SERIES_RANGE"/>
-    </genEnums>
-    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query-api.ecore#//CommandFeature">
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/INSERT"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/DELETE_BY_SELECTOR"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/UPDATE_BY_SELECTOR"/>
-      <genEnumLiterals ecoreEnumLiteral="query-api.ecore#//CommandFeature/TRANSACTION_BRACKET"/>
-    </genEnums>
     <genDataTypes ecoreDataType="query-api.ecore#//Diagnostic"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ConverterService"/>
     <genDataTypes ecoreDataType="query-api.ecore#//QueryException"/>
@@ -81,28 +23,11 @@
     <genDataTypes ecoreDataType="query-api.ecore#//EObjectStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//RowStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//CommandFeatureSet"/>
-    <genDataTypes ecoreDataType="query-api.ecore#//QueryFeatureSet"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//QueryCapabilities"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//CommandCapabilities"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
     <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//AutoCloseable"/>
-    <genClasses image="false" ecoreClass="query-api.ecore#//CommandCapabilities">
-      <genOperations ecoreOperation="query-api.ecore#//CommandCapabilities/supports">
-        <genParameters ecoreParameter="query-api.ecore#//CommandCapabilities/supports/feature"/>
-      </genOperations>
-      <genOperations ecoreOperation="query-api.ecore#//CommandCapabilities/supports.1">
-        <genParameters ecoreParameter="query-api.ecore#//CommandCapabilities/supports.1/feature"/>
-        <genParameters ecoreParameter="query-api.ecore#//CommandCapabilities/supports.1/eClass"/>
-      </genOperations>
-      <genOperations ecoreOperation="query-api.ecore#//CommandCapabilities/supported"/>
-    </genClasses>
-    <genClasses image="false" ecoreClass="query-api.ecore#//QueryCapabilities">
-      <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/supports">
-        <genParameters ecoreParameter="query-api.ecore#//QueryCapabilities/supports/feature"/>
-      </genOperations>
-      <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/supported"/>
-      <genOperations ecoreOperation="query-api.ecore#//QueryCapabilities/maxFeaturePathDepth"/>
-    </genClasses>
     <genClasses image="false" ecoreClass="query-api.ecore#//QueryPlan">
       <genOperations ecoreOperation="query-api.ecore#//QueryPlan/source"/>
       <genOperations ecoreOperation="query-api.ecore#//QueryPlan/shape"/>

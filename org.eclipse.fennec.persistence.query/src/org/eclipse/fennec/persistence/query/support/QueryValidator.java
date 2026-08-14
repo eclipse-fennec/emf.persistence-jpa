@@ -16,9 +16,9 @@ import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.query.expr.ExpressionAnalyzer;
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
 
 /**
  * Validates a canonical {@link Query} against a backend's declared

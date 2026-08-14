@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 
 /**

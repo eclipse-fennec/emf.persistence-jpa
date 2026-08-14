@@ -18,6 +18,8 @@ import org.eclipse.emf.ecore.EClass;
 
 import org.eclipse.fennec.model.query.Query;
 
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
+
 import org.eclipse.fennec.persistence.query.QueryException;
 
 import org.osgi.annotation.versioning.ProviderType;
@@ -55,7 +57,7 @@ public interface QueryProcessor {
 	 * <!-- begin-model-doc -->
 	 * The features this processor serves natively.
 	 * <!-- end-model-doc -->
-	 * @model
+	 * @model dataType="org.eclipse.fennec.persistence.query.api.QueryCapabilities"
 	 * @generated
 	 */
 	QueryCapabilities capabilities();

@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.query.support;
+package org.eclipse.fennec.persistence.capabilities;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -19,8 +19,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
 import org.junit.jupiter.api.Test;
 
 /**

@@ -14,6 +14,7 @@
 	bnd.identity;id='org.eclipse.fennec.persistence.orm',\
 	bnd.identity;id='org.eclipse.fennec.persistence.pushstreams',\
 	bnd.identity;id='org.eclipse.fennec.persistence.mongo',\
+	bnd.identity;id='org.eclipse.fennec.persistence.capabilities',\
 	bnd.identity;id='org.eclipse.fennec.persistence.query',\
 	bnd.identity;id='org.eclipse.fennec.query.model',\
 	bnd.identity;id='org.eclipse.fennec.stream.model',\
@@ -29,6 +30,7 @@
 	org.eclipse.daanse.jdbc.datasource.common;version='[0.0.1,0.0.2)',\
 	org.eclipse.daanse.jdbc.datasource.postgresql;version='[0.0.1,0.0.2)',\
 	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
 	org.eclipse.fennec.persistence.orm;version=snapshot,\
 	org.osgi.service.component;version='[1.5.1,1.5.2)',\

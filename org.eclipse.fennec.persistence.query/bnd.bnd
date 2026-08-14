@@ -18,6 +18,7 @@ src=${^src},src-gen
 -includeresource.model: model=model
 
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	biz.aQute.bnd.annotation;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.eclipse.emf.ecore.xmi;version=latest,\

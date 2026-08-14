@@ -6,6 +6,7 @@ Bundle-Description: EMF Persistence with MongoDB
 -library: enableEMF
 
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	biz.aQute.bnd.annotation;version=latest,\
 	org.osgi.service.cm;version=latest,\
 	org.eclipse.fennec.persistence;version=snapshot;packages='*',\

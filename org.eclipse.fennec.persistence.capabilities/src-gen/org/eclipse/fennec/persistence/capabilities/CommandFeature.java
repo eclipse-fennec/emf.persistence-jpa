@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  */
-package org.eclipse.fennec.persistence.query.api;
+package org.eclipse.fennec.persistence.capabilities;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,7 +28,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- begin-model-doc -->
  * A single, backend-neutral write-command capability (issue #114) — the command-side mirror of QueryFeature, deliberately a separate enum: QueryCapabilities is the query-validate contract and stays untouched. Literal values are grouped with gaps: commands 0+, structural 20+.
  * <!-- end-model-doc -->
- * @see org.eclipse.fennec.persistence.query.api.QueryApiPackage#getCommandFeature()
+ * @see org.eclipse.fennec.persistence.capabilities.CapabilitiesPackage#getCommandFeature()
  * @model
  * @generated
  */

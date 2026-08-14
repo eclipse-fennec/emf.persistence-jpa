@@ -29,6 +29,7 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 
 # sets the usually required buildpath using the bnd library, you can extend it with the normal -buildpath to your liking
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	jakarta.persistence-api;version=latest,\
 	org.osgi.framework;version=latest,\
 	org.osgi.resource;version=latest,\

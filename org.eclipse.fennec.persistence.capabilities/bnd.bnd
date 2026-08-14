@@ -1,0 +1,24 @@
+Bundle-Name: Eclipse Fennec Persistence Capabilities
+Bundle-Description: What a backend declares it can do: the closed feature vocabulary as EEnums, and the capability types a backend answers with
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/capabilities.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/capabilities.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model
+
+-buildpath: \
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.emf.ecore.xmi;version=latest
+
+-testpath: \
+	assertj-core

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel"
+    copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.persistence.capabilities/src" modelPluginID="org.eclipse.fennec.persistence.capabilities"
+    modelName="Capabilities" rootExtendsInterface="" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>capabilities.ecore</foreignModel>
+  <genPackages prefix="Capabilities" basePackage="org.eclipse.fennec.persistence"
+      disposableProviderFactory="true" ecorePackage="capabilities.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//QueryFeature">
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/WHERE_EQ"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/WHERE_COMPARISON"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/WHERE_STRING_MATCH"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/WHERE_RANGE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/LOGICAL_AND"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/LOGICAL_OR"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/LOGICAL_NOT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/WHERE_NE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/IS_NULL"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/IN"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/EXISTS"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/FOR_ALL"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/STRING_MATCH_CASE_INSENSITIVE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/FIELD_TO_FIELD"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SORT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/LIMIT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SKIP"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/DISTINCT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/PROJECTION"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/PROJECTION_NESTED"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/EXPAND"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/PIPELINE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GROUP_BY"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AGG_AVG"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AGG_MIN"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AGG_MAX"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AGG_SUM"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AGG_COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AGG_COUNT_DISTINCT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/STRING_FUNCTIONS"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/ARITHMETIC"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/STRING_FUNCTIONS_EXTENDED"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/NUMERIC_FUNCTIONS"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/TEMPORAL_FUNCTIONS"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/TYPE_CAST"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/TYPE_CHECK"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/COLLECTION_COUNT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/COLLECTION_COUNT_FILTERED"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/PIPELINE_COMPUTE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SORT_EXPRESSION"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GROUP_EXPRESSION"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SCORE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GEO_WITHIN"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GEO_DISTANCE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/TYPE_FILTER"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/PARAMETERS"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AS_OF"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SERIES_RANGE"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//CommandFeature">
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/INSERT"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/DELETE_BY_SELECTOR"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/UPDATE_BY_SELECTOR"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//CommandFeature/TRANSACTION_BRACKET"/>
+    </genEnums>
+  </genPackages>
+</genmodel:GenModel>

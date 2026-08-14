@@ -17,8 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.EnumSet;
 import java.util.Set;
 
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
