@@ -40,7 +40,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = CapabilitiesPackage.eNS_URI, fingerprint = "fp1:3b3d52577b0c0dbb5c1275fcf570d8766a520513d5e0f21448d5af3178b74af5", genModel = "/model/capabilities.genmodel", genModelSourceLocations = {"model/capabilities.genmodel","org.eclipse.fennec.persistence.capabilities/model/capabilities.genmodel"}, ecore = "/model/capabilities.ecore", ecoreSourceLocations = "/model/capabilities.ecore")
+@EPackage(uri = CapabilitiesPackage.eNS_URI, fingerprint = "fp1:9d7b9f04e78d11d34b28f420162fee0f996bd0181b50ec06e1d4b95bb54d2faa", genModel = "/model/capabilities.genmodel", genModelSourceLocations = {"model/capabilities.genmodel","org.eclipse.fennec.persistence.capabilities/model/capabilities.genmodel"}, ecore = "/model/capabilities.ecore", ecoreSourceLocations = "/model/capabilities.ecore")
 public interface CapabilitiesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -94,6 +94,16 @@ public interface CapabilitiesPackage extends org.eclipse.emf.ecore.EPackage {
 	 */
 	int COMMAND_FEATURE = 1;
 
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.persistence.capabilities.StoreFeature <em>Store Feature</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.persistence.capabilities.StoreFeature
+	 * @see org.eclipse.fennec.persistence.capabilities.impl.CapabilitiesPackageImpl#getStoreFeature()
+	 * @generated
+	 */
+	int STORE_FEATURE = 2;
+
 
 	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.persistence.capabilities.QueryFeature <em>Query Feature</em>}'.
@@ -114,6 +124,16 @@ public interface CapabilitiesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getCommandFeature();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.persistence.capabilities.StoreFeature <em>Store Feature</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Store Feature</em>'.
+	 * @see org.eclipse.fennec.persistence.capabilities.StoreFeature
+	 * @generated
+	 */
+	EEnum getStoreFeature();
 
 	/**
 	 * Returns the factory that creates the instances of the model.
@@ -157,6 +177,16 @@ public interface CapabilitiesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum COMMAND_FEATURE = eINSTANCE.getCommandFeature();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.capabilities.StoreFeature <em>Store Feature</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.persistence.capabilities.StoreFeature
+		 * @see org.eclipse.fennec.persistence.capabilities.impl.CapabilitiesPackageImpl#getStoreFeature()
+		 * @generated
+		 */
+		EEnum STORE_FEATURE = eINSTANCE.getStoreFeature();
 
 	}
 

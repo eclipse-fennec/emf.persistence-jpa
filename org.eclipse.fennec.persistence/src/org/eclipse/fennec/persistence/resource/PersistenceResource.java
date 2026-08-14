@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 
 /**
  * Resource extension for the persistence context
@@ -62,11 +63,28 @@ public interface PersistenceResource extends Resource, AutoCloseable {
 	boolean exist() throws IOException;
 	
 	/**
-	 * Checks whether the resource content exists 
+	 * Checks whether the resource content exists
 	 * @param options the exist options map
 	 * @return <code>true</code>, if the resource content exists
 	 * @throws IOException
 	 */
 	boolean exist(Map<?, ?> options) throws IOException;
+
+	/**
+	 * What this resource's backend can do — query vocabulary, command verbs and store features
+	 * in one place (issue #134, contract §5a).
+	 * <p>
+	 * Answered here rather than on an optional query or command role, because a capability
+	 * statement must be reachable without holding one: whether the store brackets writes
+	 * atomically decides how cascade-delete converges on the <em>save</em> path (§4a).
+	 * <p>
+	 * These are the <b>effective</b> capabilities of this resource instance, so a deployment
+	 * probe has already narrowed the backend's declaration to what is actually served here —
+	 * mongo answers {@code TRANSACTION_BRACKET} per replica-set probe, for example. A probe only
+	 * ever narrows.
+	 *
+	 * @return the effective capabilities, never {@code null}
+	 */
+	PersistenceCapabilities capabilities();
 
 }

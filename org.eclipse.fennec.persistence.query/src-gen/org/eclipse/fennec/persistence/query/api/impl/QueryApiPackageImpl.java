@@ -41,7 +41,6 @@ import org.eclipse.fennec.model.stream.StreamPackage;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
 
-import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -191,13 +190,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EDataType queryCapabilitiesEDataType = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EDataType commandCapabilitiesEDataType = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -595,16 +587,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
-	public EOperation getCommandResource__Capabilities() {
-		return commandResourceEClass.getEOperations().get(2);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
 	public EEnum getQueryShape() {
 		return queryShapeEEnum;
 	}
@@ -705,16 +687,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
-	public EDataType getCommandCapabilities() {
-		return commandCapabilitiesEDataType;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
 	public EDataType getParameterMap() {
 		return parameterMapEDataType;
 	}
@@ -796,7 +768,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		commandResourceEClass = createEClass(COMMAND_RESOURCE);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___BEGIN);
-		createEOperation(commandResourceEClass, COMMAND_RESOURCE___CAPABILITIES);
 
 		// Create enums
 		queryShapeEEnum = createEEnum(QUERY_SHAPE);
@@ -811,7 +782,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		rowStreamEDataType = createEDataType(ROW_STREAM);
 		objectListEDataType = createEDataType(OBJECT_LIST);
 		queryCapabilitiesEDataType = createEDataType(QUERY_CAPABILITIES);
-		commandCapabilitiesEDataType = createEDataType(COMMAND_CAPABILITIES);
 		parameterMapEDataType = createEDataType(PARAMETER_MAP);
 		optionsMapEDataType = createEDataType(OPTIONS_MAP);
 	}
@@ -933,8 +903,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		op = initEOperation(getCommandResource__Begin(), this.getCommandTransaction(), "begin", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, this.getIOException());
 
-		initEOperation(getCommandResource__Capabilities(), this.getCommandCapabilities(), "capabilities", 0, 1, IS_UNIQUE, IS_ORDERED);
-
 		// Initialize enums and add enum literals
 		initEEnum(queryShapeEEnum, QueryShape.class, "QueryShape");
 		addEEnumLiteral(queryShapeEEnum, QueryShape.OBJECTS);
@@ -952,7 +920,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		initEDataType(rowStreamEDataType, Stream.class, "RowStream", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.stream.Stream<org.eclipse.fennec.persistence.query.api.QueryResultRow>");
 		initEDataType(objectListEDataType, List.class, "ObjectList", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.List<java.lang.Object>");
 		initEDataType(queryCapabilitiesEDataType, QueryCapabilities.class, "QueryCapabilities", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
-		initEDataType(commandCapabilitiesEDataType, CommandCapabilities.class, "CommandCapabilities", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(parameterMapEDataType, Map.class, "ParameterMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<java.lang.String, java.lang.Object>");
 		initEDataType(optionsMapEDataType, Map.class, "OptionsMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<?, ?>");
 

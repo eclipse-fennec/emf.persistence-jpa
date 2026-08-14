@@ -80,7 +80,7 @@ public final class MongoFlavorCapabilities {
 	 * The one behavioural difference is not a query feature: the gateway is a single logical
 	 * server, so multi-document transactions are unavailable. That needs nothing here — the
 	 * runtime probe in {@code MongoResourceImpl.capabilities()} already leaves
-	 * {@code CommandFeature.TRANSACTION_BRACKET} undeclared for a standalone deployment and
+	 * {@code StoreFeature.TRANSACTION_BRACKET} undeclared for a standalone deployment and
 	 * refuses {@code begin()} with a Diagnostic (issues #112/#114).
 	 * <p>
 	 * Scope of the claim: "no gap in what the TCK exercises". The suite is the measuring

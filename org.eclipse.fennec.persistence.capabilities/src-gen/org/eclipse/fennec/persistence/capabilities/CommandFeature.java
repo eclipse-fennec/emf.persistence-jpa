@@ -71,20 +71,7 @@ public enum CommandFeature implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	UPDATE_BY_SELECTOR(2, "UPDATE_BY_SELECTOR", "UPDATE_BY_SELECTOR"),
-
-	/**
-	 * The '<em><b>TRANSACTION BRACKET</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * begin(): an atomic multi-command bracket (issue #108). May depend on the deployment, not just the backend — mongo answers per hello-probe (replica set vs. standalone) — so capabilities are per resource instance.
-	 * <!-- end-model-doc -->
-	 * @see #TRANSACTION_BRACKET_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	TRANSACTION_BRACKET(20, "TRANSACTION_BRACKET", "TRANSACTION_BRACKET");
+	UPDATE_BY_SELECTOR(2, "UPDATE_BY_SELECTOR", "UPDATE_BY_SELECTOR");
 
 	/**
 	 * The '<em><b>INSERT</b></em>' literal value.
@@ -129,20 +116,6 @@ public enum CommandFeature implements Enumerator {
 	public static final int UPDATE_BY_SELECTOR_VALUE = 2;
 
 	/**
-	 * The '<em><b>TRANSACTION BRACKET</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * begin(): an atomic multi-command bracket (issue #108). May depend on the deployment, not just the backend — mongo answers per hello-probe (replica set vs. standalone) — so capabilities are per resource instance.
-	 * <!-- end-model-doc -->
-	 * @see #TRANSACTION_BRACKET
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int TRANSACTION_BRACKET_VALUE = 20;
-
-	/**
 	 * An array of all the '<em><b>Command Feature</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -153,7 +126,6 @@ public enum CommandFeature implements Enumerator {
 			INSERT,
 			DELETE_BY_SELECTOR,
 			UPDATE_BY_SELECTOR,
-			TRANSACTION_BRACKET,
 		};
 
 	/**
@@ -213,7 +185,6 @@ public enum CommandFeature implements Enumerator {
 			case INSERT_VALUE: return INSERT;
 			case DELETE_BY_SELECTOR_VALUE: return DELETE_BY_SELECTOR;
 			case UPDATE_BY_SELECTOR_VALUE: return UPDATE_BY_SELECTOR;
-			case TRANSACTION_BRACKET_VALUE: return TRANSACTION_BRACKET;
 		}
 		return null;
 	}

@@ -80,6 +80,9 @@ import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
+import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
@@ -761,36 +764,47 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
 
+	/** The write commands this backend serves, independent of the deployment (issue #114). */
+	private static final CommandCapabilities COMMAND_CAPABILITIES = CommandCapabilitiesBuilder.create()
+			.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
+					CommandFeature.UPDATE_BY_SELECTOR)
+			.build();
+
 	/**
-	 * The write commands this resource serves (issue #114) — per resource instance:
-	 * {@code TRANSACTION_BRACKET} depends on the deployment (replica set/mongos) and
-	 * the factory-injected session-capable client, not just the backend.
+	 * The effective capabilities of this resource (issue #134). Query vocabulary comes from the
+	 * processor that would translate here, so it follows the flavor; commands are static.
+	 * <p>
+	 * The store half is the one that has to be probed per resource instance:
+	 * {@code TRANSACTION_BRACKET} depends on the deployment — replica set or mongos, plus a
+	 * factory-injected session-capable client — not on the backend alone. Note the direction:
+	 * the probe only ever <em>adds nothing</em> the backend cannot do and takes away what this
+	 * deployment cannot serve.
 	 */
 	@Override
-	public CommandCapabilities capabilities() {
-		CommandCapabilitiesBuilder builder = CommandCapabilitiesBuilder.create()
-				.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
-						CommandFeature.UPDATE_BY_SELECTOR);
+	public PersistenceCapabilities capabilities() {
+		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create();
 		if (nonNull(client) && transactionalDeployment()) {
-			builder.support(CommandFeature.TRANSACTION_BRACKET);
+			store.support(StoreFeature.TRANSACTION_BRACKET);
 		}
-		return builder.build();
+		return PersistenceCapabilities.of(queryProcessor.capabilities(), COMMAND_CAPABILITIES,
+				store.build());
 	}
 
 	/** Refuses an undeclared command feature before any work (issue #114). */
 	private void ensureCommandSupported(CommandFeature feature, EClass target) throws IOException {
-		if (!capabilities().supports(feature, target)) {
-			throw refused(feature, "for EClass '" + target.getName() + "'");
+		if (!COMMAND_CAPABILITIES.supports(feature, target)) {
+			throw refused(feature.getName(), "for EClass '" + target.getName() + "'");
 		}
 	}
 
 	/**
-	 * The issue-#114 refusal contract: a Diagnostic naming the {@link CommandFeature}
-	 * lands in the resource errors before the IOException — 'refused because this
-	 * backend cannot' stays distinguishable from 'failed while trying'.
+	 * The issue-#114 refusal contract: a Diagnostic naming the refused feature lands in the
+	 * resource errors before the IOException — 'refused because this backend cannot' stays
+	 * distinguishable from 'failed while trying'. Takes the literal name rather than an enum,
+	 * because both {@link CommandFeature} and {@link StoreFeature} get refused here.
 	 */
-	private IOException refused(CommandFeature feature, String detail) {
-		String message = "Command feature " + feature.getName() + " is not supported by this"
+	private IOException refused(String feature, String detail) {
+		String message = "Command feature " + feature + " is not supported by this"
 				+ " mongo resource: " + detail;
 		getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI(), null));
 		return new IOException(message);
@@ -814,11 +828,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					+ " — commit or close it before opening another");
 		}
 		if (isNull(client)) {
-			throw refused(CommandFeature.TRANSACTION_BRACKET, "no session-capable MongoClient"
+			throw refused(StoreFeature.TRANSACTION_BRACKET.getName(), "no session-capable MongoClient"
 					+ " — construct the MongoResourceFactory with the client (issue #112)");
 		}
 		if (!transactionalDeployment()) {
-			throw refused(CommandFeature.TRANSACTION_BRACKET, "transactions require a replica set"
+			throw refused(StoreFeature.TRANSACTION_BRACKET.getName(), "transactions require a replica set"
 					+ " or mongos — this MongoDB deployment is standalone (issue #112)");
 		}
 		ClientSession session;

@@ -7,6 +7,7 @@ Bundle-Description: EMF Persistence API
 	enableEMF
 	
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	biz.aQute.bnd.annotation,\
 	org.osgi.dto;version=latest
 -testpath: assertj-core

@@ -270,7 +270,7 @@ a version check alone would conclude "real MongoDB".
 | Capability | `mongo` | `ferretdb` | `documentdb-pg` |
 |------------|---------|------------|-----------------|
 | Query features (`where`, `sort`, projection, aggregation, pipelines, geo, type/temporal/string functions) | all | all | all |
-| Multi-document transactions (`CommandFeature.TRANSACTION_BRACKET`) | replica set / mongos only | no | yes |
+| Multi-document transactions (`StoreFeature.TRANSACTION_BRACKET`) | replica set / mongos only | no | yes |
 | Reports itself in `buildInfo` as | MongoDB (`gitVersion`) | `ferretdb` sub-document | nothing |
 
 <!-- flavor-gaps:ferretdb -->
