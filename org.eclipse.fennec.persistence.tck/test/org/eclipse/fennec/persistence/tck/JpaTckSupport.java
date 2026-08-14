@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.fennec.persistence.api.ConverterService;
@@ -58,15 +57,13 @@ final class JpaTckSupport {
 		Map<String, Object> props = new HashMap<>();
 		props.put(PersistenceUnitProperties.DDL_GENERATION, "create-or-extend-tables");
 		props.put(PersistenceUnitProperties.DDL_GENERATION_MODE, "database");
-		props.put(PersistenceUnitProperties.JDBC_DRIVER, "org.h2.Driver");
-		props.put(PersistenceUnitProperties.JDBC_URL, "jdbc:h2:mem:" + puName + "_" + UUID.randomUUID());
-		props.put(PersistenceUnitProperties.JDBC_USER, "sa");
-		props.put(PersistenceUnitProperties.JDBC_PASSWORD, "");
 		props.put(PersistenceUnitProperties.LOGGING_LEVEL, "WARNING");
 		props.put(PersistenceUnitProperties.WEAVING, "false");
-		props.put(PersistenceUnitProperties.TARGET_DATABASE, "Auto");
 		props.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
 		props.put(PersistenceUnitProperties.CLASSLOADER, dcl);
+		// driver, url, credentials and dialect come from the flavor under test (issue #134, §6);
+		// DDL generation deliberately stays in the picture — it is where dialects differ
+		props.putAll(JpaTestSupport.jdbcProperties(puName));
 
 		PersistenceUnit persistenceUnit = EPersistenceFactory.eINSTANCE.createPersistenceUnit();
 		persistenceUnit.setName(puName);

@@ -375,19 +375,31 @@ moment JPA joins the matrix.
 
 | Backend | Flavor | Notes |
 |---|---|---|
-| `jpa` | `h2` | in-memory, the fast default |
-| | `postgres` | EclipseLink target-database/dialect property set accordingly |
-| | `oracle` | dialect property |
-| | `mssql` | dialect property |
+| `jpa` | `h2` | in-memory, one database per persistence unit, no container — the fast default |
+| | `postgres` | container, one schema per persistence unit, `TARGET_DATABASE=PostgreSQL` |
 | `mongo` | `mongo` | replica set — the only one with transactions |
 | | `ferretdb` | PostgreSQL-backed wire gateway |
 | | `postgres-docdb` | DocumentDB emulator, PostgreSQL-backed |
 
+Oracle and MSSQL are deliberately **not** flavors: they cost proprietary containers and licence
+questions, and the dialect is the layer EclipseLink itself tests. `h2` plus `postgres` is the
+honest matrix — one lax database and one strict one, which is what actually finds things (below).
+
 The backend chooses the implementation; the flavor is *configuration* of the same
-implementation. On the JPA side that is literally true already — `JpaTckSupport.bootstrap`
-takes driver, URL and dialect as properties, so `jpa × postgres` is a property change plus
-a container. Flavors of one backend must not differ in core conformance; if they do, it is
-a bug in that flavor's mapping, not a capability.
+implementation. Selected with `-Djpa.test.flavor` / `-Dmongo.test.flavor`, and both axes must be
+listed in `backendSelectionProperties` in `build.gradle`: Gradle does not forward `-D` to the test
+JVM, so an unlisted property means the suite silently runs the *default* flavor and reports green
+for something it never measured. Flavors of one backend must not differ in core conformance; if
+they do, it is a bug in that flavor's mapping, not a capability.
+
+**What the second flavor found immediately.** The first `jpa × postgres` run failed 14 of 164
+cases, in four groups, every one a real defect that H2's permissiveness had hidden: a
+hand-written `CLOB` column type in the saved-query catalog (#154), `SUBSTR` offsets bound as
+`bigint` (#155), a `GROUP BY` clause that re-renders an expression containing bind parameters,
+which PostgreSQL cannot match to the select list (#156), and — the substantial one — `EDate`
+persisted as `varchar`, so `EXTRACT(YEAR FROM …)` is applied to a string (#157). That is the
+argument for the axis in one paragraph: not "does PostgreSQL work too", but "which of our
+translations were only ever correct by the grace of one database".
 
 **How a backend realises containment is not the consumer's business.** JPA gives the child
 a row with a foreign key, Mongo embeds it. Same semantics, different shape. Where the shape
@@ -472,8 +484,13 @@ declaration surface with its naming, its two levels and Java-versus-XMI (§5a) �
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become
    blocking rather than `@Disabled`.
 6. Generate the command × selector cross product from the declarations (§4).
-7. Extend the matrix to `backend × flavor` (§6): `jpa × h2` first, then `jpa × postgres`,
-   with the container harness of `MongoTestSupport` factored out for reuse.
+7. Extend the matrix to `backend × flavor` (§6). **Done locally**: the container harness is
+   factored out of `MongoTestSupport` into `ContainerHarness` + `ContainerSpec`, `JpaTestSupport`
+   provides `h2` and `postgres`, and both axes reach the test JVM. `jpa × h2` and all three mongo
+   flavors are green; `jpa × postgres` has the four defects above. **Left**: the CI job for the
+   new axis, which needs those four either fixed or pinned per flavor — a job that is red by
+   design teaches nobody anything, and one made green with `ignoreFailures` is the silent pass
+   §5 forbids.
 8. Index capability last, once the plan-inspection harness exists (§7).
 
 Steps 1–4 are structure and change no test outcome. Step 5 is where conformance starts

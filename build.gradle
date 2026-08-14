@@ -18,12 +18,16 @@ subprojects {
     repositories {
         mavenCentral()
     }
-    // Properties that select the backend server a test suite runs against. Gradle does not
-    // forward -D from its own JVM to the test JVM, so they are passed through explicitly —
-    // without this, -Dmongo.test.flavor=ferretdb would silently test MongoDB instead
-    // (issue #119).
+    // Properties that select the backend and flavor a test suite runs against — the two axes of
+    // issue #134. Gradle does not forward -D from its own JVM to the test JVM, so they are passed
+    // through explicitly: without this, -Dmongo.test.flavor=ferretdb would silently test MongoDB
+    // instead (issue #119), and -Djpa.test.flavor=postgres would silently test H2. A flavor that
+    // is asked for and quietly not used is the worst outcome of the matrix, because the run is
+    // green and measures the wrong thing — so a new axis property must be added here too.
     def backendSelectionProperties = ['mongo.uri', 'mongo.test.image', 'mongo.test.flavor',
-                                      'mongo.container.cli', 'mongo.require']
+                                      'mongo.container.cli', 'mongo.require',
+                                      'jpa.jdbc.url', 'jpa.test.image', 'jpa.test.flavor',
+                                      'jpa.container.cli', 'jpa.require']
 
     // Exclude @Tag("perf") tests from normal builds — run via perfTest task
     test {
