@@ -1,0 +1,175 @@
+name: Backend × Flavor Matrix
+
+# The only place a backend is measured against a real server, across both axes of the persistence
+# contract (§6 of docs/unified-persistence/conformance-and-capabilities.md, issues #121, #132, #134).
+#
+# Why every entry is here:
+#
+#   jpa × postgres     — the strict database. Its first run failed 14 of 164 cases, and all four
+#                        causes were defects H2's permissiveness had hidden (#154–#157): a
+#                        hand-written CLOB type, bigint substring offsets, a GROUP BY carrying bind
+#                        parameters, and EDate degrading to varchar because PostgreSQLPlatform does
+#                        not map java.util.Date. Flavors of one backend must not differ in core
+#                        conformance — this job is what makes that claim checkable.
+#   mongo × mongo      — the reference implementation, and the baseline the gateway results are only
+#                        meaningful against: "ferretdb refuses this" says nothing unless mongo
+#                        accepts it. The default build has no Mongo service, so without this job the
+#                        whole suite skips itself green (#132).
+#   mongo × ferretdb   — per-flavor capability declarations in MongoFlavorCapabilities are claims
+#   mongo × documentdb-pg  about a server nothing else contacts. Claims nothing checks go stale, and
+#                        staleness is silent in both directions:
+#                          * a feature the server has lost, still declared -> users hit a driver error
+#                          * a gap the server has since closed, still declared -> validate() refuses
+#                            queries the server would serve, and nothing fails, so nobody notices
+#
+# jpa × h2 is deliberately absent: it needs no container and already runs in build.yml on every
+# push, which is what keeps this workflow about the flavors that cost something.
+#
+# Oracle and MSSQL are not flavors at all — proprietary containers plus licence questions, for the
+# one layer EclipseLink itself tests. MariaDB is the next candidate (#158), because it disagrees
+# with both existing flavors in new ways rather than in more of the same.
+#
+# Two modes on purpose:
+#   * push / pull_request run against a DIGEST-PINNED image, so a PR is never reddened by an
+#     upstream release it has nothing to do with
+#   * the weekly schedule runs against the floating tag, which is what actually discovers drift —
+#     a pin alone would only ever reveal it when somebody bumps the pin
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - snapshot
+    paths:
+      - 'org.eclipse.fennec.persistence.mongo/**'
+      - 'org.eclipse.fennec.persistence.eclipselink/**'
+      - 'org.eclipse.fennec.persistence.query/**'
+      - 'org.eclipse.fennec.persistence.capabilities/**'
+      - 'org.eclipse.fennec.persistence.tck/**'
+      - '.github/workflows/flavor-matrix.yml'
+  pull_request:
+    branches:
+      - '*'
+    paths:
+      - 'org.eclipse.fennec.persistence.mongo/**'
+      - 'org.eclipse.fennec.persistence.eclipselink/**'
+      - 'org.eclipse.fennec.persistence.query/**'
+      - 'org.eclipse.fennec.persistence.capabilities/**'
+      - 'org.eclipse.fennec.persistence.tck/**'
+      - '.github/workflows/flavor-matrix.yml'
+  schedule:
+    # Mondays 04:17 UTC — off the hour to avoid the scheduling stampede
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flavor-matrix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  flavor-tck:
+    name: TCK on ${{ matrix.backend }} × ${{ matrix.flavor }}
+    runs-on: ubuntu-latest
+    strategy:
+      # one entry must not cancel the others: knowing that ferretdb broke while mongo is fine, or
+      # that postgres broke while h2 is fine, is the whole point
+      fail-fast: false
+      matrix:
+        include:
+          - backend: jpa
+            flavor: postgres
+            suite: Jpa
+            floating: 'docker.io/library/postgres:17'
+            pinned: 'docker.io/library/postgres@sha256:a65e6a841f6c4dbc4abda3d67fa3bc21824e9611064fcd82e87ea67aad60a0c3'
+          - backend: mongo
+            flavor: mongo
+            suite: Mongo
+            floating: 'docker.io/library/mongo:7'
+            pinned: 'docker.io/library/mongo@sha256:be3d6353f3ea3fd3d22e016d19da20fcd6937eda0739eb6d2aeed335baa60f90'
+          - backend: mongo
+            flavor: ferretdb
+            suite: Mongo
+            floating: 'ghcr.io/ferretdb/ferretdb-eval:2'
+            pinned: 'ghcr.io/ferretdb/ferretdb-eval@sha256:1bf47a449dd65839aabfc1a535d1370c98326f8a90de20437eda0aeb30bd8dd5'
+          - backend: mongo
+            flavor: documentdb-pg
+            suite: Mongo
+            floating: 'ghcr.io/microsoft/documentdb/documentdb-local:latest'
+            pinned: 'ghcr.io/microsoft/documentdb/documentdb-local@sha256:2dd1f8875e59b77a679dac82c1b3e7b2179f920db702515f006a82397d9e3b13'
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: "temurin"
+          java-version: 21
+
+      - name: Select the server image
+        id: image
+        run: |
+          # scheduled and manual runs float, so upstream drift is actually discovered;
+          # PR/push runs pin by digest so they stay reproducible
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "image=${{ matrix.floating }}" >> "$GITHUB_OUTPUT"
+            echo "mode=floating" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=${{ matrix.pinned }}" >> "$GITHUB_OUTPUT"
+            echo "mode=pinned" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run the persistence TCK on ${{ matrix.backend }} × ${{ matrix.flavor }}
+        # The TCK is the drift detector: every capability the flavor declares has to execute, and
+        # every one it does not declare has to be refused with a Diagnostic. A green run means
+        # declaration and server still agree.
+        #
+        # The property names carry the backend as their prefix (jpa.test.flavor, mongo.test.flavor,
+        # …), so one command serves both axes. They must also be listed in
+        # backendSelectionProperties in build.gradle — Gradle does not forward -D to the test JVM,
+        # and an unforwarded property means the suite silently runs the default flavor and reports
+        # green for something it never measured.
+        run: |
+          echo "::notice::Running the ${{ matrix.backend }} × ${{ matrix.flavor }} TCK against ${{ steps.image.outputs.image }} (${{ steps.image.outputs.mode }})"
+          ./gradlew :org.eclipse.fennec.persistence.tck:test \
+            --tests 'org.eclipse.fennec.persistence.tck.${{ matrix.suite }}*' \
+            -D${{ matrix.backend }}.test.flavor=${{ matrix.flavor }} \
+            -D${{ matrix.backend }}.test.image=${{ steps.image.outputs.image }} \
+            -D${{ matrix.backend }}.container.cli=docker \
+            -D${{ matrix.backend }}.require=true \
+            --console=plain
+
+      - name: Verify the suite actually ran
+        # -D<backend>.require=true above already turns an unreachable server into a failure, so
+        # this is the belt to that braces: it also catches a suite that executed nothing for a
+        # reason the harness cannot see (a bad --tests filter, a compile-time exclusion).
+        # A green build must never mean "measured exactly nothing".
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          total = skipped = 0
+          for f in glob.glob("org.eclipse.fennec.persistence.tck/generated/test-reports/test/TEST-*${{ matrix.suite }}*.xml"):
+              r = ET.parse(f).getroot()
+              total += int(r.get("tests")); skipped += int(r.get("skipped") or 0)
+          executed = total - skipped
+          print(f"tests={total} skipped={skipped} executed={executed}")
+          if executed == 0:
+              print("::error::the ${{ matrix.backend }} × ${{ matrix.flavor }} suite executed 0 tests — the server was unreachable, so nothing was verified")
+              sys.exit(1)
+          PY
+
+      - name: Upload test report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: tck-report-${{ matrix.backend }}-${{ matrix.flavor }}
+          path: org.eclipse.fennec.persistence.tck/generated/test-reports/
+          if-no-files-found: warn
