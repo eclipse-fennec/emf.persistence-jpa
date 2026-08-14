@@ -124,6 +124,62 @@ class AttributeConfiguratorTest {
 	}
 
 	@Nested
+	@DisplayName("Column type decision: columnType")
+	class ColumnTypeTests {
+
+		private final AttributeConfigurator configurator = new AttributeConfigurator(null, null);
+
+		private EAttribute attribute(String name, org.eclipse.emf.ecore.EClassifier type) {
+			EAttribute ea = EcoreFactory.eINSTANCE.createEAttribute();
+			ea.setName(name);
+			ea.setEType(type);
+			return ea;
+		}
+
+		/**
+		 * Issue #157: an EDate must not reach the platform as {@code java.util.Date}. The base
+		 * platform and H2 map it to TIMESTAMP, PostgreSQL does not map it at all and the column
+		 * degrades to VARCHAR — which made every temporal function fail there while H2 stayed green.
+		 */
+		@Test
+		void eDateBecomesTimestampSoEveryPlatformMapsIt() {
+			assertThat(configurator.columnType(attribute("birthday", EcorePackage.Literals.EDATE)))
+					.isEqualTo(java.sql.Timestamp.class);
+		}
+
+		@Test
+		void standardTypesArePassedThrough() {
+			assertThat(configurator.columnType(attribute("name", EcorePackage.Literals.ESTRING)))
+					.isEqualTo(String.class);
+			assertThat(configurator.columnType(attribute("age", EcorePackage.Literals.EINT)))
+					.isEqualTo(int.class);
+		}
+
+		@Test
+		void enumsBecomeStrings() {
+			org.eclipse.emf.ecore.EEnum color = EcoreFactory.eINSTANCE.createEEnum();
+			color.setName("Color");
+			assertThat(configurator.columnType(attribute("favoriteColor", color)))
+					.isEqualTo(String.class);
+		}
+
+		@Test
+		void nonStandardTypesGoThroughTheDbFriendlyMapping() {
+			assertThat(configurator.columnType(attribute("created", EcorePackage.Literals.EDATE)))
+					.isEqualTo(java.sql.Timestamp.class);
+			assertThat(configurator.columnType(attribute("amount", EcorePackage.Literals.EBIG_DECIMAL)))
+					.isEqualTo(BigDecimal.class);
+		}
+
+		@Test
+		void aTypeWithoutAnInstanceClassFallsBackToString() {
+			org.eclipse.emf.ecore.EDataType custom = EcoreFactory.eINSTANCE.createEDataType();
+			custom.setName("Custom");
+			assertThat(configurator.columnType(attribute("custom", custom))).isEqualTo(String.class);
+		}
+	}
+
+	@Nested
 	@DisplayName("Type mapping: mapToDbFriendlyType")
 	class DbFriendlyTypeTests {
 

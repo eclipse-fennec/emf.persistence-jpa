@@ -224,7 +224,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			top = combinedTop;
 		}
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
-				skip, top, rowKeys, rowAliases, batchFetchPaths);
+				skip, top, rowKeys, rowAliases, batchFetchPaths, translation.requiresInlineLiterals);
 	}
 
 	/** The JPQL fragments of a translated pipeline (issue #82). */
@@ -404,6 +404,13 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 		private final QueryContext context;
 		private final Map<String, Object> parameters = new LinkedHashMap<>();
+
+		/**
+		 * Set once an expression-valued group key has been rendered — see
+		 * {@link #groupKeyExpression(Expression)}. Travels to the plan, which turns it into the
+		 * EclipseLink hint that keeps the two renderings of that expression identical in SQL.
+		 */
+		private boolean requiresInlineLiterals;
 		private final Map<Variable, String> aliases = new HashMap<>();
 		private int aliasCounter = 0;
 
@@ -489,7 +496,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					// expression-valued group key (issue #87): JPQL result variables
 					// are not addressable in GROUP BY — re-render the expression there
 					String alias = key.getAlias();
-					String rendered = operand(key.getExpression(), null);
+					String rendered = groupKeyExpression(key.getExpression());
 					registerKey(alias, alias, rowKeys, rowAliases);
 					columnExpressions.put(alias, rendered);
 					appendColumn(columns, rendered + " AS " + alias);
@@ -765,7 +772,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			if (expression instanceof Substring substring) {
 				String source = operand(substring.getSource(), target);
-				String start = operand(substring.getStart(), target);
+				String start = integerOperand(substring.getStart(), target);
 				// [OData-URL] 5.1.1.7: 0-based; a negative start counts from the end of
 				// the string, clamped to position 1. One flat CASE (first match wins) —
 				// EclipseLink mistranslates a CASE nested inside ELSE
@@ -776,7 +783,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 						+ " ELSE 1 END";
 				if (substring.getLength() != null) {
 					return "SUBSTRING(" + source + ", " + position + ", "
-							+ operand(substring.getLength(), target) + ")";
+							+ integerOperand(substring.getLength(), target) + ")";
 				}
 				return "SUBSTRING(" + source + ", " + position + ")";
 			}
@@ -834,6 +841,58 @@ public class JpaQueryProcessor implements QueryProcessor {
 			String name = "p" + parameters.size();
 			parameters.put(name, value);
 			return ":" + name;
+		}
+
+		/**
+		 * Renders an expression-valued group key with its constants inlined rather than bound
+		 * (issue #156).
+		 * <p>
+		 * The same rendering appears twice — once in the select list, once in {@code GROUP BY},
+		 * because JPQL result variables are not addressable there. With bind parameters that
+		 * duplication is fatal: EclipseLink expands one named parameter into a separate {@code ?}
+		 * per occurrence, and PostgreSQL then sees two different expressions, so the column inside
+		 * them counts as ungrouped ({@code must appear in the GROUP BY clause}). H2 accepts it,
+		 * which is why the flavor axis of #134 was needed to find this.
+		 * <p>
+		 * Inlining makes both occurrences textually identical. It costs statement-cache reuse for
+		 * group keys only — everything else keeps its parameters.
+		 *
+		 * @param expression the group key expression
+		 * @return the rendering to use in both the select list and the GROUP BY clause
+		 * @throws QueryException if the expression carries a constant that cannot be inlined
+		 */
+		private String groupKeyExpression(Expression expression) throws QueryException {
+			requiresInlineLiterals = true;
+			return operand(expression, null);
+		}
+
+
+		/**
+		 * Renders an operand that a SQL string function expects as an {@code int} (issue #155).
+		 * <p>
+		 * The IR carries substring offsets as long-typed literals, so binding them unchanged sends
+		 * {@code bigint} — and PostgreSQL declares only {@code substr(text, int, int)}, refusing to
+		 * narrow implicitly during function resolution. H2 narrows, which is why this only surfaced
+		 * with the flavor axis of #134. Narrowing here rather than casting in SQL keeps the
+		 * generated statement readable and costs nothing at execution time.
+		 *
+		 * @param expression the offset or length expression
+		 * @param target the feature the surrounding comparison targets, for value conversion
+		 * @return the rendered operand, with any bound integral value narrowed to {@code Integer}
+		 * @throws QueryException if the expression cannot be rendered
+		 */
+		private String integerOperand(Expression expression, EStructuralFeature target)
+				throws QueryException {
+			if (expression instanceof PropertyPath || expression instanceof StringFunction) {
+				// a column or a function over one — nothing is bound, so nothing to narrow
+				return operand(expression, target);
+			}
+			Object value = ExpressionValues.resolve(expression, target, context.parameters(),
+					context.converter());
+			if (value instanceof Long || value instanceof Short || value instanceof Byte) {
+				return bind(((Number) value).intValue());
+			}
+			return bind(value);
 		}
 	}
 

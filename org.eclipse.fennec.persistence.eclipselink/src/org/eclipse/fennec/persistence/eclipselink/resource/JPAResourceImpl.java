@@ -97,11 +97,15 @@ import org.eclipse.persistence.config.HintValues;
 import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicType;
+import org.eclipse.persistence.internal.databaseaccess.DatabasePlatform;
+import org.eclipse.persistence.internal.databaseaccess.Platform;
 import org.eclipse.persistence.jpa.JpaQuery;
 import org.eclipse.persistence.queries.DatabaseQuery;
 import org.eclipse.persistence.queries.ScrollableCursor;
+import org.eclipse.persistence.sessions.Session;
 import org.eclipse.persistence.sessions.UnitOfWork;
 import org.eclipse.persistence.sessions.server.Server;
+import org.eclipse.persistence.tools.schemaframework.FieldDefinition.DatabaseType;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -1480,7 +1484,40 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	/** The catalog lives outside the mapped model — plain DDL, created on first use. */
 	private void ensureCatalogTable(EntityManager em) {
 		em.createNativeQuery("CREATE TABLE IF NOT EXISTS " + QUERY_CATALOG_TABLE
-				+ " (NAME VARCHAR(255) NOT NULL PRIMARY KEY, XMI CLOB NOT NULL)").executeUpdate();
+				+ " (NAME VARCHAR(255) NOT NULL PRIMARY KEY, XMI " + largeTextType(em) + " NOT NULL)")
+				.executeUpdate();
+	}
+
+	/**
+	 * The connected database's own name for a large character column (issue #154): {@code CLOB} on
+	 * H2 and Oracle, {@code TEXT} on PostgreSQL, {@code LONGTEXT} on MySQL and MariaDB.
+	 * <p>
+	 * Asked of the platform rather than spelled out, because this is the one table whose DDL we
+	 * write by hand — everything mapped goes through EclipseLink, which does exactly this lookup.
+	 * A hardcoded {@code CLOB} made the catalog unusable on PostgreSQL while every other table
+	 * worked, and the flavor axis of #134 is what surfaced it.
+	 *
+	 * @param em the entity manager whose platform to ask
+	 * @return the platform's large-character type, or {@code CLOB} if it cannot be determined
+	 */
+	private static String largeTextType(EntityManager em) {
+		try {
+			Platform platform = em.unwrap(Session.class).getDatasourcePlatform();
+			if (platform instanceof DatabasePlatform database) {
+				// getDatabaseType, not the getFieldTypeDefinition it replaced — that one is
+				// @Deprecated(forRemoval) since EclipseLink 4.0.9
+				DatabaseType type = database.getDatabaseType(Clob.class);
+				if (nonNull(type) && nonNull(type.name()) && !type.name().isBlank()) {
+					return type.name();
+				}
+			}
+		} catch (RuntimeException e) {
+			// a non-EclipseLink provider, or a platform without the mapping: fall back to the
+			// previous literal rather than failing the catalog outright
+			LOG.log(Level.FINE, () -> "Cannot determine the large-character type, using CLOB: "
+					+ e.getMessage());
+		}
+		return "CLOB";
 	}
 
 	private static String clobText(Object value) {
@@ -1528,6 +1565,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			TypedQuery<?> typedQuery = em.createQuery(plan.jpql(), resultType(plan));
 			plan.parameters().forEach(typedQuery::setParameter);
+			if (plan.inlineLiterals()) {
+				// an expression-valued group key is rendered in both the select list and GROUP BY;
+				// bound parameters would become a separate ? per occurrence, which PostgreSQL
+				// cannot match as the same expression (issue #156)
+				typedQuery.setHint(QueryHints.BIND_PARAMETERS, HintValues.FALSE);
+			}
 			if (plan.shape() == QueryShape.OBJECTS && !plan.batchFetchPaths().isEmpty()) {
 				// to-many expand levels batch-fetch instead of fetch-joining (issue #95);
 				// IN batching is cursor-compatible (each row feeds the batch policy)
