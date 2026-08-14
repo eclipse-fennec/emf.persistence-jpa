@@ -18,9 +18,9 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
-import org.eclipse.fennec.persistence.query.support.QueryCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 
 /**
  * The query capabilities of each {@link MongoFlavor} (issue #118).

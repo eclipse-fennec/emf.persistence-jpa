@@ -6,6 +6,7 @@ Bundle-Description: EMF Persistence with Eclipselink JPA
 -library: enableEMF
 
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	biz.aQute.bnd.annotation;version=latest,\
 	jakarta.persistence-api;version=latest,\
 	org.osgi.util.tracker;version=latest,\

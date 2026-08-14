@@ -30,10 +30,11 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
-import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.model.query.builder.Expressions;
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
+import org.eclipse.fennec.persistence.capabilities.QueryCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

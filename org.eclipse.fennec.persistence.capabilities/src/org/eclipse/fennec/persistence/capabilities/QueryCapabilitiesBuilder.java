@@ -10,15 +10,13 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.persistence.query.support;
+package org.eclipse.fennec.persistence.capabilities;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
-import org.eclipse.fennec.persistence.query.api.QueryFeature;
 
 /**
  * Builds immutable {@link QueryCapabilities} declarations for a backend.

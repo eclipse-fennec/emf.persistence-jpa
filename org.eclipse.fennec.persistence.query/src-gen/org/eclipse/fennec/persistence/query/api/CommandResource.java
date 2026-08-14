@@ -16,6 +16,8 @@ import java.io.IOException;
 
 import org.eclipse.fennec.model.command.Command;
 
+import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
+
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 
 import org.osgi.annotation.versioning.ProviderType;
@@ -64,7 +66,7 @@ public interface CommandResource {
 	 * <!-- begin-model-doc -->
 	 * The write commands this resource serves (issue #114) — per resource instance, since deployment can decide (mongo TRANSACTION_BRACKET). execute()/begin() refuse an undeclared feature before any work with a Diagnostic naming it.
 	 * <!-- end-model-doc -->
-	 * @model
+	 * @model dataType="org.eclipse.fennec.persistence.query.api.CommandCapabilities"
 	 * @generated
 	 */
 	CommandCapabilities capabilities();

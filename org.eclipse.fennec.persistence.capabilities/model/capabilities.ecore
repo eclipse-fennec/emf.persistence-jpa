@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="capabilities" nsURI="https://eclipse.org/fennec/persistence/capabilities/1.0.0"
+    nsPrefix="persistence.capabilities">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="complianceLevel" value="17.0"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="basePackage" value="org.eclipse.fennec.persistence"/>
+    <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
+    <details key="rootExtendsInterface" value=""/>
+    <details key="documentation" value="The closed feature vocabulary a backend declares against (issue #134). Only the enums live here: the vocabulary is the contract, so nobody extends it from outside, and it is the one half of the declaration surface that stays modelled. The capability types a backend answers with - QueryCapabilities, CommandCapabilities - are plain Java in the same bundle, because they are values that get asked rather than EObjects that get loaded. Lives outside the query bundle so that declaring something has no dependency on the query model. See docs/unified-persistence/conformance-and-capabilities.md §5a."/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EEnum" name="QueryFeature">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A single, backend-neutral query capability. Each QueryProcessor declares the set of features it serves natively (QueryCapabilities); a query using an unsupported feature is rejected with a Diagnostic during validate — never silently post-filtered in memory. Literal values are grouped with gaps: predicates 0+, shaping 20+, aggregation 40+, value/path operations 60+, structural 80+, future 100+."/>
+    </eAnnotations>
+    <eLiterals name="WHERE_EQ">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Equality comparison (Comparison EQ)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_COMPARISON" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordering comparisons (Comparison LT, LE, GT, GE)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_STRING_MATCH" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="String matching (StringMatch: CONTAINS, STARTS_WITH, ENDS_WITH, LIKE)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_RANGE" value="3">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Range predicate (Between)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LOGICAL_AND" value="7">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Logical conjunction (And)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LOGICAL_OR" value="8">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Logical disjunction (Or)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LOGICAL_NOT" value="9">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Logical negation (Not)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WHERE_NE" value="10">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Not-equal comparison (v2 IR Comparison NE)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="IS_NULL" value="11">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Explicit null check (v2 IR IsNull)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="IN" value="12">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Membership test (v2 IR In)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="EXISTS" value="13">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Existential quantifier over a multi-valued navigation (v2 IR Exists)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FOR_ALL" value="14">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Universal quantifier over a multi-valued navigation (v2 IR ForAll)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="STRING_MATCH_CASE_INSENSITIVE" value="15">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Case-insensitive string matching (v2 IR StringMatch.caseInsensitive)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FIELD_TO_FIELD" value="16">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Comparison whose both sides navigate features (field-to-field), directly or through string functions."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SORT" value="20">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordering of results (sortBy)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="LIMIT" value="21">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Result cardinality cap (limit)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SKIP" value="22">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Result offset (skip)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DISTINCT" value="23">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Duplicate elimination (distinct)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="COUNT" value="24">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Count-only result (count)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PROJECTION" value="25">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Projection of scalar fields via subject/FeaturePath."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PROJECTION_NESTED" value="26">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Projection through references (requires a join)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="EXPAND" value="27">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Eager-fetch hints (v2 envelope expand)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PIPELINE" value="28">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Aggregation pipeline stages beyond a single groupBy (v2 envelope apply)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="GROUP_BY" value="40">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Grouping (groupBy)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_AVG" value="41">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Average aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_MIN" value="42">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Minimum aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_MAX" value="43">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_SUM" value="44">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Sum aggregate."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_COUNT" value="45">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Count aggregate (per group)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AGG_COUNT_DISTINCT" value="46">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Count-distinct aggregate (v2 pipeline)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="STRING_FUNCTIONS" value="63">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="String functions applied to values (v2 IR StringFunction: toLower/toUpper/trim/length)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="ARITHMETIC" value="64">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Arithmetic value expressions (v2 IR Arithmetic ADD/SUB/MUL/DIV/MOD and Negate). DIV is floating-point division; division by a literal zero is refused by the validator."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="STRING_FUNCTIONS_EXTENDED" value="65">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Extended string vocabulary (v2 IR Concat, IndexOf, Substring — issue #77). Separate from STRING_FUNCTIONS so backends can opt in independently; IndexOf is 0-based/-1, Substring follows [OData-URL] 5.1.1.7."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="NUMERIC_FUNCTIONS" value="66">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Numeric rounding functions (v2 IR NumericFunction ROUND/FLOOR/CEILING — issue #78). ROUND is half away from zero."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TEMPORAL_FUNCTIONS" value="67">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Temporal part extraction (v2 IR TemporalFunction YEAR/MONTH/DAY/HOUR/MINUTE/SECOND — issue #79). UTC-normative; SECOND is integral."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TYPE_CAST" value="68">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Downcast of a navigation origin (v2 IR PropertyPath.castBase — issue #80). JPA TREAT; non-instances yield null."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TYPE_CHECK" value="69">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Kind-of type test (v2 IR TypeCheck — issue #80). JPA TYPE(x) IN (concrete subtypes); Mongo refuses until a type discriminator is stored."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="COLLECTION_COUNT" value="70">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Plain element count of a multi-valued navigation (v2 IR CollectionCount — issue #81). JPA SIZE, Mongo $size over embedded collections."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="COLLECTION_COUNT_FILTERED" value="71">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Predicate-filtered element count (v2 IR CollectionCount with predicate — issue #81). JPA correlated SELECT COUNT, Mongo $size($filter) over embedded collections."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PIPELINE_COMPUTE" value="72">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Alias-bound computed pipeline columns (v2 query ComputeStage — issue #82): terminal or after grouping, addressed via AliasRef; a trailing FilterStage after GroupBy is HAVING."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SORT_EXPRESSION" value="73">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Ordering by an arbitrary value expression (v2 query OrderBy.key — issue #84). JPQL renders the expression inline; Mongo find-sorts refuse it."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="GROUP_EXPRESSION" value="74">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Expression-valued group keys (GroupKey) and aggregate sources (Aggregate.source), including AliasRef to a pre-group compute alias (issue #87). JPQL re-renders the expression inline in SELECT/GROUP BY/aggregate arguments; Mongo evaluates it in $group/_id and accumulator arguments over $set fields; memory evaluates it per object with the compute alias environment."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SCORE" value="75">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The Score expression — relevance of the row under the query's predicate (issue #100), usable as sort key and computation source. Only ranking backends declare it (first consumer: the Lucene backend); memory/JPA/Mongo refuse. Deliberately no reference semantics — conformance is ordinal at best and lives with the declaring backend."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="GEO_WITHIN" value="76">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="GeoWithin — containment of a WGS84 position in a box or polygon (issue #101). Memory carries the reference semantics (split subject binding); Mongo 2dsphere is G-P2, Lucene follows in emf.search, JPA refuses until a PostGIS dialect story exists."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="GEO_DISTANCE" value="77">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="GeoDistance — the spherical WGS84 distance in meters as a value expression (issue #101, decision G3): composes with comparisons and the issue-#84 sort seam (nearest first). Reference: haversine over the mean earth radius; conformance banded per decision G5."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="FEATUREPATH_NESTED" value="80">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TYPE_FILTER" value="81">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Polymorphic type filter via Query.from (root type plus subtypes)."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="PARAMETERS" value="83">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Bound placeholders for prepared queries."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="AS_OF" value="100">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Point-in-time reads (asOf) — future, see unified-persistence concept §14."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SERIES_RANGE" value="101">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Range/aggregation over time-series streams — future, see unified-persistence concept §14."/>
+      </eAnnotations>
+    </eLiterals>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="CommandFeature">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A single, backend-neutral write-command capability (issue #114) — the command-side mirror of QueryFeature, deliberately a separate enum: QueryCapabilities is the query-validate contract and stays untouched. Literal values are grouped with gaps: commands 0+, structural 20+."/>
+    </eAnnotations>
+    <eLiterals name="INSERT">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="InsertCommand: persist the payload objects."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DELETE_BY_SELECTOR" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="DeleteCommand: remove every object the plain-filter selector matches."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="UPDATE_BY_SELECTOR" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="UpdateCommand: apply the ChangeSet template to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="TRANSACTION_BRACKET" value="20">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="begin(): an atomic multi-command bracket (issue #108). May depend on the deployment, not just the backend — mongo answers per hello-probe (replica set vs. standalone) — so capabilities are per resource instance."/>
+      </eAnnotations>
+    </eLiterals>
+  </eClassifiers>
+</ecore:EPackage>

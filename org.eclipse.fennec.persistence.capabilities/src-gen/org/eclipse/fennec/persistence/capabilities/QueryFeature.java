@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  */
-package org.eclipse.fennec.persistence.query.api;
+package org.eclipse.fennec.persistence.capabilities;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,7 +28,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- begin-model-doc -->
  * A single, backend-neutral query capability. Each QueryProcessor declares the set of features it serves natively (QueryCapabilities); a query using an unsupported feature is rejected with a Diagnostic during validate — never silently post-filtered in memory. Literal values are grouped with gaps: predicates 0+, shaping 20+, aggregation 40+, value/path operations 60+, structural 80+, future 100+.
  * <!-- end-model-doc -->
- * @see org.eclipse.fennec.persistence.query.api.QueryApiPackage#getQueryFeature()
+ * @see org.eclipse.fennec.persistence.capabilities.CapabilitiesPackage#getQueryFeature()
  * @model
  * @generated
  */

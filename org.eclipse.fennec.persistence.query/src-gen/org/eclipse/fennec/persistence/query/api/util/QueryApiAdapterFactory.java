@@ -19,10 +19,8 @@ import org.eclipse.emf.common.notify.impl.AdapterFactoryImpl;
 
 import org.eclipse.emf.ecore.EObject;
 
-import org.eclipse.fennec.persistence.query.api.CommandCapabilities;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
-import org.eclipse.fennec.persistence.query.api.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
 import org.eclipse.fennec.persistence.query.api.QueryPlan;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
@@ -91,14 +89,6 @@ public class QueryApiAdapterFactory extends AdapterFactoryImpl {
 				return createAutoCloseableAdapter();
 			}
 			@Override
-			public Adapter caseCommandCapabilities(CommandCapabilities object) {
-				return createCommandCapabilitiesAdapter();
-			}
-			@Override
-			public Adapter caseQueryCapabilities(QueryCapabilities object) {
-				return createQueryCapabilitiesAdapter();
-			}
-			@Override
 			public Adapter caseQueryPlan(QueryPlan object) {
 				return createQueryPlanAdapter();
 			}
@@ -157,34 +147,6 @@ public class QueryApiAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createAutoCloseableAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.persistence.query.api.CommandCapabilities <em>Command Capabilities</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.persistence.query.api.CommandCapabilities
-	 * @generated
-	 */
-	public Adapter createCommandCapabilitiesAdapter() {
-		return null;
-	}
-
-	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.persistence.query.api.QueryCapabilities <em>Query Capabilities</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.persistence.query.api.QueryCapabilities
-	 * @generated
-	 */
-	public Adapter createQueryCapabilitiesAdapter() {
 		return null;
 	}
 

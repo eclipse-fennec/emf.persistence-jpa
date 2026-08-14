@@ -10,6 +10,7 @@ Bundle-Description: Query-backed derived references: OCL derivation annotations 
 -library: enableEMF
 
 -buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
