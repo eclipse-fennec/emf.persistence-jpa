@@ -39,7 +39,6 @@ import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoClient;
