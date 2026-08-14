@@ -33,6 +33,7 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
@@ -255,6 +256,50 @@ class JpaQueryProcessorTest {
 				"SELECT e.name AS n, e.addresses.street AS addresses_street FROM Person e WHERE e.age >= :p0");
 		assertThat(plan.rowKeys()).containsExactly("n", "addresses_street");
 		assertThat(plan.rowAliases()).containsExactly("n", null);
+	}
+
+	/**
+	 * Issue #155: substring offsets must be bound as {@code Integer}. The IR carries them as longs,
+	 * and PostgreSQL declares only {@code substr(text, int, int)} — it refuses to narrow
+	 * {@code bigint} during function resolution, while H2 narrows silently.
+	 */
+	@Test
+	void substringOffsetsAreBoundAsIntegers() throws QueryException {
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.path(name).substring(1, 3).eq("lic"))
+				.build();
+
+		JpaQueryPlan plan = translate(query);
+
+		assertThat(plan.jpql()).contains("SUBSTRING(");
+		assertThat(plan.parameters().values()).as("no offset may travel as a long")
+				.noneMatch(Long.class::isInstance);
+		assertThat(plan.parameters().values()).contains(1, 3);
+	}
+
+	/**
+	 * Issue #156: an expression-valued group key is rendered twice — select list and GROUP BY —
+	 * and EclipseLink expands one named parameter into a separate {@code ?} per occurrence, so
+	 * PostgreSQL cannot see the two as the same expression. The plan therefore asks for binding to
+	 * be switched off; a plain column group key does not need that.
+	 */
+	@Test
+	void anExpressionGroupKeyAsksForInlineLiterals() throws QueryException {
+		Query withExpressionKey = QueryBuilder.from(person)
+				.groupByAs("band", Expressions.path(age).dividedBy(25).floor().toExpression())
+				.avg("avgAge", age)
+				.build();
+
+		assertThat(translate(withExpressionKey).inlineLiterals()).isTrue();
+
+		Query withColumnKey = QueryBuilder.from(person)
+				.groupBy(name)
+				.avg("avgAge", age)
+				.build();
+
+		assertThat(translate(withColumnKey).inlineLiterals())
+				.as("a plain column key carries no parameters, so binding stays on")
+				.isFalse();
 	}
 
 	@Test

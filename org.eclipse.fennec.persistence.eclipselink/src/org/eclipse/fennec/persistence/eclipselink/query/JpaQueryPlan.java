@@ -46,9 +46,11 @@ public final class JpaQueryPlan implements QueryPlan {
 	private final List<String> rowKeys;
 	private final List<String> rowAliases;
 	private final List<String> batchFetchPaths;
+	private final boolean inlineLiterals;
 
 	JpaQueryPlan(Query source, QueryShape shape, String jpql, Map<String, Object> parameters, int skip, int limit,
-			List<String> rowKeys, List<String> rowAliases, List<String> batchFetchPaths) {
+			List<String> rowKeys, List<String> rowAliases, List<String> batchFetchPaths,
+			boolean inlineLiterals) {
 		this.source = Objects.requireNonNull(source, "source must not be null");
 		this.shape = Objects.requireNonNull(shape, "shape must not be null");
 		this.jpql = Objects.requireNonNull(jpql, "jpql must not be null");
@@ -61,6 +63,7 @@ public final class JpaQueryPlan implements QueryPlan {
 		this.rowAliases = rowAliases == null ? List.of()
 				: Collections.unmodifiableList(new ArrayList<>(rowAliases));
 		this.batchFetchPaths = batchFetchPaths == null ? List.of() : List.copyOf(batchFetchPaths);
+		this.inlineLiterals = inlineLiterals;
 	}
 
 	@Override
@@ -78,6 +81,24 @@ public final class JpaQueryPlan implements QueryPlan {
 	 */
 	public String jpql() {
 		return jpql;
+	}
+
+	/**
+	 * Whether this statement must be executed with EclipseLink's parameter binding switched off
+	 * (issue #156).
+	 * <p>
+	 * True for a plan carrying an expression-valued group key. Such an expression is rendered
+	 * twice — in the select list and in {@code GROUP BY}, because JPQL result variables are not
+	 * addressable there — and EclipseLink expands one named parameter into a separate {@code ?}
+	 * per occurrence. PostgreSQL then sees two different expressions and rejects the column inside
+	 * them as ungrouped; H2 accepts it, which is why the flavor axis of #134 surfaced this.
+	 * Rendering the values inline makes the two occurrences identical. The cost is statement-cache
+	 * reuse for these aggregation statements only.
+	 *
+	 * @return {@code true} if binding has to be turned off for correctness
+	 */
+	public boolean inlineLiterals() {
+		return inlineLiterals;
 	}
 
 	/**

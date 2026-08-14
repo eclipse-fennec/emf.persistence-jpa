@@ -134,33 +134,7 @@ class AttributeConfigurator {
 		if (feature instanceof EReference) {
 			typeClass = String.class;
 		} else {
-			EAttribute ea = (EAttribute) efo.getFeature();
-			Class<?> originalTypeClass = ea.getEAttributeType().getInstanceClass();
-			typeClass = originalTypeClass;
-			LOG.log(Level.FINER, "[processBasic] Processing {0} with original typeClass: {1}", new Object[]{ea.getName(), originalTypeClass});
-
-			// Map enums into Strings (EnumType.STRING is the default strategy)
-			if (ea.getEAttributeType() instanceof EEnum) {
-				typeClass = String.class;
-				LOG.log(Level.FINER, "[processBasic] {0} is enum, mapping as String (EnumType.STRING)", ea.getName());
-			}
-			// Map array types as byte[] (BLOB) — arrays have no standard SQL column type
-			else if (nonNull(typeClass) && typeClass.isArray()) {
-				typeClass = byte[].class;
-				LOG.log(Level.FINER, "[processBasic] {0} is array type, mapping as byte[] (BLOB)", ea.getName());
-			}
-			// Map non-standard types to their DB-friendly equivalent
-			else if (nonNull(typeClass) && !isStandardDatabaseType(typeClass)) {
-				typeClass = mapToDbFriendlyType(typeClass);
-				LOG.log(Level.FINER, "[processBasic] {0} mapped to DB-friendly type: {1}", new Object[]{ea.getName(), typeClass});
-			}
-			// Fallback to String for custom types that don't have instance classes
-			if (isNull(typeClass)) {
-				typeClass = String.class;
-				LOG.log(Level.FINER, "[processBasic] {0} has null typeClass, setting to String.class", ea.getName());
-			}
-
-			LOG.log(Level.FINER, "[processBasic] Final typeClass for {0}: {1}", new Object[]{ea.getName(), typeClass});
+			typeClass = columnType((EAttribute) efo.getFeature());
 		}
 		Column c = basic.getColumn();
 		String colName = nonNull(c) ? c.getName() : basic.getName();
@@ -218,6 +192,53 @@ class AttributeConfigurator {
 	/**
 	 * Check if the given class is a standard database type that doesn't need conversion.
 	 */
+	/**
+	 * The Java type an attribute's column is mapped with — the whole decision in one place, so it
+	 * can be asserted without building a persistence unit.
+	 * <p>
+	 * Enums become Strings ({@code EnumType.STRING} is the default strategy) and arrays become
+	 * {@code byte[]}, since an array has no standard SQL column type.
+	 * <p>
+	 * {@code java.util.Date} is normalised to {@link Timestamp} (issue #157). It looks like a type
+	 * every platform handles — the base {@code DatabasePlatform} and {@code H2Platform} both map it
+	 * to {@code TIMESTAMP} — but {@code PostgreSQLPlatform} rebuilds the field-type table and lists
+	 * only {@code java.sql.Date}, so the column silently degraded to {@code VARCHAR} there and
+	 * every temporal function failed on it. {@code Timestamp} is mapped by every platform and is
+	 * what an {@code EDate} value carries anyway, which is the same normalisation the
+	 * {@code java.time} types already get.
+	 *
+	 * @param ea the attribute to map
+	 * @return the Java type to hand to {@code addDirectMapping}, never {@code null}
+	 */
+	Class<?> columnType(EAttribute ea) {
+		Class<?> typeClass = ea.getEAttributeType().getInstanceClass();
+		LOG.log(Level.FINER, "[columnType] Processing {0} with original typeClass: {1}",
+				new Object[] { ea.getName(), typeClass });
+		if (ea.getEAttributeType() instanceof EEnum) {
+			typeClass = String.class;
+			LOG.log(Level.FINER, "[columnType] {0} is enum, mapping as String (EnumType.STRING)", ea.getName());
+		} else if (nonNull(typeClass) && typeClass.isArray()) {
+			typeClass = byte[].class;
+			LOG.log(Level.FINER, "[columnType] {0} is array type, mapping as byte[] (BLOB)", ea.getName());
+		} else if (typeClass == java.util.Date.class) {
+			typeClass = Timestamp.class;
+			LOG.log(Level.FINER, "[columnType] {0} is java.util.Date, mapping as Timestamp — not every"
+					+ " platform maps java.util.Date (issue #157)", ea.getName());
+		} else if (nonNull(typeClass) && !isStandardDatabaseType(typeClass)) {
+			typeClass = mapToDbFriendlyType(typeClass);
+			LOG.log(Level.FINER, "[columnType] {0} mapped to DB-friendly type: {1}",
+					new Object[] { ea.getName(), typeClass });
+		}
+		if (isNull(typeClass)) {
+			// a custom data type without an instance class — a string is the only safe carrier
+			typeClass = String.class;
+			LOG.log(Level.FINER, "[columnType] {0} has null typeClass, setting to String.class", ea.getName());
+		}
+		LOG.log(Level.FINER, "[columnType] Final typeClass for {0}: {1}",
+				new Object[] { ea.getName(), typeClass });
+		return typeClass;
+	}
+
 	boolean isStandardDatabaseType(Class<?> clazz) {
 		if (isNull(clazz)) {
 			return true;
