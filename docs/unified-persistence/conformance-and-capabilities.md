@@ -1,9 +1,11 @@
 # Conformance and capabilities — the persistence contract
 
-**Status:** target picture, approved 2026-08-13. The A/B split itself is not implemented yet; §4a
-is, and describes shipped behaviour (#138–#140). Defines what a Fennec
-persistence backend must do unconditionally (the *conformance core*) versus what it may
-declare (*capabilities*), and how the TCK proves both. Companions: `concept.md`,
+**Status:** target picture, approved 2026-08-13; third category and declaration surface added
+2026-08-14 (§2C, §5a). The split itself is not implemented yet; §4a and §4b are, and describe
+shipped behaviour (#138–#140, #150). Defines what a Fennec
+persistence backend must do unconditionally (the *conformance core*), what it may
+declare (*capabilities*), what merely differs in shape (*form divergence*), and how the TCK
+proves each. Companions: `concept.md`,
 `query-ir-redesign.md` (the `QueryFeature` vocabulary), `query-processor-spi.md` (the SPI
 that carries the declarations). The harness that implements this is the follow-up topic.
 
@@ -58,12 +60,35 @@ declaration must be **test-backed in both directions**:
 The second half is the one usually missing, and it is the more important one. Refusal is
 covered in §5.
 
+### C — Form divergence
+
+Neither of the two above, and it exists because §4b happened: the semantics are required of
+every backend, honoured by every backend, and the *shape* still differs. Residency is the
+case — the child is resolved, owned, addressable and save-order independent everywhere, but
+which resource object it reports follows from how the store represents containment.
+
+Form divergence is **not declarable and not optional**. It is not a capability, because
+nothing is missing and nothing gets refused; it is not a gap in the core, because the
+semantics are complete. What it gets instead is a contract statement naming both behaviours
+and their consequences, plus a test that **asserts** the divergence rather than skipping it —
+so a future change that removes it has to come here and update the contract.
+
+Deliberately absent: a runtime flag for it. A `reportsOwnResource()` predicate would invite
+portable code to branch on the shape, which is exactly what §4b tells consumers not to do.
+The two cases today are §4a (behaviour uniform, timing not) and §4b (semantics uniform, form
+not).
+
 ### What separates them
 
 A capability answers "can this store do it at all". Core answers "does this backend
 implement EMF". A useful test: if the answer for a given item could reasonably be *no* for
 a mature, well-implemented backend on a capable store, it is a capability. If *no* would
 mean the backend is defective, it is core.
+
+Form divergence is what remains when the answer is *yes everywhere* and the observable shape
+still differs. The three are distinguished by what they produce: core produces a mandatory
+test, a capability produces a declaration plus tests in both directions, a form divergence
+produces a contract statement plus an asserting test.
 
 ## 3. Where the boundary runs
 
@@ -256,6 +281,83 @@ is the pattern done right.
 **Runtime introspection over documentation.** A backend answers what it supports when
 asked, and refuses what it does not. Then documentation is convenience, not contract.
 
+### 5a. The declaration surface
+
+Decided 2026-08-14. The rules above say what a declaration must do; this says where it lives
+and who answers it. Today it lives in the wrong place, and the symptom is visible: everything
+declarable sits in `query-api.ecore` inside the query bundle, so anything that wants to
+declare has to depend on the query model — while the save path, `StreamingResource`, liveness,
+index and schema generation have no place to declare at all. The liveness concept made the
+point by building its own runtime model (`PersistenceLivenessRuntime` + DTOs) rather than
+using this one.
+
+**One model, three roles, one name.** `query-api.ecore` carries the query execution API
+(`QueryProcessor`, `QueryPlan`, `QueryContext`, `QueryResult`, `QueryableResource`), the
+command execution API (`CommandResource`, `CommandTransaction`) *and* the declaration surface.
+The name describes the first third. Split it by role, one name per role:
+
+| Type | Where | Note |
+|---|---|---|
+| `PersistenceCapabilities` | new, `org.eclipse.fennec.persistence.capabilities` in the **core** bundle | the root a backend answers; query and command become views on it |
+| `QueryCapabilities` / `QueryFeature` | unchanged | this really *is* query expression vocabulary — the prefix is correct here |
+| `CommandCapabilities` / `CommandFeature` | unchanged, minus one literal | see below |
+| `StoreCapabilities` / `StoreFeature` | new | `TRANSACTIONS`, `CHANGE_STREAMS`, `SERVER_CURSORS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` — the home for everything outside the query |
+| `StoreLimits` | new | scalars, not flags — identifier length, timestamp precision, LOB bounds, NULL ordering, and today's lone `maxFeaturePathDepth` |
+| query / command execution types | stay in the query bundle, `...query.api` and `...command.api` | `CommandResource` is not a query |
+
+`TRANSACTION_BRACKET` moves from `CommandFeature` to `StoreFeature`. It was never a command
+capability: §4a already uses it to explain the cascade-delete window on the **save** path, and
+`OwnershipMaintenance` refers to it — reaching that statement through a `CommandResource` is
+an accident of where the literal was first needed.
+
+**Not named `contract` or `conformance`.** Both were considered and rejected: the conformance
+core is precisely what is *not* declared (§2A — core items do not exist as declarable values).
+A model that by construction contains only B must not be named after A.
+
+**Scalars, not just booleans.** `maxFeaturePathDepth` is already the exception among the flags,
+and the flavor axis produces more of them: Oracle's identifier length, timestamp precision,
+collation and case sensitivity, NULL sort order. Those are not can/cannot questions, and a
+boolean cannot say "works, differently" — which is the normal case across flavors.
+
+**Two levels, because there are two kinds of truth.** The existing Mongo implementation is
+already built this way and it stays that way:
+
+1. **Declaration** — static, readable *without opening a connection*, so tests, the documented
+   matrix and a consumer choosing a server can all read it. `MongoFlavorCapabilities` is the
+   pattern: a `BASELINE` minus per-flavor gaps, derived by exclusion, so a newly supported
+   feature is available everywhere by default and a genuine gap has to be discovered and
+   declared deliberately.
+2. **Probe** — per resource instance, for what only the running deployment knows: replica set
+   or standalone, session-capable client, database version, actual dialect. FerretDB and
+   DocumentDB-PG carry *identical* query declarations and differ exactly here.
+
+> **The probe may only narrow, never widen.** A probe that would add a capability the
+> declaration does not carry is a startup error, not a silent upgrade. Otherwise no one can
+> say what actually holds.
+
+**Declared in Java; the vocabulary stays in Ecore.** The feature enums remain `EEnum`s and
+stay closed — the vocabulary is our contract, and no one extends it from outside. The
+per-flavor declarations are Java constants. XMI instance data was considered and deferred: its
+real benefit is a *foreign* flavor without a fork, which nothing needs today, while its costs
+land immediately — an unknown enum literal in XMI is a `Resource` error but silently the
+default value, which reproduces the #132 failure mode one level up; renaming a literal breaks
+Java at compile time and XMI silently; and EMF joins the core bundle's startup path.
+
+What makes this reversible is the surface, not the format: `PersistenceCapabilities` is
+registered as an **OSGi service with `backend` and `flavor` properties**, so one provider may
+build it from Java constants and another from an XMI it ships — consumers and the TCK cannot
+tell. The irreversible decision is the type and the registration; where the data comes from is
+per backend and can change later. That is also the answer for JPA's open flavor set (h2,
+postgres, oracle, mssql, and whatever a deployment brings): a third party registers its own
+declaration as a bundle instead of forking ours.
+
+**Every gap carries its evidence.** The valuable part of `MongoFlavorCapabilities` is not the
+list but the reasoning: `FERRETDB_GAPS` is empty, and above it stand the container tag it was
+measured against, the issue, the features suspected up front and then disproved, and the
+scope of the claim — "no gap in what the TCK exercises", not "no gap". A declaration without
+that is unreviewable. So evidence — issue reference plus how it was measured — is required
+per gap, and a declaration lacking it must fail a test rather than merely look thin.
+
 ## 6. Topology: backend × flavor
 
 Two axes, not one. Today "flavor" means "which mongo-wire server", which stops working the
@@ -322,6 +424,10 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
 
 ## 9. Open decisions
 
+Decided since, and moved out of this list: the third category (§2C, form divergence) and the
+declaration surface with its naming, its two levels and Java-versus-XMI (§5a) — both
+2026-08-14. What remains:
+
 1. **Query-vocabulary hooks.** `supportsTypePredicates`, `supportsSortExpressions`,
    `supportsExpand`, `supportsFilteredCollectionCounts` are listed as capabilities above.
    Arguable: they are not store limits so much as translator gaps, and a translator gap is
@@ -337,10 +443,16 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
 ## 10. Getting there
 
 1. Freeze the boundary — §3 and the four decisions in §9.
-2. Introduce the declaration surface with core items *absent by construction*, and reduce
-   `MongoFlavorCapabilities` / `CommandCapabilities` onto it.
+2. Introduce the declaration surface of §5a with core items *absent by construction*: split
+   `query-api.ecore` by role, add `PersistenceCapabilities` / `StoreCapabilities` /
+   `StoreLimits` in the core bundle, move `TRANSACTION_BRACKET` to `StoreFeature`, register the
+   declaration as a service per `backend` × `flavor`, and reduce `MongoFlavorCapabilities` /
+   `CommandCapabilities` onto it. Package renames are cheap while `base-version` is `0.1.0`
+   and every consumer is workspace-internal; after 1.0 they cost a major bump.
 3. Replace the seven hooks with an `ExecutionCondition` and a capability annotation, so
-   gating is declarative and a skip reason is a capability statement in the report.
+   gating is declarative and a skip reason is a capability statement in the report. The
+   condition reads the declaration service, which is what makes "skip means undeclared
+   capability" mechanical rather than a convention.
 4. Make the boot fail loudly: undeclared capability → skip, unreachable backend → error.
    Retires the XML-parsing guard in `mongo-flavors.yml` (#132).
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become
