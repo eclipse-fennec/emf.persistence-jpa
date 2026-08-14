@@ -15,7 +15,7 @@ package org.eclipse.fennec.persistence.tck;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,7 +45,12 @@ import com.mongodb.client.MongoClients;
 final class MongoTestSupport {
 
 	private static final Logger LOG = Logger.getLogger(MongoTestSupport.class.getName());
-	private static final String CLI_OVERRIDE = System.getProperty("mongo.container.cli");
+
+	/**
+	 * Container plumbing shared with the JPA side of the {@code backend × flavor} matrix — CLI
+	 * resolution, published-port lookup and orphan reaping live there now (issue #134).
+	 */
+	private static final ContainerHarness CONTAINERS = new ContainerHarness("mongo.container.cli");
 
 	/**
 	 * The server flavor under test (issues #119/#122): {@code mongo} (default),
@@ -86,21 +91,6 @@ final class MongoTestSupport {
 	/** The container port the wire protocol is served on, per flavor. */
 	private static final int WIRE_PORT = isDocumentDbPg() ? DOCUMENTDB_PORT : 27017;
 
-	/** Marks containers started by this harness, so orphans can be identified and reaped. */
-	private static final String LABEL_OWNER = "fennec.persistence.tck";
-
-	/** Carries the start time in epoch millis — the age filter of the reaper depends on it. */
-	private static final String LABEL_STARTED = "fennec.persistence.tck.started";
-
-	/**
-	 * How long an orphan is left alone. Containers are removed on JVM shutdown, but a hard kill
-	 * (a build timeout, {@code ^C}, an OOM) skips the hook and {@code --rm} only applies on
-	 * stop — so the container keeps running, sometimes for days. Reaping is therefore done at
-	 * startup, and the grace period keeps a concurrent run of the same flavor from having its
-	 * server pulled out from under it: a suite takes minutes, never an hour.
-	 */
-	private static final long ORPHAN_GRACE_MILLIS = 60 * 60 * 1000L;
-
 	/**
 	 * Turns "no server" from a skip into a failure (issue #132). A skipped suite and a
 	 * passing one are indistinguishable in a green build, so CI — and anyone who wants to
@@ -112,7 +102,6 @@ final class MongoTestSupport {
 	private static volatile String uri;
 	private static volatile String containerId;
 	private static volatile boolean initialized;
-	private static volatile String cli;
 	/** Why {@link #connectionString()} gave up, for the diagnostic the skip message carries. */
 	private static volatile String unavailableReason;
 
@@ -144,24 +133,6 @@ final class MongoTestSupport {
 		return isDocumentDbPg() ? DOCUMENTDB_IMAGE : "docker.io/library/mongo:7";
 	}
 
-	private static String resolveCli() {
-		if (nonNull(cli)) {
-			return cli;
-		}
-		String[] candidates = nonNull(CLI_OVERRIDE) && !CLI_OVERRIDE.isBlank()
-				? new String[] { CLI_OVERRIDE.trim() }
-				: new String[] { "docker", "podman" };
-		for (String candidate : candidates) {
-			try {
-				exec(15, candidate, "version");
-				cli = candidate;
-				return cli;
-			} catch (Exception e) {
-				LOG.log(Level.FINE, () -> "Container CLI '" + candidate + "' not usable: " + e.getMessage());
-			}
-		}
-		throw new IllegalStateException("No container CLI (docker/podman) available");
-	}
 
 	/**
 	 * Returns the connection string, starting a container on first use; {@code null} if
@@ -180,14 +151,12 @@ final class MongoTestSupport {
 			return uri;
 		}
 		try {
-			reapOrphans();
+			CONTAINERS.reapOrphans(FLAVOR);
 			String id = startContainer();
 			if (nonNull(id) && !id.isBlank()) {
 				containerId = id.trim();
-				String mapping = exec(20, resolveCli(), "port", containerId, WIRE_PORT + "/tcp");
-				if (nonNull(mapping) && mapping.contains(":")) {
-					String port = mapping.trim().lines().findFirst().orElse("");
-					port = port.substring(port.lastIndexOf(':') + 1);
+				String port = CONTAINERS.publishedPort(containerId, WIRE_PORT);
+				if (nonNull(port)) {
 					if (isGateway()) {
 						awaitWireProtocol();
 					} else {
@@ -258,55 +227,19 @@ final class MongoTestSupport {
 	 * handles that on its own).
 	 */
 	private static String startContainer() throws Exception {
-		String publish = "127.0.0.1::" + WIRE_PORT;
-		String owner = "--label=" + LABEL_OWNER + "=" + FLAVOR;
-		String started = "--label=" + LABEL_STARTED + "=" + System.currentTimeMillis();
+		ContainerSpec spec = ContainerSpec.of(FLAVOR, IMAGE, WIRE_PORT);
 		if (isFerretDb()) {
-			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish, owner, started,
-					"-e", "POSTGRES_PASSWORD=" + FERRETDB_PASSWORD, IMAGE);
+			return CONTAINERS.run(spec.withEnv(Map.of("POSTGRES_PASSWORD", FERRETDB_PASSWORD)));
 		}
 		if (isDocumentDbPg()) {
 			// ALLOW_EXTERNAL_CONNECTIONS defaults to false — without it the gateway binds
 			// container-locally and the published port refuses every connection
-			return exec(300, resolveCli(), "run", "-d", "--rm", "-p", publish, owner, started,
-					"-e", "ALLOW_EXTERNAL_CONNECTIONS=true", "-e", "ENFORCE_SSL=false", IMAGE);
+			return CONTAINERS.run(spec.withEnv(Map.of("ALLOW_EXTERNAL_CONNECTIONS", "true",
+					"ENFORCE_SSL", "false")));
 		}
-		return exec(180, resolveCli(), "run", "-d", "--rm", "-p", publish, owner, started,
-				IMAGE, "--replSet", "rs0");
+		return CONTAINERS.run(spec.withArguments("--replSet", "rs0").withStartTimeout(180));
 	}
 
-	/**
-	 * Removes containers this harness leaked in earlier runs (same flavor, older than
-	 * {@link #ORPHAN_GRACE_MILLIS}).
-	 * <p>
-	 * Best-effort throughout: reaping is housekeeping, so a failure here must never fail a test
-	 * run — every error is logged at FINE and the suite proceeds with a fresh container. A
-	 * container whose start-time label is missing or unparsable is left alone rather than
-	 * guessed about.
-	 */
-	private static void reapOrphans() {
-		try {
-			String listed = exec(30, resolveCli(), "ps", "--all", "--quiet",
-					"--filter", "label=" + LABEL_OWNER + "=" + FLAVOR);
-			long now = System.currentTimeMillis();
-			listed.lines().map(String::trim).filter(id -> !id.isEmpty()).forEach(id -> {
-				try {
-					String startedAt = exec(20, resolveCli(), "inspect", id,
-							"--format", "{{index .Config.Labels \"" + LABEL_STARTED + "\"}}").trim();
-					if (now - Long.parseLong(startedAt) < ORPHAN_GRACE_MILLIS) {
-						return;
-					}
-					exec(30, resolveCli(), "rm", "--force", id);
-					LOG.log(Level.INFO, () -> "Removed leaked " + FLAVOR + " test container " + id
-							+ " from an earlier run");
-				} catch (Exception e) {
-					LOG.log(Level.FINE, () -> "Could not reap container " + id + ": " + e.getMessage());
-				}
-			});
-		} catch (Exception e) {
-			LOG.log(Level.FINE, () -> "Orphan reaping skipped: " + e.getMessage());
-		}
-	}
 
 	/**
 	 * The driver connection string for the started container.
@@ -352,7 +285,7 @@ final class MongoTestSupport {
 		while (System.currentTimeMillis() < deadline) {
 			try {
 				if (isFerretDb()) {
-					exec(20, resolveCli(), "exec", containerId, "mongosh",
+					CONTAINERS.execInContainer(20, containerId, "mongosh",
 							"mongodb://postgres:" + FERRETDB_PASSWORD + "@127.0.0.1:27017/", "--quiet",
 							"--eval", "db.adminCommand({ping:1})");
 				} else {
@@ -385,7 +318,7 @@ final class MongoTestSupport {
 		Exception last = null;
 		while (System.currentTimeMillis() < deadline) {
 			try {
-				exec(20, resolveCli(), "exec", containerId, "mongosh", "--quiet",
+				CONTAINERS.execInContainer(20, containerId, "mongosh", "--quiet",
 						"--eval", "db.adminCommand({ping:1})");
 				return;
 			} catch (Exception e) {
@@ -398,9 +331,7 @@ final class MongoTestSupport {
 
 	/** Pings the published port with the Mongo driver, TLS handshake included. */
 	private static void probeWithDriver() throws Exception {
-		String mapping = exec(20, resolveCli(), "port", containerId, WIRE_PORT + "/tcp");
-		String port = mapping.trim().lines().findFirst().orElse("");
-		port = port.substring(port.lastIndexOf(':') + 1);
+		String port = CONTAINERS.publishedPort(containerId, WIRE_PORT);
 		try (MongoClient probe = MongoClients.create(connectionUri(port))) {
 			probe.getDatabase("admin").runCommand(new Document("ping", 1));
 		}
@@ -409,10 +340,10 @@ final class MongoTestSupport {
 	/** Initiates the single-node replica set and waits until the node is PRIMARY. */
 	private static void initiateReplicaSet() throws Exception {
 		awaitMongodListening();
-		exec(60, resolveCli(), "exec", containerId, "mongosh", "--quiet", "--eval", "rs.initiate()");
+		CONTAINERS.execInContainer(60, containerId, "mongosh", "--quiet", "--eval", "rs.initiate()");
 		long deadline = System.currentTimeMillis() + 60_000;
 		while (System.currentTimeMillis() < deadline) {
-			String primary = exec(20, resolveCli(), "exec", containerId, "mongosh", "--quiet",
+			String primary = CONTAINERS.execInContainer(20, containerId, "mongosh", "--quiet",
 					"--eval", "db.hello().isWritablePrimary");
 			if (nonNull(primary) && primary.trim().endsWith("true")) {
 				return;
@@ -424,27 +355,8 @@ final class MongoTestSupport {
 
 	static synchronized void shutdown() {
 		if (nonNull(containerId)) {
-			try {
-				exec(30, resolveCli(), "rm", "-f", containerId);
-			} catch (Exception e) {
-				LOG.log(Level.FINE, "Failed to remove mongo container", e);
-			}
+			CONTAINERS.remove(containerId);
 			containerId = null;
 		}
-	}
-
-	private static String exec(int timeoutSeconds, String... command) throws Exception {
-		Process process = new ProcessBuilder(command).redirectErrorStream(false).start();
-		if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
-			process.destroyForcibly();
-			throw new IllegalStateException("Command timed out: " + String.join(" ", command));
-		}
-		String stdout = new String(process.getInputStream().readAllBytes());
-		if (process.exitValue() != 0) {
-			String stderr = new String(process.getErrorStream().readAllBytes());
-			throw new IllegalStateException("Command failed (" + process.exitValue() + "): "
-					+ String.join(" ", command) + " — " + stderr.trim());
-		}
-		return stdout;
 	}
 }
