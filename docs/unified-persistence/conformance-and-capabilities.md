@@ -1,8 +1,10 @@
 # Conformance and capabilities — the persistence contract
 
 **Status:** target picture, approved 2026-08-13; third category and declaration surface added
-2026-08-14 (§2C, §5a). The split itself is not implemented yet; §4a and §4b are, and describe
-shipped behaviour (#138–#140, #150). Defines what a Fennec
+2026-08-14 (§2C, §5a). Partly implemented since: §4a and §4b describe shipped behaviour
+(#138–#140, #150), the declaration surface of §5a exists as its own bundle with
+`PersistenceResource.capabilities()` as its carrier, and the `backend × flavor` matrix of §6 runs
+in CI (§10 records what is done and what is left). Defines what a Fennec
 persistence backend must do unconditionally (the *conformance core*), what it may
 declare (*capabilities*), what merely differs in shape (*form divergence*), and how the TCK
 proves each. Companions: `concept.md`,
@@ -13,8 +15,9 @@ that carries the declarations). The harness that implements this is the follow-u
 
 ## 1. Why
 
-Today one word carries two jobs. `MongoFlavorCapabilities`, `QueryFeature` (51 literals),
-`CommandFeature` (4) and the seven `supports*()` hooks in `AbstractPersistenceTCK` all
+Today one word carries two jobs. `MongoFlavorCapabilities`, `QueryFeature` (50 literals),
+`CommandFeature` (3 since `TRANSACTION_BRACKET` became a `StoreFeature`, §5a) and the seven
+`supports*()` hooks in `AbstractPersistenceTCK` all
 answer "can this backend do X?" — but X is sometimes *store-dependent power* (geo indexes,
 multi-document transactions) and sometimes *EMF semantics* (does a containment child come
 back). Those are not the same kind of question, and merging them costs the API its central
@@ -480,17 +483,16 @@ declaration surface with its naming, its two levels and Java-versus-XMI (§5a) �
    condition reads the declaration service, which is what makes "skip means undeclared
    capability" mechanical rather than a convention.
 4. Make the boot fail loudly: undeclared capability → skip, unreachable backend → error.
-   Retires the XML-parsing guard in `mongo-flavors.yml` (#132).
+   Retires the XML-parsing guard in `flavor-matrix.yml` (#132).
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become
    blocking rather than `@Disabled`.
 6. Generate the command × selector cross product from the declarations (§4).
-7. Extend the matrix to `backend × flavor` (§6). **Done locally**: the container harness is
-   factored out of `MongoTestSupport` into `ContainerHarness` + `ContainerSpec`, `JpaTestSupport`
-   provides `h2` and `postgres`, and both axes reach the test JVM. `jpa × h2` and all three mongo
-   flavors are green; `jpa × postgres` has the four defects above. **Left**: the CI job for the
-   new axis, which needs those four either fixed or pinned per flavor — a job that is red by
-   design teaches nobody anything, and one made green with `ignoreFailures` is the silent pass
-   §5 forbids.
+7. Extend the matrix to `backend × flavor` (§6). **Done**: the container harness is factored out
+   of `MongoTestSupport` into `ContainerHarness` + `ContainerSpec`, `JpaTestSupport` provides `h2`
+   and `postgres`, both axes reach the test JVM, and the four defects the second flavor found are
+   fixed (#154–#157) rather than pinned — so `flavor-matrix.yml` runs `jpa × postgres` alongside
+   the three mongo flavors and is green because it passes, not because failures are ignored.
+   `jpa × h2` stays in `build.yml`, where it needs no container. Next flavor: MariaDB (#158).
 8. Index capability last, once the plan-inspection harness exists (§7).
 
 Steps 1–4 are structure and change no test outcome. Step 5 is where conformance starts
