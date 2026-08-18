@@ -12,4 +12,12 @@
  *   Data In Motion Consulting - initial implementation
  * ******************************************************************
  */
+/**
+ * The stock {@code TypeConverter}s and the concrete {@code DefaultConverterService}.
+ * Exported since issue #164: the service became the plain-Java entry point every consumer
+ * constructs directly — the backends' query wiring, external bindings, tests — so the
+ * package is API, not implementation detail.
+ */
+@org.osgi.annotation.bundle.Export
+@org.osgi.annotation.versioning.Version("1.0.0")
 package org.eclipse.fennec.persistence.converter;
