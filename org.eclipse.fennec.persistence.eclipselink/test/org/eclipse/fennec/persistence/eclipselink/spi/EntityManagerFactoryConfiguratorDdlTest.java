@@ -63,7 +63,6 @@ import jakarta.persistence.EntityManagerFactory;
  * {@code eclipselink.ddl-generation} property when delegating to
  * {@code EDynamicHelper.addETypes}. See GitHub issue #6.
  */
-@SuppressWarnings("restriction")
 class EntityManagerFactoryConfiguratorDdlTest {
 
 	private static final String TABLE_NAME = "THING";
