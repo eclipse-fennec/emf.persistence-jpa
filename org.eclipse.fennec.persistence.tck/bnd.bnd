@@ -49,7 +49,7 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 	org.eclipse.fennec.command.model;version=snapshot,\
 	org.eclipse.fennec.stream.model;version=snapshot,\
 	org.eclipse.fennec.persistence.orm;version=snapshot,\
-	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
+	org.eclipse.fennec.persistence.eclipselink;version=snapshot;packages='*',\
 	org.eclipse.fennec.persistence.mongo;version=snapshot,\
 	org.eclipse.fennec.persistence.pushstreams;version=snapshot,\
 	org.eclipse.fennec.codec.api;version=latest,\
