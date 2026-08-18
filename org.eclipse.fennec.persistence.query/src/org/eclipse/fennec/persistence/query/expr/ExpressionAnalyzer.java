@@ -13,8 +13,10 @@
 package org.eclipse.fennec.persistence.query.expr;
 
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.Set;
 
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
@@ -45,6 +47,7 @@ import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
+import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TypeCheck;
@@ -162,8 +165,35 @@ public final class ExpressionAnalyzer {
 		QueryShape shape = deriveShape(query, aggregating);
 		String invalidGeo = features.contains(QueryFeature.GEO_WITHIN)
 				|| features.contains(QueryFeature.GEO_DISTANCE) ? scanGeoStructure(query) : null;
+		String invalidStringMatch = features.contains(QueryFeature.WHERE_STRING_MATCH)
+				? scanStringMatches(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
-				invalidSort[0], invalidGeo);
+				invalidSort[0], invalidGeo, invalidStringMatch);
+	}
+
+	/**
+	 * Structural findings for string matches (issue #167): the fuzzy parameters are only
+	 * meaningful for {@code kind = FUZZY} — set on any other kind they are refused by shape,
+	 * never silently ignored — and the edit budget is 1 or 2.
+	 */
+	private static String scanStringMatches(Query query) {
+		Iterator<EObject> contents = query.eAllContents();
+		while (contents.hasNext()) {
+			if (contents.next() instanceof StringMatch match) {
+				boolean fuzzy = match.getKind() == StringMatchKind.FUZZY;
+				if (!fuzzy && (match.isSetMaxEdits() || match.isSetPrefixLength())) {
+					return "maxEdits/prefixLength are only meaningful for StringMatch kind FUZZY, not "
+							+ match.getKind();
+				}
+				if (fuzzy && (match.getMaxEdits() < 1 || match.getMaxEdits() > 2)) {
+					return "StringMatch maxEdits must be 1 or 2, was " + match.getMaxEdits();
+				}
+				if (fuzzy && match.getPrefixLength() < 0) {
+					return "StringMatch prefixLength must not be negative, was " + match.getPrefixLength();
+				}
+			}
+		}
+		return null;
 	}
 
 	private static QueryShape deriveShape(Query query, boolean aggregating) {
@@ -286,6 +316,10 @@ public final class ExpressionAnalyzer {
 			features.add(QueryFeature.WHERE_STRING_MATCH);
 			if (match.isCaseInsensitive()) {
 				features.add(QueryFeature.STRING_MATCH_CASE_INSENSITIVE);
+			}
+			if (match.getKind() == StringMatchKind.FUZZY) {
+				// edit-distance matching is a refinement like case-insensitivity (issue #167)
+				features.add(QueryFeature.STRING_MATCH_FUZZY);
 			}
 			walk(match.getSource(), features, maxDepth, zeroDivision);
 			walk(match.getPattern(), features, maxDepth, zeroDivision);

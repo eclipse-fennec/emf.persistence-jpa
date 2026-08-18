@@ -100,6 +100,18 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//StringMatchKind"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="caseInsensitive" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
         defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxEdits" unsettable="true"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The Damerau-Levenshtein edit budget for kind FUZZY (issue #167): 1 or 2, default 2 (mirroring Lucene). Meaningful only for FUZZY — set on any other kind the validator refuses the query by shape. Unsettable so that &quot;explicitly configured&quot; is distinguishable from the default."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="prefixLength" unsettable="true"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Leading characters that must match exactly for kind FUZZY (issue #167) — the knob that keeps fuzzy matching from exploding on short inputs. Default 0. Meaningful only for FUZZY, like maxEdits."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
         eType="#//Expression" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="pattern" lowerBound="1"
@@ -399,6 +411,11 @@
     <eLiterals name="STARTS_WITH" value="1"/>
     <eLiterals name="ENDS_WITH" value="2"/>
     <eLiterals name="LIKE" value="3"/>
+    <eLiterals name="FUZZY" value="4">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Edit-distance (Damerau-Levenshtein) matching against the whole value (issue #167), parameterized by StringMatch.maxEdits and prefixLength. Requires the STRING_MATCH_FUZZY capability; term-level fuzziness over analyzed sources is a backend refusal with the way out (a keyword projection), not a variant of this kind. 3VL like every StringMatch: a missing value is UNKNOWN."/>
+      </eAnnotations>
+    </eLiterals>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="StringFunctionKind">
     <eLiterals name="TO_LOWER"/>

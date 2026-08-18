@@ -62,7 +62,6 @@ import jakarta.persistence.EntityManagerFactory;
  * column and table names that match SQL reserved words must be emitted with
  * delimiters so that DDL and queries succeed against H2. See GitHub issue #8.
  */
-@SuppressWarnings("restriction")
 class NonOsgiDelimitedIdentifiersTest {
 
 	@TempDir

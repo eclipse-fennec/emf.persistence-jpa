@@ -1007,6 +1007,34 @@ public final class Expressions {
 			return match(StringMatchKind.LIKE, pattern, true);
 		}
 
+		/** Edit-distance match with the default budget of 2 (issue #167).
+		 *  @param value the value to match within {@code maxEdits} Damerau-Levenshtein edits
+		 *  @return the match */
+		public StringMatch fuzzy(Object value) {
+			return match(StringMatchKind.FUZZY, value, false);
+		}
+
+		/** Edit-distance match with an explicit budget (issue #167).
+		 *  @param value the value to match
+		 *  @param maxEdits the Damerau-Levenshtein budget, 1 or 2
+		 *  @return the match */
+		public StringMatch fuzzy(Object value, int maxEdits) {
+			StringMatch match = match(StringMatchKind.FUZZY, value, false);
+			match.setMaxEdits(maxEdits);
+			return match;
+		}
+
+		/** Edit-distance match with budget and exact-prefix requirement (issue #167).
+		 *  @param value the value to match
+		 *  @param maxEdits the Damerau-Levenshtein budget, 1 or 2
+		 *  @param prefixLength leading characters that must match exactly
+		 *  @return the match */
+		public StringMatch fuzzy(Object value, int maxEdits, int prefixLength) {
+			StringMatch match = fuzzy(value, maxEdits);
+			match.setPrefixLength(prefixLength);
+			return match;
+		}
+
 		private StringMatch match(StringMatchKind kind, Object pattern, boolean caseInsensitive) {
 			StringMatch match = FACTORY.createStringMatch();
 			match.setKind(kind);

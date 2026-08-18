@@ -318,6 +318,7 @@ class ChangeTemplatesTest {
 				.hasMessageContaining("MOVE");
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	void insertBindingResolvesExternalTargetsAndKeepsPayloadInternalOnes() throws QueryException {
 		// alice's friend is EXTERNAL (bob, exists), friends mixes a payload pal and carl

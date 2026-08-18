@@ -659,6 +659,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 			case STARTS_WITH -> escapeLike(raw) + "%";
 			case ENDS_WITH -> "%" + escapeLike(raw);
 			case LIKE -> raw;
+			// unreachable: STRING_MATCH_FUZZY is undeclared, validation refused already (issue #167)
+			case FUZZY -> throw new QueryException("FUZZY matching is not served by the jpa backend");
 			};
 			String parameter = bind(pattern);
 			if (match.isCaseInsensitive()) {

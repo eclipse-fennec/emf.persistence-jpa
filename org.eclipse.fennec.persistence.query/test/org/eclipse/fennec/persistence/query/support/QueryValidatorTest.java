@@ -134,6 +134,35 @@ class QueryValidatorTest {
 	}
 
 	@Test
+	void malformedFuzzyMatchIsRefused() {
+		// issue #167: fuzzy parameters are only meaningful for kind FUZZY, and the edit
+		// budget is 1 or 2 — both refused by shape, not silently ignored
+		org.eclipse.fennec.model.expression.StringMatch misplaced =
+				Expressions.path(name).contains("x");
+		misplaced.setMaxEdits(1);
+		Diagnostic diagnostic = QueryValidator.validate(
+				QueryBuilder.from(person).where(misplaced).build(), person,
+				capabilities(QueryFeature.WHERE_STRING_MATCH, QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> {
+					assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_STRING_MATCH);
+					assertThat(child.getMessage()).contains("only meaningful");
+				});
+
+		Diagnostic budget = QueryValidator.validate(
+				QueryBuilder.from(person).where(Expressions.path(name).fuzzy("x", 3)).build(), person,
+				capabilities(QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_FUZZY,
+						QueryFeature.TYPE_FILTER));
+		assertThat(budget.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(budget.getChildren())
+				.anySatisfy(child -> {
+					assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_STRING_MATCH);
+					assertThat(child.getMessage()).contains("1 or 2");
+				});
+	}
+
+	@Test
 	void malformedGeoStructureIsRefused() {
 		// issue #101: a GeoSubject must bind exactly one form (pair XOR point)
 		org.eclipse.fennec.model.expression.GeoSubject dual =

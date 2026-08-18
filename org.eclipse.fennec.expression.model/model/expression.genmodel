@@ -21,6 +21,7 @@
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/STARTS_WITH"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/ENDS_WITH"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/LIKE"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringMatchKind/FUZZY"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//StringFunctionKind">
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//StringFunctionKind/TO_LOWER"/>
@@ -86,6 +87,8 @@
     <genClasses ecoreClass="expression.ecore#//StringMatch">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringMatch/kind"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringMatch/caseInsensitive"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringMatch/maxEdits"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//StringMatch/prefixLength"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//StringMatch/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//StringMatch/pattern"/>
     </genClasses>

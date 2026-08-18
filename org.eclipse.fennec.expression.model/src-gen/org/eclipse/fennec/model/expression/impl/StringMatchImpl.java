@@ -35,6 +35,8 @@ import org.eclipse.fennec.model.expression.StringMatchKind;
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl#getKind <em>Kind</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl#isCaseInsensitive <em>Case Insensitive</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl#getMaxEdits <em>Max Edits</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl#getPrefixLength <em>Prefix Length</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl#getSource <em>Source</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.impl.StringMatchImpl#getPattern <em>Pattern</em>}</li>
  * </ul>
@@ -81,6 +83,64 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 	 * @ordered
 	 */
 	protected boolean caseInsensitive = CASE_INSENSITIVE_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getMaxEdits() <em>Max Edits</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getMaxEdits()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final int MAX_EDITS_EDEFAULT = 2;
+
+	/**
+	 * The cached value of the '{@link #getMaxEdits() <em>Max Edits</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getMaxEdits()
+	 * @generated
+	 * @ordered
+	 */
+	protected int maxEdits = MAX_EDITS_EDEFAULT;
+
+	/**
+	 * This is true if the Max Edits attribute has been set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean maxEditsESet;
+
+	/**
+	 * The default value of the '{@link #getPrefixLength() <em>Prefix Length</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getPrefixLength()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final int PREFIX_LENGTH_EDEFAULT = 0;
+
+	/**
+	 * The cached value of the '{@link #getPrefixLength() <em>Prefix Length</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getPrefixLength()
+	 * @generated
+	 * @ordered
+	 */
+	protected int prefixLength = PREFIX_LENGTH_EDEFAULT;
+
+	/**
+	 * This is true if the Prefix Length attribute has been set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean prefixLengthESet;
 
 	/**
 	 * The cached value of the '{@link #getSource() <em>Source</em>}' containment reference.
@@ -165,6 +225,106 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 		caseInsensitive = newCaseInsensitive;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ExpressionPackage.STRING_MATCH__CASE_INSENSITIVE, oldCaseInsensitive, caseInsensitive));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public int getMaxEdits() {
+		return maxEdits;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setMaxEdits(int newMaxEdits) {
+		int oldMaxEdits = maxEdits;
+		maxEdits = newMaxEdits;
+		boolean oldMaxEditsESet = maxEditsESet;
+		maxEditsESet = true;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ExpressionPackage.STRING_MATCH__MAX_EDITS, oldMaxEdits, maxEdits, !oldMaxEditsESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void unsetMaxEdits() {
+		int oldMaxEdits = maxEdits;
+		boolean oldMaxEditsESet = maxEditsESet;
+		maxEdits = MAX_EDITS_EDEFAULT;
+		maxEditsESet = false;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.UNSET, ExpressionPackage.STRING_MATCH__MAX_EDITS, oldMaxEdits, MAX_EDITS_EDEFAULT, oldMaxEditsESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public boolean isSetMaxEdits() {
+		return maxEditsESet;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public int getPrefixLength() {
+		return prefixLength;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setPrefixLength(int newPrefixLength) {
+		int oldPrefixLength = prefixLength;
+		prefixLength = newPrefixLength;
+		boolean oldPrefixLengthESet = prefixLengthESet;
+		prefixLengthESet = true;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ExpressionPackage.STRING_MATCH__PREFIX_LENGTH, oldPrefixLength, prefixLength, !oldPrefixLengthESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void unsetPrefixLength() {
+		int oldPrefixLength = prefixLength;
+		boolean oldPrefixLengthESet = prefixLengthESet;
+		prefixLength = PREFIX_LENGTH_EDEFAULT;
+		prefixLengthESet = false;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.UNSET, ExpressionPackage.STRING_MATCH__PREFIX_LENGTH, oldPrefixLength, PREFIX_LENGTH_EDEFAULT, oldPrefixLengthESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public boolean isSetPrefixLength() {
+		return prefixLengthESet;
 	}
 
 	/**
@@ -285,6 +445,10 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 				return getKind();
 			case ExpressionPackage.STRING_MATCH__CASE_INSENSITIVE:
 				return isCaseInsensitive();
+			case ExpressionPackage.STRING_MATCH__MAX_EDITS:
+				return getMaxEdits();
+			case ExpressionPackage.STRING_MATCH__PREFIX_LENGTH:
+				return getPrefixLength();
 			case ExpressionPackage.STRING_MATCH__SOURCE:
 				return getSource();
 			case ExpressionPackage.STRING_MATCH__PATTERN:
@@ -306,6 +470,12 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 				return;
 			case ExpressionPackage.STRING_MATCH__CASE_INSENSITIVE:
 				setCaseInsensitive((Boolean)newValue);
+				return;
+			case ExpressionPackage.STRING_MATCH__MAX_EDITS:
+				setMaxEdits((Integer)newValue);
+				return;
+			case ExpressionPackage.STRING_MATCH__PREFIX_LENGTH:
+				setPrefixLength((Integer)newValue);
 				return;
 			case ExpressionPackage.STRING_MATCH__SOURCE:
 				setSource((Expression)newValue);
@@ -331,6 +501,12 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 			case ExpressionPackage.STRING_MATCH__CASE_INSENSITIVE:
 				setCaseInsensitive(CASE_INSENSITIVE_EDEFAULT);
 				return;
+			case ExpressionPackage.STRING_MATCH__MAX_EDITS:
+				unsetMaxEdits();
+				return;
+			case ExpressionPackage.STRING_MATCH__PREFIX_LENGTH:
+				unsetPrefixLength();
+				return;
 			case ExpressionPackage.STRING_MATCH__SOURCE:
 				setSource((Expression)null);
 				return;
@@ -353,6 +529,10 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 				return kind != KIND_EDEFAULT;
 			case ExpressionPackage.STRING_MATCH__CASE_INSENSITIVE:
 				return caseInsensitive != CASE_INSENSITIVE_EDEFAULT;
+			case ExpressionPackage.STRING_MATCH__MAX_EDITS:
+				return isSetMaxEdits();
+			case ExpressionPackage.STRING_MATCH__PREFIX_LENGTH:
+				return isSetPrefixLength();
 			case ExpressionPackage.STRING_MATCH__SOURCE:
 				return source != null;
 			case ExpressionPackage.STRING_MATCH__PATTERN:
@@ -375,6 +555,10 @@ public class StringMatchImpl extends ExpressionImpl implements StringMatch {
 		result.append(kind);
 		result.append(", caseInsensitive: ");
 		result.append(caseInsensitive);
+		result.append(", maxEdits: ");
+		if (maxEditsESet) result.append(maxEdits); else result.append("<unset>");
+		result.append(", prefixLength: ");
+		if (prefixLengthESet) result.append(prefixLength); else result.append("<unset>");
 		result.append(')');
 		return result.toString();
 	}

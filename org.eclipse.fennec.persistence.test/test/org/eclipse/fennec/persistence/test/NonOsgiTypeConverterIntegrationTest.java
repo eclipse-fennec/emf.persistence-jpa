@@ -40,7 +40,6 @@ import org.junit.jupiter.api.Test;
  * {@link DefaultConverterService} and exercises the complete conversion chain
  * (date/time, UUID, primitive arrays, round-trips) without an OSGi container.
  */
-@SuppressWarnings("restriction")
 class NonOsgiTypeConverterIntegrationTest {
 
 	private final EcoreFactory ecoreFactory = EcoreFactory.eINSTANCE;

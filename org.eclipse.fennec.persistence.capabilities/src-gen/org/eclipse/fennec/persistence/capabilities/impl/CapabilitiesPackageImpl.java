@@ -214,6 +214,7 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FOR_ALL);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.STRING_MATCH_CASE_INSENSITIVE);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FIELD_TO_FIELD);
+		addEEnumLiteral(queryFeatureEEnum, QueryFeature.STRING_MATCH_FUZZY);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SORT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.LIMIT);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SKIP);

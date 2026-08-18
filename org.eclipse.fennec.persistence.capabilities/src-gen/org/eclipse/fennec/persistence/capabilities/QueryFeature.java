@@ -217,6 +217,19 @@ public enum QueryFeature implements Enumerator {
 	FIELD_TO_FIELD(16, "FIELD_TO_FIELD", "FIELD_TO_FIELD"),
 
 	/**
+	 * The '<em><b>STRING MATCH FUZZY</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Edit-distance string matching (StringMatch kind FUZZY with maxEdits/prefixLength, issue #167) — a refinement of WHERE_STRING_MATCH like STRING_MATCH_CASE_INSENSITIVE. Whole-value semantics on keyword-comparable sources; whether a concrete analyzed field is served is the validator's per-mapping answer (issue #161 doctrine).
+	 * <!-- end-model-doc -->
+	 * @see #STRING_MATCH_FUZZY_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	STRING_MATCH_FUZZY(17, "STRING_MATCH_FUZZY", "STRING_MATCH_FUZZY"),
+
+	/**
 	 * The '<em><b>SORT</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -881,6 +894,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int FIELD_TO_FIELD_VALUE = 16;
 
 	/**
+	 * The '<em><b>STRING MATCH FUZZY</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Edit-distance string matching (StringMatch kind FUZZY with maxEdits/prefixLength, issue #167) — a refinement of WHERE_STRING_MATCH like STRING_MATCH_CASE_INSENSITIVE. Whole-value semantics on keyword-comparable sources; whether a concrete analyzed field is served is the validator's per-mapping answer (issue #161 doctrine).
+	 * <!-- end-model-doc -->
+	 * @see #STRING_MATCH_FUZZY
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int STRING_MATCH_FUZZY_VALUE = 17;
+
+	/**
 	 * The '<em><b>SORT</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1406,6 +1433,7 @@ public enum QueryFeature implements Enumerator {
 			FOR_ALL,
 			STRING_MATCH_CASE_INSENSITIVE,
 			FIELD_TO_FIELD,
+			STRING_MATCH_FUZZY,
 			SORT,
 			LIMIT,
 			SKIP,
@@ -1512,6 +1540,7 @@ public enum QueryFeature implements Enumerator {
 			case FOR_ALL_VALUE: return FOR_ALL;
 			case STRING_MATCH_CASE_INSENSITIVE_VALUE: return STRING_MATCH_CASE_INSENSITIVE;
 			case FIELD_TO_FIELD_VALUE: return FIELD_TO_FIELD;
+			case STRING_MATCH_FUZZY_VALUE: return STRING_MATCH_FUZZY;
 			case SORT_VALUE: return SORT;
 			case LIMIT_VALUE: return LIMIT;
 			case SKIP_VALUE: return SKIP;

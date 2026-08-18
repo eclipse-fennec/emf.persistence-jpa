@@ -65,6 +65,12 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_GEO = 6;
 
+	/**
+	 * Diagnostic code: malformed string match — fuzzy parameters on a non-FUZZY kind, or
+	 * an out-of-range edit budget (issue #167).
+	 */
+	public static final int CODE_INVALID_STRING_MATCH = 7;
+
 	private QueryValidator() {
 	}
 
@@ -132,6 +138,12 @@ public final class QueryValidator {
 		if (analysis.invalidGeo() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_GEO,
 					analysis.invalidGeo() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+
+		if (analysis.invalidStringMatch() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_STRING_MATCH,
+					analysis.invalidStringMatch() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

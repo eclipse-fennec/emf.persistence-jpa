@@ -848,6 +848,41 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
+	/**
+	 * Edit-distance matching (issue #167): a declared-STRING_MATCH_FUZZY backend must agree
+	 * with the memory oracle's whole-value optimal-string-alignment semantics — the edit
+	 * budget, adjacent transpositions and the exact-prefix requirement included.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_FUZZY })
+	public void queryFuzzyMatchingAgreesWithTheMemoryOracle() throws Exception {
+		saveQueryFixture();
+		List<EObject> oracle = List.of(
+				newPerson(1, "Alice", 30), newPerson(2, "Bob", 40), newPerson(3, "Carol", 50));
+		Map<String, Query> corpus = new LinkedHashMap<>();
+		corpus.put("default budget", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Alicia")).build());
+		corpus.put("budget of one", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Alicia", 1)).build());
+		corpus.put("adjacent transposition", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("oBb", 1)).build());
+		corpus.put("exact prefix excludes", QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Karol", 2, 1)).build());
+		for (Map.Entry<String, Query> entry : corpus.entrySet()) {
+			List<Object> backendNames;
+			try (QueryResult result = queryable(createBackendResourceSet()).query(entry.getValue())) {
+				backendNames = result.objects().map(person -> person.eGet(personName))
+						.map(Object.class::cast).toList();
+			}
+			try (QueryResult memory = MemoryQueries.execute(entry.getValue(), oracle, null)) {
+				assertThat(backendNames)
+						.as("backend and memory oracle must agree on '%s'", entry.getKey())
+						.containsExactlyInAnyOrderElementsOf(memory.objects()
+								.map(person -> person.eGet(personName)).map(Object.class::cast).toList());
+			}
+		}
+	}
+
 	@Test
 	@RequiresCapabilities(query = { QueryFeature.EXISTS, QueryFeature.WHERE_STRING_MATCH })
 	public void queryExistsOverContainment() throws Exception {
@@ -2486,6 +2521,8 @@ public abstract class AbstractPersistenceTCK {
 				.where(Expressions.path(personName).startsWith("x")).build());
 		probes.put(QueryFeature.STRING_MATCH_CASE_INSENSITIVE, QueryBuilder.from(personClass)
 				.where(Expressions.path(personName).containsIgnoreCase("x")).build());
+		probes.put(QueryFeature.STRING_MATCH_FUZZY, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("x")).build());
 		probes.put(QueryFeature.LOGICAL_AND, QueryBuilder.from(personClass)
 				.where(Expressions.and(Expressions.path(personName).eq("x"),
 						Expressions.path(personName).eq("y"))).build());

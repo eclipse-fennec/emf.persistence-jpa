@@ -29,6 +29,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.expression.StringMatch#getKind <em>Kind</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.StringMatch#isCaseInsensitive <em>Case Insensitive</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.expression.StringMatch#getMaxEdits <em>Max Edits</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.expression.StringMatch#getPrefixLength <em>Prefix Length</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.StringMatch#getSource <em>Source</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.expression.StringMatch#getPattern <em>Pattern</em>}</li>
  * </ul>
@@ -86,6 +88,112 @@ public interface StringMatch extends Expression {
 	 * @generated
 	 */
 	void setCaseInsensitive(boolean value);
+
+	/**
+	 * Returns the value of the '<em><b>Max Edits</b></em>' attribute.
+	 * The default value is <code>"2"</code>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The Damerau-Levenshtein edit budget for kind FUZZY (issue #167): 1 or 2, default 2 (mirroring Lucene). Meaningful only for FUZZY — set on any other kind the validator refuses the query by shape. Unsettable so that "explicitly configured" is distinguishable from the default.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Max Edits</em>' attribute.
+	 * @see #isSetMaxEdits()
+	 * @see #unsetMaxEdits()
+	 * @see #setMaxEdits(int)
+	 * @see org.eclipse.fennec.model.expression.ExpressionPackage#getStringMatch_MaxEdits()
+	 * @model default="2" unsettable="true"
+	 * @generated
+	 */
+	int getMaxEdits();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.expression.StringMatch#getMaxEdits <em>Max Edits</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Max Edits</em>' attribute.
+	 * @see #isSetMaxEdits()
+	 * @see #unsetMaxEdits()
+	 * @see #getMaxEdits()
+	 * @generated
+	 */
+	void setMaxEdits(int value);
+
+	/**
+	 * Unsets the value of the '{@link org.eclipse.fennec.model.expression.StringMatch#getMaxEdits <em>Max Edits</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isSetMaxEdits()
+	 * @see #getMaxEdits()
+	 * @see #setMaxEdits(int)
+	 * @generated
+	 */
+	void unsetMaxEdits();
+
+	/**
+	 * Returns whether the value of the '{@link org.eclipse.fennec.model.expression.StringMatch#getMaxEdits <em>Max Edits</em>}' attribute is set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return whether the value of the '<em>Max Edits</em>' attribute is set.
+	 * @see #unsetMaxEdits()
+	 * @see #getMaxEdits()
+	 * @see #setMaxEdits(int)
+	 * @generated
+	 */
+	boolean isSetMaxEdits();
+
+	/**
+	 * Returns the value of the '<em><b>Prefix Length</b></em>' attribute.
+	 * The default value is <code>"0"</code>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Leading characters that must match exactly for kind FUZZY (issue #167) — the knob that keeps fuzzy matching from exploding on short inputs. Default 0. Meaningful only for FUZZY, like maxEdits.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Prefix Length</em>' attribute.
+	 * @see #isSetPrefixLength()
+	 * @see #unsetPrefixLength()
+	 * @see #setPrefixLength(int)
+	 * @see org.eclipse.fennec.model.expression.ExpressionPackage#getStringMatch_PrefixLength()
+	 * @model default="0" unsettable="true"
+	 * @generated
+	 */
+	int getPrefixLength();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.expression.StringMatch#getPrefixLength <em>Prefix Length</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Prefix Length</em>' attribute.
+	 * @see #isSetPrefixLength()
+	 * @see #unsetPrefixLength()
+	 * @see #getPrefixLength()
+	 * @generated
+	 */
+	void setPrefixLength(int value);
+
+	/**
+	 * Unsets the value of the '{@link org.eclipse.fennec.model.expression.StringMatch#getPrefixLength <em>Prefix Length</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isSetPrefixLength()
+	 * @see #getPrefixLength()
+	 * @see #setPrefixLength(int)
+	 * @generated
+	 */
+	void unsetPrefixLength();
+
+	/**
+	 * Returns whether the value of the '{@link org.eclipse.fennec.model.expression.StringMatch#getPrefixLength <em>Prefix Length</em>}' attribute is set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return whether the value of the '<em>Prefix Length</em>' attribute is set.
+	 * @see #unsetPrefixLength()
+	 * @see #getPrefixLength()
+	 * @see #setPrefixLength(int)
+	 * @generated
+	 */
+	boolean isSetPrefixLength();
 
 	/**
 	 * Returns the value of the '<em><b>Source</b></em>' containment reference.
