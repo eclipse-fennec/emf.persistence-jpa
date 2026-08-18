@@ -15,8 +15,8 @@ package org.eclipse.fennec.persistence.test;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Date;
@@ -48,7 +48,7 @@ class NonOsgiTypeConverterIntegrationTest {
 
 	@BeforeEach
 	void setUp() {
-		converterService = new DefaultConverterService() { /* concrete instance */ };
+		converterService = new DefaultConverterService();
 	}
 
 	@Test
@@ -115,10 +115,10 @@ class NonOsgiTypeConverterIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("ConverterService handles unsupported types appropriately")
+	@DisplayName("ConverterService answers unclaimed types with null (issue #164)")
 	void testUnsupportedTypesViaService() {
 		EDataType unsupportedType = createDataType("java.lang.UnsupportedType");
-		assertThrows(IllegalStateException.class, () -> converterService.getConverter(unsupportedType));
+		assertNull(converterService.getConverter(unsupportedType));
 	}
 
 	@Test

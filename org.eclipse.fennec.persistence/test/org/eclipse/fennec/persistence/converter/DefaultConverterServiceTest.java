@@ -24,6 +24,7 @@ import java.util.UUID;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EcoreFactory;
+import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -34,17 +35,11 @@ import org.junit.jupiter.api.Test;
  */
 public class DefaultConverterServiceTest {
 
-	private TestConverterService service;
+	private DefaultConverterService service;
 
 	@BeforeEach
 	void setUp() {
-		service = new TestConverterService();
-	}
-
-	/**
-	 * Concrete subclass for testing since DefaultConverterService is abstract.
-	 */
-	static class TestConverterService extends DefaultConverterService {
+		service = new DefaultConverterService();
 	}
 
 	@Nested
@@ -54,6 +49,18 @@ public class DefaultConverterServiceTest {
 		void testNullTypeThrows() {
 			assertThatThrownBy(() -> service.getConverter((EClassifier) null))
 				.isInstanceOf(NullPointerException.class);
+		}
+
+		/**
+		 * The nullable contract (issue #164): plain data types are claimed by no converter,
+		 * and that is the normal answer — {@code null}, never an exception.
+		 */
+		@Test
+		void testUnclaimedTypeReturnsNull() {
+			assertThat(service.getConverter(EcorePackage.Literals.ESTRING)).isNull();
+			assertThat(service.getConverter(EcorePackage.Literals.EINT)).isNull();
+			assertThat(service.getConverter(EcorePackage.Literals.EDOUBLE)).isNull();
+			assertThat(service.getConverter(EcorePackage.Literals.EDATE)).isNull();
 		}
 
 		@Test
@@ -121,10 +128,10 @@ public class DefaultConverterServiceTest {
 				.isInstanceOf(NullPointerException.class);
 		}
 
+		/** Nullable like the type lookup (issue #164) — the caller decides how loud absence is. */
 		@Test
-		void testUnknownNameThrows() {
-			assertThatThrownBy(() -> service.getConverter("nonExistentConverter"))
-				.isInstanceOf(IllegalStateException.class);
+		void testUnknownNameReturnsNull() {
+			assertThat(service.getConverter("nonExistentConverter")).isNull();
 		}
 
 		@Test

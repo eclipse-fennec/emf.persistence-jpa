@@ -31,6 +31,7 @@ import static org.eclipse.fennec.model.query.builder.Expressions.pathAs;
 import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
 
 import java.util.Map;
+import java.util.UUID;
 
 import org.bson.BsonDocument;
 import org.bson.conversions.Bson;
@@ -38,10 +39,12 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.fennec.codec.config.ConfigurationResolver;
 import org.eclipse.fennec.codec.constants.CodecOptions;
@@ -522,6 +525,29 @@ class MongoQueryProcessorTest {
 
 		assertThatThrownBy(() -> translate(query)).isInstanceOf(QueryException.class)
 				.hasMessageContaining("minAge");
+	}
+
+	/**
+	 * With a {@code ConverterService} in the context (issue #164), a parameter over a
+	 * converter-claimed type lands in the filter in its persistence form — the same form
+	 * the codec writes into the document — while plain types stay untouched.
+	 */
+	@Test
+	void parameterOverConvertedTypeFiltersInThePersistenceForm() throws QueryException {
+		EDataType uuidType = EcoreFactory.eINSTANCE.createEDataType();
+		uuidType.setName("UUID");
+		uuidType.setInstanceClass(UUID.class);
+		EAttribute uid = EcoreFactory.eINSTANCE.createEAttribute();
+		uid.setName("uid");
+		uid.setEType(uuidType);
+		person.getEStructuralFeatures().add(uid);
+
+		UUID wanted = UUID.randomUUID();
+		Query query = QueryBuilder.from(person).where(path(uid).eq(param("wanted"))).build();
+		MongoQueryPlan plan = translate(query, QueryContexts.of(person,
+				new DefaultConverterService(), Map.of("wanted", wanted), null));
+		assertThat(render(plan.filter()))
+				.isEqualTo(BsonDocument.parse("{'uid': '" + wanted + "'}"));
 	}
 
 	@Test

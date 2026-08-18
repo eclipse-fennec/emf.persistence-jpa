@@ -74,7 +74,7 @@ final class JpaTckSupport {
 		PersistenceProvider provider = new PersistenceProvider();
 		EntityManagerFactory emf = provider.createContainerEntityManagerFactory(unitInfo, props);
 
-		ConverterService converter = new DefaultConverterService() { /* concrete instance */ };
+		ConverterService converter = new DefaultConverterService();
 		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl,
 				JpaHelper.getServerSession(emf), puName, converter);
 		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));

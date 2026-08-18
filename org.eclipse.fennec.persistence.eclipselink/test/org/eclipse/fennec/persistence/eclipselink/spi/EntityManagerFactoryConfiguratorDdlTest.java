@@ -177,7 +177,7 @@ class EntityManagerFactoryConfiguratorDdlTest {
 		props.put(PersistenceUnitProperties.TARGET_DATABASE, "Auto");
 		props.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
 
-		ConverterService converter = new DefaultConverterService() { /* concrete */ };
+		ConverterService converter = new DefaultConverterService();
 
 		emf = EntityManagerFactoryConfigurator.Builder.create(bctx, rs)
 				.context(pctx)

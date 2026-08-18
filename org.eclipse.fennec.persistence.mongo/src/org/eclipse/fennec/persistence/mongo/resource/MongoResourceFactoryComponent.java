@@ -28,6 +28,7 @@ import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.annotation.ConfiguratorType;
 import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
@@ -86,6 +87,8 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 	private final AtomicReference<QueryProcessor> queryProcessor = new AtomicReference<>();
 	/** The value registry handed to created resources; empty = resources decode without one. */
 	private final AtomicReference<CodecValueRegistry> valueRegistry = new AtomicReference<>();
+	/** The converter service handed to created resources; empty = the stock converter set. */
+	private final AtomicReference<ConverterService> converterService = new AtomicReference<>();
 
 	@Activate
 	public MongoResourceFactoryComponent(BundleContext ctx, @Reference MetadataService metadataService) {
@@ -125,6 +128,21 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 
 	void unbindValueRegistry(CodecValueRegistry registry) {
 		valueRegistry.compareAndSet(registry, null);
+	}
+
+	/**
+	 * The {@link ConverterService} handed to created resources (issue #164) — the same
+	 * whiteboard the codec converts with, so query-side value conversion matches the stored
+	 * values. Optional: without it resources use the stock converter set.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY)
+	void bindConverterService(ConverterService converters) {
+		converterService.set(converters);
+	}
+
+	void unbindConverterService(ConverterService converters) {
+		converterService.compareAndSet(converters, null);
 	}
 
 	@Deactivate
@@ -193,7 +211,7 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 
 	private Resource newResource(URI uri, MongoDatabase database, MongoFlavor flavor) {
 		return new MongoResourceFactory(database, metadataService, valueRegistry.get(), queryProcessor.get(), null,
-				flavor).createResource(uri);
+				flavor, converterService.get()).createResource(uri);
 	}
 
 	/**
