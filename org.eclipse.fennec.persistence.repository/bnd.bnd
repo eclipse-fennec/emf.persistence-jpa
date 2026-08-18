@@ -1,0 +1,31 @@
+Bundle-Name: Eclipse Fennec Persistence Repository
+Bundle-Description: User-facing repository facade: URI handling, resource lifecycle and read/write data access over the unified persistence layer
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/repository-api.ecore;\
+		generate=fennecEMF;\
+		genmodel=model/repository-api.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model
+
+-buildpath: \
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.emf.ecore.xmi;version=latest,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.command.model;version=snapshot,\
+	org.eclipse.fennec.stream.model;version=snapshot
+
+-testpath: \
+	assertj-core

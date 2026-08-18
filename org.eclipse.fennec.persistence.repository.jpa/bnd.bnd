@@ -1,0 +1,23 @@
+Bundle-Name: Eclipse Fennec Persistence Repository JPA
+Bundle-Description: JPA flavour of the repository facade: one factory configuration binds a JPAUnit and registers a repository over jpa:// URIs
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.fennec.persistence.repository;version=snapshot,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
+	org.eclipse.fennec.persistence.eclipselink;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.command.model;version=snapshot,\
+	org.eclipse.fennec.stream.model;version=snapshot,\
+	org.eclipse.fennec.emf.osgi.api;version=latest,\
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.service.component.annotations;version=latest
+
+-testpath: \
+	assertj-core

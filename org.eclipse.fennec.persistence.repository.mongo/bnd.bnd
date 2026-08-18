@@ -1,0 +1,26 @@
+Bundle-Name: Eclipse Fennec Persistence Repository Mongo
+Bundle-Description: Mongo flavour of the repository facade: one factory configuration binds a MongoDatabase and registers a repository over mongodb:// URIs
+
+-workingset: persistence
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.fennec.persistence.repository;version=snapshot,\
+	org.eclipse.fennec.persistence;version=snapshot,\
+	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.persistence.capabilities;version=snapshot,\
+	org.eclipse.fennec.persistence.mongo;version=snapshot,\
+	org.eclipse.fennec.query.model;version=snapshot,\
+	org.eclipse.fennec.expression.model;version=snapshot,\
+	org.eclipse.fennec.command.model;version=snapshot,\
+	org.eclipse.fennec.stream.model;version=snapshot,\
+	org.eclipse.fennec.emf.osgi.api;version=latest,\
+	biz.aQute.bnd.annotation;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.mongodb.driver-sync;version=latest,\
+	org.mongodb.driver-core;version=latest,\
+	org.mongodb.bson;version=latest
+
+-testpath: \
+	assertj-core

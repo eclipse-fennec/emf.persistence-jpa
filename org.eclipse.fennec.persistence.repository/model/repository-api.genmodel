@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel"
+    copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.persistence.repository/src-gen" modelPluginID="org.eclipse.fennec.persistence.repository"
+    modelName="RepositoryApi" rootExtendsInterface="" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
+    usedGenPackages="../../org.eclipse.fennec.persistence.query/model/query-api.genmodel#//api ../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.command.model/model/command.genmodel#//command ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>repository-api.ecore</foreignModel>
+  <genPackages prefix="RepositoryApi" basePackage="org.eclipse.fennec.persistence.repository"
+      disposableProviderFactory="true" ecorePackage="repository-api.ecore#/">
+    <genDataTypes ecoreDataType="repository-api.ecore#//Uri"/>
+    <genDataTypes ecoreDataType="repository-api.ecore#//PersistenceCapabilities"/>
+    <genDataTypes ecoreDataType="repository-api.ecore#//EObjectCollection"/>
+    <genClasses image="false" ecoreClass="repository-api.ecore#//RepositoryService">
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/id"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/baseUri"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/capabilities"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/isDisposed"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/dispose"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/getResourceSet"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/createResourceSet"/>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/createUri">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createUri/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/createUri.1">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createUri.1/object"/>
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createUri.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/createUri.2">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createUri.2/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createUri.2/id"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/createProxy">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createProxy/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/createProxy/id"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/proxify">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/proxify/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/attach">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/attach/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/attach.1">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/attach.1/object"/>
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/attach.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//RepositoryService/detach">
+        <genParameters ecoreParameter="repository-api.ecore#//RepositoryService/detach/object"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="repository-api.ecore#//ReadRepository">
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getResource">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getResource/uri"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getResource/loadOnDemand"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getEObject">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject/uri"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getEObject.1">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.1/uri"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getEObject.2">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.2/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.2/id"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getEObject.3">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.3/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.3/id"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getEObject.3/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getAllEObjects">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getAllEObjects/eClass"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/getAllEObjects.1">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getAllEObjects.1/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/getAllEObjects.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/count">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/count/eClass"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/count.1">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/count.1/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/count.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/exist">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/exist/uri"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/exist.1">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/exist.1/eClass"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/exist.1/id"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/reload">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/reload/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/find">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find/query"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/find.1">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find.1/query"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find.1/parameters"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/find.2">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find.2/name"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find.2/parameters"/>
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/find.2/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/count.2">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/count.2/query"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/prepare">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/prepare/query"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//ReadRepository/prepare.1">
+        <genParameters ecoreParameter="repository-api.ecore#//ReadRepository/prepare.1/name"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="repository-api.ecore#//PreparedQuery">
+      <genOperations ecoreOperation="repository-api.ecore#//PreparedQuery/name"/>
+      <genOperations ecoreOperation="repository-api.ecore#//PreparedQuery/query"/>
+      <genOperations ecoreOperation="repository-api.ecore#//PreparedQuery/parameterDeclarations"/>
+      <genOperations ecoreOperation="repository-api.ecore#//PreparedQuery/execute">
+        <genParameters ecoreParameter="repository-api.ecore#//PreparedQuery/execute/parameters"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//PreparedQuery/execute.1">
+        <genParameters ecoreParameter="repository-api.ecore#//PreparedQuery/execute.1/parameters"/>
+        <genParameters ecoreParameter="repository-api.ecore#//PreparedQuery/execute.1/options"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="repository-api.ecore#//WriteRepository">
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/save">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/save.1">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.1/object"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/save.2">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.2/object"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.2/uri"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/save.3">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.3/object"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.3/uri"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/save.3/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/saveAll">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/saveAll/objects"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/saveAll.1">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/saveAll.1/objects"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/saveAll.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/delete">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/delete/object"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/delete.1">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/delete.1/object"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/delete.1/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/delete.2">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/delete.2/uri"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/delete.3">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/delete.3/uri"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/delete.3/options"/>
+      </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/execute">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/execute/command"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="repository-api.ecore#//Repository"/>
+  </genPackages>
+</genmodel:GenModel>
