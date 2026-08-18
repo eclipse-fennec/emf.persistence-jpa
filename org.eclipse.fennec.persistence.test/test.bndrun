@@ -10,7 +10,9 @@
 	bnd.identity;id='org.eclipse.persistence.jpa.jpql',\
 	bnd.identity;id='org.eclipse.daanse.jdbc.db.impl',\
 	bnd.identity;id='org.eclipse.fennec.persistence.mongo',\
-	bnd.identity;id='org.eclipse.fennec.persistence.query.derived'
+	bnd.identity;id='org.eclipse.fennec.persistence.query.derived',\
+	bnd.identity;id='org.eclipse.fennec.persistence.repository',\
+	bnd.identity;id='org.eclipse.fennec.persistence.repository.jpa'
 	
 -runbundles.test: \
 	org.eclipse.fennec.persistence.test;version=snapshot
@@ -78,6 +80,8 @@
 	org.eclipse.fennec.persistence.orm;version=snapshot,\
 	org.eclipse.fennec.persistence.query;version=snapshot,\
 	org.eclipse.fennec.persistence.query.derived;version=snapshot,\
+	org.eclipse.fennec.persistence.repository;version=snapshot,\
+	org.eclipse.fennec.persistence.repository.jpa;version=snapshot,\
 	org.eclipse.fennec.persistence.test;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.stream.model;version=snapshot,\
