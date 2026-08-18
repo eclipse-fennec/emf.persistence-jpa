@@ -31,6 +31,7 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 	assertj-core,\
 	com.h2database,\
 	org.postgresql.jdbc;version=latest,\
+	mariadb-java-client;version=latest,\
 	jakarta.persistence-api;version=latest,\
 	org.eclipse.persistence.asm;version=latest,\
 	org.eclipse.persistence.jpa;version=latest,\

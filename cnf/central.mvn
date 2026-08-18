@@ -168,6 +168,7 @@ org.eclipse.daanse:org.eclipse.daanse.jdbc.datasource.common:0.0.1-SNAPSHOT
 
 # JPA - Eclipselink
 org.postgresql:postgresql:42.7.3
+org.mariadb.jdbc:mariadb-java-client:3.5.3
 org.eclipse.persistence:org.eclipse.persistence.jpa:4.0.9
 org.eclipse.persistence:org.eclipse.persistence.asm:9.9.0
 org.ow2.asm:asm:9.9.1

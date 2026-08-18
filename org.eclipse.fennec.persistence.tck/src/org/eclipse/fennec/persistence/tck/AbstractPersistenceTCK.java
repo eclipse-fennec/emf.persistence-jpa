@@ -834,6 +834,27 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
+	/**
+	 * Java string semantics are the reference (§2): {@code 'alice'} is not {@code 'Alice'}.
+	 * A store whose <em>default collation</em> compares case-insensitively — MariaDB's
+	 * utf8mb4 CI default (#158) — must not leak that into EMF equality; case-insensitivity
+	 * is what {@link QueryFeature#STRING_MATCH_CASE_INSENSITIVE} exists for, opt-in per
+	 * predicate, never ambient.
+	 */
+	@Test
+	@RequiresCapabilities(query = QueryFeature.WHERE_EQ)
+	public void queryStringEqualityIsCaseSensitive() throws Exception {
+		saveQueryFixture();
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("alice"))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.objects())
+					.as("case-sensitive equality must not match a differently-cased value")
+					.isEmpty();
+		}
+	}
+
 	@Test
 	@RequiresCapabilities(query = { QueryFeature.WHERE_STRING_MATCH,
 			QueryFeature.STRING_MATCH_CASE_INSENSITIVE })
@@ -1456,16 +1477,22 @@ public abstract class AbstractPersistenceTCK {
 	@Test
 	@RequiresCapabilities(query = { QueryFeature.ARITHMETIC, QueryFeature.PARAMETERS,
 			QueryFeature.WHERE_COMPARISON })
-	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
+	public void queryRuntimeZeroDivisorErrorsOrExcludes() throws Exception {
 		saveQueryFixture();
-		// a literal zero is refused statically; a zero bound at runtime is the backend's
-		// division error (the memory oracle yields null/no match instead — see its tests)
+		// a literal zero is refused statically; a zero bound at runtime is backend-defined
+		// (#158): H2 and PostgreSQL raise the division error, MariaDB and the memory oracle
+		// evaluate the division to NULL and exclude every row (3VL). Both are conforming —
+		// what no backend may do is return rows as if the predicate had held.
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personAge).dividedBy(Expressions.param("divisor")).gt(1))
 				.build();
 		QueryableResource resource = queryable(createBackendResourceSet());
-		assertThatThrownBy(() -> resource.query(query, Map.of("divisor", 0), null).close())
-				.isInstanceOf(IOException.class);
+		try (QueryResult result = resource.query(query, Map.of("divisor", 0), null)) {
+			assertThat(result.objects()).as("a NULL-evaluating division must exclude, never match")
+					.isEmpty();
+		} catch (IOException expected) {
+			// the backend's division error — the other conforming shape
+		}
 	}
 
 	@Test

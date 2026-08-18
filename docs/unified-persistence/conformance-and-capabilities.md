@@ -536,7 +536,15 @@ declaration surface with its naming, its two levels and Java-versus-XMI (§5a) �
    and `postgres`, both axes reach the test JVM, and the four defects the second flavor found are
    fixed (#154–#157) rather than pinned — so `flavor-matrix.yml` runs `jpa × postgres` alongside
    the three mongo flavors and is green because it passes, not because failures are ignored.
-   `jpa × h2` stays in `build.yml`, where it needs no container. Next flavor: MariaDB (#158).
+   `jpa × h2` stays in `build.yml`, where it needs no container. MariaDB joined as the third
+   jpa flavor (#158) and found three real divergences on its first runs: EclipseLink's
+   filtered table creator reads table metadata across databases on Connector/J 3.x defaults
+   (harness fix: `nullDatabaseMeansCurrent=true`), the case-insensitive default collation
+   leaked into EMF string equality (mapping fix: binary-collated string columns on the MySQL
+   family, pinned by the TCK's new case-sensitivity probe — case-insensitivity stays the
+   per-predicate `STRING_MATCH_CASE_INSENSITIVE` opt-in), and a runtime zero divisor
+   evaluates to NULL instead of raising — now a stated contract: error or 3VL exclusion,
+   never a match.
 8. Index capability last, once the plan-inspection harness exists (§7).
 
 Steps 1–4 are structure and change no test outcome. Step 5 is where conformance starts

@@ -11,6 +11,13 @@ name: Backend × Flavor Matrix
 #                        parameters, and EDate degrading to varchar because PostgreSQLPlatform does
 #                        not map java.util.Date. Flavors of one backend must not differ in core
 #                        conformance — this job is what makes that claim checkable.
+#   jpa × mariadb      — the database whose defaults disagree with both existing ones (#158):
+#                        case-insensitive default collation (found the ambient-CI-equality defect
+#                        the mapping now fixes with binary-collated string columns, pinned by the
+#                        TCK's case-sensitivity probe), database-per-unit isolation instead of
+#                        schema-per-unit, ONLY_FULL_GROUP_BY (enabled explicitly — MariaDB does
+#                        not default to it) as the independent check on GROUP BY rendering, and
+#                        NULL-evaluating division instead of a division error.
 #   mongo × mongo      — the reference implementation, and the baseline the gateway results are only
 #                        meaningful against: "ferretdb refuses this" says nothing unless mongo
 #                        accepts it. The default build has no Mongo service, so without this job the
@@ -26,8 +33,7 @@ name: Backend × Flavor Matrix
 # push, which is what keeps this workflow about the flavors that cost something.
 #
 # Oracle and MSSQL are not flavors at all — proprietary containers plus licence questions, for the
-# one layer EclipseLink itself tests. MariaDB is the next candidate (#158), because it disagrees
-# with both existing flavors in new ways rather than in more of the same.
+# one layer EclipseLink itself tests (contract §6 records the reasoning).
 #
 # Two modes on purpose:
 #   * push / pull_request run against a DIGEST-PINNED image, so a PR is never reddened by an
@@ -88,6 +94,11 @@ jobs:
             suite: Jpa
             floating: 'docker.io/library/postgres:17'
             pinned: 'docker.io/library/postgres@sha256:a65e6a841f6c4dbc4abda3d67fa3bc21824e9611064fcd82e87ea67aad60a0c3'
+          - backend: jpa
+            flavor: mariadb
+            suite: Jpa
+            floating: 'docker.io/library/mariadb:11'
+            pinned: 'docker.io/library/mariadb@sha256:d3515fc42e3600f785d434c1c5a385326a0f9a21431f2d9a81609789d25ce830'
           - backend: mongo
             flavor: mongo
             suite: Mongo

@@ -31,6 +31,7 @@ import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.dynamic.DynamicClassLoader;
+import org.eclipse.persistence.internal.databaseaccess.Platform;
 import org.eclipse.persistence.jpa.JpaHelper;
 import org.eclipse.persistence.jpa.PersistenceProvider;
 
@@ -57,7 +58,10 @@ final class JpaTckSupport {
 		Map<String, Object> props = new HashMap<>();
 		props.put(PersistenceUnitProperties.DDL_GENERATION, "create-or-extend-tables");
 		props.put(PersistenceUnitProperties.DDL_GENERATION_MODE, "database");
-		props.put(PersistenceUnitProperties.LOGGING_LEVEL, "WARNING");
+		// -Djpa.test.logging=FINE surfaces the DDL a flavor rejects — create-or-extend
+		// swallows DDL failures, so a missing table is otherwise diagnosed at first SELECT
+		props.put(PersistenceUnitProperties.LOGGING_LEVEL,
+				System.getProperty("jpa.test.logging", "WARNING"));
 		props.put(PersistenceUnitProperties.WEAVING, "false");
 		props.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
 		props.put(PersistenceUnitProperties.CLASSLOADER, dcl);
@@ -73,6 +77,7 @@ final class JpaTckSupport {
 
 		PersistenceProvider provider = new PersistenceProvider();
 		EntityManagerFactory emf = provider.createContainerEntityManagerFactory(unitInfo, props);
+		verifyPlatform(emf);
 
 		ConverterService converter = new DefaultConverterService();
 		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl,
@@ -82,5 +87,23 @@ final class JpaTckSupport {
 		EDynamicHelper helper = new EDynamicHelper(emf, dcl);
 		helper.addETypes(true, true, types);
 		return emf;
+	}
+
+	/**
+	 * The dialect is the point of a container flavor (#158): assert the platform EclipseLink
+	 * actually chose instead of trusting the {@code TARGET_DATABASE} name — a typo or a
+	 * platform-resolution surprise would otherwise run every test against the wrong dialect
+	 * and report green for something never measured.
+	 */
+	private static void verifyPlatform(EntityManagerFactory emf) {
+		Platform platform = JpaHelper.getServerSession(emf).getDatasourcePlatform();
+		if (JpaTestSupport.isPostgres() && !platform.isPostgreSQL()) {
+			throw new IllegalStateException("flavor postgres, but EclipseLink chose "
+					+ platform.getClass().getName());
+		}
+		if (JpaTestSupport.isMariaDb() && !platform.isMariaDB()) {
+			throw new IllegalStateException("flavor mariadb, but EclipseLink chose "
+					+ platform.getClass().getName());
+		}
 	}
 }
