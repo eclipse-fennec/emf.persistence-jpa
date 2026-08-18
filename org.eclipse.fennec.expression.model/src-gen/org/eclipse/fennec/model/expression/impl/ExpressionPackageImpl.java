@@ -780,8 +780,28 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EAttribute getStringMatch_MaxEdits() {
+		return (EAttribute)stringMatchEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getStringMatch_PrefixLength() {
+		return (EAttribute)stringMatchEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getStringMatch_Source() {
-		return (EReference)stringMatchEClass.getEStructuralFeatures().get(2);
+		return (EReference)stringMatchEClass.getEStructuralFeatures().get(4);
 	}
 
 	/**
@@ -791,7 +811,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 */
 	@Override
 	public EReference getStringMatch_Pattern() {
-		return (EReference)stringMatchEClass.getEStructuralFeatures().get(3);
+		return (EReference)stringMatchEClass.getEStructuralFeatures().get(5);
 	}
 
 	/**
@@ -1808,6 +1828,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		stringMatchEClass = createEClass(STRING_MATCH);
 		createEAttribute(stringMatchEClass, STRING_MATCH__KIND);
 		createEAttribute(stringMatchEClass, STRING_MATCH__CASE_INSENSITIVE);
+		createEAttribute(stringMatchEClass, STRING_MATCH__MAX_EDITS);
+		createEAttribute(stringMatchEClass, STRING_MATCH__PREFIX_LENGTH);
 		createEReference(stringMatchEClass, STRING_MATCH__SOURCE);
 		createEReference(stringMatchEClass, STRING_MATCH__PATTERN);
 
@@ -2052,6 +2074,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(stringMatchEClass, StringMatch.class, "StringMatch", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getStringMatch_Kind(), this.getStringMatchKind(), "kind", null, 1, 1, StringMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getStringMatch_CaseInsensitive(), ecorePackage.getEBoolean(), "caseInsensitive", "false", 0, 1, StringMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getStringMatch_MaxEdits(), ecorePackage.getEInt(), "maxEdits", "2", 0, 1, StringMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getStringMatch_PrefixLength(), ecorePackage.getEInt(), "prefixLength", "0", 0, 1, StringMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getStringMatch_Source(), this.getExpression(), null, "source", null, 1, 1, StringMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getStringMatch_Pattern(), this.getExpression(), null, "pattern", null, 1, 1, StringMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
@@ -2193,6 +2217,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		addEEnumLiteral(stringMatchKindEEnum, StringMatchKind.STARTS_WITH);
 		addEEnumLiteral(stringMatchKindEEnum, StringMatchKind.ENDS_WITH);
 		addEEnumLiteral(stringMatchKindEEnum, StringMatchKind.LIKE);
+		addEEnumLiteral(stringMatchKindEEnum, StringMatchKind.FUZZY);
 
 		initEEnum(stringFunctionKindEEnum, StringFunctionKind.class, "StringFunctionKind");
 		addEEnumLiteral(stringFunctionKindEEnum, StringFunctionKind.TO_LOWER);

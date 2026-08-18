@@ -87,6 +87,11 @@
         <details key="documentation" value="Comparison whose both sides navigate features (field-to-field), directly or through string functions."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="STRING_MATCH_FUZZY" value="17">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Edit-distance string matching (StringMatch kind FUZZY with maxEdits/prefixLength, issue #167) — a refinement of WHERE_STRING_MATCH like STRING_MATCH_CASE_INSENSITIVE. Whole-value semantics on keyword-comparable sources; whether a concrete analyzed field is served is the validator's per-mapping answer (issue #161 doctrine)."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="SORT" value="20">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Ordering of results (sortBy)."/>

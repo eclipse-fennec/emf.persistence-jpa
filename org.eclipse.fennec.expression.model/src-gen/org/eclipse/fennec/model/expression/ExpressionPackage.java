@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:45023c4e5e8c260db32697dc7843820a0b6e99cecb352bc92048a440a61576e1", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:871d3c52b1f1648b234cd1b0e476091b55ce6547de4a149d142a79ad6f80a9a7", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -502,13 +502,31 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int STRING_MATCH__CASE_INSENSITIVE = EXPRESSION_FEATURE_COUNT + 1;
 
 	/**
+	 * The feature id for the '<em><b>Max Edits</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH__MAX_EDITS = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The feature id for the '<em><b>Prefix Length</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int STRING_MATCH__PREFIX_LENGTH = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int STRING_MATCH__SOURCE = EXPRESSION_FEATURE_COUNT + 2;
+	int STRING_MATCH__SOURCE = EXPRESSION_FEATURE_COUNT + 4;
 
 	/**
 	 * The feature id for the '<em><b>Pattern</b></em>' containment reference.
@@ -517,7 +535,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int STRING_MATCH__PATTERN = EXPRESSION_FEATURE_COUNT + 3;
+	int STRING_MATCH__PATTERN = EXPRESSION_FEATURE_COUNT + 5;
 
 	/**
 	 * The number of structural features of the '<em>String Match</em>' class.
@@ -526,7 +544,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int STRING_MATCH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 4;
+	int STRING_MATCH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 6;
 
 	/**
 	 * The number of operations of the '<em>String Match</em>' class.
@@ -2415,6 +2433,28 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getStringMatch_CaseInsensitive();
 
 	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.StringMatch#getMaxEdits <em>Max Edits</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Max Edits</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch#getMaxEdits()
+	 * @see #getStringMatch()
+	 * @generated
+	 */
+	EAttribute getStringMatch_MaxEdits();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.StringMatch#getPrefixLength <em>Prefix Length</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Prefix Length</em>'.
+	 * @see org.eclipse.fennec.model.expression.StringMatch#getPrefixLength()
+	 * @see #getStringMatch()
+	 * @generated
+	 */
+	EAttribute getStringMatch_PrefixLength();
+
+	/**
 	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.StringMatch#getSource <em>Source</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -3688,6 +3728,22 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute STRING_MATCH__CASE_INSENSITIVE = eINSTANCE.getStringMatch_CaseInsensitive();
+
+		/**
+		 * The meta object literal for the '<em><b>Max Edits</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STRING_MATCH__MAX_EDITS = eINSTANCE.getStringMatch_MaxEdits();
+
+		/**
+		 * The meta object literal for the '<em><b>Prefix Length</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute STRING_MATCH__PREFIX_LENGTH = eINSTANCE.getStringMatch_PrefixLength();
 
 		/**
 		 * The meta object literal for the '<em><b>Source</b></em>' containment reference feature.

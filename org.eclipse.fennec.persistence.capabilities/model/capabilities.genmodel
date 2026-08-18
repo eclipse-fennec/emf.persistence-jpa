@@ -23,6 +23,7 @@
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/FOR_ALL"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/STRING_MATCH_CASE_INSENSITIVE"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/FIELD_TO_FIELD"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/STRING_MATCH_FUZZY"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SORT"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/LIMIT"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SKIP"/>

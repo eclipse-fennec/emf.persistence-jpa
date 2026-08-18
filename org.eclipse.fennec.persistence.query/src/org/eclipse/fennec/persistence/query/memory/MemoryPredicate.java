@@ -235,7 +235,55 @@ final class MemoryPredicate {
 		case STARTS_WITH -> text.startsWith(raw);
 		case ENDS_WITH -> text.endsWith(raw);
 		case LIKE -> likePattern(raw, match.isCaseInsensitive()).matcher(text).matches();
+		case FUZZY -> fuzzyMatch(text, raw, match);
 		};
+	}
+
+	/**
+	 * Reference semantics for kind FUZZY (issue #167): whole-value edit distance within the
+	 * {@code maxEdits} budget, after the {@code prefixLength} leading characters matched
+	 * exactly (excluded from edit counting, like Lucene's prefix). Case folding happened in
+	 * {@link #evalMatch} when {@code caseInsensitive} is set — the distance is over the
+	 * folded strings.
+	 */
+	private static boolean fuzzyMatch(String text, String pattern, StringMatch match) {
+		int prefix = match.getPrefixLength();
+		if (text.length() < prefix || pattern.length() < prefix
+				|| !text.regionMatches(0, pattern, 0, prefix)) {
+			return false;
+		}
+		String textTail = text.substring(prefix);
+		String patternTail = pattern.substring(prefix);
+		int budget = match.getMaxEdits();
+		if (Math.abs(textTail.length() - patternTail.length()) > budget) {
+			return false;
+		}
+		return damerauLevenshtein(textTail, patternTail) <= budget;
+	}
+
+	/**
+	 * Optimal-string-alignment Damerau-Levenshtein — insert, delete, substitute and adjacent
+	 * transposition each cost 1, the distance Lucene's {@code FuzzyQuery} counts.
+	 */
+	private static int damerauLevenshtein(String a, String b) {
+		int[][] d = new int[a.length() + 1][b.length() + 1];
+		for (int i = 0; i <= a.length(); i++) {
+			d[i][0] = i;
+		}
+		for (int j = 0; j <= b.length(); j++) {
+			d[0][j] = j;
+		}
+		for (int i = 1; i <= a.length(); i++) {
+			for (int j = 1; j <= b.length(); j++) {
+				int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+				d[i][j] = Math.min(Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + cost);
+				if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2)
+						&& a.charAt(i - 2) == b.charAt(j - 1)) {
+					d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+				}
+			}
+		}
+		return d[a.length()][b.length()];
 	}
 
 	private Boolean evalQuantifier(Quantifier quantifier, EObject candidate, Map<Variable, Object> bindings) {

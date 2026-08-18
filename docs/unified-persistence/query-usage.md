@@ -41,6 +41,11 @@ Query query = QueryBuilder.from(personClass)
   `isNotNull`, `between(lo, hi[, loIncl, hiIncl])`, `in(...)`.
 - **String matching**: `contains/startsWith/endsWith/like` with `…IgnoreCase` variants —
   case-insensitivity is a model flag, translated natively (LOWER both sides / regex `i`).
+- **Fuzzy matching** (#167): `fuzzy(value[, maxEdits[, prefixLength]])` — whole-value
+  edit-distance match (optimal string alignment, budget 1..2, default 2; `prefixLength`
+  leading characters must match exactly). Requires the `STRING_MATCH_FUZZY` capability:
+  the memory oracle computes the reference semantics, search backends serve it natively,
+  JPA and Mongo refuse it at validate with a Diagnostic.
 - **String functions**: `path(name).toLower().eq("bob")`, `path(name).length().gt(3)` —
   `toLower/toUpper/trim/length`, chainable (`trim().toLower()`); JPA renders JPQL
   functions, Mongo an `$expr` aggregation expression.
@@ -282,6 +287,7 @@ Declared via `QueryProcessor.capabilities()`; `validate()` reports every violati
 | Comparisons incl. `ne`, `isNull`, `between`, `in` | ✅ | ✅ | Mongo IsNull = missing-or-null |
 | Logic trees (n-ary and/or, not, nested) | ✅ | ✅ (`$nor`) | |
 | String matching + case-insensitive flag | ✅ LOWER both sides | ✅ regex `i` | LIKE `%`/`_` translated |
+| Fuzzy matching (`STRING_MATCH_FUZZY`, #167) | ❌ refused | ❌ refused | memory oracle = reference (OSA distance); search backends serve it natively |
 | String functions (toLower/toUpper/trim/length) | ✅ | ✅ `$expr` | Mongo: root-based paths only (not inside quantifier predicates) |
 | Field-to-field comparisons | ✅ | ✅ `$expr` | Mongo: root-based paths only; `$ne null` guards keep null-comparisons false |
 | `exists` / `forAll` quantifiers | ✅ correlated `[NOT] EXISTS`, nested | ⚠️ **embedded collections only** (`$elemMatch`; code 100) | vacuous truth on empty |

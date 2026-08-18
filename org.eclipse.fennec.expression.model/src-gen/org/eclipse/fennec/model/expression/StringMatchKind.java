@@ -69,7 +69,20 @@ public enum StringMatchKind implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	LIKE(3, "LIKE", "LIKE");
+	LIKE(3, "LIKE", "LIKE"),
+
+	/**
+	 * The '<em><b>FUZZY</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Edit-distance (Damerau-Levenshtein) matching against the whole value (issue #167), parameterized by StringMatch.maxEdits and prefixLength. Requires the STRING_MATCH_FUZZY capability; term-level fuzziness over analyzed sources is a backend refusal with the way out (a keyword projection), not a variant of this kind. 3VL like every StringMatch: a missing value is UNKNOWN.
+	 * <!-- end-model-doc -->
+	 * @see #FUZZY_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	FUZZY(4, "FUZZY", "FUZZY");
 
 	/**
 	 * The '<em><b>CONTAINS</b></em>' literal value.
@@ -116,6 +129,20 @@ public enum StringMatchKind implements Enumerator {
 	public static final int LIKE_VALUE = 3;
 
 	/**
+	 * The '<em><b>FUZZY</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Edit-distance (Damerau-Levenshtein) matching against the whole value (issue #167), parameterized by StringMatch.maxEdits and prefixLength. Requires the STRING_MATCH_FUZZY capability; term-level fuzziness over analyzed sources is a backend refusal with the way out (a keyword projection), not a variant of this kind. 3VL like every StringMatch: a missing value is UNKNOWN.
+	 * <!-- end-model-doc -->
+	 * @see #FUZZY
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int FUZZY_VALUE = 4;
+
+	/**
 	 * An array of all the '<em><b>String Match Kind</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -127,6 +154,7 @@ public enum StringMatchKind implements Enumerator {
 			STARTS_WITH,
 			ENDS_WITH,
 			LIKE,
+			FUZZY,
 		};
 
 	/**
@@ -187,6 +215,7 @@ public enum StringMatchKind implements Enumerator {
 			case STARTS_WITH_VALUE: return STARTS_WITH;
 			case ENDS_WITH_VALUE: return ENDS_WITH;
 			case LIKE_VALUE: return LIKE;
+			case FUZZY_VALUE: return FUZZY;
 		}
 		return null;
 	}

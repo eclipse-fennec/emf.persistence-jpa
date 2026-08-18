@@ -120,11 +120,17 @@ class ExpressionModelTest {
 	void defaultsAndEnums() {
 		assertThat(factory.createIsNull().isNegated()).isFalse();
 		assertThat(factory.createStringMatch().isCaseInsensitive()).isFalse();
+		// the fuzzy parameters (issue #167) default to Lucene's budget and no exact prefix,
+		// and are unsettable so "explicitly configured" stays distinguishable
+		assertThat(factory.createStringMatch().getMaxEdits()).isEqualTo(2);
+		assertThat(factory.createStringMatch().getPrefixLength()).isZero();
+		assertThat(factory.createStringMatch().isSetMaxEdits()).isFalse();
+		assertThat(factory.createStringMatch().isSetPrefixLength()).isFalse();
 		Between between = factory.createBetween();
 		assertThat(between.isLowerIncluded()).isTrue();
 		assertThat(between.isUpperIncluded()).isTrue();
 		assertThat(ComparisonOperator.values()).hasSize(6);
-		assertThat(StringMatchKind.values()).hasSize(4);
+		assertThat(StringMatchKind.values()).hasSize(5);
 		assertThat(TemporalKind.values()).hasSize(4);
 	}
 

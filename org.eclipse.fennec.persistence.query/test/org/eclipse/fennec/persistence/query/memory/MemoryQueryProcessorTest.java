@@ -38,6 +38,7 @@ import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
+import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
@@ -318,6 +319,79 @@ class MemoryQueryProcessorTest {
 				.build();
 		try (QueryResult result = MemoryQueries.execute(notOverAnd, persons, null)) {
 			assertThat(names(result)).containsExactlyInAnyOrder("Alice", "Bob");
+		}
+	}
+
+	/**
+	 * Reference semantics for FUZZY (issue #167): whole-value optimal-string-alignment
+	 * distance within the budget — substitutions, insertions and adjacent transpositions
+	 * each cost 1.
+	 */
+	@Test
+	void fuzzyMatchesWithinTheEditBudget() throws QueryException {
+		// Alice → Alicia: substitution + insertion = 2 edits — in with the default budget
+		Query lax = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Alicia"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(lax, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		// out with a budget of 1
+		Query strict = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Alicia", 1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(strict, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+		// an adjacent transposition is one edit, not two
+		Query transposed = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("oBb", 1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(transposed, persons, null)) {
+			assertThat(names(result)).containsExactly("Bob");
+		}
+	}
+
+	@Test
+	void fuzzyPrefixMustMatchExactly() throws QueryException {
+		// prefixLength 1: 'C' matches Carol, tail 'erol' vs 'arol' is one edit
+		Query samePrefix = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Cerol", 2, 1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(samePrefix, persons, null)) {
+			assertThat(names(result)).containsExactly("Carol");
+		}
+		// 'Karol' is one edit from 'Carol', but the exact-prefix requirement excludes it
+		Query wrongPrefix = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("Karol", 2, 1))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(wrongPrefix, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+	}
+
+	@Test
+	void fuzzyFoldsCaseWhenInsensitiveAndStaysThreeValued() throws QueryException {
+		// case-sensitive: 'alicia' needs 3 edits to 'Alice' — no match
+		Query sensitive = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).fuzzy("alicia"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(sensitive, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+		// folded: distance over the case-folded strings is 2 again
+		StringMatch folded = Expressions.path(personName).fuzzy("alicia");
+		folded.setCaseInsensitive(true);
+		Query insensitive = QueryBuilder.from(personClass).where(folded).build();
+		try (QueryResult result = MemoryQueries.execute(insensitive, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		// 3VL like every StringMatch: fuzzy over the null nickname is UNKNOWN, negation guarded
+		Query negated = QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personNickname).fuzzy("x")))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(negated, persons, null)) {
+			assertThat(names(result)).isEmpty();
 		}
 	}
 

@@ -479,6 +479,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 		case STARTS_WITH -> "^" + Pattern.quote(text);
 		case ENDS_WITH -> Pattern.quote(text) + "$";
 		case LIKE -> likeToRegex(text);
+		// unreachable: STRING_MATCH_FUZZY is undeclared, validation refused already (issue #167)
+		case FUZZY -> throw new QueryException("FUZZY matching is not served by the mongo backend");
 		};
 	}
 

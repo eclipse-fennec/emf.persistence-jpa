@@ -471,6 +471,32 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void fuzzyMatchIsDetectedAndShapeChecked() {
+		// issue #167: FUZZY is a refinement of WHERE_STRING_MATCH like case-insensitivity
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.where(Expressions.path(name).fuzzy("smiht", 1, 1))
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.WHERE_STRING_MATCH,
+				QueryFeature.STRING_MATCH_FUZZY);
+		assertThat(analysis.invalidStringMatch()).isNull();
+
+		// fuzzy parameters on a non-FUZZY kind are refused by shape, never silently ignored
+		StringMatch misplaced = Expressions.path(name).contains("x");
+		misplaced.setPrefixLength(1);
+		QueryAnalysis invalid = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person).where(misplaced).build());
+		assertThat(invalid.invalidStringMatch()).contains("only meaningful");
+
+		// the edit budget is 1..2
+		QueryAnalysis budget = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.where(Expressions.path(name).fuzzy("x", 3))
+						.build());
+		assertThat(budget.invalidStringMatch()).contains("1 or 2");
+	}
+
+	@Test
 	void bareScoreSortIsScoreNotSortExpression() {
 		// relevance order is the canonical use of SCORE (issue #165): a bare score()
 		// key must not demand arbitrary-expression sorting from the backend

@@ -188,6 +188,8 @@ public final class ExprToOcl {
 				case STARTS_WITH -> "startsWith";
 				case ENDS_WITH -> "endsWith";
 				case LIKE -> "like";
+				case FUZZY -> throw new QueryException("FUZZY string matching has no OCL form"
+						+ " — edit distance is not part of the OCL string library (issue #167)");
 				};
 				OclExpression source = map(match.getSource(), null);
 				OclExpression pattern = map(match.getPattern(), null);

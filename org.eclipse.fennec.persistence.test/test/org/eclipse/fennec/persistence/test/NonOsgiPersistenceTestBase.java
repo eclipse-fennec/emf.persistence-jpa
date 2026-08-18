@@ -61,7 +61,6 @@ import jakarta.persistence.EntityManagerFactory;
  * (or an overload) to obtain a ready-to-use {@link EntityManagerFactory} with dynamic
  * types registered in the EclipseLink session.
  */
-@SuppressWarnings("restriction")
 public abstract class NonOsgiPersistenceTestBase {
 
 	protected ResourceSet rs;
