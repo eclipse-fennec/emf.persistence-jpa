@@ -75,16 +75,24 @@ This is the DS reference cascade described in the
 [Connection Liveness concept](concept-connection-liveness.md) — gate the lowest service
 you own, let DS propagate the truth upward.
 
-### Resource layer wiring (in flux)
+### Resource layer wiring
 
-`MongoResourceFactory` is currently a **plain `Resource.Factory`**, not a DS component:
-consumers register it on a `ResourceSet` for the `mongodb` protocol themselves,
-passing the `MongoDatabase`, a `MetadataService` and an optional `CodecValueRegistry`.
-An emf.osgi whiteboard integration analogous to the single dispatching
-`JPAResourceFactory` for `jpa://` (see [OSGi Architecture](osgi-architecture.md)) does
-not exist yet — a `mongodb://` resource would need URI dispatch onto the registered
-`MongoDatabase` services by alias. Until then the DS chain ends at the `MongoDatabase`
-service.
+The `mongodb://` whiteboard is `MongoResourceFactoryComponent` (#90) — a DS component
+registered via `@EMFConfigurator(configuratorType = RESOURCE_FACTORY, protocol =
+"mongodb")`, in parity with the dispatching `JPAResourceFactoryComponent` for `jpa://`
+(see [OSGi Architecture](osgi-architecture.md)). It tracks every `MongoDatabase` service
+by its `mongo.database.alias` property and dispatches on the URI authority
+(`mongodb://<alias>/<collection>`); the service object is resolved lazily on the first
+URI that addresses the alias. An unknown or no-longer-available alias yields an
+unavailable-proxy resource whose operations fail with a diagnostic naming the missing
+alias — fail-loud, no fallback. Created resources are additionally wired with the
+alias's declared `MongoFlavor` (#118) and, when present as services, the `mongo`-backend
+`QueryProcessor` (#61), a `CodecValueRegistry` and the `ConverterService` (#164).
+
+The plain `MongoResourceFactory` remains as the shared construction path the component
+delegates to — and as the non-OSGi entry point: plain-Java consumers register it on a
+`ResourceSet` for the `mongodb` protocol themselves, passing the `MongoDatabase`, a
+`MetadataService` and the optional collaborators.
 
 ## Connection liveness
 
@@ -307,7 +315,7 @@ Shared across both backends: the core API (`PersistenceResource`,
 | Id generation | sequences/identity (numeric) | `ObjectId` hex, String-typed ids only; numeric ids fail loudly |
 | Save semantics | EntityManager transaction per operation | one `bulkWrite` of upserts; no multi-document transaction |
 | OSGi connection services | external `DataSource`; liveness gate **opt-in** (`persistence.jdbc.gate`) | own `MongoClient`/`MongoDatabase` components; liveness gate **on by default** |
-| OSGi resource dispatch | `jpa://` whiteboard (`JPAUnit` + single dispatching factory, lazy build/idle close) | manual `MongoResourceFactory` registration; whiteboard not yet built |
+| OSGi resource dispatch | `jpa://` whiteboard (`JPAUnit` + single dispatching factory, lazy build/idle close) | `mongodb://` whiteboard (`MongoResourceFactoryComponent`, #90): alias dispatch on the URI authority, lazy service resolution, unavailable-proxy diagnostics |
 
 ## Testing architecture
 
@@ -353,13 +361,9 @@ architecture end to end, complementing the plain-JUnit `LivenessGateTest` /
 
 ## Current limitations and in-flux areas
 
-- **No `mongodb://` OSGi whiteboard yet** — resource factories are wired manually; the
-  DS chain ends at the `MongoDatabase` service.
 - **Cross-document reference rewrite is root-only** (emf.codec#50 workaround above).
-- **No type discriminator on decode** — heterogeneous collections are not supported;
-  every decode needs the collection's EClass (by option or name lookup).
-- **No query translation / projections / time-series support yet** — planned per the
-  [working document](discussion-mongo-persistence.md); `load()` without an id reads
+- **No time-series support yet** (#96) — query translation and projections exist
+  (`MongoQueryProcessor`, the canonical query IR); `load()` without an id still reads
   the whole collection (optionally paginated).
 - **Per-database probing** (databases with differing auth) is an open question of the
   liveness concept; gating is currently client-level only.
