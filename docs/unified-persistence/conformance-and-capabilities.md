@@ -314,7 +314,7 @@ The name describes the first third. Split it by role, one name per role:
 | `PersistenceCapabilities` | own bundle `org.eclipse.fennec.persistence.capabilities` | the root a backend answers; query, command and store are views on it |
 | `QueryCapabilities` / `QueryFeature` | moved there unchanged | this really *is* query expression vocabulary — the prefix is correct here |
 | `CommandCapabilities` / `CommandFeature` | moved there, minus one literal | see below |
-| `StoreCapabilities` / `StoreFeature` | new | the home for power outside query and command; today exactly `TRANSACTION_BRACKET`, with `CHANGE_STREAMS`, `SERVER_CURSORS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` as the expected neighbours — each added when something declares it, not before |
+| `StoreCapabilities` / `StoreFeature` | new | the home for power outside query and command; today `TRANSACTION_BRACKET` and `SERVER_CURSORS` (below), with `CHANGE_STREAMS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` as the expected neighbours — each added when something declares it, not before |
 | `StoreLimits` | **not built yet** | scalars, not flags — identifier length, timestamp precision, LOB bounds, NULL ordering. Waits for the flavor axis, which is what produces them; `maxFeaturePathDepth` stays on `QueryCapabilities` until then, since it limits the translator rather than the store |
 | query / command execution types | stay in the query bundle, `...query.api` and `...command.api` | `CommandResource` is not a query |
 
@@ -325,6 +325,15 @@ vocabulary needs it. It depends on nothing but EMF, so every other bundle can de
 capability: §4a already uses it to explain the cascade-delete window on the **save** path, and
 `OwnershipMaintenance` refers to it — reaching that statement through a `CommandResource` is
 an accident of where the literal was first needed.
+
+`SERVER_CURSORS` is the `QueryResult` lifetime contract (#162, first declarer: the Lucene
+backend, which holds the unit's searcher lease from `query(...)` to `close()`). *Declared*
+means the streams of a `QueryResult` remain valid until `close()` and fetch incrementally out
+of a live store handle — a server-side cursor or its embedded analogue. *Undeclared* means
+results may be fully materialized at call time and `close()` is a no-op. Both are conforming;
+the feature only tells the consumer which resource-lifetime contract `query(...)` hands out.
+A TCK case pinning it (reading a stream past a subsequent write, or bounding memory) can
+follow once a second declarer makes the shape comparable.
 
 **The carrier is `PersistenceResource`, in the core bundle.** That is what fixes the finding
 rather than papering over it: `PersistenceResource.capabilities()` returns the aggregate, so a

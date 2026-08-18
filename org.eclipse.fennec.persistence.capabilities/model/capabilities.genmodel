@@ -67,6 +67,7 @@
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//StoreFeature">
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/TRANSACTION_BRACKET"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/SERVER_CURSORS"/>
     </genEnums>
   </genPackages>
 </genmodel:GenModel>

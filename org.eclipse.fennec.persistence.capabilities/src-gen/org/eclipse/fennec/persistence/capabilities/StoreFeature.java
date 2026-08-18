@@ -45,7 +45,20 @@ public enum StoreFeature implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	TRANSACTION_BRACKET(0, "TRANSACTION_BRACKET", "TRANSACTION_BRACKET");
+	TRANSACTION_BRACKET(0, "TRANSACTION_BRACKET", "TRANSACTION_BRACKET"),
+
+	/**
+	 * The '<em><b>SERVER CURSORS</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The QueryResult lifetime contract (issue #162). Declared: the streams of a QueryResult remain valid until close() and fetch incrementally out of a live store handle - a server-side cursor, or its embedded analogue like a held searcher lease. Undeclared: results may be fully materialized at call time and close() is a no-op. Both are conforming; the feature only tells the consumer which resource-lifetime contract query(...) hands out. First declarer: the Lucene backend (emf.search), which holds the unit's searcher lease from query(...) to close().
+	 * <!-- end-model-doc -->
+	 * @see #SERVER_CURSORS_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	SERVER_CURSORS(20, "SERVER_CURSORS", "SERVER_CURSORS");
 
 	/**
 	 * The '<em><b>TRANSACTION BRACKET</b></em>' literal value.
@@ -62,6 +75,20 @@ public enum StoreFeature implements Enumerator {
 	public static final int TRANSACTION_BRACKET_VALUE = 0;
 
 	/**
+	 * The '<em><b>SERVER CURSORS</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The QueryResult lifetime contract (issue #162). Declared: the streams of a QueryResult remain valid until close() and fetch incrementally out of a live store handle - a server-side cursor, or its embedded analogue like a held searcher lease. Undeclared: results may be fully materialized at call time and close() is a no-op. Both are conforming; the feature only tells the consumer which resource-lifetime contract query(...) hands out. First declarer: the Lucene backend (emf.search), which holds the unit's searcher lease from query(...) to close().
+	 * <!-- end-model-doc -->
+	 * @see #SERVER_CURSORS
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int SERVER_CURSORS_VALUE = 20;
+
+	/**
 	 * An array of all the '<em><b>Store Feature</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -70,6 +97,7 @@ public enum StoreFeature implements Enumerator {
 	private static final StoreFeature[] VALUES_ARRAY =
 		new StoreFeature[] {
 			TRANSACTION_BRACKET,
+			SERVER_CURSORS,
 		};
 
 	/**
@@ -127,6 +155,7 @@ public enum StoreFeature implements Enumerator {
 	public static StoreFeature get(int value) {
 		switch (value) {
 			case TRANSACTION_BRACKET_VALUE: return TRANSACTION_BRACKET;
+			case SERVER_CURSORS_VALUE: return SERVER_CURSORS;
 		}
 		return null;
 	}

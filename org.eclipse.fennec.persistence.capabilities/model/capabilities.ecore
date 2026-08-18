@@ -290,11 +290,16 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="StoreFeature">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="A single store-dependent capability that is not query vocabulary and not a command verb (issue #134, contract &#xA7;5a). This is where power that the store either has or has not belongs - the write path included - so reaching such a statement never requires holding a query or a command role. Literal values are grouped with gaps: transactional 0+, streaming 20+, indexing 40+."/>
+      <details key="documentation" value="A single store-dependent capability that is not query vocabulary and not a command verb (issue #134, contract §5a). This is where power that the store either has or has not belongs - the write path included - so reaching such a statement never requires holding a query or a command role. Literal values are grouped with gaps: transactional 0+, streaming 20+, indexing 40+."/>
     </eAnnotations>
     <eLiterals name="TRANSACTION_BRACKET">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="begin(): an atomic multi-operation bracket (issue #108). Moved here from CommandFeature, because it was never a command capability - the contract already uses it to explain the cascade-delete convergence window on the save path (&#xA7;4a), and OwnershipMaintenance refers to it. May depend on the deployment rather than just the backend - mongo answers per hello-probe, replica set versus standalone - so the probe narrows it per resource instance while the declaration states what the flavor can do at all."/>
+        <details key="documentation" value="begin(): an atomic multi-operation bracket (issue #108). Moved here from CommandFeature, because it was never a command capability - the contract already uses it to explain the cascade-delete convergence window on the save path (§4a), and OwnershipMaintenance refers to it. May depend on the deployment rather than just the backend - mongo answers per hello-probe, replica set versus standalone - so the probe narrows it per resource instance while the declaration states what the flavor can do at all."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SERVER_CURSORS" value="20">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The QueryResult lifetime contract (issue #162). Declared: the streams of a QueryResult remain valid until close() and fetch incrementally out of a live store handle - a server-side cursor, or its embedded analogue like a held searcher lease. Undeclared: results may be fully materialized at call time and close() is a no-op. Both are conforming; the feature only tells the consumer which resource-lifetime contract query(...) hands out. First declarer: the Lucene backend (emf.search), which holds the unit's searcher lease from query(...) to close()."/>
       </eAnnotations>
     </eLiterals>
   </eClassifiers>
