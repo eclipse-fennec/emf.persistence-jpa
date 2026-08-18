@@ -168,7 +168,7 @@ public abstract class NonOsgiPersistenceTestBase {
 		emf = provider.createContainerEntityManagerFactory(pui, props);
 		serverSession = JpaHelper.getServerSession(emf);
 
-		ConverterService converter = new DefaultConverterService() { /* concrete instance */ };
+		ConverterService converter = new DefaultConverterService();
 		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl, serverSession, puName, converter);
 		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
 

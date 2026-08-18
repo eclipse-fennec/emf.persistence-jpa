@@ -17,6 +17,7 @@ import java.util.Map;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.query.support.QueryContexts;
@@ -40,6 +41,8 @@ public final class JpaQueries {
 	 * @param processor the JPA query processor
 	 * @param query the canonical query
 	 * @param rootEClass the resolved root type
+	 * @param converters the shared converter service for literal/parameter values
+	 *        (issue #164); may be {@code null} for identity
 	 * @param parameters bound placeholder values; may be {@code null}
 	 * @param options backend options; may be {@code null}
 	 * @return the executable plan
@@ -47,13 +50,14 @@ public final class JpaQueries {
 	 *         or translation fails
 	 */
 	public static JpaQueryPlan translate(QueryProcessor processor, Query query, EClass rootEClass,
-			Map<String, Object> parameters, Map<?, ?> options) throws QueryException {
+			ConverterService converters, Map<String, Object> parameters, Map<?, ?> options)
+			throws QueryException {
 		Diagnostic diagnostic = processor.validate(query, rootEClass);
 		if (diagnostic.getSeverity() == Diagnostic.ERROR) {
 			throw new QueryException(text(diagnostic), null, diagnostic);
 		}
 		return (JpaQueryPlan) processor.translate(query,
-				QueryContexts.of(rootEClass, null, parameters, options));
+				QueryContexts.of(rootEClass, converters, parameters, options));
 	}
 
 	private static String text(Diagnostic diagnostic) {

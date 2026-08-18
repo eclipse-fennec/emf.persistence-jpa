@@ -16,6 +16,7 @@ import static java.util.Objects.requireNonNull;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
 
 import jakarta.persistence.EntityManagerFactory;
@@ -36,14 +37,30 @@ import jakarta.persistence.EntityManagerFactory;
 public class JPAResourceFactory implements Resource.Factory {
 
 	private final EntityManagerFactory emf;
+	private final ConverterService converters;
 
 	public JPAResourceFactory(EntityManagerFactory emf) {
+		this(emf, null);
+	}
+
+	/**
+	 * Variant with an explicit {@link ConverterService} handed to every created resource
+	 * (issue #164) — pass the service the persistence unit's mappings were built with, so
+	 * query-side literal/parameter conversion matches the columns. {@code null} keeps the
+	 * resources' stock converter set.
+	 */
+	public JPAResourceFactory(EntityManagerFactory emf, ConverterService converters) {
 		requireNonNull(emf, "EntityManagerFactory is required");
 		this.emf = emf;
+		this.converters = converters;
 	}
 
 	@Override
 	public Resource createResource(URI uri) {
-		return new JPAResourceImpl(uri, emf);
+		JPAResourceImpl resource = new JPAResourceImpl(uri, emf);
+		if (converters != null) {
+			resource.setConverterService(converters);
+		}
+		return resource;
 	}
 }

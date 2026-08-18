@@ -168,7 +168,7 @@ class NonOsgiDelimitedIdentifiersTest {
 		emf = provider.createContainerEntityManagerFactory(pui, props);
 		serverSession = JpaHelper.getServerSession(emf);
 
-		ConverterService converter = new DefaultConverterService() { /* concrete */ };
+		ConverterService converter = new DefaultConverterService();
 		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl, serverSession, "delim_test", converter);
 		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
 

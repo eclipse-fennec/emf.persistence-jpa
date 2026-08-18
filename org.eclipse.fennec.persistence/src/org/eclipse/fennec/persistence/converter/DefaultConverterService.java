@@ -21,8 +21,10 @@ import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.api.TypeConverter;
 
 /**
- * Abstract base for {@link ConverterService} implementations. Holds the list of
- * registered {@link TypeConverter}s in a {@link CopyOnWriteArrayList} — reads
+ * Default {@link ConverterService}: the stock converter set, usable as-is in plain Java
+ * (issue #164 — the non-OSGi credo needs a concrete class, not an anonymous subclass per
+ * consumer) and as base for extending implementations like the OSGi whiteboard. Holds the
+ * list of registered {@link TypeConverter}s in a {@link CopyOnWriteArrayList} — reads
  * (the hot path: resolving a converter for a datatype or name) are lock-free,
  * and the rare writes (subclasses add or remove converters at runtime) pay the
  * array-copy cost without blocking readers.
@@ -30,7 +32,7 @@ import org.eclipse.fennec.persistence.api.TypeConverter;
  * @author Mark Hoffmann
  * @since 14.01.2025
  */
-public abstract class DefaultConverterService implements ConverterService {
+public class DefaultConverterService implements ConverterService {
 
 	protected final CopyOnWriteArrayList<TypeConverter> converters;
 
@@ -54,11 +56,12 @@ public abstract class DefaultConverterService implements ConverterService {
 	@Override
 	public TypeConverter getConverter(EClassifier eDataType) {
 		requireNonNull(eDataType);
+		// nullable by contract (issue #164): no registered converter claiming the type is
+		// the normal answer for plain data types — callers persist the value unconverted
 		return converters.stream()
 				.filter(c -> c.isConverterForType(eDataType))
 				.findFirst()
-				.orElseThrow(() -> new IllegalStateException(
-						"The default converter was not found - this should never happen"));
+				.orElse(null);
 	}
 
 	/*
@@ -71,8 +74,7 @@ public abstract class DefaultConverterService implements ConverterService {
 		return converters.stream()
 				.filter(c -> name.equals(c.getName()))
 				.findFirst()
-				.orElseThrow(() -> new IllegalStateException(
-						"The default converter was not found - this should never happen"));
+				.orElse(null);
 	}
 
 }

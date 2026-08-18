@@ -21,6 +21,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
 import org.eclipse.fennec.persistence.mongo.resource.MongoResourceImpl;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
@@ -51,6 +52,7 @@ public class MongoResourceFactory implements Resource.Factory {
 	private final QueryProcessor queryProcessor;
 	private final MongoClient client;
 	private final MongoFlavor flavor;
+	private final ConverterService converterService;
 
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -92,6 +94,18 @@ public class MongoResourceFactory implements Resource.Factory {
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client,
 			MongoFlavor flavor) {
+		this(database, metadataService, valueRegistry, queryProcessor, client, flavor, null);
+	}
+
+	/**
+	 * Variant with an explicit {@link ConverterService} handed to every created resource
+	 * (issue #164) — pass the service the codec converts with, so query-side
+	 * literal/parameter conversion matches the stored values. {@code null} keeps the
+	 * resources' stock converter set.
+	 */
+	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client,
+			MongoFlavor flavor, ConverterService converterService) {
 		requireNonNull(database, "MongoDatabase is required");
 		requireNonNull(metadataService, "MetadataService is required");
 		this.database = database;
@@ -100,6 +114,7 @@ public class MongoResourceFactory implements Resource.Factory {
 		this.client = client;
 		this.flavor = flavor == null ? MongoFlavor.MONGO : flavor;
 		this.queryProcessor = processorFor(queryProcessor, this.flavor);
+		this.converterService = converterService;
 	}
 
 	/** The processor handed to created resources after flavor reconciliation; may be null. */
@@ -148,6 +163,9 @@ public class MongoResourceFactory implements Resource.Factory {
 		}
 		if (client != null) {
 			resource.setClient(client);
+		}
+		if (converterService != null) {
+			resource.setConverterService(converterService);
 		}
 		return resource;
 	}

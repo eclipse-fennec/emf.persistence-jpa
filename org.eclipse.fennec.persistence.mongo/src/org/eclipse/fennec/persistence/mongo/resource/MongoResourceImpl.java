@@ -77,9 +77,11 @@ import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
@@ -179,6 +181,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private final Map<EClass, Map<String, Object>> compositeIdConfigs;
 	private volatile ObjectMapper mongoMapper;
 	private volatile QueryProcessor queryProcessor = new MongoQueryProcessor();
+
+	/**
+	 * The default converter set, shared across resources (stateless lookups). Wiring a
+	 * different service through {@link #setConverterService(ConverterService)} matters when
+	 * custom converters are registered — query-side literal and parameter values must be
+	 * converted with the same converters the codec applied on write (issue #164).
+	 */
+	private static final ConverterService DEFAULT_CONVERTERS = new DefaultConverterService();
+	private volatile ConverterService converters = DEFAULT_CONVERTERS;
 	/** Session-capable client for command transactions (issue #112); optional. */
 	private volatile MongoClient client;
 	/** The open command bracket (issue #112); resources are single-threaded per EMF semantics. */
@@ -599,6 +610,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		this.queryProcessor = requireNonNull(queryProcessor, "queryProcessor must not be null");
 	}
 
+	/**
+	 * Overrides the {@link ConverterService} used for literal and parameter values in
+	 * queries and command selectors (issue #164) — intended for wiring the codec's converter
+	 * service through the factory; defaults to the stock converter set.
+	 */
+	public void setConverterService(ConverterService converters) {
+		this.converters = requireNonNull(converters, "converters must not be null");
+	}
+
 	/** The effective processor — package-private so tests can assert the wiring. */
 	QueryProcessor queryProcessor() {
 		return queryProcessor;
@@ -635,7 +655,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		EClass eClass = resolveEClass(collectionName, options);
 		MongoQueryPlan plan;
 		try {
-			plan = MongoQueries.translate(queryProcessor, query, eClass, parameters, queryOptions(options));
+			plan = MongoQueries.translate(queryProcessor, query, eClass, converters, parameters,
+					queryOptions(options));
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected for collection '" + collectionName + "': " + e.getMessage(), e);
@@ -992,7 +1013,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			guardPlainSelector(delete.getSelector());
 			plan = MongoQueries.translate(queryProcessor, delete.getSelector(),
-					delete.getSelector().getFrom(), null, queryOptions(null));
+					delete.getSelector().getFrom(), converters, null, queryOptions(null));
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
@@ -1024,7 +1045,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			guardPlainSelector(update.getSelector());
 			ChangeTemplates.validate(update.getTemplate(), eClass);
-			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, null, queryOptions(null));
+			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, converters, null,
+					queryOptions(null));
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);

@@ -22,10 +22,13 @@ import java.util.UUID;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.EnumLiteral;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
@@ -184,6 +187,41 @@ class ExpressionValuesTest {
 		assertThatThrownBy(() -> ExpressionValues.resolve(ref, null, Map.of(), null))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("who");
+	}
+
+	private EDataType uuidType() {
+		EDataType uuidType = EcoreFactory.eINSTANCE.createEDataType();
+		uuidType.setName("UUID");
+		uuidType.setInstanceClass(UUID.class);
+		return uuidType;
+	}
+
+	/**
+	 * The conversion path over a real {@link ConverterService} (issue #164 — dead until the
+	 * backends handed one in): a claimed type converts to its persistence form, an unclaimed
+	 * plain type passes through as identity. The nullable {@code getConverter} contract is
+	 * exactly this distinction — absence means identity, never an exception.
+	 */
+	@Test
+	void converterServiceConvertsClaimedTypesAndPassesPlainOnes() {
+		ConverterService converters = new DefaultConverterService();
+		UUID id = UUID.randomUUID();
+		assertThat(ExpressionValues.toPersistenceValue(id, attribute("uid", uuidType()), converters))
+				.isEqualTo(id.toString());
+		assertThat(ExpressionValues.toPersistenceValue("smith",
+				attribute("name", EcorePackage.Literals.ESTRING), converters)).isEqualTo("smith");
+		assertThat(ExpressionValues.toPersistenceValue(42,
+				attribute("age", EcorePackage.Literals.EINT), converters)).isEqualTo(42);
+	}
+
+	/** A bound parameter takes the same conversion road as a literal (issue #164). */
+	@Test
+	void parameterValueIsConvertedThroughTheService() throws QueryException {
+		ParameterRef ref = expr.createParameterRef();
+		ref.setName("id");
+		UUID id = UUID.randomUUID();
+		assertThat(ExpressionValues.resolve(ref, attribute("uid", uuidType()),
+				Map.of("id", id), new DefaultConverterService())).isEqualTo(id.toString());
 	}
 
 	@Test

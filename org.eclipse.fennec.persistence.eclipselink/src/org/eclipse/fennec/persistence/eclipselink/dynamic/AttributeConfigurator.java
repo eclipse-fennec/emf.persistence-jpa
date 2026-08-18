@@ -164,6 +164,13 @@ class AttributeConfigurator {
 		if (nonNull(convert) && nonNull(convert.getConverter())) {
 			String name = convert.getConverter();
 			converter = context.getConverter(name);
+			// the service answers absence with null (issue #164); an explicitly configured
+			// name that resolves to nothing is a mapping error and must not fall through
+			// to an unconverted column silently
+			if (isNull(converter)) {
+				throw new IllegalStateException("The eorm mapping of '" + feature.getName()
+						+ "' names converter '" + name + "', but no such converter is registered");
+			}
 		}
 		// If no explicit converter, try automatic detection for non-standard database types
 		else if (feature instanceof EAttribute ea) {

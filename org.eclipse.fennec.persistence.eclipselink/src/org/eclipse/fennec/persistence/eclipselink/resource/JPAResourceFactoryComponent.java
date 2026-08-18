@@ -25,6 +25,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.emf.osgi.annotation.ConfiguratorType;
 import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
+import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.query.QueryConstants;
@@ -72,6 +73,8 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 	private final Map<String, JPAUnit> resolvedUnits = new ConcurrentHashMap<>();
 	/** The processor handed to created resources; empty = resources use their local default. */
 	private final AtomicReference<QueryProcessor> queryProcessor = new AtomicReference<>();
+	/** The converter service handed to created resources; empty = the stock converter set. */
+	private final AtomicReference<ConverterService> converterService = new AtomicReference<>();
 
 	@Activate
 	public JPAResourceFactoryComponent(BundleContext ctx) {
@@ -95,6 +98,22 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 		// on a greedy rebind DS binds the replacement first — only clear if the
 		// departing service is still the bound one
 		queryProcessor.compareAndSet(processor, null);
+	}
+
+	/**
+	 * The {@link ConverterService} handed to created resources (issue #164) — the same
+	 * whiteboard the persistence unit mappings are built with, so query-side value
+	 * conversion matches the columns. Optional: without it resources use the stock
+	 * converter set.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY)
+	void bindConverterService(ConverterService converters) {
+		converterService.set(converters);
+	}
+
+	void unbindConverterService(ConverterService converters) {
+		converterService.compareAndSet(converters, null);
 	}
 
 	@Deactivate
@@ -164,6 +183,10 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 		QueryProcessor processor = queryProcessor.get();
 		if (nonNull(processor)) {
 			resource.setQueryProcessor(processor);
+		}
+		ConverterService converters = converterService.get();
+		if (nonNull(converters)) {
+			resource.setConverterService(converters);
 		}
 		return resource;
 	}

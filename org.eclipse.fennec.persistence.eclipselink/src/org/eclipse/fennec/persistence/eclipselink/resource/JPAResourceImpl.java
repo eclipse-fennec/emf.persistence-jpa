@@ -57,6 +57,8 @@ import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
@@ -136,6 +138,15 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	private final JPAUnit unit;
 	private volatile QueryProcessor queryProcessor = new JpaQueryProcessor();
+
+	/**
+	 * The default converter set, shared across resources (stateless lookups). Wiring a
+	 * different service through {@link #setConverterService(ConverterService)} matters when
+	 * custom converters are registered — the query side must convert literal and parameter
+	 * values with the same converters the mapping applied to the columns (issue #164).
+	 */
+	private static final ConverterService DEFAULT_CONVERTERS = new DefaultConverterService();
+	private volatile ConverterService converters = DEFAULT_CONVERTERS;
 
 	/** Options captured by {@link #load(Map)} for the deferred full population. */
 	private Map<?, ?> loadOptions;
@@ -1154,7 +1165,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try {
 			guardPlainSelector(delete.getSelector());
 			plan = JpaQueries.translate(queryProcessor, delete.getSelector(),
-					delete.getSelector().getFrom(), null, null);
+					delete.getSelector().getFrom(), converters, null, null);
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
@@ -1207,7 +1218,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			guardPlainSelector(update.getSelector());
 			ChangeTemplates.validate(update.getTemplate(), update.getSelector().getFrom());
 			plan = JpaQueries.translate(queryProcessor, update.getSelector(),
-					update.getSelector().getFrom(), null, null);
+					update.getSelector().getFrom(), converters, null, null);
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);
@@ -1355,6 +1366,15 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		this.queryProcessor = requireNonNull(queryProcessor, "queryProcessor must not be null");
 	}
 
+	/**
+	 * Overrides the {@link ConverterService} used for literal and parameter values in
+	 * queries and command selectors (issue #164) — intended for wiring the same service the
+	 * persistence unit's mappings were built with; defaults to the stock converter set.
+	 */
+	public void setConverterService(ConverterService converters) {
+		this.converters = requireNonNull(converters, "converters must not be null");
+	}
+
 	@Override
 	public QueryResult query(Query query) throws IOException {
 		return query(query, null, null);
@@ -1402,7 +1422,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		JpaQueryPlan plan;
 		try {
-			plan = JpaQueries.translate(queryProcessor, query, eClass, parameters, options);
+			plan = JpaQueries.translate(queryProcessor, query, eClass, converters, parameters, options);
 		} catch (QueryException e) {
 			lease.close();
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
