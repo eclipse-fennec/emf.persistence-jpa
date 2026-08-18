@@ -346,6 +346,20 @@ the flavor can do at all.
 core is precisely what is *not* declared (§2A — core items do not exist as declarable values).
 A model that by construction contains only B must not be named after A.
 
+**Query capabilities are backend-wide by definition — no narrowing surface** (#161, decided
+2026-08-18). `CommandCapabilities` answers per `EClass` because write routing is genuinely a
+per-target-type question. The query-side cases that looked like the same shape are not:
+`EXISTS` only over `NESTED`-mapped containment, equality only on keyword projections — they
+narrow per *feature and its mapping*, a third and finer axis. A declarable form of that would
+replicate the validator: whoever answers it precisely must consult the same mapping knowledge
+`validate()` already has, and two code paths for one truth drift apart. So the doctrine is:
+a declared `QueryFeature` means the backend serves the feature's family natively *somewhere*;
+whether a concrete query over concrete features is served is `validate()`'s answer, and a
+mapping-dependent refusal carries a Diagnostic naming the feature and the way out (a keyword
+sub-field, a `NESTED` mapping). If a real pre-validation router ever appears, a
+`supports(feature, EStructuralFeature)` overload is a purely additive extension — until then
+it would be an API answering a question nobody asks.
+
 **Scalars, not just booleans.** `maxFeaturePathDepth` is already the exception among the flags,
 and the flavor axis produces more of them: Oracle's identifier length, timestamp precision,
 collation and case sensitivity, NULL sort order. Those are not can/cannot questions, and a
