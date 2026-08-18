@@ -28,7 +28,11 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
-import org.eclipse.fennec.persistence.capabilities.QueryFeature;
+import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
+import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoFlavorCapabilities;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
@@ -48,48 +52,33 @@ import com.mongodb.client.MongoDatabase;
  */
 class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 
-	/** Mongo find-sorts cannot order by expressions (issue #84). */
+	/**
+	 * The Mongo declaration (issue #160), answerable without a connection. The query
+	 * vocabulary is the measured flavor declaration (issues #118/#119/#122) — the find-sort
+	 * cannot order by expressions (issue #84) and expand hints are refused (issue #95), so
+	 * neither appears in any flavor's baseline. The transaction bracket follows the
+	 * deployment the flavor implies: FerretDB presents a standalone server and cannot serve
+	 * multi-document transactions, MongoDB (single-node replica set container) and the
+	 * DocumentDB gateway (announces itself as mongos) genuinely do — the runtime probe in
+	 * {@code MongoResourceImpl} narrows to exactly the same answer, which
+	 * {@code effectiveCapabilitiesNeverExceedTheDeclaration} asserts.
+	 */
 	@Override
-	protected boolean supportsSortExpressions() {
-		return false;
-	}
-
-	/** Mongo declares no EXPAND capability — expand hints are refused (issue #95). */
-	@Override
-	protected boolean supportsExpand() {
-		return false;
+	protected PersistenceCapabilities declaredCapabilities() {
+		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create();
+		if (!MongoTestSupport.isFerretDb()) {
+			store.support(StoreFeature.TRANSACTION_BRACKET);
+		}
+		return PersistenceCapabilities.of(MongoFlavorCapabilities.of(flavor()),
+				CommandCapabilitiesBuilder.create()
+						.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
+								CommandFeature.UPDATE_BY_SELECTOR)
+						.build(),
+				store.build());
 	}
 
 	// composite ids map to a compound structured _id via the codec id plane since
-	// issue #110 — the inherited supportsCompositeIds() default applies
-
-	/**
-	 * 2dsphere geo translation since issue #113 (G-P2) — subject to the flavor: the
-	 * PostgreSQL-backed gateways do not necessarily serve the geo operators, which is
-	 * measured rather than assumed (issue #119).
-	 */
-	@Override
-	protected boolean supportsGeo() {
-		return MongoFlavorCapabilities.of(flavor()).supports(QueryFeature.GEO_WITHIN);
-	}
-
-	/**
-	 * Measured (issues #119/#122) — and the two PostgreSQL-backed gateways differ here, which
-	 * is why they are separate flavors rather than one:
-	 * <ul>
-	 * <li>FerretDB presents a standalone server, so {@code MongoResourceImpl}'s runtime probe
-	 * leaves {@code TRANSACTION_BRACKET} undeclared and {@code begin()} refuses with a
-	 * Diagnostic — the TCK asserts that refusal shape instead of the behaviour.</li>
-	 * <li>The DocumentDB gateway announces itself as mongos ({@code hello.msg=isdbgrid}) and
-	 * genuinely serves client-session transactions — verified by committing one against the
-	 * emulator. The probe is right to declare the feature, so the full transactional contract
-	 * is exercised.</li>
-	 * </ul>
-	 */
-	@Override
-	protected boolean supportsCommandTransactions() {
-		return !MongoTestSupport.isFerretDb();
-	}
+	// issue #110 — core, exercised unconditionally
 
 	/**
 	 * The server flavor under test, from {@code -Dmongo.test.flavor} (issue #118). Unknown

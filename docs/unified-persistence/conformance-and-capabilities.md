@@ -63,6 +63,16 @@ declaration must be **test-backed in both directions**:
 The second half is the one usually missing, and it is the more important one. Refusal is
 covered in §5.
 
+Both directions are mechanical since #160. Every non-core TCK case names the features it
+exercises in a `@RequiresCapabilities` annotation; an `ExecutionCondition` reads the
+binding's declaration and **skips** the case when a required feature is undeclared, with the
+undeclared features as the skip reason — a skip in the report is a capability statement,
+never a silent hole. The refusal direction is one generic case:
+`undeclaredFeaturesAreRefusedWithADiagnostic` probes every undeclared query feature with a
+minimal query and asserts the diagnostic names it. A case *without* the annotation is core —
+"skip this core case" cannot be spelled, which is §2A's structural enforcement carried into
+the suite.
+
 ### C — Form divergence
 
 Neither of the two above, and it exists because §4b happened: the semantics are required of
@@ -453,10 +463,11 @@ Decided since, and moved out of this list: the third category (§2C, form diverg
 declaration surface with its naming, its two levels and Java-versus-XMI (§5a) — both
 2026-08-14. What remains:
 
-1. **Query-vocabulary hooks.** `supportsTypePredicates`, `supportsSortExpressions`,
-   `supportsExpand`, `supportsFilteredCollectionCounts` are listed as capabilities above.
-   Arguable: they are not store limits so much as translator gaps, and a translator gap is
-   a defect. Deciding them as core would put real pressure on both backends.
+1. **Query-vocabulary capabilities.** `TYPE_CHECK`/`TYPE_CAST`, `SORT_EXPRESSION`,
+   `EXPAND`, `COLLECTION_COUNT_FILTERED` are gated as capabilities above (since #160 via
+   `@RequiresCapabilities`, no longer as `supports*()` hooks). Arguable: they are not store
+   limits so much as translator gaps, and a translator gap is a defect. Deciding them as
+   core would put real pressure on both backends.
 2. **`EMap` and feature maps in core.** Both are EMF semantics, so core by the §2 test —
    but neither has a mapping today, which makes this the most expensive single item.
 3. **Geo capability split.** Where exactly: `GEO_WITHIN`/`GEO_DISTANCE` exist; is a
@@ -481,7 +492,17 @@ declaration surface with its naming, its two levels and Java-versus-XMI (§5a) �
 3. Replace the seven hooks with an `ExecutionCondition` and a capability annotation, so
    gating is declarative and a skip reason is a capability statement in the report. The
    condition reads the declaration service, which is what makes "skip means undeclared
-   capability" mechanical rather than a convention.
+   capability" mechanical rather than a convention. **Done** (#160): the seven `supports*()`
+   hooks are gone. Every non-core case carries `@RequiresCapabilities` over
+   `QueryFeature`/`CommandFeature`/`StoreFeature`, `CapabilityGate` evaluates it against the
+   binding's `declaredCapabilities()` — connection-free, per §5a — and skips with the
+   undeclared features as the reason. The refusal direction became one generic case
+   (`undeclaredFeaturesAreRefusedWithADiagnostic`, a minimal probe query per feature), and
+   `effectiveCapabilitiesNeverExceedTheDeclaration` pins declaration against the live
+   resource in both directions. `supportsCompositeIds` did not become an annotation — the
+   §3 decision made it core, so its refusal branch is simply gone. One deviation from the
+   sentence above: the condition reads the binding's declaration, not a *service* — the
+   service registration per backend × flavor is still step 2's open remainder.
 4. Make the boot fail loudly: undeclared capability → skip, unreachable backend → error.
    Retires the XML-parsing guard in `flavor-matrix.yml` (#132).
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become

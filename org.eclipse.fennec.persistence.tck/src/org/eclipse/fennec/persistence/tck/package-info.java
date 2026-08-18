@@ -16,7 +16,11 @@
  * {@link org.eclipse.fennec.persistence.tck.AbstractPersistenceTCK} is subclass API
  * (issue #99): a backend binding — in this workspace or an external one — extends it,
  * implements the backend SPI hooks ({@code setUpBackend}, {@code createBackendResourceSet},
- * {@code uriFor}) and declares its capability variance via the {@code supports*()} hooks.
+ * {@code uriFor}) and answers {@code declaredCapabilities()} with its connection-free
+ * capability declaration (issue #160). Gating is declarative: every non-core case carries
+ * {@link org.eclipse.fennec.persistence.tck.RequiresCapabilities}, and
+ * {@link org.eclipse.fennec.persistence.tck.CapabilityGate} skips a case whose required
+ * features the binding does not declare — the skip reason names them.
  * The TCK models ({@code tck.ecore}, {@code tck-string.ecore}) ship as resources next to
  * the class. The in-repo JPA/Mongo bindings live in this project's test folder.
  */

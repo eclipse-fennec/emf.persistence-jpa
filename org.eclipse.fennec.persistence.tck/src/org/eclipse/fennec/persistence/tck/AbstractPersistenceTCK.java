@@ -14,7 +14,6 @@ package org.eclipse.fennec.persistence.tck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,6 +24,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +63,7 @@ import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.pushstreams.PersistencePushStreams;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
@@ -79,6 +80,7 @@ import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.osgi.util.pushstream.PushStream;
 
 /**
@@ -90,10 +92,18 @@ import org.osgi.util.pushstream.PushStream;
  * (single- and multi-valued) resolving as EMF proxies through the ResourceSet,
  * bidirectional references, {@link PersistenceResource} operations and the
  * {@link StreamingResource} / PushStream behavior.
+ * <p>
+ * Capability variance is declarative (issue #160): the binding answers
+ * {@link #declaredCapabilities()}, every non-core case carries a {@link RequiresCapabilities}
+ * annotation, and {@link CapabilityGate} skips a case whose required features the backend does
+ * not declare — the skip reason names them. The other direction of contract §2B is
+ * {@link #undeclaredFeaturesAreRefusedWithADiagnostic()}: an undeclared feature must be
+ * refused with a Diagnostic, never silently post-filtered.
  *
  * @author Mark Hoffmann
  * @since 16.07.2026
  */
+@ExtendWith(CapabilityGate.class)
 public abstract class AbstractPersistenceTCK {
 
 	protected EPackage tckPackage;
@@ -126,6 +136,15 @@ public abstract class AbstractPersistenceTCK {
 
 	/** Returns the backend resource URI for the given type, e.g. {@code jpa://tck/Person}. */
 	protected abstract URI uriFor(String typeName);
+
+	/**
+	 * The backend's capability declaration (issue #160): what this backend and flavor can do
+	 * at all, per contract §5a answerable <em>without opening a connection</em> — the gate
+	 * evaluates it before {@link #setUpBackend(EPackage)} has run. The live resource's
+	 * effective set may be narrower (a probe took something away), never wider;
+	 * {@link #effectiveCapabilitiesNeverExceedTheDeclaration()} holds the binding to that.
+	 */
+	protected abstract PersistenceCapabilities declaredCapabilities();
 
 	// ----------------------------------------------------------------- set up
 
@@ -667,6 +686,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE,
+			QueryFeature.WHERE_COMPARISON, QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR })
 	public void queryGroupedPredicateTree() throws Exception {
 		saveQueryFixture();
 		// (age >= 40 OR name = "Alice") AND age <> 50 — inexpressible in the v1 IR
@@ -684,6 +705,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.IN, QueryFeature.WHERE_NE, QueryFeature.IS_NULL,
+			QueryFeature.LOGICAL_AND })
 	public void queryNeInAndIsNotNull() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -699,6 +722,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE,
+			QueryFeature.LOGICAL_NOT })
 	public void queryNotOverNullableComparisonExcludesNullRows() throws Exception {
 		// SQL 3VL pinned by issue #94 (Mongo aligned by #97): not(birthday = X) over a
 		// NULL birthday is NOT UNKNOWN = UNKNOWN — excluded, it does not flip to a match
@@ -727,6 +752,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.WHERE_COMPARISON,
+			QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT })
 	public void queryNegationDistributesThreeValuedOverJunctions() throws Exception {
 		EObject alice = newPerson(1, "Alice", 30);
 		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
@@ -758,6 +785,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = QueryFeature.WHERE_EQ)
 	public void queryStringLiteralCoercesAgainstEnumFeature() throws Exception {
 		saveQueryFixture();
 		// OData transports enum values as quoted strings (issue #93): a StringLiteral
@@ -779,6 +807,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = QueryFeature.WHERE_EQ)
 	public void queryPlainFilterOnIdAttribute() throws Exception {
 		saveQueryFixture();
 		// ID equality compiles to an EclipseLink ReadObjectQuery, which supports no
@@ -793,6 +822,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = QueryFeature.WHERE_EQ)
 	public void queryMissOnIdAttributeIsEmpty() throws Exception {
 		saveQueryFixture();
 		// the no-match branch of the ReadObjectQuery path (issue #91): empty, not null
@@ -805,6 +835,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_STRING_MATCH,
+			QueryFeature.STRING_MATCH_CASE_INSENSITIVE })
 	public void queryCaseInsensitiveMatching() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -817,6 +849,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXISTS, QueryFeature.WHERE_STRING_MATCH })
 	public void queryExistsOverContainment() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -830,6 +863,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.FOR_ALL, QueryFeature.WHERE_STRING_MATCH })
 	public void queryForAllIsVacuouslyTrueOnEmpty() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -844,6 +878,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.STRING_FUNCTIONS, QueryFeature.WHERE_EQ,
+			QueryFeature.WHERE_COMPARISON })
 	public void queryStringFunctions() throws Exception {
 		saveQueryFixture();
 		Query lower = QueryBuilder.from(personClass)
@@ -864,6 +900,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.ARITHMETIC, QueryFeature.WHERE_EQ,
+			QueryFeature.WHERE_COMPARISON })
 	public void queryArithmetic() throws Exception {
 		saveQueryFixture();
 		// (age + 10) * 2 > 90 — Alice 80, Bob 100, Carol 120
@@ -901,6 +939,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.ARITHMETIC, QueryFeature.WHERE_COMPARISON })
 	public void queryDivisionByLiteralZeroIsRefused() throws Exception {
 		saveQueryFixture();
 		Query zeroDivision = QueryBuilder.from(personClass)
@@ -913,6 +952,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.STRING_FUNCTIONS_EXTENDED, QueryFeature.WHERE_EQ })
 	public void queryExtendedStringFunctions() throws Exception {
 		saveQueryFixture();
 		// CONCAT — "Bob" + "!" = "Bob!"
@@ -956,6 +996,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.ARITHMETIC,
+			QueryFeature.WHERE_EQ })
 	public void queryNumericFunctions() throws Exception {
 		saveQueryFixture();
 		// age / 4 → Alice 7.5, Bob 10, Carol 12.5. ROUND is half away from zero:
@@ -984,6 +1026,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.WHERE_EQ })
 	public void queryTemporalFunctions() throws Exception {
 		saveQueryFixture();
 		// Alice 1996-03-15T10:30:45Z, Bob 1986-07-01T23:59:59Z, Carol 1976-12-31T00:00:05Z
@@ -1032,12 +1075,9 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
-	/** Whether the backend supports type predicates (TYPE_CHECK/TYPE_CAST, issues #80/#88). */
-	protected boolean supportsTypePredicates() {
-		return true;
-	}
-
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.TYPE_CHECK, QueryFeature.TYPE_CAST,
+			QueryFeature.WHERE_COMPARISON, QueryFeature.LOGICAL_NOT })
 	public void queryTypeCheckAndTreat() throws Exception {
 		EClass vehicleClass = (EClass) tckPackage.getEClassifier("Vehicle");
 		EClass carClass = (EClass) tckPackage.getEClassifier("Car");
@@ -1051,19 +1091,6 @@ public abstract class AbstractPersistenceTCK {
 		Query strongCar = QueryBuilder.from(vehicleClass)
 				.where(Expressions.pathAs(carClass, horsepower).gt(100))
 				.build();
-
-		if (!supportsTypePredicates()) {
-			// documented capability refusal — never silent (issue #80)
-			ResourceSet refusalSet = createBackendResourceSet();
-			QueryableResource resource = (QueryableResource) refusalSet.createResource(uriFor("Vehicle"));
-			assertThatThrownBy(() -> resource.query(isCar).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("TYPE_CHECK");
-			assertThatThrownBy(() -> resource.query(strongCar).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("TYPE_CAST");
-			return;
-		}
 
 		EObject beetle = newVehicle(carClass, 1, "Beetle");
 		beetle.eSet(horsepower, 50);
@@ -1129,6 +1156,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.COLLECTION_COUNT, QueryFeature.WHERE_EQ,
+			QueryFeature.WHERE_COMPARISON })
 	public void queryCollectionCounts() throws Exception {
 		saveQueryFixture();
 		// plain: Bob has two addresses, Alice and Carol none
@@ -1146,30 +1175,28 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactlyInAnyOrder("Alice", "Carol");
 		}
-		// filtered: exactly one Main-Street address — supported on JPA, refused on Mongo
+	}
+
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.COLLECTION_COUNT_FILTERED, QueryFeature.WHERE_EQ,
+			QueryFeature.WHERE_STRING_MATCH })
+	public void queryFilteredCollectionCount() throws Exception {
+		saveQueryFixture();
+		// exactly one Main-Street address — only Bob (issue #81)
 		Query filtered = QueryBuilder.from(personClass)
 				.where(Expressions.count(Expressions.propertyPath(personAddresses),
 						a -> a.path(addressStreet).startsWith("Main")).eq(1))
 				.build();
-		if (supportsFilteredCollectionCounts()) {
-			try (QueryResult result = queryable(createBackendResourceSet()).query(filtered)) {
-				assertThat(result.objects().map(person -> person.eGet(personName)))
-						.containsExactly("Bob");
-			}
-		} else {
-			QueryableResource resource = queryable(createBackendResourceSet());
-			assertThatThrownBy(() -> resource.query(filtered).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("COLLECTION_COUNT_FILTERED");
+		try (QueryResult result = queryable(createBackendResourceSet()).query(filtered)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.containsExactly("Bob");
 		}
 	}
 
-	/** Whether the backend supports predicate-filtered collection counts (issue #81). */
-	protected boolean supportsFilteredCollectionCounts() {
-		return true;
-	}
-
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_SUM,
+			QueryFeature.AGG_COUNT, QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE,
+			QueryFeature.ARITHMETIC, QueryFeature.WHERE_COMPARISON })
 	public void queryPipelineComputeAndHaving() throws Exception {
 		saveQueryFixture();
 		// Dora shares age 30 with Alice — the HAVING keeps only that group
@@ -1207,6 +1234,9 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE,
+			QueryFeature.GROUP_BY, QueryFeature.GROUP_EXPRESSION, QueryFeature.AGG_SUM,
+			QueryFeature.AGG_COUNT, QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS })
 	public void queryPreGroupComputeFeedsGroupKeysAndSources() throws Exception {
 		saveQueryFixture();
 		// Dora(35) shares the floor(age/10)=3 decade with Alice(30) — the pre-group
@@ -1243,6 +1273,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.GROUP_EXPRESSION,
+			QueryFeature.AGG_AVG, QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS })
 	public void queryGroupByExpressionKeyWithoutCompute() throws Exception {
 		saveQueryFixture();
 		// the expression key needs no pipeline compute (issue #87): floor(age/25)
@@ -1272,31 +1304,22 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.SORT, QueryFeature.SORT_EXPRESSION,
+			QueryFeature.ARITHMETIC })
 	public void querySortByExpression() throws Exception {
 		saveQueryFixture();
 		// -age ascending = age descending: Carol, Bob, Alice (issue #84)
 		Query query = QueryBuilder.from(personClass)
 				.orderByAsc(Expressions.neg(Expressions.path(personAge)).toExpression())
 				.build();
-		if (!supportsSortExpressions()) {
-			QueryableResource resource = queryable(createBackendResourceSet());
-			assertThatThrownBy(() -> resource.query(query).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("SORT_EXPRESSION");
-			return;
-		}
 		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Carol", "Bob", "Alice");
 		}
 	}
 
-	/** Whether the backend supports ordering by arbitrary value expressions (issue #84). */
-	protected boolean supportsSortExpressions() {
-		return true;
-	}
-
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_AVG, QueryFeature.SORT })
 	public void queryAggregationSortsByOutputAlias() throws Exception {
 		saveQueryFixture();
 		// OData: $apply=groupby((name),aggregate(age with average as avgAge))&$orderby=avgAge desc
@@ -1314,6 +1337,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.WHERE_EQ })
 	public void queryExpandPrefetchesMultiSegmentPaths() throws Exception {
 		// multi-segment expand (issue #95): single-valued segments fetch-join as an
 		// aliased chain — the result must stay correct and fully navigable
@@ -1332,13 +1356,6 @@ public abstract class AbstractPersistenceTCK {
 				.where(Expressions.path(personName).eq("Bob"))
 				.expand(personBestFriend, personEmployer)
 				.build();
-		if (!supportsExpand()) {
-			QueryableResource resource = queryable(createBackendResourceSet());
-			assertThatThrownBy(() -> resource.query(query).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("EXPAND");
-			return;
-		}
 		ResourceSet readSet = createBackendResourceSet();
 		try (QueryResult result = queryable(readSet).query(query)) {
 			List<EObject> persons = result.objects().toList();
@@ -1351,6 +1368,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.SORT, QueryFeature.LIMIT })
 	public void queryExpandToManyKeepsMaxResultsCounting() throws Exception {
 		// a collection fetch join would count joined SQL rows against setMaxResults and
 		// truncate Bob's addresses — the to-many expand must batch instead (issue #95)
@@ -1360,13 +1378,6 @@ public abstract class AbstractPersistenceTCK {
 				.top(2)
 				.expand(personAddresses)
 				.build();
-		if (!supportsExpand()) {
-			QueryableResource resource = queryable(createBackendResourceSet());
-			assertThatThrownBy(() -> resource.query(query).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("EXPAND");
-			return;
-		}
 		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
 			List<EObject> persons = result.objects().toList();
 			assertThat(persons.stream().map(person -> person.eGet(personName)))
@@ -1377,12 +1388,9 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
-	/** Whether the backend serves {@code expand} prefetch hints (issue #95). */
-	protected boolean supportsExpand() {
-		return true;
-	}
-
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_COUNT,
+			QueryFeature.SORT, QueryFeature.PIPELINE })
 	public void queryPipelinePagingIsSortThenLimit() throws Exception {
 		saveQueryFixture();
 		save(createBackendResourceSet(), "Person", newPerson(4, "Dora", 30));
@@ -1411,6 +1419,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.ARITHMETIC, QueryFeature.PARAMETERS,
+			QueryFeature.WHERE_COMPARISON })
 	public void queryRuntimeZeroDivisorSurfacesBackendError() throws Exception {
 		saveQueryFixture();
 		// a literal zero is refused statically; a zero bound at runtime is the backend's
@@ -1424,6 +1434,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.FIELD_TO_FIELD, QueryFeature.WHERE_EQ,
+			QueryFeature.WHERE_NE })
 	public void queryFieldToFieldComparison() throws Exception {
 		saveQueryFixture();
 		Query same = QueryBuilder.from(personClass)
@@ -1441,6 +1453,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.SORT, QueryFeature.SKIP, QueryFeature.LIMIT,
+			QueryFeature.COUNT, QueryFeature.WHERE_COMPARISON })
 	public void querySortSkipTopAndCount() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -1464,6 +1478,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.PARAMETERS, QueryFeature.WHERE_EQ })
 	public void queryParameterBinding() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -1477,6 +1492,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.PROJECTION, QueryFeature.WHERE_COMPARISON })
 	public void queryProjectionRows() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -1494,6 +1510,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_AVG,
+			QueryFeature.AGG_COUNT })
 	public void queryWholeSetAggregation() throws Exception {
 		saveQueryFixture();
 		Query query = QueryBuilder.from(personClass)
@@ -1510,6 +1528,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_AVG,
+			QueryFeature.AGG_COUNT })
 	public void queryGroupedAggregation() throws Exception {
 		EObject bob2 = newPerson(4, "Bob", 20);
 		ResourceSet writeSet = createBackendResourceSet();
@@ -1534,6 +1554,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.PARAMETERS, QueryFeature.WHERE_COMPARISON })
 	public void querySaveAndExecuteByName() throws Exception {
 		saveQueryFixture();
 		Query named = QueryBuilder.from(personClass)
@@ -1556,6 +1577,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.WHERE_COMPARISON })
 	public void querySavedQueryUpsertsAndUnknownNameIsRefused() throws Exception {
 		saveQueryFixture();
 		QueryableResource resource = queryable(createBackendResourceSet());
@@ -1602,6 +1624,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.IN, QueryFeature.LOGICAL_AND,
+			QueryFeature.WHERE_COMPARISON })
 	public void derivedReferenceComputesViaBackendQuery() throws Exception {
 		try (AutoCloseable registration = derivedDelegateRegistration()) {
 			saveFriendsFixture();
@@ -1616,6 +1640,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.IN, QueryFeature.LOGICAL_AND,
+			QueryFeature.WHERE_COMPARISON })
 	public void derivedReferenceDifferentialLocalVsBackend() throws Exception {
 		try (AutoCloseable registration = derivedDelegateRegistration()) {
 			saveFriendsFixture();
@@ -1642,6 +1668,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_AVG, QueryFeature.SORT })
 	public void queryRefusalIsAnIOExceptionWithDiagnostics() throws Exception {
 		saveQueryFixture();
 		Query bad = QueryBuilder.from(personClass)
@@ -1660,6 +1687,16 @@ public abstract class AbstractPersistenceTCK {
 	 * objects in memory, and the result sets must agree.
 	 */
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE,
+			QueryFeature.WHERE_COMPARISON, QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL,
+			QueryFeature.IN, QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
+			QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
+			QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.SKIP,
+			QueryFeature.LIMIT, QueryFeature.COUNT, QueryFeature.STRING_FUNCTIONS,
+			QueryFeature.STRING_FUNCTIONS_EXTENDED, QueryFeature.ARITHMETIC,
+			QueryFeature.NUMERIC_FUNCTIONS, QueryFeature.TEMPORAL_FUNCTIONS,
+			QueryFeature.FIELD_TO_FIELD, QueryFeature.COLLECTION_COUNT,
+			QueryFeature.COLLECTION_COUNT_FILTERED })
 	public void queryDifferentialAgainstMemoryOracle() throws Exception {
 		saveQueryFixture();
 		List<EObject> oracle = new ArrayList<>();
@@ -1810,6 +1847,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.INSERT)
 	public void commandInsertPersistsThePayload() throws Exception {
 		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
 		insert.getObjects().add(newPerson(1, "Alice", 30));
@@ -1825,6 +1863,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
 	public void commandDeleteBySelector() throws Exception {
 		saveQueryFixture();
 		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
@@ -1859,6 +1899,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void commandUpdateAppliesTheTemplatePerMatch() throws Exception {
 		saveQueryFixture();
 		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
@@ -1883,6 +1924,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR)
 	public void commandUpdateMatchesEveryObjectOnEmptySelector() throws Exception {
 		saveQueryFixture();
 		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
@@ -1898,6 +1940,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void commandUpdateUnsetClearsTheValue() throws Exception {
 		saveQueryFixture();
 		UpdateCommand update = updateCommand(
@@ -1916,6 +1959,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR)
 	public void commandUpdateRefusesBadTemplates() throws Exception {
 		saveQueryFixture();
 		Query all = QueryBuilder.from(personClass).build();
@@ -1944,6 +1988,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void commandUpdateSetsAndUnsetsSingleReferencesById() throws Exception {
 		saveQueryFixture();
 		// OData link semantics (issue #107): SET binds the target resolved by id
@@ -1980,6 +2025,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void commandUpdateAddsAndRemovesManyReferenceMembersById() throws Exception {
 		saveQueryFixture();
 		ChangeEntry addAlice = changeEntry(DeltaKind.ADD, personFriends);
@@ -2014,6 +2060,7 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.INSERT)
 	public void commandInsertBindsExistingReferenceTargetsById() throws Exception {
 		// existing world: Alice (Person) and a company
 		EObject company = newCompany(21, "Data In Motion");
@@ -2059,35 +2106,9 @@ public abstract class AbstractPersistenceTCK {
 
 	// --------------------------------------------------------------- geo (issue #101)
 
-	/**
-	 * Whether the backend serves the geo vocabulary. The memory engine is the reference;
-	 * JPA refuses until a PostGIS dialect story exists, Mongo until the 2dsphere
-	 * translation lands (G-P2) — geo-capable bindings flip this and run real semantics.
-	 */
-	protected boolean supportsGeo() {
-		return false;
-	}
-
-	@Test
-	public void queryGeoVocabularyIsCapabilityGated() throws Exception {
-		saveQueryFixture();
-		Query query = QueryBuilder.from(personClass)
-				.where(Expressions.geoWithin(
-						Expressions.geoSubject(
-								Expressions.propertyPath(personAge), Expressions.propertyPath(personAge)),
-						Expressions.geoBox(Expressions.geoPoint(10, 50), Expressions.geoPoint(13, 52))))
-				.build();
-		if (!supportsGeo()) {
-			QueryableResource resource = queryable(createBackendResourceSet());
-			assertThatThrownBy(() -> resource.query(query).close())
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("GEO_WITHIN");
-			return;
-		}
-		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
-			assertThat(result.objects()).isNotNull();
-		}
-	}
+	// the geo vocabulary is capability-gated declaratively (issue #160): declared →
+	// the differential corpus below runs; undeclared → the generic refusal test
+	// asserts the GEO_WITHIN/GEO_DISTANCE Diagnostic instead
 
 	// geo differential corpus (issue #113, G-P2): every case pins the reference
 	// semantics on the memory oracle AND asserts the backend returns the same set —
@@ -2159,8 +2180,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = QueryFeature.GEO_WITHIN)
 	public void geoBoxOverSplitAndPackedSubjects() throws Exception {
-		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
 		GeoBox thuringia = Expressions.geoBox(
 				Expressions.geoPoint(11.3, 50.5), Expressions.geoPoint(12.5, 51.5));
 		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
@@ -2172,8 +2193,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = QueryFeature.GEO_WITHIN)
 	public void geoWrapAroundBoxCrossesTheAntimeridian() throws Exception {
-		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
 		// west > east is the legal wrap-around box (§5.3) — catches Fiji AND Samoa
 		GeoBox pacific = Expressions.geoBox(
 				Expressions.geoPoint(170.0, -25.0), Expressions.geoPoint(-165.0, -10.0));
@@ -2186,8 +2207,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = QueryFeature.GEO_WITHIN)
 	public void geoPolygonOverThePackedSubject() throws Exception {
-		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
 		// triangle around Jena and Gera, Erfurt stays west of it
 		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
 				.where(Expressions.geoWithin(packedSubject(), Expressions.geoPolygon(
@@ -2199,8 +2220,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GEO_DISTANCE, QueryFeature.WHERE_COMPARISON })
 	public void geoDistanceThresholdsOnBothBindings() throws Exception {
-		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
 		// Jena↔Gera ≈ 35 km, Jena↔Erfurt ≈ 39 km — 37 km around Jena splits the two
 		GeoPointLiteral jena = Expressions.geoPoint(11.586, 50.927);
 		assertGeoDifferential(QueryBuilder.from((EClass) tckPackage.getEClassifier("Place"))
@@ -2219,8 +2240,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.GEO_WITHIN, QueryFeature.LOGICAL_NOT })
 	public void geoNegationExcludesUnknownSubjects() throws Exception {
-		assumeTrue(supportsGeo(), "geo vocabulary pending on this backend — issue #101");
 		GeoBox thuringia = Expressions.geoBox(
 				Expressions.geoPoint(11.3, 50.5), Expressions.geoPoint(12.5, 51.5));
 		// NOT within must not surface the null-coordinate row (§5.5, issue-#97 discipline)
@@ -2235,27 +2256,22 @@ public abstract class AbstractPersistenceTCK {
 	// -------------------------------------------------- command transactions (issue #108)
 
 	/**
-	 * Whether the backend serves cross-command transaction brackets. The mongo backend
-	 * refuses (multi-document transactions need a session-capable client and a replica
-	 * set) — its bindings return {@code false} and assert the refusal shape instead.
-	 */
-	protected boolean supportsCommandTransactions() {
-		return true;
-	}
-
-	/**
-	 * The issue-#114 contract: the declaration matches behaviour. Every declared
-	 * feature executes (the command/transaction cases above cover that), an undeclared
-	 * one refuses before any work with a Diagnostic naming the {@link CommandFeature},
-	 * and the per-EClass answer defaults to the backend-wide one.
+	 * The issue-#114 contract: the live resource matches the binding's declaration. Every
+	 * declared feature executes (the command/transaction cases above cover that), an
+	 * undeclared one refuses before any work with a Diagnostic naming the feature, and the
+	 * per-EClass answer defaults to the backend-wide one. The undeclared direction for the
+	 * transaction bracket is asserted here, because the bracket has no query surface the
+	 * generic refusal probes could reach.
 	 */
 	@Test
+	@RequiresCapabilities(command = { CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
+			CommandFeature.UPDATE_BY_SELECTOR })
 	public void commandCapabilitiesMatchDeclaredBehaviour() throws Exception {
 		saveQueryFixture();
 		CommandResource resource = commands(createBackendResourceSet());
-		PersistenceCapabilities declared = ((PersistenceResource) resource).capabilities();
-		assertThat(declared).isNotNull();
-		CommandCapabilities capabilities = declared.command();
+		PersistenceCapabilities effective = ((PersistenceResource) resource).capabilities();
+		assertThat(effective).isNotNull();
+		CommandCapabilities capabilities = effective.command();
 		assertThat(capabilities).isNotNull();
 		for (CommandFeature feature : List.of(CommandFeature.INSERT,
 				CommandFeature.DELETE_BY_SELECTOR, CommandFeature.UPDATE_BY_SELECTOR)) {
@@ -2265,11 +2281,13 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(capabilities.supported()).contains(feature);
 		}
 		// the transaction bracket is a store feature now, not a command verb (issue #134, §5a)
-		assertThat(declared.store().supports(StoreFeature.TRANSACTION_BRACKET))
-				.isEqualTo(supportsCommandTransactions());
+		boolean bracketDeclared = declaredCapabilities().store()
+				.supports(StoreFeature.TRANSACTION_BRACKET);
+		assertThat(effective.store().supports(StoreFeature.TRANSACTION_BRACKET))
+				.isEqualTo(bracketDeclared);
 		assertThat(capabilities.supported())
 				.noneMatch(feature -> "TRANSACTION_BRACKET".equals(feature.getName()));
-		if (!supportsCommandTransactions()) {
+		if (!bracketDeclared) {
 			assertThatThrownBy(resource::begin)
 					.isInstanceOf(IOException.class)
 					.hasMessageContaining("TRANSACTION_BRACKET");
@@ -2281,15 +2299,12 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(store = StoreFeature.TRANSACTION_BRACKET,
+			command = { CommandFeature.INSERT, CommandFeature.UPDATE_BY_SELECTOR },
+			query = QueryFeature.WHERE_EQ)
 	public void commandTransactionCommitsAtomically() throws Exception {
 		saveQueryFixture();
 		CommandResource resource = commands(createBackendResourceSet());
-		if (!supportsCommandTransactions()) {
-			assertThatThrownBy(resource::begin)
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("not supported");
-			return;
-		}
 		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
 		insert.getObjects().add(newPerson(4, "Dave", 25));
 		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
@@ -2313,8 +2328,9 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(store = StoreFeature.TRANSACTION_BRACKET,
+			command = { CommandFeature.INSERT, CommandFeature.UPDATE_BY_SELECTOR })
 	public void commandTransactionRollbackLeavesNoTrace() throws Exception {
-		assumeTrue(supportsCommandTransactions(), "no command transactions — issue #108");
 		saveQueryFixture();
 		CommandResource resource = commands(createBackendResourceSet());
 
@@ -2349,13 +2365,8 @@ public abstract class AbstractPersistenceTCK {
 
 	// ------------------------------------------------------- composite ids (issue #109)
 
-	/**
-	 * Whether the backend persists composite-id EClasses. A backend without support
-	 * returns {@code false} and the keyed test asserts the honest refusal instead.
-	 */
-	protected boolean supportsCompositeIds() {
-		return true;
-	}
+	// composite ids are conformance core (issue #134): every store can key on a
+	// concatenation, so there is no declarable value to gate on and no refusal shape
 
 	private EObject orderLine(String order, int line, int quantity) {
 		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
@@ -2370,14 +2381,6 @@ public abstract class AbstractPersistenceTCK {
 	public void compositeIdKeyedResolutionUsesTheFragmentContract() throws Exception {
 		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
 		ResourceSet writeSet = createBackendResourceSet();
-		if (!supportsCompositeIds()) {
-			Resource resource = writeSet.createResource(uriFor("OrderLine"));
-			resource.getContents().add(orderLine("A", 1, 10));
-			assertThatThrownBy(() -> resource.save(null))
-					.isInstanceOf(IOException.class)
-					.hasMessageContaining("composite id");
-			return;
-		}
 		// two lines sharing the first key component — distinguishable only composite
 		save(writeSet, "OrderLine", orderLine("A", 1, 10), orderLine("A", 2, 20), orderLine("B", 1, 30));
 
@@ -2397,8 +2400,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.LOGICAL_AND })
 	public void compositeIdSelectorResolvesASingleObject() throws Exception {
-		assumeTrue(supportsCompositeIds(), "composite ids pending on this backend — issue #109");
 		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
 		save(createBackendResourceSet(), "OrderLine",
 				orderLine("A", 1, 10), orderLine("A", 2, 20), orderLine("B", 1, 30));
@@ -2420,6 +2423,8 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
 	public void commandSelectorMustBeAPlainFilter() throws Exception {
 		saveQueryFixture();
 		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
@@ -2432,5 +2437,167 @@ public abstract class AbstractPersistenceTCK {
 		assertThatThrownBy(() -> resource.execute(delete))
 				.isInstanceOf(IOException.class)
 				.hasMessageContaining("plain filters");
+	}
+
+	// -------------------------------------------- capability declaration (issue #160)
+
+	/**
+	 * The refusal direction of contract §2B, mechanically: every probeable query feature the
+	 * backend does <em>not</em> declare must be refused with an {@link IOException} whose
+	 * message names the feature — never silently post-filtered. The declared direction is
+	 * the gated cases themselves: declared means they run and must pass.
+	 */
+	@Test
+	public void undeclaredFeaturesAreRefusedWithADiagnostic() throws Exception {
+		Set<QueryFeature> declared = declaredCapabilities().query().supported();
+		for (Map.Entry<QueryFeature, Query> probe : featureProbes().entrySet()) {
+			if (declared.contains(probe.getKey())) {
+				continue;
+			}
+			QueryableResource resource = queryable(createBackendResourceSet());
+			assertThatThrownBy(() -> resource.query(probe.getValue()).close())
+					.as("undeclared feature %s must be refused with a Diagnostic",
+							probe.getKey().getName())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining(probe.getKey().getName());
+		}
+	}
+
+	/**
+	 * One minimal Person-rooted query per probeable {@link QueryFeature}. A probe may use
+	 * auxiliary features beyond the one it targets; the validator names every unsupported
+	 * feature in the Diagnostic, so the targeted name always appears in the refusal.
+	 */
+	private Map<QueryFeature, Query> featureProbes() {
+		Map<QueryFeature, Query> probes = new LinkedHashMap<>();
+		probes.put(QueryFeature.WHERE_EQ, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("x")).build());
+		probes.put(QueryFeature.WHERE_NE, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).ne("x")).build());
+		probes.put(QueryFeature.WHERE_COMPARISON, QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(1)).build());
+		probes.put(QueryFeature.WHERE_RANGE, QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).between(1, 2)).build());
+		probes.put(QueryFeature.IS_NULL, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).isNotNull()).build());
+		probes.put(QueryFeature.IN, QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).in(1, 2)).build());
+		probes.put(QueryFeature.WHERE_STRING_MATCH, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).startsWith("x")).build());
+		probes.put(QueryFeature.STRING_MATCH_CASE_INSENSITIVE, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).containsIgnoreCase("x")).build());
+		probes.put(QueryFeature.LOGICAL_AND, QueryBuilder.from(personClass)
+				.where(Expressions.and(Expressions.path(personName).eq("x"),
+						Expressions.path(personName).eq("y"))).build());
+		probes.put(QueryFeature.LOGICAL_OR, QueryBuilder.from(personClass)
+				.where(Expressions.or(Expressions.path(personName).eq("x"),
+						Expressions.path(personName).eq("y"))).build());
+		probes.put(QueryFeature.LOGICAL_NOT, QueryBuilder.from(personClass)
+				.where(Expressions.not(Expressions.path(personName).eq("x"))).build());
+		probes.put(QueryFeature.EXISTS, QueryBuilder.from(personClass)
+				.where(Expressions.any(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("x"))).build());
+		probes.put(QueryFeature.FOR_ALL, QueryBuilder.from(personClass)
+				.where(Expressions.all(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("x"))).build());
+		probes.put(QueryFeature.FIELD_TO_FIELD, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq(Expressions.path(personName))).build());
+		probes.put(QueryFeature.ARITHMETIC, QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).plus(1).gt(1)).build());
+		probes.put(QueryFeature.STRING_FUNCTIONS, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).toLower().eq("x")).build());
+		probes.put(QueryFeature.STRING_FUNCTIONS_EXTENDED, QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).indexOf("x").eq(1)).build());
+		probes.put(QueryFeature.NUMERIC_FUNCTIONS, QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).dividedBy(4).floor().eq(1)).build());
+		probes.put(QueryFeature.TEMPORAL_FUNCTIONS, QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).year().eq(2000)).build());
+		probes.put(QueryFeature.TYPE_CHECK, QueryBuilder.from(personClass)
+				.where(Expressions.isOf(personClass)).build());
+		probes.put(QueryFeature.TYPE_CAST, QueryBuilder.from(personClass)
+				.where(Expressions.pathAs(personClass, personAge).gt(1)).build());
+		probes.put(QueryFeature.COLLECTION_COUNT, QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses)).ge(1)).build());
+		probes.put(QueryFeature.COLLECTION_COUNT_FILTERED, QueryBuilder.from(personClass)
+				.where(Expressions.count(Expressions.propertyPath(personAddresses),
+						a -> a.path(addressStreet).startsWith("x")).ge(1)).build());
+		probes.put(QueryFeature.FEATUREPATH_NESTED, QueryBuilder.from(personClass)
+				.where(Expressions.path(personBestFriend, personName).eq("x")).build());
+		probes.put(QueryFeature.SORT, QueryBuilder.from(personClass)
+				.orderByAsc(personName).build());
+		probes.put(QueryFeature.SORT_EXPRESSION, QueryBuilder.from(personClass)
+				.orderByAsc(Expressions.neg(Expressions.path(personAge)).toExpression()).build());
+		probes.put(QueryFeature.LIMIT, QueryBuilder.from(personClass).top(1).build());
+		probes.put(QueryFeature.SKIP, QueryBuilder.from(personClass).skip(1).build());
+		probes.put(QueryFeature.DISTINCT, QueryBuilder.from(personClass).distinct().build());
+		probes.put(QueryFeature.COUNT, QueryBuilder.from(personClass).countOnly().build());
+		probes.put(QueryFeature.PROJECTION, QueryBuilder.from(personClass)
+				.selectAs("n", personName).build());
+		probes.put(QueryFeature.PROJECTION_NESTED, QueryBuilder.from(personClass)
+				.selectAs("s", personBestFriend, personName).build());
+		probes.put(QueryFeature.EXPAND, QueryBuilder.from(personClass)
+				.expand(personBestFriend).build());
+		probes.put(QueryFeature.PARAMETERS, QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).eq(Expressions.param("p"))).build());
+		probes.put(QueryFeature.GROUP_BY, QueryBuilder.from(personClass)
+				.groupBy(personAge).countOf("cnt").build());
+		probes.put(QueryFeature.AGG_AVG, QueryBuilder.from(personClass)
+				.groupBy(personAge).avg("a", personAge).build());
+		probes.put(QueryFeature.AGG_MIN, QueryBuilder.from(personClass)
+				.groupBy(personAge).min("m", personAge).build());
+		probes.put(QueryFeature.AGG_MAX, QueryBuilder.from(personClass)
+				.groupBy(personAge).max("m", personAge).build());
+		probes.put(QueryFeature.AGG_SUM, QueryBuilder.from(personClass)
+				.groupBy(personAge).sum("s", personAge).build());
+		probes.put(QueryFeature.AGG_COUNT, QueryBuilder.from(personClass)
+				.groupBy(personAge).countOf("cnt").build());
+		probes.put(QueryFeature.AGG_COUNT_DISTINCT, QueryBuilder.from(personClass)
+				.groupBy(personAge).countDistinct("cd", personName).build());
+		probes.put(QueryFeature.GROUP_EXPRESSION, QueryBuilder.from(personClass)
+				.groupByAs("k", Expressions.neg(Expressions.path(personAge)).toExpression())
+				.countOf("cnt").build());
+		probes.put(QueryFeature.PIPELINE, QueryBuilder.from(personClass)
+				.groupBy(personAge).countOf("cnt")
+				.having(Expressions.aliasRef("cnt").ge(1)).build());
+		probes.put(QueryFeature.PIPELINE_COMPUTE, QueryBuilder.from(personClass)
+				.groupBy(personAge).countOf("cnt")
+				.computeAs("c", Expressions.aliasRef("cnt").toExpression()).build());
+		probes.put(QueryFeature.GEO_WITHIN, QueryBuilder.from(personClass)
+				.where(Expressions.geoWithin(
+						Expressions.geoSubject(Expressions.propertyPath(personAge),
+								Expressions.propertyPath(personAge)),
+						Expressions.geoBox(Expressions.geoPoint(10, 50),
+								Expressions.geoPoint(13, 52))))
+				.build());
+		probes.put(QueryFeature.GEO_DISTANCE, QueryBuilder.from(personClass)
+				.where(Expressions.geoDistance(
+						Expressions.geoSubject(Expressions.propertyPath(personAge),
+								Expressions.propertyPath(personAge)),
+						Expressions.geoPoint(11.5, 50.9)).le(1000))
+				.build());
+		return probes;
+	}
+
+	/**
+	 * Declaration and live resource must agree (issue #160). The effective set is the
+	 * declaration narrowed by a runtime probe — never widened. And the gate's premise is
+	 * that nothing declared is missing live, otherwise a gated case would run against a
+	 * resource that refuses it: an under-declaring binding hides passing tests as skips,
+	 * an over-declaring one is caught here before its gated cases fail confusingly.
+	 */
+	@Test
+	public void effectiveCapabilitiesNeverExceedTheDeclaration() throws Exception {
+		PersistenceCapabilities declared = declaredCapabilities();
+		PersistenceCapabilities effective = ((PersistenceResource) createBackendResourceSet()
+				.createResource(uriFor("Person"))).capabilities();
+		assertThat(effective.query().supported()).isSubsetOf(declared.query().supported());
+		assertThat(effective.command().supported()).isSubsetOf(declared.command().supported());
+		assertThat(effective.store().supported()).isSubsetOf(declared.store().supported());
+		assertThat(declared.query().supported())
+				.as("a declared query feature must be served by the live resource")
+				.isSubsetOf(effective.query().supported());
+		assertThat(declared.command().supported())
+				.as("a declared command verb must be served by the live resource")
+				.isSubsetOf(effective.command().supported());
 	}
 }
