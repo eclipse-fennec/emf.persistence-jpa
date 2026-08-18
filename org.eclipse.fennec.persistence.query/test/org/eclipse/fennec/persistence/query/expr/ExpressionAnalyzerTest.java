@@ -575,6 +575,15 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void withScoresEnvelopeFlagRequiresScore() {
+		// requesting per-hit scores is IR, not an option, precisely so this flag is
+		// capability-validated (issue #165)
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person).withScores().build());
+		assertThat(analysis.features()).contains(QueryFeature.SCORE);
+	}
+
+	@Test
 	void multiStagePipelineIsFlagged() {
 		GroupByStage group = factory.createGroupByStage();
 		Aggregate count = factory.createAggregate();

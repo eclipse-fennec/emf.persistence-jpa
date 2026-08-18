@@ -12,12 +12,14 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.query.support;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
@@ -50,7 +52,37 @@ public final class QueryResults {
 	 */
 	public static QueryResult objects(Stream<EObject> objects) {
 		Objects.requireNonNull(objects, "objects stream must not be null");
-		return new StreamResult(QueryShape.OBJECTS, objects, null);
+		return new StreamResult(QueryShape.OBJECTS, objects, null, null, Map.of());
+	}
+
+	/**
+	 * Creates a scored {@link QueryShape#OBJECTS} result over a hit stream (issue #165) —
+	 * for backends serving a {@code withScores} query. The backend supplies the pairing
+	 * itself, so it never depends on an id join; the map is the derived metadata-only view
+	 * and should be complete when this is called — score-capable backends have the hit list
+	 * before the first object is materialized.
+	 *
+	 * @param hits the hit stream, in rank order unless the query sorts explicitly, must not
+	 *        be {@code null}
+	 * @param scores the metadata view, object id → score; {@code null} tolerated as empty
+	 * @return the result; must be closed by the caller
+	 */
+	public static QueryResult hits(Stream<Hit> hits, Map<String, Double> scores) {
+		Objects.requireNonNull(hits, "hit stream must not be null");
+		return new StreamResult(QueryShape.OBJECTS, null, null, hits,
+				scores == null || scores.isEmpty() ? Map.of() : Map.copyOf(scores));
+	}
+
+	/**
+	 * A plain (object, score) pair — for backends assembling their hit stream.
+	 *
+	 * @param object the matched entity, must not be {@code null}
+	 * @param score the relevance of this hit
+	 * @return the hit
+	 */
+	public static Hit hit(EObject object, double score) {
+		Objects.requireNonNull(object, "object must not be null");
+		return new PlainHit(object, score);
 	}
 
 	/**
@@ -68,7 +100,7 @@ public final class QueryResults {
 		if (shape != QueryShape.PROJECTION && shape != QueryShape.AGGREGATION) {
 			throw new IllegalArgumentException("Row results require PROJECTION or AGGREGATION, was " + shape);
 		}
-		return new StreamResult(shape, null, rows);
+		return new StreamResult(shape, null, rows, null, Map.of());
 	}
 
 	/**
@@ -81,17 +113,27 @@ public final class QueryResults {
 		return new CountResult(count);
 	}
 
+	private record PlainHit(EObject object, double score) implements Hit {
+	}
+
 	private static final class StreamResult implements QueryResult {
 
 		private final QueryShape shape;
 		private final Stream<EObject> objects;
 		private final Stream<QueryResultRow> rows;
+		private final Stream<Hit> hits;
+		private final Map<String, Double> scores;
+		/** Lazily derived object view over {@link #hits} — same underlying cursor. */
+		private Stream<EObject> objectsView;
 		private boolean closed;
 
-		private StreamResult(QueryShape shape, Stream<EObject> objects, Stream<QueryResultRow> rows) {
+		private StreamResult(QueryShape shape, Stream<EObject> objects, Stream<QueryResultRow> rows,
+				Stream<Hit> hits, Map<String, Double> scores) {
 			this.shape = shape;
 			this.objects = objects;
 			this.rows = rows;
+			this.hits = hits;
+			this.scores = scores;
 		}
 
 		@Override
@@ -104,7 +146,25 @@ public final class QueryResults {
 			if (shape != QueryShape.OBJECTS) {
 				throw new IllegalStateException("objects() is only valid for OBJECTS results, this is " + shape);
 			}
-			return objects;
+			if (objects != null) {
+				return objects;
+			}
+			// the scored case: objects() is a view of the hit stream — one cursor, and
+			// whichever of the two views is consumed consumes both (issue #165)
+			if (objectsView == null) {
+				objectsView = hits.map(Hit::object);
+			}
+			return objectsView;
+		}
+
+		@Override
+		public Stream<Hit> hits() {
+			if (hits == null) {
+				throw new IllegalStateException(
+						"hits() is only valid for OBJECTS results of a withScores query, this is "
+								+ (shape == QueryShape.OBJECTS ? "unscored" : shape.toString()));
+			}
+			return hits;
 		}
 
 		@Override
@@ -122,6 +182,12 @@ public final class QueryResults {
 		}
 
 		@Override
+		public Map<String, Double> scores() {
+			// a soft side channel (issue #165): unscored results answer empty, never throw
+			return scores;
+		}
+
+		@Override
 		public void close() {
 			if (closed) {
 				return;
@@ -133,6 +199,9 @@ public final class QueryResults {
 				}
 				if (rows != null) {
 					rows.close();
+				}
+				if (hits != null) {
+					hits.close();
 				}
 			} catch (RuntimeException e) {
 				// close() never throws by contract — backend release failures are logged
@@ -167,6 +236,17 @@ public final class QueryResults {
 		@Override
 		public long count() {
 			return count;
+		}
+
+		@Override
+		public Stream<Hit> hits() {
+			throw new IllegalStateException(
+					"hits() is only valid for OBJECTS results of a withScores query, this is COUNT");
+		}
+
+		@Override
+		public Map<String, Double> scores() {
+			return Map.of();
 		}
 
 		@Override

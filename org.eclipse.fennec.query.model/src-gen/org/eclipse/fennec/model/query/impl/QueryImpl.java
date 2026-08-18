@@ -56,6 +56,7 @@ import org.eclipse.fennec.model.query.Selection;
  *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#getSkip <em>Skip</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#isDistinct <em>Distinct</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#isCountOnly <em>Count Only</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#isWithScores <em>With Scores</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#getParameters <em>Parameters</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#getName <em>Name</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.QueryImpl#isSaveQuery <em>Save Query</em>}</li>
@@ -203,6 +204,26 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 	 * @ordered
 	 */
 	protected boolean countOnly = COUNT_ONLY_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #isWithScores() <em>With Scores</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isWithScores()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final boolean WITH_SCORES_EDEFAULT = false;
+
+	/**
+	 * The cached value of the '{@link #isWithScores() <em>With Scores</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isWithScores()
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean withScores = WITH_SCORES_EDEFAULT;
 
 	/**
 	 * The cached value of the '{@link #getParameters() <em>Parameters</em>}' containment reference list.
@@ -540,6 +561,29 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 	 * @generated
 	 */
 	@Override
+	public boolean isWithScores() {
+		return withScores;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setWithScores(boolean newWithScores) {
+		boolean oldWithScores = withScores;
+		withScores = newWithScores;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, QueryPackage.QUERY__WITH_SCORES, oldWithScores, withScores));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EList<ParameterDecl> getParameters() {
 		if (parameters == null) {
 			parameters = new EObjectContainmentEList<ParameterDecl>(ParameterDecl.class, this, QueryPackage.QUERY__PARAMETERS);
@@ -646,6 +690,8 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 				return isDistinct();
 			case QueryPackage.QUERY__COUNT_ONLY:
 				return isCountOnly();
+			case QueryPackage.QUERY__WITH_SCORES:
+				return isWithScores();
 			case QueryPackage.QUERY__PARAMETERS:
 				return getParameters();
 			case QueryPackage.QUERY__NAME:
@@ -697,6 +743,9 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 				return;
 			case QueryPackage.QUERY__COUNT_ONLY:
 				setCountOnly((Boolean)newValue);
+				return;
+			case QueryPackage.QUERY__WITH_SCORES:
+				setWithScores((Boolean)newValue);
 				return;
 			case QueryPackage.QUERY__PARAMETERS:
 				getParameters().clear();
@@ -750,6 +799,9 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 			case QueryPackage.QUERY__COUNT_ONLY:
 				setCountOnly(COUNT_ONLY_EDEFAULT);
 				return;
+			case QueryPackage.QUERY__WITH_SCORES:
+				setWithScores(WITH_SCORES_EDEFAULT);
+				return;
 			case QueryPackage.QUERY__PARAMETERS:
 				getParameters().clear();
 				return;
@@ -791,6 +843,8 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 				return distinct != DISTINCT_EDEFAULT;
 			case QueryPackage.QUERY__COUNT_ONLY:
 				return countOnly != COUNT_ONLY_EDEFAULT;
+			case QueryPackage.QUERY__WITH_SCORES:
+				return withScores != WITH_SCORES_EDEFAULT;
 			case QueryPackage.QUERY__PARAMETERS:
 				return parameters != null && !parameters.isEmpty();
 			case QueryPackage.QUERY__NAME:
@@ -819,6 +873,8 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 		result.append(distinct);
 		result.append(", countOnly: ");
 		result.append(countOnly);
+		result.append(", withScores: ");
+		result.append(withScores);
 		result.append(", name: ");
 		result.append(name);
 		result.append(", saveQuery: ");

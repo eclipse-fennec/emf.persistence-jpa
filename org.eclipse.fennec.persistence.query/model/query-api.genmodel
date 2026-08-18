@@ -25,6 +25,8 @@
     <genDataTypes ecoreDataType="query-api.ecore#//ObjectList"/>
     <genDataTypes ecoreDataType="query-api.ecore#//QueryCapabilities"/>
     <genDataTypes ecoreDataType="query-api.ecore#//ParameterMap"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//ScoreMap"/>
+    <genDataTypes ecoreDataType="query-api.ecore#//HitStream"/>
     <genDataTypes ecoreDataType="query-api.ecore#//OptionsMap"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//AutoCloseable"/>
     <genClasses image="false" ecoreClass="query-api.ecore#//QueryPlan">
@@ -63,7 +65,13 @@
       <genOperations ecoreOperation="query-api.ecore#//QueryResult/objects"/>
       <genOperations ecoreOperation="query-api.ecore#//QueryResult/rows"/>
       <genOperations ecoreOperation="query-api.ecore#//QueryResult/count"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/hits"/>
+      <genOperations ecoreOperation="query-api.ecore#//QueryResult/scores"/>
       <genOperations ecoreOperation="query-api.ecore#//QueryResult/close"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="query-api.ecore#//Hit">
+      <genOperations ecoreOperation="query-api.ecore#//Hit/object"/>
+      <genOperations ecoreOperation="query-api.ecore#//Hit/score"/>
     </genClasses>
     <genClasses image="false" ecoreClass="query-api.ecore#//QueryableResource">
       <genOperations ecoreOperation="query-api.ecore#//QueryableResource/query">

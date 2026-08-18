@@ -32,6 +32,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/skip"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/distinct"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/countOnly"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/withScores"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Query/parameters"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/name"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Query/saveQuery"/>

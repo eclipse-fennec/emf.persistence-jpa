@@ -339,8 +339,18 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EAttribute getQuery_WithScores() {
+		return (EAttribute)queryEClass.getEStructuralFeatures().get(10);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getQuery_Parameters() {
-		return (EReference)queryEClass.getEStructuralFeatures().get(10);
+		return (EReference)queryEClass.getEStructuralFeatures().get(11);
 	}
 
 	/**
@@ -350,7 +360,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 */
 	@Override
 	public EAttribute getQuery_Name() {
-		return (EAttribute)queryEClass.getEStructuralFeatures().get(11);
+		return (EAttribute)queryEClass.getEStructuralFeatures().get(12);
 	}
 
 	/**
@@ -360,7 +370,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 */
 	@Override
 	public EAttribute getQuery_SaveQuery() {
-		return (EAttribute)queryEClass.getEStructuralFeatures().get(12);
+		return (EAttribute)queryEClass.getEStructuralFeatures().get(13);
 	}
 
 	/**
@@ -783,6 +793,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		createEAttribute(queryEClass, QUERY__SKIP);
 		createEAttribute(queryEClass, QUERY__DISTINCT);
 		createEAttribute(queryEClass, QUERY__COUNT_ONLY);
+		createEAttribute(queryEClass, QUERY__WITH_SCORES);
 		createEReference(queryEClass, QUERY__PARAMETERS);
 		createEAttribute(queryEClass, QUERY__NAME);
 		createEAttribute(queryEClass, QUERY__SAVE_QUERY);
@@ -890,6 +901,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEAttribute(getQuery_Skip(), ecorePackage.getEInt(), "skip", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getQuery_Distinct(), ecorePackage.getEBoolean(), "distinct", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getQuery_CountOnly(), ecorePackage.getEBoolean(), "countOnly", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getQuery_WithScores(), ecorePackage.getEBoolean(), "withScores", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getQuery_Parameters(), this.getParameterDecl(), null, "parameters", null, 0, -1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getQuery_Name(), ecorePackage.getEString(), "name", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getQuery_SaveQuery(), ecorePackage.getEBoolean(), "saveQuery", null, 0, 1, Query.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

@@ -36,6 +36,7 @@ import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 
 import org.eclipse.fennec.persistence.query.QueryException;
 
+import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryApiFactory;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
@@ -122,6 +123,10 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return createQueryCapabilitiesFromString(eDataType, initialValue);
 			case QueryApiPackage.PARAMETER_MAP:
 				return createParameterMapFromString(eDataType, initialValue);
+			case QueryApiPackage.SCORE_MAP:
+				return createScoreMapFromString(eDataType, initialValue);
+			case QueryApiPackage.HIT_STREAM:
+				return createHitStreamFromString(eDataType, initialValue);
 			case QueryApiPackage.OPTIONS_MAP:
 				return createOptionsMapFromString(eDataType, initialValue);
 			default:
@@ -159,6 +164,10 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 				return convertQueryCapabilitiesToString(eDataType, instanceValue);
 			case QueryApiPackage.PARAMETER_MAP:
 				return convertParameterMapToString(eDataType, instanceValue);
+			case QueryApiPackage.SCORE_MAP:
+				return convertScoreMapToString(eDataType, instanceValue);
+			case QueryApiPackage.HIT_STREAM:
+				return convertHitStreamToString(eDataType, instanceValue);
 			case QueryApiPackage.OPTIONS_MAP:
 				return convertOptionsMapToString(eDataType, instanceValue);
 			default:
@@ -367,6 +376,44 @@ public class QueryApiFactoryImpl extends EFactoryImpl implements QueryApiFactory
 	 * @generated
 	 */
 	public String convertParameterMapToString(EDataType eDataType, Object instanceValue) {
+		return super.convertToString(instanceValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@SuppressWarnings("unchecked")
+	public Map<String, Double> createScoreMapFromString(EDataType eDataType, String initialValue) {
+		return (Map<String, Double>)super.createFromString(initialValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertScoreMapToString(EDataType eDataType, Object instanceValue) {
+		return super.convertToString(instanceValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@SuppressWarnings("unchecked")
+	public Stream<Hit> createHitStreamFromString(EDataType eDataType, String initialValue) {
+		return (Stream<Hit>)super.createFromString(initialValue);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertHitStreamToString(EDataType eDataType, Object instanceValue) {
 		return super.convertToString(instanceValue);
 	}
 

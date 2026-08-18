@@ -53,6 +53,31 @@
       <details key="documentation" value="An immutable java.util.List of row cell values in subject order."/>
     </eAnnotations>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="ScoreMap" instanceTypeName="java.util.Map&lt;java.lang.String, java.lang.Double>">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An immutable java.util.Map from object id to the per-hit relevance score (issue #165) — the metadata-only view derived from the hits."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EDataType" name="HitStream" instanceTypeName="java.util.stream.Stream&lt;org.eclipse.fennec.persistence.query.api.Hit>">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A lazy java.util.stream.Stream of Hits — the per-hit pairing view of a scored OBJECTS result (issue #165)."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Hit" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One scored result of a withScores query (issue #165): the object paired with its per-hit metadata, in stream order. This is the extensible carrier — further per-hit payloads (highlight fragments, rank signals) grow here rather than as parallel side channels."/>
+    </eAnnotations>
+    <eOperations name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The matched entity."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="score" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The relevance of this hit under the executed query. Document-level: one value per hit; what the score of a hit without a scoring predicate is stays backend-defined."/>
+      </eAnnotations>
+    </eOperations>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EDataType" name="QueryCapabilities" instanceClassName="org.eclipse.fennec.persistence.capabilities.QueryCapabilities">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="What a QueryProcessor declares it serves natively, plus its structural limits. Plain Java in the capabilities bundle rather than an EClass here (issue #134, contract §5a): a capability is a value that gets asked, not an EObject that gets loaded, and the declaration surface must not depend on the query model. Wrapped as an EDataType for the same reason ConverterService and Diagnostic are."/>
@@ -213,6 +238,16 @@
     <eOperations name="count" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Valid for COUNT: the cardinality. Throws IllegalStateException for any other shape."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="hits" eType="#//HitStream">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Valid for OBJECTS results of a withScores query (issue #165): the hits paired with their scores, streamed lazily. hits() and objects() are two views of the same underlying cursor — consume one of them. Under withScores the iteration order is rank order unless an explicit sort says otherwise. Throws IllegalStateException for other shapes or when the query did not request scores."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="scores" eType="#//ScoreMap">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The metadata-only view of the hits (issue #165): object id → score, complete at query() time — before any object is materialized — so a consumer can inspect the score distribution and then decide what to consume. Filled when the query carried withScores and the backend declares SCORE, empty otherwise. Never throws and never null: unlike the shape accessors this is a soft side channel, because a result without scores is not an invalid access, just an unscored one."/>
       </eAnnotations>
     </eOperations>
     <eOperations name="close">
