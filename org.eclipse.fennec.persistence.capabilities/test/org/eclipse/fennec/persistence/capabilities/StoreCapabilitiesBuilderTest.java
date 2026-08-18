@@ -43,6 +43,20 @@ class StoreCapabilitiesBuilderTest {
 	}
 
 	/**
+	 * The QueryResult lifetime contract is declarable (issue #162) — independent of the
+	 * transaction bracket, in the streaming value group (20+).
+	 */
+	@Test
+	void serverCursorsAreDeclarableIndependently() {
+		StoreCapabilities capabilities = StoreCapabilitiesBuilder.create()
+				.support(StoreFeature.SERVER_CURSORS)
+				.build();
+		assertThat(capabilities.supports(StoreFeature.SERVER_CURSORS)).isTrue();
+		assertThat(capabilities.supports(StoreFeature.TRANSACTION_BRACKET)).isFalse();
+		assertThat(StoreFeature.SERVER_CURSORS.getValue()).isEqualTo(20);
+	}
+
+	/**
 	 * The probe shape: start from the flavor's declaration and take away what this deployment
 	 * cannot serve — a standalone mongod against a flavor that declares transactions.
 	 */

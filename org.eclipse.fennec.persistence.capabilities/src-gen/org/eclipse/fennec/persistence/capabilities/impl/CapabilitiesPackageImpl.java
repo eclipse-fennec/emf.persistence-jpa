@@ -258,6 +258,7 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 
 		initEEnum(storeFeatureEEnum, StoreFeature.class, "StoreFeature");
 		addEEnumLiteral(storeFeatureEEnum, StoreFeature.TRANSACTION_BRACKET);
+		addEEnumLiteral(storeFeatureEEnum, StoreFeature.SERVER_CURSORS);
 
 		// Create resource
 		createResource(eNS_URI);
