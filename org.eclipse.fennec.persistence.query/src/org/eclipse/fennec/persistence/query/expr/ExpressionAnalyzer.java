@@ -110,6 +110,12 @@ public final class ExpressionAnalyzer {
 							+ "' addresses an output column, but the query is not row-shaped"
 							+ " (no projection or aggregation)";
 				}
+			} else if (orderBy.getKey() instanceof Score) {
+				// a bare Score key is the canonical use of the SCORE capability (issue
+				// #165): relevance order asks for SCORE, not for arbitrary expression
+				// sorting — only a composed key (score().times(...)) goes the
+				// SORT_EXPRESSION route below
+				features.add(QueryFeature.SCORE);
 			} else if (orderBy.getKey() != null) {
 				// ordering by an arbitrary value expression (issue #84)
 				features.add(QueryFeature.SORT_EXPRESSION);
