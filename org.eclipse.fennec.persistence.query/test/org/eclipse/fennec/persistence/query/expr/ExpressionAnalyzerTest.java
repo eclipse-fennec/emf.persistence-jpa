@@ -471,6 +471,27 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void bareScoreSortIsScoreNotSortExpression() {
+		// relevance order is the canonical use of SCORE (issue #165): a bare score()
+		// key must not demand arbitrary-expression sorting from the backend
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.orderByDesc(Expressions.score().toExpression())
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.SCORE)
+				.doesNotContain(QueryFeature.SORT_EXPRESSION);
+		assertThat(analysis.invalidSort()).isNull();
+
+		// a composed key stays an arbitrary sort expression — and still flags SCORE
+		QueryAnalysis composed = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.orderByDesc(Expressions.score().times(2).toExpression())
+						.build());
+		assertThat(composed.features()).contains(QueryFeature.SORT, QueryFeature.SORT_EXPRESSION,
+				QueryFeature.SCORE, QueryFeature.ARITHMETIC);
+	}
+
+	@Test
 	void bareAliasSortIsPlainSortNotSortExpression() {
 		// a bare AliasRef key is an output-column sort (issue #102) — plain SORT
 		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
@@ -538,13 +559,13 @@ class ExpressionAnalyzerTest {
 
 	@Test
 	void scoreIsDetected() {
-		// the relevance sort key (issue #100) requires the SCORE capability
+		// the relevance sort key (issue #100) requires the SCORE capability — and since
+		// issue #165 only SCORE, not SORT_EXPRESSION (see bareScoreSortIsScoreNotSortExpression)
 		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
 				QueryBuilder.from(person)
 						.orderByDesc(Expressions.score().toExpression())
 						.build());
-		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.SORT_EXPRESSION,
-				QueryFeature.SCORE);
+		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.SCORE);
 
 		QueryAnalysis predicate = ExpressionAnalyzer.analyze(
 				QueryBuilder.from(person)
