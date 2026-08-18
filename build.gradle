@@ -27,7 +27,7 @@ subprojects {
     def backendSelectionProperties = ['mongo.uri', 'mongo.test.image', 'mongo.test.flavor',
                                       'mongo.container.cli', 'mongo.require',
                                       'jpa.jdbc.url', 'jpa.test.image', 'jpa.test.flavor',
-                                      'jpa.container.cli', 'jpa.require']
+                                      'jpa.container.cli', 'jpa.require', 'jpa.test.logging']
 
     // Exclude @Tag("perf") tests from normal builds — run via perfTest task
     test {

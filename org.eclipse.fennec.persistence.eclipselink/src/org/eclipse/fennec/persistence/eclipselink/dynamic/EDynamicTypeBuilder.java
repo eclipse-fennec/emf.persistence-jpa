@@ -34,6 +34,8 @@ import org.eclipse.fennec.persistence.eorm.Table;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.descriptors.InheritancePolicy;
 import org.eclipse.persistence.descriptors.TablePerClassPolicy;
+import org.eclipse.persistence.internal.databaseaccess.Platform;
+import org.eclipse.persistence.internal.helper.DatabaseField;
 import org.eclipse.persistence.dynamic.DynamicType;
 import org.eclipse.persistence.dynamic.DynamicTypeBuilder;
 import org.eclipse.persistence.internal.helper.DatabaseTable;
@@ -296,7 +298,34 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 
 	@Override
 	public DirectToFieldMapping addDirectMapping(String name, Class<?> type, String columnName) {
-		return super.addDirectMapping(name, type, columnName);
+		DirectToFieldMapping mapping = super.addDirectMapping(name, type, columnName);
+		applyCaseSensitiveCollation(mapping, type);
+		return mapping;
+	}
+
+	/**
+	 * EMF string equality is case-sensitive, but the MySQL family compares VARCHAR with a
+	 * case-insensitive collation by default — ambient case-insensitivity that would leak
+	 * into {@code eq}/{@code IN}/joins and even primary-key uniqueness (issue #158, found
+	 * by the TCK's case-sensitivity probe on MariaDB). A binary collation on every String
+	 * column restores Java semantics; per-predicate case-insensitivity remains the
+	 * {@code STRING_MATCH_CASE_INSENSITIVE} opt-in, never ambient. An explicitly
+	 * configured column definition is left alone.
+	 */
+	private void applyCaseSensitiveCollation(DirectToFieldMapping mapping, Class<?> type) {
+		if (type != String.class || isNull(context.getSession())) {
+			return;
+		}
+		Platform platform = context.getSession().getDatasourcePlatform();
+		if (!platform.isMySQL() && !platform.isMariaDB()) {
+			return;
+		}
+		DatabaseField field = mapping.getField();
+		if (nonNull(field.getColumnDefinition()) && !field.getColumnDefinition().isEmpty()) {
+			return;
+		}
+		int size = field.getLength() > 0 ? field.getLength() : 255;
+		field.setColumnDefinition("VARCHAR(" + size + ") CHARACTER SET utf8mb4 COLLATE utf8mb4_bin");
 	}
 
 	@Override
