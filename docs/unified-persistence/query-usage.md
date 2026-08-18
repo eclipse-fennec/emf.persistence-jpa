@@ -131,6 +131,14 @@ QueryBuilder.from(personClass)
 
 // eager-fetch hint (JPA: LEFT JOIN FETCH; Mongo: refused)
 QueryBuilder.from(personClass).expand(addresses).build();
+
+// per-hit relevance (issue #165) — SCORE-declaring backends only (Lucene);
+// result.hits() streams (object, score) in rank order, result.scores() is the
+// metadata-only id → score view, complete before any object is materialized
+QueryBuilder.from(documentClass)
+    .where(path(text).contains("fennec"))
+    .withScores()
+    .build();
 ```
 
 Aggregates without `groupBy` aggregate the whole result set (single row). Group-key

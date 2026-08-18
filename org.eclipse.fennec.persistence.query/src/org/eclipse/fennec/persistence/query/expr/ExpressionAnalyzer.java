@@ -147,6 +147,11 @@ public final class ExpressionAnalyzer {
 		if (query.isDistinct()) {
 			features.add(QueryFeature.DISTINCT);
 		}
+		if (query.isWithScores()) {
+			// the envelope flag requests per-hit relevance (issue #165) — an option would
+			// bypass this validation, which is why it is IR
+			features.add(QueryFeature.SCORE);
+		}
 		if (query.isCountOnly()) {
 			features.add(QueryFeature.COUNT);
 		}

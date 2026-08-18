@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:fd15aaedb53784f9ec63e1bd3daed75a8836b7466a1903d53c2e029d57c850f8", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:77a8518a4235da633787b25ca1e92022059f2aa2f90ce1eac5685b9df4f54654", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -178,13 +178,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int QUERY__COUNT_ONLY = 9;
 
 	/**
+	 * The feature id for the '<em><b>With Scores</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUERY__WITH_SCORES = 10;
+
+	/**
 	 * The feature id for the '<em><b>Parameters</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int QUERY__PARAMETERS = 10;
+	int QUERY__PARAMETERS = 11;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -193,7 +202,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int QUERY__NAME = 11;
+	int QUERY__NAME = 12;
 
 	/**
 	 * The feature id for the '<em><b>Save Query</b></em>' attribute.
@@ -202,7 +211,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int QUERY__SAVE_QUERY = 12;
+	int QUERY__SAVE_QUERY = 13;
 
 	/**
 	 * The number of structural features of the '<em>Query</em>' class.
@@ -211,7 +220,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int QUERY_FEATURE_COUNT = 13;
+	int QUERY_FEATURE_COUNT = 14;
 
 	/**
 	 * The number of operations of the '<em>Query</em>' class.
@@ -935,6 +944,17 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getQuery_CountOnly();
 
 	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.Query#isWithScores <em>With Scores</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>With Scores</em>'.
+	 * @see org.eclipse.fennec.model.query.Query#isWithScores()
+	 * @see #getQuery()
+	 * @generated
+	 */
+	EAttribute getQuery_WithScores();
+
+	/**
 	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.Query#getParameters <em>Parameters</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1482,6 +1502,14 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute QUERY__COUNT_ONLY = eINSTANCE.getQuery_CountOnly();
+
+		/**
+		 * The meta object literal for the '<em><b>With Scores</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute QUERY__WITH_SCORES = eINSTANCE.getQuery_WithScores();
 
 		/**
 		 * The meta object literal for the '<em><b>Parameters</b></em>' containment reference list feature.

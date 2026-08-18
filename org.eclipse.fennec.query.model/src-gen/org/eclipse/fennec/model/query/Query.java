@@ -45,6 +45,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.model.query.Query#getSkip <em>Skip</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Query#isDistinct <em>Distinct</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Query#isCountOnly <em>Count Only</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.Query#isWithScores <em>With Scores</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Query#getParameters <em>Parameters</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Query#getName <em>Name</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.Query#isSaveQuery <em>Save Query</em>}</li>
@@ -263,6 +264,31 @@ public interface Query extends EObject {
 	 * @generated
 	 */
 	void setCountOnly(boolean value);
+
+	/**
+	 * Returns the value of the '<em><b>With Scores</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Requests the per-hit relevance score alongside object results (issue #165). An envelope flag rather than a query option, so the analyzer flags the SCORE capability and an undeclaring backend refuses with a Diagnostic (contract §2B). Declared-SCORE backends deliver hits() (object + score, streamed in rank order unless an explicit sort says otherwise) and scores() (the metadata-only id → score view, complete before any object is materialized) on the QueryResult; what the score of a hit without a scoring predicate is stays backend-defined.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>With Scores</em>' attribute.
+	 * @see #setWithScores(boolean)
+	 * @see org.eclipse.fennec.model.query.QueryPackage#getQuery_WithScores()
+	 * @model
+	 * @generated
+	 */
+	boolean isWithScores();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.query.Query#isWithScores <em>With Scores</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>With Scores</em>' attribute.
+	 * @see #isWithScores()
+	 * @generated
+	 */
+	void setWithScores(boolean value);
 
 	/**
 	 * Returns the value of the '<em><b>Parameters</b></em>' containment reference list.

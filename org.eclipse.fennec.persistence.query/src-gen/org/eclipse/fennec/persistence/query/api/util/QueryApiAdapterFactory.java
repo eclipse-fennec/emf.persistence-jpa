@@ -20,6 +20,7 @@ import org.eclipse.emf.common.notify.impl.AdapterFactoryImpl;
 import org.eclipse.emf.ecore.EObject;
 
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
 import org.eclipse.fennec.persistence.query.api.QueryPlan;
@@ -107,6 +108,10 @@ public class QueryApiAdapterFactory extends AdapterFactoryImpl {
 			@Override
 			public Adapter caseQueryResult(QueryResult object) {
 				return createQueryResultAdapter();
+			}
+			@Override
+			public Adapter caseHit(Hit object) {
+				return createHitAdapter();
 			}
 			@Override
 			public Adapter caseQueryableResource(QueryableResource object) {
@@ -217,6 +222,20 @@ public class QueryApiAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createQueryResultAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.persistence.query.api.Hit <em>Hit</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.persistence.query.api.Hit
+	 * @generated
+	 */
+	public Adapter createHitAdapter() {
 		return null;
 	}
 

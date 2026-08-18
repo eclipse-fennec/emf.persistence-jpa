@@ -2562,6 +2562,7 @@ public abstract class AbstractPersistenceTCK {
 		probes.put(QueryFeature.PIPELINE_COMPUTE, QueryBuilder.from(personClass)
 				.groupBy(personAge).countOf("cnt")
 				.computeAs("c", Expressions.aliasRef("cnt").toExpression()).build());
+		probes.put(QueryFeature.SCORE, QueryBuilder.from(personClass).withScores().build());
 		probes.put(QueryFeature.GEO_WITHIN, QueryBuilder.from(personClass)
 				.where(Expressions.geoWithin(
 						Expressions.geoSubject(Expressions.propertyPath(personAge),

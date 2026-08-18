@@ -9,7 +9,7 @@ src=${^src},src-gen
 -library: enableEMF
 
 -generate:\
-	model/query.genmodel;\
+	model/query.ecore;\
 		generate=fennecEMF;\
 		genmodel=model/query.genmodel;\
 		output=src-gen

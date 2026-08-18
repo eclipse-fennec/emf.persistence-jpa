@@ -358,6 +358,12 @@ class MemoryQueryProcessorTest {
 		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("SCORE");
+
+		// the withScores envelope flag takes the same road (issue #165)
+		Query withScores = QueryBuilder.from(personClass).withScores().build();
+		assertThatThrownBy(() -> MemoryQueries.execute(withScores, persons, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("SCORE");
 	}
 
 	@Test

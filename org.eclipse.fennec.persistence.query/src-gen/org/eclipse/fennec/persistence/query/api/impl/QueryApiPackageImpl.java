@@ -46,6 +46,7 @@ import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 import org.eclipse.fennec.persistence.query.QueryException;
 
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryApiFactory;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
@@ -106,6 +107,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EClass queryResultEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass hitEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -197,6 +205,20 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	private EDataType parameterMapEDataType = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EDataType scoreMapEDataType = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EDataType hitStreamEDataType = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -507,8 +529,58 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
-	public EOperation getQueryResult__Close() {
+	public EOperation getQueryResult__Hits() {
 		return queryResultEClass.getEOperations().get(4);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getQueryResult__Scores() {
+		return queryResultEClass.getEOperations().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getQueryResult__Close() {
+		return queryResultEClass.getEOperations().get(6);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getHit() {
+		return hitEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getHit__Object() {
+		return hitEClass.getEOperations().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getHit__Score() {
+		return hitEClass.getEOperations().get(1);
 	}
 
 	/**
@@ -697,6 +769,26 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
+	public EDataType getScoreMap() {
+		return scoreMapEDataType;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EDataType getHitStream() {
+		return hitStreamEDataType;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EDataType getOptionsMap() {
 		return optionsMapEDataType;
 	}
@@ -758,7 +850,13 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		createEOperation(queryResultEClass, QUERY_RESULT___OBJECTS);
 		createEOperation(queryResultEClass, QUERY_RESULT___ROWS);
 		createEOperation(queryResultEClass, QUERY_RESULT___COUNT);
+		createEOperation(queryResultEClass, QUERY_RESULT___HITS);
+		createEOperation(queryResultEClass, QUERY_RESULT___SCORES);
 		createEOperation(queryResultEClass, QUERY_RESULT___CLOSE);
+
+		hitEClass = createEClass(HIT);
+		createEOperation(hitEClass, HIT___OBJECT);
+		createEOperation(hitEClass, HIT___SCORE);
 
 		queryableResourceEClass = createEClass(QUERYABLE_RESOURCE);
 		createEOperation(queryableResourceEClass, QUERYABLE_RESOURCE___QUERY__QUERY);
@@ -783,6 +881,8 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		objectListEDataType = createEDataType(OBJECT_LIST);
 		queryCapabilitiesEDataType = createEDataType(QUERY_CAPABILITIES);
 		parameterMapEDataType = createEDataType(PARAMETER_MAP);
+		scoreMapEDataType = createEDataType(SCORE_MAP);
+		hitStreamEDataType = createEDataType(HIT_STREAM);
 		optionsMapEDataType = createEDataType(OPTIONS_MAP);
 	}
 
@@ -874,7 +974,17 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 
 		initEOperation(getQueryResult__Count(), ecorePackage.getELong(), "count", 0, 1, IS_UNIQUE, IS_ORDERED);
 
+		initEOperation(getQueryResult__Hits(), this.getHitStream(), "hits", 0, 1, IS_UNIQUE, IS_ORDERED);
+
+		initEOperation(getQueryResult__Scores(), this.getScoreMap(), "scores", 0, 1, IS_UNIQUE, IS_ORDERED);
+
 		initEOperation(getQueryResult__Close(), null, "close", 0, 1, IS_UNIQUE, IS_ORDERED);
+
+		initEClass(hitEClass, Hit.class, "Hit", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEOperation(getHit__Object(), ecorePackage.getEObject(), "object", 1, 1, IS_UNIQUE, IS_ORDERED);
+
+		initEOperation(getHit__Score(), ecorePackage.getEDouble(), "score", 0, 1, IS_UNIQUE, IS_ORDERED);
 
 		initEClass(queryableResourceEClass, QueryableResource.class, "QueryableResource", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
@@ -921,6 +1031,8 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		initEDataType(objectListEDataType, List.class, "ObjectList", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.List<java.lang.Object>");
 		initEDataType(queryCapabilitiesEDataType, QueryCapabilities.class, "QueryCapabilities", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS);
 		initEDataType(parameterMapEDataType, Map.class, "ParameterMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<java.lang.String, java.lang.Object>");
+		initEDataType(scoreMapEDataType, Map.class, "ScoreMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<java.lang.String, java.lang.Double>");
+		initEDataType(hitStreamEDataType, Stream.class, "HitStream", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.stream.Stream<org.eclipse.fennec.persistence.query.api.Hit>");
 		initEDataType(optionsMapEDataType, Map.class, "OptionsMap", IS_SERIALIZABLE, !IS_GENERATED_INSTANCE_CLASS, "java.util.Map<?, ?>");
 
 		// Create resource

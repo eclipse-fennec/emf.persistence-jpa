@@ -14,6 +14,8 @@ package org.eclipse.fennec.persistence.query.api;
 
 import java.lang.AutoCloseable;
 
+import java.util.Map;
+
 import java.util.stream.Stream;
 
 import org.eclipse.emf.ecore.EObject;
@@ -79,6 +81,28 @@ public interface QueryResult extends AutoCloseable {
 	 * @generated
 	 */
 	long count();
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Valid for OBJECTS results of a withScores query (issue #165): the hits paired with their scores, streamed lazily. hits() and objects() are two views of the same underlying cursor — consume one of them. Under withScores the iteration order is rank order unless an explicit sort says otherwise. Throws IllegalStateException for other shapes or when the query did not request scores.
+	 * <!-- end-model-doc -->
+	 * @model dataType="org.eclipse.fennec.persistence.query.api.HitStream"
+	 * @generated
+	 */
+	Stream<Hit> hits();
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The metadata-only view of the hits (issue #165): object id → score, complete at query() time — before any object is materialized — so a consumer can inspect the score distribution and then decide what to consume. Filled when the query carried withScores and the backend declares SCORE, empty otherwise. Never throws and never null: unlike the shape accessors this is a soft side channel, because a result without scores is not an invalid access, just an unscored one.
+	 * <!-- end-model-doc -->
+	 * @model dataType="org.eclipse.fennec.persistence.query.api.ScoreMap"
+	 * @generated
+	 */
+	Map<String, Double> scores();
 
 	/**
 	 * <!-- begin-user-doc -->

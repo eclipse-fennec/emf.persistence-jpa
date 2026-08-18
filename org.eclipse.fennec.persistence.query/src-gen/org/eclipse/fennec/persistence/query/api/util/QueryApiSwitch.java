@@ -18,6 +18,7 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.util.Switch;
 
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
 import org.eclipse.fennec.persistence.query.api.QueryPlan;
@@ -117,6 +118,12 @@ public class QueryApiSwitch<T> extends Switch<T> {
 				QueryResult queryResult = (QueryResult)theEObject;
 				T result = caseQueryResult(queryResult);
 				if (result == null) result = caseAutoCloseable(queryResult);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case QueryApiPackage.HIT: {
+				Hit hit = (Hit)theEObject;
+				T result = caseHit(hit);
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
@@ -223,6 +230,21 @@ public class QueryApiSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseQueryResult(QueryResult object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Hit</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Hit</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseHit(Hit object) {
 		return null;
 	}
 

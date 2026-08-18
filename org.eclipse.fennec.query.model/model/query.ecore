@@ -55,6 +55,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="skip" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="distinct" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="countOnly" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="withScores" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Requests the per-hit relevance score alongside object results (issue #165). An envelope flag rather than a query option, so the analyzer flags the SCORE capability and an undeclaring backend refuses with a Diagnostic (contract §2B). Declared-SCORE backends deliver hits() (object + score, streamed in rank order unless an explicit sort says otherwise) and scores() (the metadata-only id → score view, complete before any object is materialized) on the QueryResult; what the score of a hit without a scoring predicate is stays backend-defined."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
         eType="#//ParameterDecl" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

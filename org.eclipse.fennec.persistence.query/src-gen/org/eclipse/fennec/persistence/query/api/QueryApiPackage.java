@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:642afb2b9d95da59869f8448d895996f935511aeeb4e8f4f7b00191f0861e6a3", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
+@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:ab0db26655984510d5487ac1e08124d857fee45aefc86e5478e84b852c4bddf1", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
 public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -390,13 +390,31 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int QUERY_RESULT___COUNT = AUTO_CLOSEABLE_OPERATION_COUNT + 3;
 
 	/**
+	 * The operation id for the '<em>Hits</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUERY_RESULT___HITS = AUTO_CLOSEABLE_OPERATION_COUNT + 4;
+
+	/**
+	 * The operation id for the '<em>Scores</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int QUERY_RESULT___SCORES = AUTO_CLOSEABLE_OPERATION_COUNT + 5;
+
+	/**
 	 * The operation id for the '<em>Close</em>' operation.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int QUERY_RESULT___CLOSE = AUTO_CLOSEABLE_OPERATION_COUNT + 4;
+	int QUERY_RESULT___CLOSE = AUTO_CLOSEABLE_OPERATION_COUNT + 6;
 
 	/**
 	 * The number of operations of the '<em>Query Result</em>' class.
@@ -405,7 +423,53 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int QUERY_RESULT_OPERATION_COUNT = AUTO_CLOSEABLE_OPERATION_COUNT + 5;
+	int QUERY_RESULT_OPERATION_COUNT = AUTO_CLOSEABLE_OPERATION_COUNT + 7;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.Hit <em>Hit</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.persistence.query.api.Hit
+	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getHit()
+	 * @generated
+	 */
+	int HIT = 6;
+
+	/**
+	 * The number of structural features of the '<em>Hit</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int HIT_FEATURE_COUNT = 0;
+
+	/**
+	 * The operation id for the '<em>Object</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int HIT___OBJECT = 0;
+
+	/**
+	 * The operation id for the '<em>Score</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int HIT___SCORE = 1;
+
+	/**
+	 * The number of operations of the '<em>Hit</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int HIT_OPERATION_COUNT = 2;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryableResource <em>Queryable Resource</em>}' class.
@@ -415,7 +479,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryableResource()
 	 * @generated
 	 */
-	int QUERYABLE_RESOURCE = 6;
+	int QUERYABLE_RESOURCE = 7;
 
 	/**
 	 * The number of structural features of the '<em>Queryable Resource</em>' class.
@@ -470,7 +534,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandResource()
 	 * @generated
 	 */
-	int COMMAND_RESOURCE = 7;
+	int COMMAND_RESOURCE = 8;
 
 	/**
 	 * The number of structural features of the '<em>Command Resource</em>' class.
@@ -516,7 +580,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryShape()
 	 * @generated
 	 */
-	int QUERY_SHAPE = 8;
+	int QUERY_SHAPE = 9;
 
 	/**
 	 * The meta object id for the '<em>Diagnostic</em>' data type.
@@ -526,7 +590,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getDiagnostic()
 	 * @generated
 	 */
-	int DIAGNOSTIC = 9;
+	int DIAGNOSTIC = 10;
 
 	/**
 	 * The meta object id for the '<em>Converter Service</em>' data type.
@@ -536,7 +600,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getConverterService()
 	 * @generated
 	 */
-	int CONVERTER_SERVICE = 10;
+	int CONVERTER_SERVICE = 11;
 
 	/**
 	 * The meta object id for the '<em>Query Exception</em>' data type.
@@ -546,7 +610,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryException()
 	 * @generated
 	 */
-	int QUERY_EXCEPTION = 11;
+	int QUERY_EXCEPTION = 12;
 
 	/**
 	 * The meta object id for the '<em>Command Transaction</em>' data type.
@@ -556,7 +620,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getCommandTransaction()
 	 * @generated
 	 */
-	int COMMAND_TRANSACTION = 12;
+	int COMMAND_TRANSACTION = 13;
 
 	/**
 	 * The meta object id for the '<em>IO Exception</em>' data type.
@@ -566,7 +630,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getIOException()
 	 * @generated
 	 */
-	int IO_EXCEPTION = 13;
+	int IO_EXCEPTION = 14;
 
 	/**
 	 * The meta object id for the '<em>EObject Stream</em>' data type.
@@ -576,7 +640,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getEObjectStream()
 	 * @generated
 	 */
-	int EOBJECT_STREAM = 14;
+	int EOBJECT_STREAM = 15;
 
 	/**
 	 * The meta object id for the '<em>Row Stream</em>' data type.
@@ -586,7 +650,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getRowStream()
 	 * @generated
 	 */
-	int ROW_STREAM = 15;
+	int ROW_STREAM = 16;
 
 	/**
 	 * The meta object id for the '<em>Object List</em>' data type.
@@ -596,7 +660,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getObjectList()
 	 * @generated
 	 */
-	int OBJECT_LIST = 16;
+	int OBJECT_LIST = 17;
 
 	/**
 	 * The meta object id for the '<em>Query Capabilities</em>' data type.
@@ -606,7 +670,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getQueryCapabilities()
 	 * @generated
 	 */
-	int QUERY_CAPABILITIES = 17;
+	int QUERY_CAPABILITIES = 18;
 
 	/**
 	 * The meta object id for the '<em>Parameter Map</em>' data type.
@@ -616,7 +680,27 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getParameterMap()
 	 * @generated
 	 */
-	int PARAMETER_MAP = 18;
+	int PARAMETER_MAP = 19;
+
+	/**
+	 * The meta object id for the '<em>Score Map</em>' data type.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see java.util.Map
+	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getScoreMap()
+	 * @generated
+	 */
+	int SCORE_MAP = 20;
+
+	/**
+	 * The meta object id for the '<em>Hit Stream</em>' data type.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see java.util.stream.Stream
+	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getHitStream()
+	 * @generated
+	 */
+	int HIT_STREAM = 21;
 
 	/**
 	 * The meta object id for the '<em>Options Map</em>' data type.
@@ -626,7 +710,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getOptionsMap()
 	 * @generated
 	 */
-	int OPTIONS_MAP = 19;
+	int OPTIONS_MAP = 22;
 
 
 	/**
@@ -861,6 +945,26 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EOperation getQueryResult__Count();
 
 	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryResult#hits() <em>Hits</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Hits</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.QueryResult#hits()
+	 * @generated
+	 */
+	EOperation getQueryResult__Hits();
+
+	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryResult#scores() <em>Scores</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Scores</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.QueryResult#scores()
+	 * @generated
+	 */
+	EOperation getQueryResult__Scores();
+
+	/**
 	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.QueryResult#close() <em>Close</em>}' operation.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -869,6 +973,36 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EOperation getQueryResult__Close();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.query.api.Hit <em>Hit</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Hit</em>'.
+	 * @see org.eclipse.fennec.persistence.query.api.Hit
+	 * @generated
+	 */
+	EClass getHit();
+
+	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.Hit#object() <em>Object</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Object</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.Hit#object()
+	 * @generated
+	 */
+	EOperation getHit__Object();
+
+	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.Hit#score() <em>Score</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Score</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.Hit#score()
+	 * @generated
+	 */
+	EOperation getHit__Score();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.query.api.QueryableResource <em>Queryable Resource</em>}'.
@@ -1089,6 +1223,34 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EDataType getParameterMap();
+
+	/**
+	 * Returns the meta object for data type '{@link java.util.Map <em>Score Map</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+     * <!-- begin-model-doc -->
+     * An immutable java.util.Map from object id to the per-hit relevance score (issue #165) — the metadata-only view derived from the hits.
+     * <!-- end-model-doc -->
+	 * @return the meta object for data type '<em>Score Map</em>'.
+	 * @see java.util.Map
+	 * @model instanceClass="java.util.Map&lt;java.lang.String, java.lang.Double&gt;"
+	 * @generated
+	 */
+	EDataType getScoreMap();
+
+	/**
+	 * Returns the meta object for data type '{@link java.util.stream.Stream <em>Hit Stream</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+     * <!-- begin-model-doc -->
+     * A lazy java.util.stream.Stream of Hits — the per-hit pairing view of a scored OBJECTS result (issue #165).
+     * <!-- end-model-doc -->
+	 * @return the meta object for data type '<em>Hit Stream</em>'.
+	 * @see java.util.stream.Stream
+	 * @model instanceClass="java.util.stream.Stream&lt;org.eclipse.fennec.persistence.query.api.Hit&gt;"
+	 * @generated
+	 */
+	EDataType getHitStream();
 
 	/**
 	 * Returns the meta object for data type '{@link java.util.Map <em>Options Map</em>}'.
@@ -1324,12 +1486,54 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		EOperation QUERY_RESULT___COUNT = eINSTANCE.getQueryResult__Count();
 
 		/**
+		 * The meta object literal for the '<em><b>Hits</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation QUERY_RESULT___HITS = eINSTANCE.getQueryResult__Hits();
+
+		/**
+		 * The meta object literal for the '<em><b>Scores</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation QUERY_RESULT___SCORES = eINSTANCE.getQueryResult__Scores();
+
+		/**
 		 * The meta object literal for the '<em><b>Close</b></em>' operation.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
 		EOperation QUERY_RESULT___CLOSE = eINSTANCE.getQueryResult__Close();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.Hit <em>Hit</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.persistence.query.api.Hit
+		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getHit()
+		 * @generated
+		 */
+		EClass HIT = eINSTANCE.getHit();
+
+		/**
+		 * The meta object literal for the '<em><b>Object</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation HIT___OBJECT = eINSTANCE.getHit__Object();
+
+		/**
+		 * The meta object literal for the '<em><b>Score</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation HIT___SCORE = eINSTANCE.getHit__Score();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.query.api.QueryableResource <em>Queryable Resource</em>}' class.
@@ -1500,6 +1704,26 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EDataType PARAMETER_MAP = eINSTANCE.getParameterMap();
+
+		/**
+		 * The meta object literal for the '<em>Score Map</em>' data type.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see java.util.Map
+		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getScoreMap()
+		 * @generated
+		 */
+		EDataType SCORE_MAP = eINSTANCE.getScoreMap();
+
+		/**
+		 * The meta object literal for the '<em>Hit Stream</em>' data type.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see java.util.stream.Stream
+		 * @see org.eclipse.fennec.persistence.query.api.impl.QueryApiPackageImpl#getHitStream()
+		 * @generated
+		 */
+		EDataType HIT_STREAM = eINSTANCE.getHitStream();
 
 		/**
 		 * The meta object literal for the '<em>Options Map</em>' data type.

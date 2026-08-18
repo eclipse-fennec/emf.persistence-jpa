@@ -432,6 +432,19 @@ public final class QueryBuilder {
 	}
 
 	/**
+	 * Requests the per-hit relevance score alongside the results (issue #165) — delivered on
+	 * {@code QueryResult.scores()}, keyed by object id. An envelope flag rather than an
+	 * option, so the SCORE capability is validated: a backend not declaring it refuses the
+	 * query with a Diagnostic.
+	 *
+	 * @return this builder, requesting per-hit scores
+	 */
+	public QueryBuilder withScores() {
+		query.setWithScores(true);
+		return this;
+	}
+
+	/**
 	 * Declares a parameter of this (prepared) query.
 	 *
 	 * @param name the parameter name (referenced via {@link Expressions#param(String)})

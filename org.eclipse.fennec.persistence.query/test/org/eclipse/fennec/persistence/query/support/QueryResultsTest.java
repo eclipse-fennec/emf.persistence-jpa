@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -44,6 +45,63 @@ class QueryResultsTest {
 			assertThat(result.objects()).containsExactly(any);
 			assertThatIllegalStateException().isThrownBy(result::rows);
 			assertThatIllegalStateException().isThrownBy(result::count);
+		}
+	}
+
+	/**
+	 * The scored result (issue #165): hits() pairs object and score in stream order,
+	 * objects() is a view of the same cursor, and scores() is the immutable metadata view
+	 * that exists before anything is consumed.
+	 */
+	@Test
+	void scoredResultPairsHitsAndDerivesTheViews() {
+		EObject first = EcoreFactory.eINSTANCE.createEClass();
+		EObject second = EcoreFactory.eINSTANCE.createEClass();
+		try (QueryResult scored = QueryResults.hits(
+				Stream.of(QueryResults.hit(first, 4.7), QueryResults.hit(second, 1.2)),
+				Map.of("1", 4.7, "2", 1.2))) {
+			assertThat(scored.shape()).isEqualTo(QueryShape.OBJECTS);
+			// the metadata view is complete before the stream is touched
+			assertThat(scored.scores()).containsEntry("1", 4.7).containsEntry("2", 1.2);
+			assertThatThrownBy(() -> scored.scores().put("3", 1.0))
+					.isInstanceOf(UnsupportedOperationException.class);
+			// pairing in rank order
+			assertThat(scored.hits()).satisfiesExactly(
+					hit -> {
+						assertThat(hit.object()).isSameAs(first);
+						assertThat(hit.score()).isEqualTo(4.7);
+					},
+					hit -> {
+						assertThat(hit.object()).isSameAs(second);
+						assertThat(hit.score()).isEqualTo(1.2);
+					});
+		}
+	}
+
+	@Test
+	void objectsIsAViewOfTheHitStream() {
+		EObject any = EcoreFactory.eINSTANCE.createEClass();
+		try (QueryResult scored = QueryResults.hits(
+				Stream.of(QueryResults.hit(any, 0.5)), Map.of("1", 0.5))) {
+			assertThat(scored.objects()).containsExactly(any);
+		}
+	}
+
+	/**
+	 * The two sides of the accessor contract (issue #165): hits() is a hard accessor like
+	 * the shape accessors — invalid without withScores; scores() is the soft side channel —
+	 * empty on unscored results, never throws.
+	 */
+	@Test
+	void unscoredResultsRefuseHitsButAnswerScoresEmpty() {
+		EObject any = EcoreFactory.eINSTANCE.createEClass();
+		try (QueryResult unscored = QueryResults.objects(Stream.of(any))) {
+			assertThat(unscored.scores()).isEmpty();
+			assertThatIllegalStateException().isThrownBy(unscored::hits);
+		}
+		try (QueryResult counted = QueryResults.count(3)) {
+			assertThat(counted.scores()).isEmpty();
+			assertThatIllegalStateException().isThrownBy(counted::hits);
 		}
 	}
 
