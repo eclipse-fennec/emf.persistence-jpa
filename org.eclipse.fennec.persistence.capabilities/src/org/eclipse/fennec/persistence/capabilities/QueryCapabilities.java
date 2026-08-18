@@ -26,6 +26,14 @@ import org.osgi.annotation.versioning.ProviderType;
  * that gets asked, not an EObject that gets loaded. Only the vocabulary it answers over —
  * {@link QueryFeature} — stays modelled, because that vocabulary is the contract and nobody
  * extends it from outside.
+ * <p>
+ * Backend-wide by definition — deliberately no per-EClass or per-feature narrowing (issue
+ * #161): a declared feature means the backend serves the family natively somewhere; whether a
+ * concrete query over concrete features is served is the validator's answer, and a
+ * mapping-dependent refusal names the feature and the way out in its Diagnostic. The command
+ * side narrows per EClass because write routing is genuinely a per-target-type question; the
+ * query-side cases narrow per feature <em>mapping</em>, which only the validator can answer
+ * without duplicating its knowledge.
  *
  * @author Mark Hoffmann
  * @since 14.08.2026
