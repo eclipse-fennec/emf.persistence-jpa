@@ -6,6 +6,7 @@ Every knob exposed by Fennec Persistence JPA at a glance. Grouped by layer:
 2. [Forwarded EclipseLink properties](#forwarded-eclipselink-properties)
 3. [Resource load and save options](#resource-load-and-save-options)
 4. [Non-OSGi bootstrap properties](#non-osgi-bootstrap-properties)
+5. [Repository facade](#repository-facade)
 
 ## OSGi persistence-unit properties
 
@@ -198,3 +199,11 @@ props.put(PersistenceUnitProperties.WEAVING, "false");
 props.put(PersistenceUnitProperties.LOGGING_LEVEL, "WARNING");
 props.put(PersistenceUnitProperties.CLASSLOADER, dynamicClassLoader);
 ```
+
+## Repository facade
+
+Factory PIDs `fennec.repository.jpa` and `fennec.repository.mongo` configure the
+user-facing repository services — one configuration per repository, bound to a
+persistence unit or Mongo database via a reference target. Keys, service properties
+and consumption semantics (prototype scope, read-only registration) are documented in
+the [Repository User Guide](repository-user-guide.md#configuration-reference).
