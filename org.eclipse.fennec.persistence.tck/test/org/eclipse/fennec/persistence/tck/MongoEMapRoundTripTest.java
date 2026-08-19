@@ -16,6 +16,8 @@ import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.bson.BsonDocument;
@@ -164,6 +166,37 @@ class MongoEMapRoundTripTest {
 			assertThat(result.objects()
 					.map(catalog -> catalog.eGet(model.catalogClass.getEStructuralFeature("cid"))))
 					.containsExactly("c1");
+		}
+	}
+
+	/**
+	 * Grouping by a map value — the other half of the divergence in #190: here the key is a
+	 * field path in {@code $group}, so it works; on JPA the same expression renders to a
+	 * correlated subselect that {@code GROUP BY} cannot take, and is refused.
+	 */
+	@Test
+	void mapValueGroupsAndAggregates() throws Exception {
+		EObject one = model.newCatalog("c8", "One");
+		map(one, "attributes").put("color", "red");
+		save(one);
+		EObject two = model.newCatalog("c9", "Two");
+		map(two, "attributes").put("color", "red");
+		save(two);
+		EObject three = model.newCatalog("c10", "Three");
+		map(three, "attributes").put("color", "blue");
+		save(three);
+
+		Query query = QueryBuilder.from(model.catalogClass)
+				.groupByAs("color", Expressions.mapValue(model.attributes, "color").toExpression())
+				.countOf("total")
+				.build();
+		QueryableResource resource = (QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = resource.query(query)) {
+			Map<Object, Object> counts = new LinkedHashMap<>();
+			result.rows().forEach(row -> counts.put(row.get("color"), row.get("total")));
+			assertThat(counts).containsOnlyKeys("red", "blue");
+			assertThat(((Number) counts.get("red")).intValue()).isEqualTo(2);
+			assertThat(((Number) counts.get("blue")).intValue()).isEqualTo(1);
 		}
 	}
 

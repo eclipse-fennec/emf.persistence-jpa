@@ -24,7 +24,14 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
+import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -121,6 +128,75 @@ class JpaEMapRoundTripTest {
 			}
 			em.close();
 		}
+	}
+
+	/**
+	 * The end-to-end proof for {@code MapValue} on JPA (issue #186) — the counterpart of the
+	 * mongo case. The translation test pins the JPQL; this pins that the JPQL matches what the
+	 * write path actually put in the entry table, which is the half that drifts when only the
+	 * rendering is tested.
+	 */
+	@Test
+	void mapValueQueriesOneEntry() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject red = model.newCatalog("c6", "Spring");
+		map(red, "attributes").put("color", "red");
+		EObject blue = model.newCatalog("c7", "Summer");
+		map(blue, "attributes").put("color", "blue");
+		Resource resource = writeSet.createResource(uriFor("Catalog"));
+		resource.getContents().add(red);
+		resource.getContents().add(blue);
+		resource.save(null);
+
+		emf.getCache().evictAll();
+		Query query = QueryBuilder.from(model.catalogClass)
+				.where(Expressions.mapValue(model.attributes, "color").eq("red"))
+				.build();
+		QueryableResource queryable =
+				(QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = queryable.query(query)) {
+			assertThat(result.objects()
+					.map(catalog -> catalog.eGet(model.catalogClass.getEStructuralFeature("cid"))))
+					.containsExactly("c6");
+		}
+	}
+
+	/**
+	 * A map value as a group key is <b>refused</b> here (issue #190), and that is the finding
+	 * this case exists for: {@code MapValue} renders to a correlated subselect, and a correlated
+	 * subselect cannot appear in {@code GROUP BY} — it references the grouped row, so the
+	 * database demands that column in the group list. Mongo groups by the same expression
+	 * happily ({@code MongoEMapRoundTripTest.mapValueGroupsAndAggregates}), which makes this a
+	 * real divergence, refused with a diagnostic rather than answered with a database error.
+	 */
+	@Test
+	void mapValueAsGroupKeyIsRefused() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject one = model.newCatalog("c8", "One");
+		map(one, "attributes").put("color", "red");
+		EObject two = model.newCatalog("c9", "Two");
+		map(two, "attributes").put("color", "red");
+		EObject three = model.newCatalog("c10", "Three");
+		map(three, "attributes").put("color", "blue");
+		Resource resource = writeSet.createResource(uriFor("Catalog"));
+		resource.getContents().add(one);
+		resource.getContents().add(two);
+		resource.getContents().add(three);
+		resource.save(null);
+
+		emf.getCache().evictAll();
+		Query query = QueryBuilder.from(model.catalogClass)
+				.groupByAs("color", Expressions.mapValue(model.attributes, "color").toExpression())
+				.countOf("total")
+				.build();
+
+		Diagnostic diagnostic = new JpaQueryProcessor().validate(query, model.catalogClass);
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> {
+					assertThat(child.getCode()).isEqualTo(JpaQueryProcessor.CODE_MAP_VALUE_GROUPING);
+					assertThat(child.getMessage()).contains("GROUP BY");
+				});
 	}
 
 	// ------------------------------------------------------------------ helpers

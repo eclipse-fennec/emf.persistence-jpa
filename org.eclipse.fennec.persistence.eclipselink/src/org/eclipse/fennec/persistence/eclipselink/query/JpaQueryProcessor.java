@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.eclipselink.query;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -22,11 +23,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.And;
@@ -110,6 +113,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 	/** The backend id of this processor. */
 	public static final String BACKEND = "jpa";
 
+	/**
+	 * Diagnostic code: a map access used as a group key or aggregate source (issue #190) —
+	 * the correlated subselect it renders to cannot appear in {@code GROUP BY}.
+	 */
+	public static final int CODE_MAP_VALUE_GROUPING = 200;
+
 	/** The JPQL root alias. */
 	static final String ALIAS = "e";
 
@@ -147,7 +156,72 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 	@Override
 	public Diagnostic validate(Query query, EClass rootEClass) {
-		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
+		Diagnostic base = QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
+		String grouping = mapValueInGrouping(query);
+		if (grouping == null) {
+			return base;
+		}
+		BasicDiagnostic result = new BasicDiagnostic(QueryValidator.DIAGNOSTIC_SOURCE, 0,
+				"JPA query validation", new Object[] { query });
+		if (base.getSeverity() != Diagnostic.OK) {
+			base.getChildren().forEach(result::add);
+		}
+		result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
+				CODE_MAP_VALUE_GROUPING, grouping, new Object[] { query }));
+		return result;
+	}
+
+	/**
+	 * A map access as a group key or aggregate source, which this backend cannot render
+	 * (issue #190).
+	 * <p>
+	 * {@code MapValue} becomes a correlated subselect over the entry table, and a correlated
+	 * subselect cannot appear in {@code GROUP BY}: it references the grouped row
+	 * ({@code t0.cid}), so the database demands that column in the group list — H2 says
+	 * <em>"Column T0.CID must be in the GROUP BY list"</em>, and it is right. A join-based
+	 * rendering would work and is a different translation strategy than the one this processor
+	 * uses; until it exists the query is refused rather than answered with a database error.
+	 */
+	private static String mapValueInGrouping(Query query) {
+		if (query.getApply() == null) {
+			return null;
+		}
+		for (Stage stage : query.getApply().getStages()) {
+			if (!(stage instanceof GroupByStage groupBy)) {
+				continue;
+			}
+			for (GroupKey key : groupBy.getKeys()) {
+				if (containsMapValue(key.getExpression())) {
+					return "Group key '" + key.getAlias() + "' addresses a map entry — the JPA"
+							+ " backend renders that as a correlated subselect, which cannot appear"
+							+ " in GROUP BY";
+				}
+			}
+			for (Aggregate aggregate : groupBy.getAggregates()) {
+				if (containsMapValue(aggregate.getSource())) {
+					return "Aggregate '" + aggregate.getAlias() + "' sources a map entry — the JPA"
+							+ " backend renders that as a correlated subselect, which cannot appear"
+							+ " in an aggregate over a grouped query";
+				}
+			}
+		}
+		return null;
+	}
+
+	private static boolean containsMapValue(Expression expression) {
+		if (expression == null) {
+			return false;
+		}
+		if (expression instanceof MapValue) {
+			return true;
+		}
+		Iterator<EObject> contents = expression.eAllContents();
+		while (contents.hasNext()) {
+			if (contents.next() instanceof MapValue) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
