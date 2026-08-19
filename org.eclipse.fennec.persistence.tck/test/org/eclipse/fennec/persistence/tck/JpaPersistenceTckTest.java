@@ -76,6 +76,10 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		eClasses.add(tckPackage.getEClassifier("Car"));
 		eClasses.add(tckPackage.getEClassifier("Motorcycle"));
 		eClasses.add(tckPackage.getEClassifier("OrderLine"));
+		// the map entry classes (issue #185) — a map is a containment reference like any other,
+		// so its target type has to be bootstrapped with the rest
+		eClasses.add(tckPackage.getEClassifier("StringToStringMapEntry"));
+		eClasses.add(tckPackage.getEClassifier("IntToStringMapEntry"));
 		emf = JpaTckSupport.bootstrap(PU_NAME, eClasses);
 	}
 

@@ -33,22 +33,13 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
 /**
- * Measures what the JPA backend does with an {@code EMap} today (issue #171, §9.2): three
- * maps, one round trip each, no fixes attempted. The contract froze maps as "out of contract"
- * on the assumption that neither backend has a mapping — {@code MongoEMapRoundTripTest} is the
- * same measurement on the other side, and the codec's {@code EMapHelper} says the assumption
- * does not hold there.
+ * What is JPA-specific about a map (contract §9.2) — the round trip itself is core and lives in
+ * {@code AbstractPersistenceTCK}, where every flavor runs it.
  * <p>
- * Nothing here is a capability probe: an EMap is a containment-many reference in Ecore, so the
- * generic mapping path takes it whether or not anybody designed for it. The question these
- * cases answer is which parts of the map's <em>semantics</em> survive that path — key
- * uniqueness, key type, and an EObject value.
- * <p>
- * The measurement: every case fails in {@code @BeforeEach}, before a single map is written,
- * on two independent defects — #183 (the entry class gets {@code java.util.Map$Entry} as its
- * entity class, an interface shared by all three entry classes) and #184 (an entry class has no
- * id attribute, and the synthetic key has no mapping). Disabled on those rather than deleted:
- * the cases are what #185 turns green.
+ * Two things only this backend can be asked: that an {@code EObject} value survives the entry
+ * table, and that map semantics is a <em>schema</em> constraint — a second row for the same
+ * {@code (owner, key)} is rejected by the database, not merely absent because the EMap in memory
+ * replaced it (issue #185).
  *
  * @author Mark Hoffmann
  * @since 19.08.2026
@@ -81,47 +72,6 @@ class JpaEMapRoundTripTest {
 	}
 
 	@Test
-	void stringKeyedMapRoundTrips() throws Exception {
-		ResourceSet writeSet = resourceSet();
-		EObject catalog = model.newCatalog("c1", "Spring");
-		EMap<Object, Object> map = map(catalog, "attributes");
-		map.put("color", "red");
-		map.put("size", "L");
-
-		Resource resource = writeSet.createResource(uriFor("Catalog"));
-		resource.getContents().add(catalog);
-		resource.save(null);
-
-		EObject loaded = reload("c1");
-		EMap<Object, Object> reloaded = map(loaded, "attributes");
-		assertThat(reloaded).as("both entries come back").hasSize(2);
-		assertThat(reloaded.get("color")).isEqualTo("red");
-		assertThat(reloaded.get("size")).isEqualTo("L");
-	}
-
-	@Test
-	void intKeyedMapRoundTrips() throws Exception {
-		ResourceSet writeSet = resourceSet();
-		EObject catalog = model.newCatalog("c2", "Summer");
-		EMap<Object, Object> map = map(catalog, "counts");
-		map.put(1, "one");
-		map.put(42, "answer");
-
-		Resource resource = writeSet.createResource(uriFor("Catalog"));
-		resource.getContents().add(catalog);
-		resource.save(null);
-
-		EObject loaded = reload("c2");
-		EMap<Object, Object> reloaded = map(loaded, "counts");
-		assertThat(reloaded).as("both entries come back").hasSize(2);
-		// Integer.valueOf, deliberately: EMap extends EList, so get(int) is the list index
-		// overload and get(1) would silently read the second entry instead of key 1
-		assertThat(reloaded.get(Integer.valueOf(1))).as("an int key must stay an int key")
-				.isEqualTo("one");
-		assertThat(reloaded.get(Integer.valueOf(42))).isEqualTo("answer");
-	}
-
-	@Test
 	void eObjectValuedMapRoundTrips() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject catalog = model.newCatalog("c3", "Autumn");
@@ -140,29 +90,6 @@ class JpaEMapRoundTripTest {
 		assertThat(engine).isNotNull();
 		assertThat(engine.eIsProxy()).as("the value must be resolved, not a proxy").isFalse();
 		assertThat(engine.eGet(model.partClass.getEStructuralFeature("label"))).isEqualTo("V8");
-	}
-
-	/**
-	 * Map semantics, not list semantics: putting the same key twice replaces the value. This is
-	 * the one thing a containment list cannot do on its own, and it is where a missing unique
-	 * constraint on {@code (owner, key)} would show up as two rows.
-	 */
-	@Test
-	void puttingTheSameKeyTwiceReplacesTheValue() throws Exception {
-		ResourceSet writeSet = resourceSet();
-		EObject catalog = model.newCatalog("c4", "Winter");
-		EMap<Object, Object> map = map(catalog, "attributes");
-		map.put("color", "red");
-		map.put("color", "blue");
-
-		Resource resource = writeSet.createResource(uriFor("Catalog"));
-		resource.getContents().add(catalog);
-		resource.save(null);
-
-		EObject loaded = reload("c4");
-		EMap<Object, Object> reloaded = map(loaded, "attributes");
-		assertThat(reloaded).as("one key, one entry").hasSize(1);
-		assertThat(reloaded.get("color")).isEqualTo("blue");
 	}
 
 	/**

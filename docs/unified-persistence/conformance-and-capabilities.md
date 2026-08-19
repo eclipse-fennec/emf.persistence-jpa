@@ -119,7 +119,7 @@ produces a contract statement plus an asserting test.
 | Cascade-delete | dropping a containment subtree deletes what it owned, transitively, across document/table boundaries. Implemented on both backends (#138/#139 for Mongo, #142/#143 for JPA); the timing guarantee is qualified in §4a |
 | Inheritance | polymorphic write and read of a subtype through a supertype resource |
 | Composite ids | **core** — every store can key on a concatenation, so absence is a defect, not a limitation |
-| Maps (`EMap`) | round trip of entries, keys and values, with map semantics (one key, one entry) for every key type that renders to a string and parses back. Honoured on both backends; the one open gap is a non-string key on mongo (emf.codec#154). Query *access* into a map is a separate question — `MAP_VALUE`, §9.2 and #186 |
+| Maps (`EMap`) | round trip of entries, keys and values, with map semantics (one key, one entry) for every key type that renders to a string and parses back. Honoured on both backends, mandatory per flavor. Query *access* into a map is a separate question — `MAP_VALUE`, §9.2 and #186 |
 | Command verbs | Insert / Update / Delete exist (§4) |
 | Refusal | anything not supported is refused with a diagnostic, never silently mis-answered (§5) |
 
@@ -492,12 +492,11 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
   repeated loads, default values, `resolveProxies=false` (which must *forbid* cross-resource
   containment), abstract/interface types, `EcoreUtil.delete` inverse cleanup.
 
-`EMap` and feature maps were on that last line until §9.2 split them: the map round trip is core
-and green on both backends (`MongoEMapRoundTripTest`, `JpaEMapRoundTripTest`), with one gap left
-on mongo for a non-string key (emf.codec#154). What is still owed is the *place*: both classes
-sit beside the TCK rather than inside it, so only the default flavor runs them — moving them in
-is #185's remainder. A feature map owes the suite a refusal rather than a round trip: a model
-carrying one must fail mapping with a diagnostic naming it.
+`EMap` and feature maps were on that last line until §9.2 split them: the map round trip is core,
+green on both backends, and mandatory for every flavor — `mapRoundTrip` and `mapKeysAreUnique`
+are ordinary TCK cases now, and the TCK model carries an `EMap<EString,EString>` and an
+`EMap<EInt,EString>` on `Person`. A feature map owes the suite a refusal rather than a round
+trip: a model carrying one must fail mapping with a diagnostic naming it.
 
 ## 9. The boundary, frozen
 
@@ -544,7 +543,7 @@ same `EMapTestModel`: one `Catalog` with `EMap<EString,EString>`, `EMap<EInt,ESt
 | same key twice replaces the value | pass | pass |
 | one key per owner enforced by the schema | n/a — the sub-document shape gives it | pass |
 | stored shape is a sub-document `{key: value}` | pass | n/a — rows in an entry table |
-| int-keyed round trip | **fail** — the read drops every entry (emf.codec#154) | pass |
+| int-keyed round trip | pass, since emf.codec#154 | pass |
 
 Mongo maps `EMap` through the codec (`EMapHelper` plus the `serializeEMap`/`deserializeEMap`
 pair). JPA does since #185: four defects stood between the model and a table, and each one is
@@ -635,9 +634,15 @@ serves map access natively somewhere, and whether a *concrete* map feature is se
 from that feature's mapping and is `validate()`'s answer with a Diagnostic naming the way out.
 One truth, one code path.
 
-Left in #185: the codec fix for non-string keys (emf.codec#154 — measured only on mongo, since a
-key is a typed column on JPA and survives without help), and moving the two measurement classes
-into the TCK proper so every `backend × flavor` runs them.
+The non-string key was the last gap and closed with emf.codec#154: the codec parses a stored
+field name back through the key feature's data type instead of assigning it raw. On JPA the same
+key is a typed column and never needed help — a good illustration of why the key-type limit above
+is phrased as "renders to a string and parses back" rather than "is a string".
+
+The round trip now lives in `AbstractPersistenceTCK` (`mapRoundTrip`, `mapKeysAreUnique`), so
+every `backend × flavor` runs it and the model carries the two maps. What stays backend-specific
+is the *shape* evidence, per §2C: the stored sub-document and the `MapValue` field path on mongo,
+the entry table's unique constraint — proven by a native insert the schema rejects — on JPA.
 
 ### 9.3 Geo keeps one grain until a backend forces a second
 
