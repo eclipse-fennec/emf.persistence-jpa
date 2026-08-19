@@ -154,6 +154,14 @@ public class MongoQueryProcessor implements QueryProcessor {
 	 */
 	public static final int CODE_INVALID_MAP_KEY = 102;
 
+	/**
+	 * Diagnostic code: a quantifier ranging over a map (issue #188). A map is a sub-document
+	 * here, not an array, so {@code $elemMatch} cannot see its entries and would match nothing
+	 * at all — the plausible wrong answer §5 forbids. {@code MapValue} (#186) is the construct
+	 * that addresses a map entry on every backend.
+	 */
+	public static final int CODE_MAP_QUANTIFIER = 103;
+
 	private final MongoFlavor flavor;
 	private final QueryCapabilities capabilities;
 
@@ -205,7 +213,14 @@ public class MongoQueryProcessor implements QueryProcessor {
 								+ "' traverses a non-containment reference — Mongo cannot join across documents",
 						new Object[] { path }));
 			}
-			if (content instanceof Quantifier quantifier
+			if (content instanceof Quantifier quantifier && rangesOverAMap(quantifier)) {
+				result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
+						CODE_MAP_QUANTIFIER,
+						"Quantifier source '" + MongoFieldNames.render(quantifier.getSource())
+								+ "' is a map, which is stored as a sub-document rather than an array"
+								+ " — use MapValue to address an entry by key",
+						new Object[] { quantifier }));
+			} else if (content instanceof Quantifier quantifier
 					&& !MongoFieldNames.isEmbeddedCollection(quantifier.getSource())) {
 				result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
 						CODE_NON_EMBEDDED_PATH,
@@ -423,6 +438,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 					Filters.ne(field(match.getSource(), context), null)), match.getSource(), context);
 		}
 		if (expression instanceof Quantifier quantifier) {
+			refuseMapQuantifier(quantifier);
 			String collection = MongoFieldNames.render(quantifier.getSource());
 			Bson inner = negated(quantifier.getPredicate(), context);
 			if (quantifier instanceof Exists) {
@@ -877,6 +893,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 	}
 
 	private Bson quantifier(Quantifier quantifier, QueryContext context) throws QueryException {
+		refuseMapQuantifier(quantifier);
 		String collection = MongoFieldNames.render(quantifier.getSource());
 		Bson inner = predicate(quantifier.getPredicate(), context);
 		if (quantifier instanceof Exists) {
@@ -884,6 +901,33 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 		// forAll: no element violates the predicate (vacuously true on empty)
 		return Filters.nor(Filters.elemMatch(collection, Filters.nor(inner)));
+	}
+
+	/**
+	 * Whether a quantifier ranges over a map (issue #188).
+	 * <p>
+	 * {@code isEmbeddedCollection} says yes to a map and is not wrong to: a map <em>is</em> a
+	 * containment-many reference, and containment is what that check tests. A map is the one
+	 * case where containment does not imply an array in the document, so it needs its own
+	 * question.
+	 */
+	private static boolean rangesOverAMap(Quantifier quantifier) {
+		return EMaps.isMap(ExpressionValues.targetFeature(quantifier.getSource()));
+	}
+
+	/**
+	 * Refuses a quantifier over a map rather than emitting an {@code $elemMatch} that cannot
+	 * match (issue #188). Translation refuses as well as validation: {@code validate} is a
+	 * service to the caller, {@code translate} is the last line before a wrong answer leaves
+	 * the backend.
+	 */
+	private static void refuseMapQuantifier(Quantifier quantifier) throws QueryException {
+		if (rangesOverAMap(quantifier)) {
+			throw new QueryException("Quantifier source '"
+					+ MongoFieldNames.render(quantifier.getSource())
+					+ "' is a map, which is stored as a sub-document rather than an array —"
+					+ " $elemMatch would match nothing; use MapValue to address an entry by key");
+		}
 	}
 
 	private String field(Expression expression, QueryContext context) throws QueryException {

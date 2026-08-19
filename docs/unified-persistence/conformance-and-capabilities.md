@@ -626,6 +626,12 @@ path must end in a map, and the key must be a literal or a bound parameter. The 
 the interesting half — Mongo and Lucene turn the key into a field name, so a computed key would
 be a construct only the relational backend could serve, and the IR does not carry those.
 
+One consequence for consumers, because it is a refusal they can meet: a **quantifier** over a map
+(`Exists`/`ForAll` ranging over the entries) is refused on mongo with a diagnostic pointing at
+`MapValue` (#188). The entries are a sub-document there, not an array, so `$elemMatch` would match
+nothing and return an empty result — the plausible wrong answer §5 forbids. JPA serves the same
+quantifier correctly over the entry table; `MapValue` is the form that works on both.
+
 The Lucene question this raised — a search backend can only serve `MAP_VALUE` for a map its
 mapping stores in keyed form — is **not** a counter-example to "query capabilities are
 backend-wide" (§5a, #161). It is the same feature-and-mapping axis #161 already decided about
