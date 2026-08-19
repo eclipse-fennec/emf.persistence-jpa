@@ -35,6 +35,15 @@ import org.eclipse.emf.ecore.EObject;
  * <p>
  * Streamed objects follow the same reference contract as loaded ones: non-containment
  * references hold EMF proxies that resolve through the {@code ResourceSet}.
+ * <p>
+ * They are handed out <b>detached</b>: they are not added to
+ * {@link org.eclipse.emf.ecore.resource.Resource#getContents()}, and which resource a streamed
+ * object reports is not part of the contract — do not ask. Mutating one writes nothing;
+ * persisting it means adding it to a resource and saving that resource, like any other object.
+ * <p>
+ * Streaming is a declarable capability, not part of the conformance core (contract §9.4): a
+ * backend that cannot iterate without materialising the whole result set says so by not
+ * declaring it, rather than by pretending to stream.
  *
  * @author Mark Hoffmann
  * @since 16.07.2026
