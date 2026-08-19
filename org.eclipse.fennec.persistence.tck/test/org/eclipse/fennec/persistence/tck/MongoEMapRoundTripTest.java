@@ -36,7 +36,6 @@ import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoClient;
@@ -44,11 +43,13 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 
 /**
- * The mongo half of the EMap measurement (issue #171, §9.2) — same model, same four cases as
- * {@code JpaEMapRoundTripTest}, plus an assertion on the stored document, because the codec's
- * {@code EMapHelper} writes a map as a BSON sub-document {@code {key: value}} rather than as an
- * array of entries. That shape is what makes a map queryable here and it is also where a key
- * containing {@code .} or {@code $} would become a problem.
+ * What is mongo-specific about a map (contract §9.2) — the round trip itself is core and lives
+ * in {@code AbstractPersistenceTCK}, where every flavor runs it.
+ * <p>
+ * Three things only this backend can be asked: that a map is stored as a BSON sub-document
+ * {@code {key: value}} rather than an array of entries, that an {@code EObject} value comes back
+ * resolved out of that shape, and that {@code MapValue} reads one entry through the field path
+ * the shape implies (issue #186).
  *
  * @author Mark Hoffmann
  * @since 19.08.2026
@@ -84,21 +85,6 @@ class MongoEMapRoundTripTest {
 	}
 
 	@Test
-	void stringKeyedMapRoundTrips() throws Exception {
-		EObject catalog = model.newCatalog("c1", "Spring");
-		EMap<Object, Object> map = map(catalog, "attributes");
-		map.put("color", "red");
-		map.put("size", "L");
-		save(catalog);
-
-		EObject loaded = reload("c1");
-		EMap<Object, Object> reloaded = map(loaded, "attributes");
-		assertThat(reloaded).as("both entries come back").hasSize(2);
-		assertThat(reloaded.get("color")).isEqualTo("red");
-		assertThat(reloaded.get("size")).isEqualTo("L");
-	}
-
-	@Test
 	void stringKeyedMapIsStoredAsASubDocument() throws Exception {
 		EObject catalog = model.newCatalog("c1", "Spring");
 		EMap<Object, Object> map = map(catalog, "attributes");
@@ -113,31 +99,6 @@ class MongoEMapRoundTripTest {
 				.isTrue();
 		assertThat(stored.get("attributes").asDocument().getString("color").getValue())
 				.isEqualTo("red");
-	}
-
-	/**
-	 * The write is correct ({@code intKeyedMapStoredShape} passes); the read drops every entry,
-	 * because {@code deserializeEMap} assigns the raw field name to the key feature and the
-	 * resulting {@code eSet} of a String on an EInt feature is caught and logged. Tracked as
-	 * eclipse-fennec/emf.codec#154.
-	 */
-	@Disabled("emf.codec#154 — a non-string key is dropped on read, the map comes back empty")
-	@Test
-	void intKeyedMapRoundTrips() throws Exception {
-		EObject catalog = model.newCatalog("c2", "Summer");
-		EMap<Object, Object> map = map(catalog, "counts");
-		map.put(1, "one");
-		map.put(42, "answer");
-		save(catalog);
-
-		EObject loaded = reload("c2");
-		EMap<Object, Object> reloaded = map(loaded, "counts");
-		assertThat(reloaded).as("both entries come back").hasSize(2);
-		// Integer.valueOf, deliberately: EMap extends EList, so get(int) is the list index
-		// overload and get(1) would silently read the second entry instead of key 1
-		assertThat(reloaded.get(Integer.valueOf(1))).as("an int key must stay an int key")
-				.isEqualTo("one");
-		assertThat(reloaded.get(Integer.valueOf(42))).isEqualTo("answer");
 	}
 
 	/**
@@ -178,20 +139,6 @@ class MongoEMapRoundTripTest {
 		assertThat(engine).isNotNull();
 		assertThat(engine.eIsProxy()).as("the value must be resolved, not a proxy").isFalse();
 		assertThat(engine.eGet(model.partClass.getEStructuralFeature("label"))).isEqualTo("V8");
-	}
-
-	@Test
-	void puttingTheSameKeyTwiceReplacesTheValue() throws Exception {
-		EObject catalog = model.newCatalog("c4", "Winter");
-		EMap<Object, Object> map = map(catalog, "attributes");
-		map.put("color", "red");
-		map.put("color", "blue");
-		save(catalog);
-
-		EObject loaded = reload("c4");
-		EMap<Object, Object> reloaded = map(loaded, "attributes");
-		assertThat(reloaded).as("one key, one entry").hasSize(1);
-		assertThat(reloaded.get("color")).isEqualTo("blue");
 	}
 
 	/**

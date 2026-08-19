@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.eclipse.emf.common.util.EMap;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EEnum;
@@ -116,6 +117,8 @@ public abstract class AbstractPersistenceTCK {
 	protected EStructuralFeature personBirthday;
 	protected EStructuralFeature personFavoriteColor;
 	protected EStructuralFeature personAddresses;
+	protected EStructuralFeature personAttributes;
+	protected EStructuralFeature personCounts;
 	protected EStructuralFeature personBestFriend;
 	protected EStructuralFeature personFriends;
 	protected EStructuralFeature personEmployer;
@@ -159,6 +162,8 @@ public abstract class AbstractPersistenceTCK {
 		personBirthday = personClass.getEStructuralFeature("birthday");
 		personFavoriteColor = personClass.getEStructuralFeature("favoriteColor");
 		personAddresses = personClass.getEStructuralFeature("addresses");
+		personAttributes = personClass.getEStructuralFeature("attributes");
+		personCounts = personClass.getEStructuralFeature("counts");
 		personBestFriend = personClass.getEStructuralFeature("bestFriend");
 		personFriends = personClass.getEStructuralFeature("friends");
 		personEmployer = personClass.getEStructuralFeature("employer");
@@ -585,6 +590,67 @@ public abstract class AbstractPersistenceTCK {
 		EObject loaded = findById(resource, generatedId);
 		assertThat(loaded).as("object must be loadable under the generated id").isNotNull();
 		assertThat(loaded.eGet(personName)).isEqualTo("Generated");
+	}
+
+	/**
+	 * A map round-trips: entries come back, keys keep their type, and a second put replaces
+	 * rather than appends (contract §9.2, issue #185). Core, so no capability gate — the two
+	 * backends realise it very differently (a keyed sub-document on mongo, rows in an entry
+	 * table with a unique constraint on JPA) and that is form, not semantics.
+	 * <p>
+	 * The int-keyed map is here deliberately: a key becomes a field name on document stores, so
+	 * a non-string key is exactly where the shape leaks (emf.codec#154 lost every entry of such
+	 * a map on read until it was fixed).
+	 */
+	@Test
+	public void mapRoundTrip() throws Exception {
+		ResourceSet writeSet = createBackendResourceSet();
+		EObject person = newPerson(1, "Alice", 30);
+		mapOf(person, personAttributes).put("color", "red");
+		mapOf(person, personAttributes).put("size", "L");
+		mapOf(person, personCounts).put(1, "one");
+		mapOf(person, personCounts).put(42, "answer");
+		Resource resource = writeSet.createResource(uriFor("Person"));
+		resource.getContents().add(person);
+		resource.save(null);
+
+		evictBackendCaches();
+		EObject loaded = loadAll(createBackendResourceSet(), "Person").getContents().get(0);
+		EMap<Object, Object> attributes = mapOf(loaded, personAttributes);
+		assertThat(attributes).as("both entries come back").hasSize(2);
+		assertThat(attributes.get("color")).isEqualTo("red");
+		assertThat(attributes.get("size")).isEqualTo("L");
+		EMap<Object, Object> counts = mapOf(loaded, personCounts);
+		assertThat(counts).hasSize(2);
+		// Integer.valueOf, deliberately: EMap extends EList, so get(int) is the list index
+		// overload and would read the second entry instead of key 1
+		assertThat(counts.get(Integer.valueOf(1))).as("an int key must stay an int key")
+				.isEqualTo("one");
+		assertThat(counts.get(Integer.valueOf(42))).isEqualTo("answer");
+	}
+
+	@Test
+	public void mapKeysAreUnique() throws Exception {
+		ResourceSet writeSet = createBackendResourceSet();
+		EObject person = newPerson(2, "Bob", 40);
+		mapOf(person, personAttributes).put("color", "red");
+		mapOf(person, personAttributes).put("color", "blue");
+		Resource resource = writeSet.createResource(uriFor("Person"));
+		resource.getContents().add(person);
+		resource.save(null);
+
+		evictBackendCaches();
+		EObject loaded = loadAll(createBackendResourceSet(), "Person").getContents().get(0);
+		EMap<Object, Object> attributes = mapOf(loaded, personAttributes);
+		assertThat(attributes).as("one key, one entry").hasSize(1);
+		assertThat(attributes.get("color")).isEqualTo("blue");
+	}
+
+	@SuppressWarnings("unchecked")
+	private EMap<Object, Object> mapOf(EObject owner, EStructuralFeature feature) {
+		Object value = owner.eGet(feature);
+		assertThat(value).as("'%s' must be an EMap", feature.getName()).isInstanceOf(EMap.class);
+		return (EMap<Object, Object>) value;
 	}
 
 	@Test
