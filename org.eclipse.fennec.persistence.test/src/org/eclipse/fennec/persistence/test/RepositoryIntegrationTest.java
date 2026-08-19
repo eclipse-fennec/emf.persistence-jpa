@@ -14,7 +14,9 @@ package org.eclipse.fennec.persistence.test;
 
 import static org.eclipse.fennec.persistence.test.annotations.TestAnnotations.PROP_MODEL_FILE_PATH;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,9 +41,13 @@ import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.repository.api.PreparedQuery;
 import org.eclipse.fennec.persistence.repository.api.ReadRepository;
 import org.eclipse.fennec.persistence.repository.api.Repository;
+import org.eclipse.fennec.persistence.repository.api.RepositoryService;
 import org.eclipse.fennec.persistence.repository.api.WriteRepository;
 import org.eclipse.fennec.persistence.test.annotations.TestAnnotations;
 import org.junit.jupiter.api.Test;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceObjects;
+import org.osgi.test.common.annotation.InjectBundleContext;
 import org.osgi.test.common.annotation.InjectService;
 import org.osgi.test.common.annotation.Property;
 import org.osgi.test.common.annotation.Property.TemplateArgument;
@@ -166,6 +172,79 @@ public class RepositoryIntegrationTest extends EPersistenceBase {
 		try (QueryResult result = repository.find(byName, Map.of("wanted", "Alice2"), null)) {
 			assertEquals(0, result.objects().count(), "deleted object must be gone");
 		}
+	}
+
+	/**
+	 * Every consumer gets its own repository instance: a repository owns a
+	 * non-thread-safe ResourceSet, so the services are registered with prototype scope —
+	 * and a released instance is disposed.
+	 */
+	@Test
+	@TestAnnotations.DefaultEPersistenceSetup
+	@WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "protoUnit", properties = {
+			@Property(key = "fennec.jpa.model", value = "(emf.name=fennec.persistence.model)"),
+			@Property(key = "fennec.jpa.mappingFile", value = "%s", templateArguments =
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_MODEL_FILE_PATH)),
+			@Property(key = "fennec.jpa.persistenceUnitName", value = "protoUnit"),
+			@Property(key = "fennec.jpa.ext.eclipselink.ddl-generation", value = "create-or-extend-tables")
+	})
+	@WithFactoryConfiguration(factoryPid = "fennec.repository.jpa", name = "proto", properties = {
+			@Property(key = "repositoryId", value = "proto-repo"),
+			@Property(key = "unit.target", value = "(osgi.unit.name=protoUnit)")
+	})
+	public void testEachConsumerGetsItsOwnInstance(
+			@InjectService(filter = "(persistence.repository.id=proto-repo)", timeout = 10000)
+			ServiceAware<Repository> repositoryAware,
+			@InjectBundleContext BundleContext context) throws Exception {
+		ServiceObjects<Repository> serviceObjects =
+				context.getServiceObjects(repositoryAware.getServiceReference());
+		Repository first = serviceObjects.getService();
+		Repository second = serviceObjects.getService();
+		assertNotSame(first, second, "prototype scope: every consumer gets an own instance");
+		assertNotSame(first.getResourceSet(), second.getResourceSet(),
+				"each instance owns its own ResourceSet");
+		assertEquals(first.id(), second.id());
+
+		serviceObjects.ungetService(second);
+		assertTrue(second.isDisposed(), "a released instance is disposed");
+		assertFalse(first.isDisposed(), "other instances stay untouched");
+		serviceObjects.ungetService(first);
+		assertTrue(first.isDisposed());
+	}
+
+	/**
+	 * Invalid configurations must never yield a service: a unit target matching nothing
+	 * keeps the component unsatisfied; a configuration without a repositoryId is refused
+	 * at activation.
+	 */
+	@Test
+	@TestAnnotations.DefaultEPersistenceSetup
+	@WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "invalidUnit", properties = {
+			@Property(key = "fennec.jpa.model", value = "(emf.name=fennec.persistence.model)"),
+			@Property(key = "fennec.jpa.mappingFile", value = "%s", templateArguments =
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_MODEL_FILE_PATH)),
+			@Property(key = "fennec.jpa.persistenceUnitName", value = "invalidUnit"),
+			@Property(key = "fennec.jpa.ext.eclipselink.ddl-generation", value = "create-or-extend-tables")
+	})
+	@WithFactoryConfiguration(factoryPid = "fennec.repository.jpa", name = "dangling", properties = {
+			@Property(key = "repositoryId", value = "dangling-repo"),
+			@Property(key = "unit.target", value = "(osgi.unit.name=doesNotExist)")
+	})
+	@WithFactoryConfiguration(factoryPid = "fennec.repository.jpa", name = "noid", properties = {
+			@Property(key = "unit.target", value = "(osgi.unit.name=invalidUnit)")
+	})
+	public void testInvalidConfigurationsYieldNoService(
+			@InjectService(filter = "(osgi.unit.name=invalidUnit)", timeout = 10000)
+			ServiceAware<org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit> unitAware,
+			@InjectService(cardinality = 0, filter = "(persistence.repository.id=dangling-repo)")
+			ServiceAware<RepositoryService> danglingAware,
+			@InjectService(cardinality = 0, filter = "(persistence.repository.baseUri=jpa://invalidUnit)")
+			ServiceAware<RepositoryService> noIdAware) throws Exception {
+		assertNotNull(unitAware.getService(), "the valid unit itself must be up");
+		assertNull(danglingAware.waitForService(1000),
+				"a unit target matching nothing must keep the repository unsatisfied");
+		assertNull(noIdAware.waitForService(1000),
+				"a configuration without repositoryId must be refused at activation");
 	}
 
 	/**

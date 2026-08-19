@@ -16,6 +16,9 @@
 	bnd.identity;id='org.eclipse.fennec.persistence.mongo',\
 	bnd.identity;id='org.eclipse.fennec.persistence.capabilities',\
 	bnd.identity;id='org.eclipse.fennec.persistence.query',\
+	bnd.identity;id='org.eclipse.fennec.persistence.repository',\
+	bnd.identity;id='org.eclipse.fennec.persistence.repository.jpa',\
+	bnd.identity;id='org.eclipse.fennec.persistence.repository.mongo',\
 	bnd.identity;id='org.eclipse.fennec.query.model',\
 	bnd.identity;id='org.eclipse.fennec.stream.model',\
 	bnd.identity;id='org.eclipse.fennec.command.model',\
@@ -72,6 +75,9 @@
 	org.eclipse.fennec.persistence.mongo;version=snapshot,\
 	org.eclipse.fennec.persistence.pushstreams;version=snapshot,\
 	org.eclipse.fennec.persistence.query;version=snapshot,\
+	org.eclipse.fennec.persistence.repository;version=snapshot,\
+	org.eclipse.fennec.persistence.repository.jpa;version=snapshot,\
+	org.eclipse.fennec.persistence.repository.mongo;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.stream.model;version=snapshot,\
 	org.mongodb.bson;version='[5.6.3,5.6.4)',\

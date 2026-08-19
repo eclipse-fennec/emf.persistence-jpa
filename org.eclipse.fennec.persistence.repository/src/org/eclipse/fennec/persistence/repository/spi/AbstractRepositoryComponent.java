@@ -56,6 +56,10 @@ public abstract class AbstractRepositoryComponent {
 	 * @param readOnly whether to withhold the write interfaces
 	 */
 	protected final void register(BundleContext context, String repositoryId, URI baseUri, boolean readOnly) {
+		if (repositoryId == null || repositoryId.isBlank()) {
+			throw new IllegalStateException(
+					"Repository configuration for " + baseUri + " carries no repositoryId");
+		}
 		String[] types = readOnly
 				? new String[] { RepositoryService.class.getName(), ReadRepository.class.getName() }
 				: new String[] { RepositoryService.class.getName(), ReadRepository.class.getName(),
