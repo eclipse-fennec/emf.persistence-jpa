@@ -172,7 +172,7 @@ public interface ReadRepository extends RepositoryService {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Re-reads the given EObject's state from the backend, replacing its in-memory state.
+	 * Re-reads the object's state from the backend via a keyed read and replaces the in-memory state of the given instance in place — its resource attachment stays untouched. Refused with an IOException when the object has no determinable id or no longer exists in the backend.
 	 * <!-- end-model-doc -->
 	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" objectRequired="true"
 	 * @generated

@@ -45,7 +45,7 @@ public interface WriteRepository extends RepositoryService {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Saves the given EObject under its repository URI, attaching it to a Resource first if needed.
+	 * Saves exactly the given EObject under its repository URI — the old one-resource-per-object save semantics on top of the collection-resource mechanic. Objects sharing a loaded collection resource are not written: the repository isolates the object for the save and restores its attachment afterwards; an unattached object is attached to its collection resource after saving.
 	 * <!-- end-model-doc -->
 	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" objectRequired="true"
 	 * @generated
@@ -56,7 +56,7 @@ public interface WriteRepository extends RepositoryService {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Saves the given EObject using the given save options.
+	 * Saves exactly the given EObject using the given save options — same isolation contract as save(object).
 	 * <!-- end-model-doc -->
 	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" objectRequired="true" optionsDataType="org.eclipse.fennec.persistence.query.api.OptionsMap"
 	 * @generated
@@ -89,7 +89,7 @@ public interface WriteRepository extends RepositoryService {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Saves all given EObjects, replacing the old save(Collection)/save(EObject...) overload family.
+	 * Saves exactly the given EObjects — one backend save per type, replacing the old save(Collection)/save(EObject...) overload family. Unrelated objects sharing a loaded collection resource are not written; the same isolation contract as save(object) applies.
 	 * <!-- end-model-doc -->
 	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" objectsDataType="org.eclipse.fennec.persistence.repository.api.EObjectCollection" objectsRequired="true"
 	 * @generated
