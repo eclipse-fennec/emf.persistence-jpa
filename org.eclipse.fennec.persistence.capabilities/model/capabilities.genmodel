@@ -55,6 +55,7 @@
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SCORE"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GEO_WITHIN"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GEO_DISTANCE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/MAP_VALUE"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/FEATUREPATH_NESTED"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/TYPE_FILTER"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/PARAMETERS"/>

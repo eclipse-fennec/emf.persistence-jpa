@@ -594,9 +594,25 @@ So the expected declaration for a search backend is: the map round trip yes (via
 `EMBED` of a map refused, and key enumeration never a query capability. This is the same
 pattern as §9.1 — the third backend is what turns an assumption into a decision.
 
+**Querying into a map is a capability; its two rules are not** (#186, built 2026-08-19). The IR
+construct is `MapValue(map, key)` and the capability is `QueryFeature.MAP_VALUE` — one literal,
+backend-wide, declared today by JPA, mongo and the reference engine. Two rules ride along as
+*contract* rather than declaration, because no backend may declare its way out of either: the
+path must end in a map, and the key must be a literal or a bound parameter. The second one is
+the interesting half — Mongo and Lucene turn the key into a field name, so a computed key would
+be a construct only the relational backend could serve, and the IR does not carry those.
+
+The Lucene question this raised — a search backend can only serve `MAP_VALUE` for a map its
+mapping stores in keyed form — is **not** a counter-example to "query capabilities are
+backend-wide" (§5a, #161). It is the same feature-and-mapping axis #161 already decided about
+`EXISTS` over `NESTED` and equality on keyword projections: the declaration says the backend
+serves map access natively somewhere, and whether a *concrete* map feature is served follows
+from that feature's mapping and is `validate()`'s answer with a Diagnostic naming the way out.
+One truth, one code path.
+
 Work: #185 makes the round trip true (the two JPA defects, the codec fix, the unique constraint,
-and moving both measurement classes into the TCK). Query access into a map is *not* part of it —
-that needs an IR construct and one translation per backend, tracked as #186.
+and moving both measurement classes into the TCK). On JPA the map access already renders, but it
+cannot be exercised end to end until #185 lands — there is no map in a table yet.
 
 ### 9.3 Geo keeps one grain until a backend forces a second
 

@@ -55,6 +55,7 @@ import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
+import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -83,6 +84,7 @@ class MongoQueryProcessorTest {
 	private EReference addresses;
 	private EReference friend;
 	private EAttribute street;
+	private EReference attributes;
 
 	@BeforeEach
 	void setUp() {
@@ -117,6 +119,25 @@ class MongoQueryProcessorTest {
 		addresses.setContainment(true);
 		person.getEStructuralFeatures().add(addresses);
 
+		// an EMap (issue #186): stored as a sub-document keyed by the map key
+		EClass entry = ecore.createEClass();
+		entry.setName("StringToStringMapEntry");
+		entry.setInstanceClassName("java.util.Map$Entry");
+		EAttribute key = ecore.createEAttribute();
+		key.setName("key");
+		key.setEType(EcorePackage.Literals.ESTRING);
+		entry.getEStructuralFeatures().add(key);
+		EAttribute value = ecore.createEAttribute();
+		value.setName("value");
+		value.setEType(EcorePackage.Literals.ESTRING);
+		entry.getEStructuralFeatures().add(value);
+		attributes = ecore.createEReference();
+		attributes.setName("attributes");
+		attributes.setEType(entry);
+		attributes.setUpperBound(-1);
+		attributes.setContainment(true);
+		person.getEStructuralFeatures().add(attributes);
+
 		friend = ecore.createEReference();
 		friend.setName("friend");
 		friend.setEType(person);
@@ -134,6 +155,41 @@ class MongoQueryProcessorTest {
 
 	private MongoQueryPlan translate(Query query, QueryContext context) throws QueryException {
 		return (MongoQueryPlan) processor.translate(query, context);
+	}
+
+	/**
+	 * A map is a sub-document keyed by the map key here (contract §9.2), so addressing one
+	 * entry is a plain field path — no {@code $elemMatch}, which is what an array of entries
+	 * would need and what would silently match the wrong thing (issue #186).
+	 */
+	@Test
+	void mapAccessRendersAFieldPath() throws QueryException {
+		MongoQueryPlan plan = translate(QueryBuilder.from(person)
+				.where(Expressions.mapValue(attributes, "color").eq("red"))
+				.build());
+		assertThat(render(plan.filter())).isEqualTo(BsonDocument.parse("{'attributes.color': 'red'}"));
+	}
+
+	/**
+	 * The key becomes part of a field name, so a key carrying BSON field syntax is refused
+	 * rather than stored or matched approximately (contract §9.2).
+	 */
+	@Test
+	void mapKeyWithFieldNameSyntaxIsRefused() {
+		Query dotted = QueryBuilder.from(person)
+				.where(Expressions.mapValue(attributes, "co.lor").eq("red"))
+				.build();
+		Diagnostic diagnostic = processor.validate(dotted, person);
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getCode())
+						.isEqualTo(MongoQueryProcessor.CODE_INVALID_MAP_KEY));
+		assertThatThrownBy(() -> translate(dotted)).isInstanceOf(QueryException.class);
+
+		Query dollar = QueryBuilder.from(person)
+				.where(Expressions.mapValue(attributes, "$color").eq("red"))
+				.build();
+		assertThat(processor.validate(dollar, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
 	}
 
 	@Test

@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.And;
 import org.eclipse.fennec.model.expression.Arithmetic;
@@ -37,6 +38,8 @@ import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
+import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
@@ -64,6 +67,7 @@ import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.support.QueryAnalysis;
 
@@ -167,8 +171,53 @@ public final class ExpressionAnalyzer {
 				|| features.contains(QueryFeature.GEO_DISTANCE) ? scanGeoStructure(query) : null;
 		String invalidStringMatch = features.contains(QueryFeature.WHERE_STRING_MATCH)
 				? scanStringMatches(query) : null;
+		String invalidMapValue = features.contains(QueryFeature.MAP_VALUE) ? scanMapValues(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
-				invalidSort[0], invalidGeo, invalidStringMatch);
+				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue);
+	}
+
+	/**
+	 * Structural findings for map access (issue #186). Two rules, both contract rather than
+	 * capability — no backend declares its way out of either:
+	 * <ul>
+	 * <li>the path must end in a map, otherwise there is no entry to address;</li>
+	 * <li>the key must be constant — a {@code Literal} or a {@code ParameterRef}. Mongo and
+	 * Lucene turn a map key into a field name, so it has to be knowable when the query is
+	 * translated; a computed key would be a construct only the relational backend could
+	 * serve.</li>
+	 * </ul>
+	 */
+	private static String scanMapValues(Query query) {
+		Iterator<EObject> contents = query.eAllContents();
+		while (contents.hasNext()) {
+			if (contents.next() instanceof MapValue mapValue) {
+				String finding = checkMapValue(mapValue);
+				if (finding != null) {
+					return finding;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static String checkMapValue(MapValue mapValue) {
+		PropertyPath map = mapValue.getMap();
+		if (map == null || map.getSegments().isEmpty()) {
+			return "MapValue carries no map path";
+		}
+		EStructuralFeature last = map.getSegments().get(map.getSegments().size() - 1);
+		if (!EMaps.isMap(last)) {
+			return "MapValue addresses '" + last.getName() + "', which is not a map"
+					+ " (a map is a containment-many reference to a Map.Entry class)";
+		}
+		Expression key = mapValue.getKey();
+		if (!(key instanceof Literal) && !(key instanceof ParameterRef)) {
+			return "MapValue key must be a literal or a parameter, was "
+					+ (key == null ? "absent" : key.eClass().getName())
+					+ " — a map key becomes a field name on document and search backends,"
+					+ " so it has to be known when the query is translated";
+		}
+		return null;
 	}
 
 	/**
@@ -365,6 +414,12 @@ public final class ExpressionAnalyzer {
 					: QueryFeature.COLLECTION_COUNT_FILTERED);
 			path(count.getSource(), features, maxDepth);
 			walk(count.getPredicate(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof MapValue mapValue) {
+			// addressing one entry of a map by key (issue #186) — the map navigation counts
+			// as an ordinary path, the key is walked so a ParameterRef in it is declared
+			features.add(QueryFeature.MAP_VALUE);
+			path(mapValue.getMap(), features, maxDepth);
+			walk(mapValue.getKey(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof TypeCheck typeCheck) {
 			features.add(QueryFeature.TYPE_CHECK);
 			if (typeCheck.getSource() != null) {

@@ -633,6 +633,19 @@ public enum QueryFeature implements Enumerator {
 	GEO_DISTANCE(77, "GEO_DISTANCE", "GEO_DISTANCE"),
 
 	/**
+	 * The '<em><b>MAP VALUE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Addressing one entry of a map by its key (v2 IR MapValue - issue #186). JPA renders a correlated subselect over the entry table, Mongo the field path into the stored sub-document. Backend-wide by definition (contract 5a, issue #161): declaring it means the backend serves map access somewhere natively; whether a concrete map feature is served follows from that feature's mapping and is validate()'s answer with a Diagnostic. The Lucene case - only a keyed mapping strategy can serve it, NESTED and EMBED cannot - is that same feature-and-mapping axis, not a finer declaration surface. The key must be constant (Literal or ParameterRef), which is contract rather than capability: no backend declares its way out of it.
+	 * <!-- end-model-doc -->
+	 * @see #MAP_VALUE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	MAP_VALUE(78, "MAP_VALUE", "MAP_VALUE"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1342,6 +1355,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int GEO_DISTANCE_VALUE = 77;
 
 	/**
+	 * The '<em><b>MAP VALUE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Addressing one entry of a map by its key (v2 IR MapValue - issue #186). JPA renders a correlated subselect over the entry table, Mongo the field path into the stored sub-document. Backend-wide by definition (contract 5a, issue #161): declaring it means the backend serves map access somewhere natively; whether a concrete map feature is served follows from that feature's mapping and is validate()'s answer with a Diagnostic. The Lucene case - only a keyed mapping strategy can serve it, NESTED and EMBED cannot - is that same feature-and-mapping axis, not a finer declaration surface. The key must be constant (Literal or ParameterRef), which is contract rather than capability: no backend declares its way out of it.
+	 * <!-- end-model-doc -->
+	 * @see #MAP_VALUE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int MAP_VALUE_VALUE = 78;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1465,6 +1492,7 @@ public enum QueryFeature implements Enumerator {
 			SCORE,
 			GEO_WITHIN,
 			GEO_DISTANCE,
+			MAP_VALUE,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1572,6 +1600,7 @@ public enum QueryFeature implements Enumerator {
 			case SCORE_VALUE: return SCORE;
 			case GEO_WITHIN_VALUE: return GEO_WITHIN;
 			case GEO_DISTANCE_VALUE: return GEO_DISTANCE;
+			case MAP_VALUE_VALUE: return MAP_VALUE;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

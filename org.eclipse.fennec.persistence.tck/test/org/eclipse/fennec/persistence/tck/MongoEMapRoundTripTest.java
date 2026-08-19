@@ -28,7 +28,12 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
+import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -184,6 +189,32 @@ class MongoEMapRoundTripTest {
 		EMap<Object, Object> reloaded = map(loaded, "attributes");
 		assertThat(reloaded).as("one key, one entry").hasSize(1);
 		assertThat(reloaded.get("color")).isEqualTo("blue");
+	}
+
+	/**
+	 * The end-to-end proof for {@code MapValue} (issue #186): a map that really is stored as a
+	 * sub-document, queried by one entry. The translation tests pin the BSON; this pins that
+	 * the BSON matches what the write path produced — the two halves that drift apart when
+	 * only one of them is tested.
+	 */
+	@Test
+	void mapValueQueriesOneEntry() throws Exception {
+		EObject red = model.newCatalog("c1", "Spring");
+		map(red, "attributes").put("color", "red");
+		save(red);
+		EObject blue = model.newCatalog("c2", "Summer");
+		map(blue, "attributes").put("color", "blue");
+		save(blue);
+
+		Query query = QueryBuilder.from(model.catalogClass)
+				.where(Expressions.mapValue(model.attributes, "color").eq("red"))
+				.build();
+		QueryableResource resource = (QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = resource.query(query)) {
+			assertThat(result.objects()
+					.map(catalog -> catalog.eGet(model.catalogClass.getEStructuralFeature("cid"))))
+					.containsExactly("c1");
+		}
 	}
 
 	// ------------------------------------------------------------------ helpers

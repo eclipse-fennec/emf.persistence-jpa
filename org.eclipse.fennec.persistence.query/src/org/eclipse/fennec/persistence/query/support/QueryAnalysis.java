@@ -37,6 +37,7 @@ public final class QueryAnalysis {
 	private final String invalidSort;
 	private final String invalidGeo;
 	private final String invalidStringMatch;
+	private final String invalidMapValue;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -125,6 +126,26 @@ public final class QueryAnalysis {
 	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
 			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort, String invalidGeo,
 			String invalidStringMatch) {
+		this(features, maxFeaturePathDepth, shape, divisionByLiteralZero, invalidAggregate, invalidSort,
+				invalidGeo, invalidStringMatch, null);
+	}
+
+	/**
+	 * Creates an analysis result including the static structural verdicts.
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 * @param divisionByLiteralZero whether any DIV/MOD divides by a literal zero
+	 * @param invalidAggregate the malformed-aggregate finding (issue #87), or {@code null}
+	 * @param invalidSort the malformed-sort finding (issue #102), or {@code null}
+	 * @param invalidGeo the malformed-geo finding (issue #101), or {@code null}
+	 * @param invalidStringMatch the malformed-string-match finding (issue #167), or {@code null}
+	 * @param invalidMapValue the malformed-map-access finding (issue #186), or {@code null}
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
+			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort, String invalidGeo,
+			String invalidStringMatch, String invalidMapValue) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
@@ -135,6 +156,7 @@ public final class QueryAnalysis {
 		this.invalidSort = invalidSort;
 		this.invalidGeo = invalidGeo;
 		this.invalidStringMatch = invalidStringMatch;
+		this.invalidMapValue = invalidMapValue;
 	}
 
 	/**
@@ -209,6 +231,15 @@ public final class QueryAnalysis {
 	 */
 	public String invalidStringMatch() {
 		return invalidStringMatch;
+	}
+
+	/**
+	 * @return the malformed-map-access finding — a {@code MapValue} whose path does not end
+	 *         in a map, or whose key is not constant (issue #186) — or {@code null} if every
+	 *         map access is well-formed
+	 */
+	public String invalidMapValue() {
+		return invalidMapValue;
 	}
 
 	@Override

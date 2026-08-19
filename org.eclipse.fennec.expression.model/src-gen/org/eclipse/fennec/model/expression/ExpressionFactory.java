@@ -359,6 +359,15 @@ public interface ExpressionFactory extends EFactory {
 	IndexOf createIndexOf();
 
 	/**
+	 * Returns a new object of class '<em>Map Value</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Map Value</em>'.
+	 * @generated
+	 */
+	MapValue createMapValue();
+
+	/**
 	 * Returns a new object of class '<em>Collection Count</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

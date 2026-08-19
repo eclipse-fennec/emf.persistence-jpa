@@ -71,6 +71,12 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_STRING_MATCH = 7;
 
+	/**
+	 * Diagnostic code: a {@code MapValue} whose path does not end in a map, or whose key is
+	 * not a literal or parameter (issue #186).
+	 */
+	public static final int CODE_INVALID_MAP_VALUE = 8;
+
 	private QueryValidator() {
 	}
 
@@ -144,6 +150,12 @@ public final class QueryValidator {
 		if (analysis.invalidStringMatch() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_STRING_MATCH,
 					analysis.invalidStringMatch() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+
+		if (analysis.invalidMapValue() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_MAP_VALUE,
+					analysis.invalidMapValue() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 
