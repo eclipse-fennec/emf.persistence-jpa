@@ -1,7 +1,8 @@
 # Conformance and capabilities — the persistence contract
 
 **Status:** target picture, approved 2026-08-13; third category and declaration surface added
-2026-08-14 (§2C, §5a). Partly implemented since: §4a and §4b describe shipped behaviour
+2026-08-14 (§2C, §5a); the four remaining boundary decisions frozen 2026-08-19 (§9, #171).
+Partly implemented since: §4a and §4b describe shipped behaviour
 (#138–#140, #150), the declaration surface of §5a exists as its own bundle with
 `PersistenceResource.capabilities()` as its carrier, and the `backend × flavor` matrix of §6 runs
 in CI (§10 records what is done and what is left). Defines what a Fennec
@@ -125,13 +126,24 @@ produces a contract statement plus an asserting test.
 
 | Capability | Why store-dependent |
 |---|---|
-| Geospatial | needs real geo indexes and operators; splits further — a bounding box is not 2dsphere |
+| Geospatial | needs real geo indexes and operators; one grain today (`GEO_WITHIN`, `GEO_DISTANCE`), no bounding box below it until a backend has box-only power (§9.3) |
 | Transaction bracket | the PostgreSQL wire gateways provably cannot; MongoDB needs a replica set |
 | Aggregation / pipeline | genuinely absent or crippled on some stores |
 | Full-text / score | index-dependent |
-| Streaming / cursors | server-side cursor support varies |
+| Streaming | `stream()` and `pushStream` themselves are a capability (§9.4); `SERVER_CURSORS` is the separate question of the result's lifetime (§5a) |
 | Index (future) | see §7 |
-| Query expression vocabulary | the `QueryFeature` set, granular (§5) |
+| Query expression vocabulary | the `QueryFeature` set, granular (§5) — including the four that look like translator gaps (§9.1) |
+
+### Out of contract
+
+Neither core, nor capability, nor form divergence: the contract makes no statement about the
+item at all, and no backend may pretend otherwise. Declared here so that "unmapped" is a
+decision on record rather than a hole nobody named.
+
+| Item | What holds instead |
+|---|---|
+| `EMap` | no mapping on either backend; an `EMap`-typed feature must be **refused with a diagnostic** at mapping time, never silently dropped or flattened (§9.2) |
+| Feature maps | same, for the same reason (§9.2) |
 
 ### The seven hooks, sorted
 
@@ -476,32 +488,117 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
   subtype through a supertype resource.
 - **`eUnset` / unsettable features** only via `commandUpdateUnsetClearsTheValue`, i.e. the
   command path, not the EMF write path.
-- **Untested entirely:** `EMap`, containment order preservation, object identity across
+- **Untested entirely:** containment order preservation, object identity across
   repeated loads, default values, `resolveProxies=false` (which must *forbid* cross-resource
-  containment), abstract/interface types, `EcoreUtil.delete` inverse cleanup, feature maps.
+  containment), abstract/interface types, `EcoreUtil.delete` inverse cleanup.
 
-## 9. Open decisions
+`EMap` and feature maps were on that last line until §9.2 put them out of contract. What they
+owe the suite now is not a round trip but a refusal: a model carrying such a feature must fail
+mapping with a diagnostic naming it.
 
-Decided since, and moved out of this list: the third category (§2C, form divergence) and the
-declaration surface with its naming, its two levels and Java-versus-XMI (§5a) — both
-2026-08-14. What remains:
+## 9. The boundary, frozen
 
-1. **Query-vocabulary capabilities.** `TYPE_CHECK`/`TYPE_CAST`, `SORT_EXPRESSION`,
-   `EXPAND`, `COLLECTION_COUNT_FILTERED` are gated as capabilities above (since #160 via
-   `@RequiresCapabilities`, no longer as `supports*()` hooks). Arguable: they are not store
-   limits so much as translator gaps, and a translator gap is a defect. Deciding them as
-   core would put real pressure on both backends.
-2. **`EMap` and feature maps in core.** Both are EMF semantics, so core by the §2 test —
-   but neither has a mapping today, which makes this the most expensive single item.
-3. **Geo capability split.** Where exactly: `GEO_WITHIN`/`GEO_DISTANCE` exist; is a
-   bounding box its own capability below 2dsphere?
-4. **Streaming as capability or core.** `stream()` and `pushStream` are tested today
-   without gating, i.e. de facto core, but they hand out EObjects attached to no resource —
-   which needs a contract statement either way.
+Six decisions stood open on 2026-08-13. Two were settled by the work itself — composite ids
+are core (§3, the hook retired with #160) and capability narrowing is `validate()`'s job, not a
+declarable axis (§5a, #161) — and two more were settled on 2026-08-14: the third category (§2C)
+and the declaration surface with its naming, its two levels and Java-versus-XMI (§5a). The four
+below were decided on **2026-08-19 (#171)**, and with them §3 is closed: an item is core, a
+capability, form, or out of contract, and there is no fifth drawer.
+
+### 9.1 The four query-vocabulary features stay capabilities
+
+`TYPE_CHECK`/`TYPE_CAST`, `SORT_EXPRESSION`, `EXPAND` and `COLLECTION_COUNT_FILTERED` remain
+declarable, as `@RequiresCapabilities` already has them since #160. No code changes.
+
+The counter-argument was serious: these read as translator gaps rather than store limits, and a
+translator gap is a defect that a capability flag lets a backend keep. What settles it is the §2
+test — *could a mature, well-implemented backend on a capable store reasonably say no?* — and
+since #160 there is a live example that answers yes. The Lucene backend refuses `EXPAND` and
+`SORT_EXPRESSION` **by design**: an inverted index has no join to expand across and no evaluator
+to sort by a computed expression. Declaring these core would not put pressure on a lagging
+translator, it would declare an honest search backend non-conformant for being what it is.
+
+That the same literal is a deliberate refusal on one backend and an unfinished translator on
+another is not the contract's problem to solve. The contract's job is that the answer is
+declared, and refused with a diagnostic when it is not — which is the same obligation in both
+cases. Whether *our* two backends should close their gaps is a roadmap question, tracked as
+ordinary issues, not a conformance question.
+
+### 9.2 `EMap` and feature maps are out of contract
+
+Both are EMF semantics, so the §2 test says core. They are nevertheless declared **out of
+contract**, with the reason stated rather than implied: neither backend has a mapping for either
+— grep finds no `MapEntry`, no `EcoreEMap`, no map handling anywhere in the orm, eclipselink or
+mongo mapping code — none is designed, and making them core would make both backends
+non-conformant on the day the decision lands, for a construct nothing in the workspace's models
+uses. Core is meant to be the part every backend already honours; a core item nobody implements
+devalues every other row of §3.
+
+Note what "no mapping" means here, because it is worse than a gap: an `EMap` feature is, in
+Ecore, a containment-many reference to a map-entry `EClass`, so it does not fail — it falls
+through the generic reference path and produces *something*, unmeasured, on both backends. That
+is exactly the silent-plausible-answer failure §5 forbids.
+
+Out of contract is *not* permission to mishandle them. The obligation is §5's, unchanged:
+**refuse, never lie.** A model with an `EMap`-typed or feature-map-typed feature must fail at
+mapping time with a diagnostic naming the feature, not silently drop it, flatten it into a
+string, or persist half of it. That refusal is what makes this decision reversible: whoever
+needs `EMap` finds a clear error and a documented boundary, not a corrupt round trip.
+
+The suite consequence (§8) is therefore a refusal test, not a round trip. If a mapping is ever
+built, the item moves to core — the contract does not lose the semantics, it declines to claim
+them before they exist.
+
+### 9.3 Geo keeps one grain until a backend forces a second
+
+`GEO_WITHIN` and `GEO_DISTANCE` stay as they are; a bounding box does **not** become a separate
+capability below 2dsphere. Every declaring flavor today has both or neither, so a finer grain
+would be a distinction no declaration can express differently from its neighbour — untestable in
+the "not declared → refused" direction, which §2B requires of every capability.
+
+The general rule this instance follows: **a capability is split when a backend exists that can
+answer the halves differently**, not in anticipation of one. Splitting early produces flags whose
+two states are never both observed, and those are the flags that quietly go wrong. When a
+box-only backend appears, the split is additive — a new literal, the existing declarers gaining
+it, no consumer breakage — which is precisely why it costs nothing to wait.
+
+### 9.4 Streaming is a capability, with a contract statement about what it hands out
+
+`stream()` and `pushStream` become a declarable capability (`StoreFeature.STREAMING`), not core.
+Server-side cursor support genuinely varies, `StreamingResource` is already written as an
+optional role a resource may or may not implement, and a backend that must materialise a full
+result set to iterate it should say so rather than pretend to stream. Both of our backends
+declare it — the capability is not an escape hatch here, it is an honest name for a role that
+was optional in the type system and mandatory in the suite.
+
+`SERVER_CURSORS` (§5a) is a different question and stays separate: `STREAMING` says the role
+exists, `SERVER_CURSORS` says what the result's lifetime is.
+
+**What a streamed object is, stated once and binding on every backend that declares it:**
+
+- Streamed objects are handed out **detached**. They are not added to
+  `Resource.getContents()`, and a consumer must not ask a streamed object which resource it
+  belongs to — that answer is not part of the contract.
+- Their references follow the ordinary contract: non-containment references are EMF proxies that
+  resolve through the `ResourceSet`, containment children come with the object.
+- The stream owns backend resources and **must be closed** by the caller; a backend may hold a
+  cursor, a lease or a connection open for its lifetime.
+- Mutating a streamed object writes nothing. Persisting it means adding it to a resource and
+  saving that resource, like any other object.
+
+The implementation work — the `STREAMING` literal, gating the two TCK cases, both declarations,
+and the refusal direction for a backend that does not implement `StreamingResource` — is
+follow-up, not part of this decision (§10.1).
 
 ## 10. Getting there
 
-1. Freeze the boundary — §3 and the four decisions in §9.
+1. Freeze the boundary — §3 and the four decisions in §9. **Done** (#171, 2026-08-19): query
+   vocabulary stays capability, `EMap`/feature maps are out of contract, geo keeps one grain,
+   streaming becomes a capability. Three of the four confirm what the code already does and cost
+   nothing; the two that produce work are §9.2 (a refusal test, plus the mapping-time diagnostic
+   if it is not already there) and §9.4 (the `STREAMING` literal, gating the two streaming TCK
+   cases, and both declarations). Those are follow-up work, not part of this step — the point of
+   step 1 is that §3 no longer has an open drawer, not that everything it implies is built.
 2. Introduce the declaration surface of §5a with core items *absent by construction*. **Done**:
    `query-api.ecore` split by role into the new `org.eclipse.fennec.persistence.capabilities`
    bundle, `PersistenceCapabilities` and `StoreCapabilities` added, `TRANSACTION_BRACKET` moved
