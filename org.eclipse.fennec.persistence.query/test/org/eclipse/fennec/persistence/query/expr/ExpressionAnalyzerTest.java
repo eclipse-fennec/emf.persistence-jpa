@@ -76,6 +76,7 @@ class ExpressionAnalyzerTest {
 	private EAttribute age;
 	private EReference addresses;
 	private EAttribute street;
+	private EReference attributes;
 
 	@BeforeEach
 	void setUp() {
@@ -97,6 +98,25 @@ class ExpressionAnalyzerTest {
 		street.setName("street");
 		street.setEType(EcorePackage.Literals.ESTRING);
 		address.getEStructuralFeatures().add(street);
+
+		// an EMap (issue #186)
+		EClass entry = ecore.createEClass();
+		entry.setName("StringToStringMapEntry");
+		entry.setInstanceClassName("java.util.Map$Entry");
+		EAttribute key = ecore.createEAttribute();
+		key.setName("key");
+		key.setEType(EcorePackage.Literals.ESTRING);
+		entry.getEStructuralFeatures().add(key);
+		EAttribute value = ecore.createEAttribute();
+		value.setName("value");
+		value.setEType(EcorePackage.Literals.ESTRING);
+		entry.getEStructuralFeatures().add(value);
+		attributes = ecore.createEReference();
+		attributes.setName("attributes");
+		attributes.setEType(entry);
+		attributes.setUpperBound(-1);
+		attributes.setContainment(true);
+		person.getEStructuralFeatures().add(attributes);
 
 		addresses = ecore.createEReference();
 		addresses.setName("addresses");
@@ -126,6 +146,36 @@ class ExpressionAnalyzerTest {
 		IntegerLiteral literal = expr.createIntegerLiteral();
 		literal.setValue(value);
 		return literal;
+	}
+
+	/**
+	 * Map access is one feature and two contract rules (issue #186): the path has to end in a
+	 * map and the key has to be constant. Both are structural findings rather than
+	 * capabilities — no backend declares its way out of them.
+	 */
+	@Test
+	void mapAccessIsAFeatureWithTwoStructuralRules() {
+		QueryAnalysis wellFormed = ExpressionAnalyzer.analyze(query(
+				Expressions.mapValue(attributes, "color").eq("red")));
+		assertThat(wellFormed.features()).contains(QueryFeature.MAP_VALUE);
+		assertThat(wellFormed.invalidMapValue()).isNull();
+
+		QueryAnalysis notAMap = ExpressionAnalyzer.analyze(query(
+				Expressions.mapValue(Expressions.propertyPath(addresses), "color").eq("red")));
+		assertThat(notAMap.invalidMapValue()).contains("addresses").contains("not a map");
+
+		QueryAnalysis computedKey = ExpressionAnalyzer.analyze(query(
+				Expressions.mapValue(Expressions.propertyPath(attributes),
+						Expressions.propertyPath(name)).eq("red")));
+		assertThat(computedKey.invalidMapValue()).contains("literal or a parameter");
+	}
+
+	@Test
+	void mapAccessAcceptsABoundParameterAsKey() {
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query(
+				Expressions.mapValue(attributes, Expressions.param("key")).eq("red")));
+		assertThat(analysis.invalidMapValue()).isNull();
+		assertThat(analysis.features()).contains(QueryFeature.MAP_VALUE, QueryFeature.PARAMETERS);
 	}
 
 	private Query query(Expression predicate) {

@@ -36,6 +36,7 @@ import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.NullLiteral;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
@@ -44,6 +45,7 @@ import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.api.TypeConverter;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.query.QueryException;
 
 /**
@@ -59,6 +61,25 @@ import org.eclipse.fennec.persistence.query.QueryException;
 public final class ExpressionValues {
 
 	private ExpressionValues() {
+	}
+
+	/**
+	 * The feature a value expression compares against — the typing target for literals on the
+	 * other side. A {@code MapValue} types against the map's <em>value</em> feature (issue
+	 * #186), so {@code attributes['color'] = 'red'} converts the literal exactly as
+	 * {@code name = 'red'} would.
+	 *
+	 * @param expression the expression; may be {@code null}
+	 * @return the target feature, or {@code null} when the expression addresses none
+	 */
+	public static EStructuralFeature targetFeature(Expression expression) {
+		if (expression instanceof PropertyPath path) {
+			return targetFeature(path);
+		}
+		if (expression instanceof MapValue mapValue) {
+			return EMaps.valueFeature(EMaps.entryClass(targetFeature(mapValue.getMap())));
+		}
+		return null;
 	}
 
 	/**

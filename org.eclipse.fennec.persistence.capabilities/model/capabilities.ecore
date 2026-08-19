@@ -247,6 +247,11 @@
         <details key="documentation" value="GeoDistance — the spherical WGS84 distance in meters as a value expression (issue #101, decision G3): composes with comparisons and the issue-#84 sort seam (nearest first). Reference: haversine over the mean earth radius; conformance banded per decision G5."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="MAP_VALUE" value="78">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Addressing one entry of a map by its key (v2 IR MapValue - issue #186). JPA renders a correlated subselect over the entry table, Mongo the field path into the stored sub-document. Backend-wide by definition (contract 5a, issue #161): declaring it means the backend serves map access somewhere natively; whether a concrete map feature is served follows from that feature's mapping and is validate()'s answer with a Diagnostic. The Lucene case - only a keyed mapping strategy can serve it, NESTED and EMBED cannot - is that same feature-and-mapping axis, not a finer declaration surface. The key must be constant (Literal or ParameterRef), which is contract rather than capability: no backend declares its way out of it."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="FEATUREPATH_NESTED" value="80">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="where/sort/projection over a multi-segment FeaturePath (join)."/>

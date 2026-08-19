@@ -188,6 +188,10 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//MapValue">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//MapValue/map"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//MapValue/key"/>
+    </genClasses>
     <genClasses ecoreClass="expression.ecore#//CollectionCount">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/variable"/>

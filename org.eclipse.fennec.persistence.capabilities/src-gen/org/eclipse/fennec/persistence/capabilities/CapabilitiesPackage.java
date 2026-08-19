@@ -40,7 +40,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = CapabilitiesPackage.eNS_URI, fingerprint = "fp1:51d78785c64fb23c79d20ba078644bac421b1ef30bdcf89c32c2d745e2a47264", genModel = "/model/capabilities.genmodel", genModelSourceLocations = {"model/capabilities.genmodel","org.eclipse.fennec.persistence.capabilities/model/capabilities.genmodel"}, ecore = "/model/capabilities.ecore", ecoreSourceLocations = "/model/capabilities.ecore")
+@EPackage(uri = CapabilitiesPackage.eNS_URI, fingerprint = "fp1:49cd2d8267b8d649e9171dfa5ea007d0f976c0bc770333b6ea1314dc747a9b5c", genModel = "/model/capabilities.genmodel", genModelSourceLocations = {"model/capabilities.genmodel","org.eclipse.fennec.persistence.capabilities/model/capabilities.genmodel"}, ecore = "/model/capabilities.ecore", ecoreSourceLocations = "/model/capabilities.ecore")
 public interface CapabilitiesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.

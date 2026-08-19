@@ -42,6 +42,7 @@ import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
@@ -69,6 +70,7 @@ import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -128,7 +130,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.PROJECTION, QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY,
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
-					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
+					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED, QueryFeature.MAP_VALUE,
 					QueryFeature.EXPAND)
 			.maxFeaturePathDepth(-1)
 			.build();
@@ -735,6 +737,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 				return "(SELECT COUNT(" + alias + ") FROM " + collection + " " + alias
 						+ " WHERE " + predicate + ")";
 			}
+			if (expression instanceof MapValue mapValue) {
+				// a map is an entry table here (contract §9.2), so one entry is a correlated
+				// subselect keyed on the entry's key column — the same shape the filtered
+				// CollectionCount above uses, projecting value instead of counting
+				return mapValueSubselect(mapValue);
+			}
 			if (expression instanceof NumericFunction numericFunction) {
 				String inner = operand(numericFunction.getSource(), target);
 				return switch (numericFunction.getKind()) {
@@ -800,7 +808,33 @@ public class JpaQueryProcessor implements QueryProcessor {
 			return alias;
 		}
 
+		/**
+		 * {@code (SELECT e.value FROM <owner>.<map> e WHERE e.key = :p)} — the entry-table
+		 * rendering of a map access (issue #186). The key is bound as a parameter like every
+		 * other value; it is constant by contract, which the analyzer has already enforced.
+		 */
+		private String mapValueSubselect(MapValue mapValue) throws QueryException {
+			PropertyPath map = mapValue.getMap();
+			EClass entryClass = EMaps.entryClass(ExpressionValues.targetFeature(map));
+			if (entryClass == null) {
+				throw new QueryException("MapValue does not address a map: "
+						+ pathFrom(ALIAS, map));
+			}
+			EStructuralFeature keyFeature = EMaps.keyFeature(entryClass);
+			EStructuralFeature valueFeature = EMaps.valueFeature(entryClass);
+			Object key = ExpressionValues.resolve(mapValue.getKey(), keyFeature, context.parameters(),
+					context.converter());
+			String base = map.getBase() == null ? ALIAS : alias(map.getBase());
+			String alias = "me" + aliasCounter++;
+			return "(SELECT " + alias + "." + valueFeature.getName() + " FROM " + pathFrom(base, map)
+					+ " " + alias + " WHERE " + alias + "." + keyFeature.getName() + " = " + bind(key) + ")";
+		}
+
 		private EStructuralFeature targetOf(Expression left, Expression right) {
+			if (left instanceof MapValue || right instanceof MapValue) {
+				// a map access types its peer literal against the map's value feature
+				return ExpressionValues.targetFeature(left instanceof MapValue ? left : right);
+			}
 			if (left instanceof PropertyPath path) {
 				return ExpressionValues.targetFeature(path);
 			}

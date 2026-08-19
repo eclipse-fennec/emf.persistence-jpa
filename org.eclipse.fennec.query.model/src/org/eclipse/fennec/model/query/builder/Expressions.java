@@ -54,6 +54,7 @@ import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
@@ -611,6 +612,41 @@ public final class Expressions {
 		return new ArithmeticStep(count);
 	}
 
+	// ==================== map access ====================
+
+	/**
+	 * The value of one map entry, addressed by key (issue #186) — {@code attributes['color']}.
+	 * Usable wherever a value is: as a comparison subject, as a sort key, as an aggregate
+	 * source.
+	 * <p>
+	 * The key is a constant by contract, not by convenience: a map is a sub-document keyed by
+	 * the map key on document and search backends, so the key is part of the field name and
+	 * has to be known when the query is translated. Pass a value (auto-boxed to a literal) or
+	 * a {@code parameter(...)}.
+	 *
+	 * @param map the navigation to the map feature, last segment an EMap
+	 * @param key the entry key — a literal value or a parameter reference
+	 * @return a step over the entry's value
+	 */
+	public static ArithmeticStep mapValue(PropertyPath map, Object key) {
+		MapValue mapValue = FACTORY.createMapValue();
+		mapValue.setMap(Objects.requireNonNull(map, "map path must not be null"));
+		mapValue.setKey(value(Objects.requireNonNull(key, "map key must not be null")));
+		return new ArithmeticStep(mapValue);
+	}
+
+	/**
+	 * The value of one map entry on a single map feature — the common shape of
+	 * {@link #mapValue(PropertyPath, Object)}.
+	 *
+	 * @param map the map feature
+	 * @param key the entry key — a literal value or a parameter reference
+	 * @return a step over the entry's value
+	 */
+	public static ArithmeticStep mapValue(EStructuralFeature map, Object key) {
+		return mapValue(propertyPath(map), key);
+	}
+
 	// ==================== numeric functions ====================
 
 	/** @param source the numeric operand (auto-boxed)
@@ -1158,6 +1194,21 @@ public final class Expressions {
 
 		private ArithmeticStep(Expression expression) {
 			this.expression = expression;
+		}
+
+		/** @return an IS NULL check over this value (issue #186 made it reachable for maps) */
+		public IsNull isNull() {
+			IsNull check = FACTORY.createIsNull();
+			check.setSource(expression);
+			return check;
+		}
+
+		/** @return an IS NOT NULL check over this value */
+		public IsNull isNotNull() {
+			IsNull check = FACTORY.createIsNull();
+			check.setSource(expression);
+			check.setNegated(true);
+			return check;
 		}
 
 		/** @return the underlying arithmetic expression */

@@ -359,6 +359,23 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="predicate" eType="#//Expression"
         containment="true"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MapValue" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Value of one map entry, addressed by its key (issue #186). map addresses an EMap feature - in Ecore a containment-many reference to an entry class with key and value features - and key selects the entry. The key must be a Literal or a ParameterRef, never a computed expression: Mongo and Lucene turn a map key into a field name, so it has to be knowable when the query is translated, and an IR construct only one backend could serve would be a capability trap. JPA renders a correlated subselect over the entry table (SELECT e.value ... WHERE e.key = ?); Mongo the field path map.key into the stored sub-document. Refused with a diagnostic when the path does not end in a map or the key is not constant."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="map" lowerBound="1"
+        eType="#//PropertyPath" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Navigation to the map feature; the last segment must be an EMap."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="key" lowerBound="1"
+        eType="#//Expression" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The entry key - a Literal or a ParameterRef, so the key is known at translation time."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TypeCheck" eSuperTypes="#//Expression">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Type test with kind-of semantics (issue #80; OData isof, OCL oclIsKindOf): true when the subject's EClass is the given type or one of its subtypes. Unset source = the query root. JPA renders TYPE(x) IN (concrete subtypes by entity name) — the dynamic Java classes are deliberately flat, entity names sidestep Java assignability; Mongo refuses via capability until documents carry a type discriminator."/>

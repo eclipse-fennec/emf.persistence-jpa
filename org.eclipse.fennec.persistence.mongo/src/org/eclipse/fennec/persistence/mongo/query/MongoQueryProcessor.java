@@ -50,6 +50,7 @@ import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
@@ -83,6 +84,7 @@ import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoFlavorCapabilities;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryConstants;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
 import org.eclipse.fennec.persistence.query.api.QueryPlan;
@@ -144,6 +146,14 @@ public class MongoQueryProcessor implements QueryProcessor {
 	/** Diagnostic code: {@code distinct} without a projection. */
 	public static final int CODE_DISTINCT_WITHOUT_PROJECTION = 101;
 
+	/**
+	 * Diagnostic code: a map key that cannot be a BSON field name (issue #186). A map is
+	 * stored as a sub-document keyed by the map key, so {@code .} and a leading {@code $}
+	 * are field-name syntax — storing them would need an escaping scheme the contract does
+	 * not define (§9.2), and querying them silently addresses something else.
+	 */
+	public static final int CODE_INVALID_MAP_KEY = 102;
+
 	private final MongoFlavor flavor;
 	private final QueryCapabilities capabilities;
 
@@ -203,6 +213,16 @@ public class MongoQueryProcessor implements QueryProcessor {
 								+ "' is not an embedded (containment) collection — $elemMatch cannot apply",
 						new Object[] { quantifier }));
 			}
+			if (content instanceof MapValue mapValue) {
+				String key = mapKeyOrNull(mapValue, null);
+				if (key != null && (key.indexOf('.') >= 0 || key.startsWith("$"))) {
+					result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
+							CODE_INVALID_MAP_KEY,
+							"Map key '" + key + "' cannot be a BSON field name — '.' and a leading '$'"
+									+ " are field-name syntax on this backend",
+							new Object[] { mapValue }));
+				}
+			}
 		});
 		if (query.isDistinct() && query.getSelect().isEmpty()) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
@@ -253,12 +273,12 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return comparison(comparison, comparison.getOperator(), context);
 		}
 		if (expression instanceof IsNull isNull) {
-			String field = field(isNull.getSource());
+			String field = field(isNull.getSource(), context);
 			return guarded(isNull.isNegated() ? Filters.ne(field, null) : Filters.eq(field, null),
 					isNull.getSource(), context);
 		}
 		if (expression instanceof Between between) {
-			String field = field(between.getSource());
+			String field = field(between.getSource(), context);
 			EStructuralFeature target = targetOf(between.getSource());
 			Object lower = value(between.getLower(), target, context);
 			Object upper = value(between.getUpper(), target, context);
@@ -268,7 +288,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 					between.getSource(), context);
 		}
 		if (expression instanceof In in) {
-			String field = field(in.getSource());
+			String field = field(in.getSource(), context);
 			EStructuralFeature target = targetOf(in.getSource());
 			List<Object> values = new ArrayList<>(in.getValues().size());
 			for (Expression candidate : in.getValues()) {
@@ -322,11 +342,12 @@ public class MongoQueryProcessor implements QueryProcessor {
 			Object bound = value(comparison.getRight(), null, context);
 			return fieldComparison(aliasRef.getAlias(), operator, bound);
 		}
-		boolean plain = comparison.getLeft() instanceof PropertyPath && rightIsValue;
+		boolean plain = (comparison.getLeft() instanceof PropertyPath
+				|| comparison.getLeft() instanceof MapValue) && rightIsValue;
 		if (!plain) {
 			return exprComparison(comparison, operator, context);
 		}
-		String field = field(comparison.getLeft());
+		String field = field(comparison.getLeft(), context);
 		EStructuralFeature target = targetOf(comparison.getLeft());
 		Object value = value(comparison.getRight(), target, context);
 		return guarded(fieldComparison(field, operator, value), comparison.getLeft(), context);
@@ -366,13 +387,13 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 		if (expression instanceof IsNull isNull) {
 			// the null probe is two-valued — negation just flips it
-			String field = field(isNull.getSource());
+			String field = field(isNull.getSource(), context);
 			return guarded(isNull.isNegated() ? Filters.eq(field, null) : Filters.ne(field, null),
 					isNull.getSource(), context);
 		}
 		if (expression instanceof Between between) {
 			// ¬(l ≤ x ≤ u) → x < l OR x > u — positive operators exclude nulls natively
-			String field = field(between.getSource());
+			String field = field(between.getSource(), context);
 			EStructuralFeature target = targetOf(between.getSource());
 			Object lower = value(between.getLower(), target, context);
 			Object upper = value(between.getUpper(), target, context);
@@ -382,7 +403,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 					between.getSource(), context);
 		}
 		if (expression instanceof In in) {
-			String field = field(in.getSource());
+			String field = field(in.getSource(), context);
 			EStructuralFeature target = targetOf(in.getSource());
 			List<Object> values = new ArrayList<>(in.getValues().size());
 			for (Expression candidate : in.getValues()) {
@@ -399,7 +420,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 		if (expression instanceof StringMatch match) {
 			// $not over a regex matches null/missing — SQL's NOT LIKE over null is UNKNOWN
 			return guarded(Filters.and(Filters.not(match(match, context)),
-					Filters.ne(field(match.getSource()), null)), match.getSource(), context);
+					Filters.ne(field(match.getSource(), context), null)), match.getSource(), context);
 		}
 		if (expression instanceof Quantifier quantifier) {
 			String collection = MongoFieldNames.render(quantifier.getSource());
@@ -466,7 +487,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 	}
 
 	private Bson match(StringMatch match, QueryContext context) throws QueryException {
-		String field = field(match.getSource());
+		String field = field(match.getSource(), context);
 		String pattern = regexPattern(match, context);
 		return match.isCaseInsensitive() ? Filters.regex(field, pattern, "i") : Filters.regex(field, pattern);
 	}
@@ -756,6 +777,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 			// a pipeline output column — plain field, no null guard (issue #82)
 			return "$" + aliasRef.getAlias();
 		}
+		if (expression instanceof MapValue mapValue) {
+			// in an aggregation the same field path, as a field reference
+			return "$" + mapField(mapValue, context);
+		}
 		if (expression instanceof CollectionCount count) {
 			if (count.getSource().getBase() != null) {
 				throw new QueryException("Collection counts inside quantifier predicates are not"
@@ -861,7 +886,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 		return Filters.nor(Filters.elemMatch(collection, Filters.nor(inner)));
 	}
 
-	private String field(Expression expression) throws QueryException {
+	private String field(Expression expression, QueryContext context) throws QueryException {
+		if (expression instanceof MapValue mapValue) {
+			return mapField(mapValue, context);
+		}
 		if (!(expression instanceof PropertyPath path)) {
 			throw new QueryException("The mongo backend requires a property path on the comparison's left side, was "
 					+ expression.eClass().getName());
@@ -869,8 +897,44 @@ public class MongoQueryProcessor implements QueryProcessor {
 		return MongoFieldNames.render(path);
 	}
 
+	/**
+	 * {@code attributes.color} — a map is a sub-document keyed by the map key here (contract
+	 * §9.2), so addressing one entry is a field path and nothing else. That is why the key has
+	 * to be constant (issue #186): it is part of the field name, not a runtime value.
+	 */
+	private String mapField(MapValue mapValue, QueryContext context) throws QueryException {
+		String key = mapKeyOrNull(mapValue, context);
+		if (key == null) {
+			throw new QueryException("MapValue key does not resolve to a field name");
+		}
+		if (key.indexOf('.') >= 0 || key.startsWith("$")) {
+			throw new QueryException("Map key '" + key + "' cannot be a BSON field name —"
+					+ " '.' and a leading '$' are field-name syntax on this backend");
+		}
+		return MongoFieldNames.render(mapValue.getMap()) + "." + key;
+	}
+
+	/**
+	 * The stored form of a map key, or {@code null} when it cannot be determined — an unbound
+	 * parameter during validation, or a malformed map access the shared analyzer already
+	 * reports (issue #186).
+	 */
+	private String mapKeyOrNull(MapValue mapValue, QueryContext context) {
+		EClass entryClass = EMaps.entryClass(ExpressionValues.targetFeature(mapValue.getMap()));
+		if (entryClass == null) {
+			return null;
+		}
+		try {
+			Object key = ExpressionValues.resolve(mapValue.getKey(), EMaps.keyFeature(entryClass),
+					context == null ? null : context.parameters(), null);
+			return EMaps.renderKey(entryClass, key);
+		} catch (QueryException e) {
+			return null;
+		}
+	}
+
 	private EStructuralFeature targetOf(Expression expression) {
-		return expression instanceof PropertyPath path ? ExpressionValues.targetFeature(path) : null;
+		return ExpressionValues.targetFeature(expression);
 	}
 
 	private Object value(Expression expression, EStructuralFeature target, QueryContext context)

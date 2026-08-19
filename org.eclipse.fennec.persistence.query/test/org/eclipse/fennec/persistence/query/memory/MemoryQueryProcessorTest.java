@@ -28,6 +28,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
+import org.eclipse.emf.common.util.EMap;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
@@ -78,6 +79,8 @@ class MemoryQueryProcessorTest {
 	private EEnum colorEnum;
 	private EAttribute personFavoriteColor;
 	private EReference personAddresses;
+	private EReference personAttributes;
+	private EClass attributeEntryClass;
 	private EAttribute addressStreet;
 	private EPackage ePackage;
 
@@ -169,6 +172,26 @@ class MemoryQueryProcessorTest {
 		personClass.getEStructuralFeatures().add(personLocation);
 		personClass.getEStructuralFeatures().add(personAddresses);
 
+		// an EMap: containment-many onto a Map.Entry class (issue #186). The instance class
+		// name is what makes EMF hand out an EcoreEMap instead of a plain list.
+		attributeEntryClass = ecore.createEClass();
+		attributeEntryClass.setName("StringToStringMapEntry");
+		attributeEntryClass.setInstanceClassName("java.util.Map$Entry");
+		EAttribute entryKey = ecore.createEAttribute();
+		entryKey.setName("key");
+		entryKey.setEType(EcorePackage.Literals.ESTRING);
+		attributeEntryClass.getEStructuralFeatures().add(entryKey);
+		EAttribute entryValue = ecore.createEAttribute();
+		entryValue.setName("value");
+		entryValue.setEType(EcorePackage.Literals.ESTRING);
+		attributeEntryClass.getEStructuralFeatures().add(entryValue);
+		personAttributes = ecore.createEReference();
+		personAttributes.setName("attributes");
+		personAttributes.setEType(attributeEntryClass);
+		personAttributes.setUpperBound(-1);
+		personAttributes.setContainment(true);
+		personClass.getEStructuralFeatures().add(personAttributes);
+
 		ePackage = ecore.createEPackage();
 		ePackage.setName("memtest");
 		ePackage.setNsURI("urn:memoryquery:test");
@@ -177,6 +200,7 @@ class MemoryQueryProcessorTest {
 		ePackage.getEClassifiers().add(personClass);
 		ePackage.getEClassifiers().add(geoPointClass);
 		ePackage.getEClassifiers().add(colorEnum);
+		ePackage.getEClassifiers().add(attributeEntryClass);
 
 		// the TCK query fixture: Alice 30, Bob 40 with two addresses, Carol 50 —
 		// extended with score (double), salary (BigDecimal) and the nullable rank
@@ -186,6 +210,8 @@ class MemoryQueryProcessorTest {
 		alice.eSet(personScore, 7.5d);
 		alice.eSet(personSalary, new BigDecimal("1000.10"));
 		alice.eSet(personFavoriteColor, green.getInstance());
+		attribute(alice, "color", "red");
+		attribute(alice, "size", "L");
 		alice.eSet(lat, 50.927d); // Jena
 		alice.eSet(lon, 11.586d);
 		location(alice, 11.586d, 50.927d);
@@ -196,6 +222,7 @@ class MemoryQueryProcessorTest {
 		bob.eSet(personScore, 3.0d);
 		bob.eSet(personSalary, new BigDecimal("2000.20"));
 		bob.eSet(personRank, 1);
+		attribute(bob, "color", "blue");
 		bob.eSet(lat, 50.880d); // Gera
 		bob.eSet(lon, 12.083d);
 		location(bob, 12.083d, 50.880d);
@@ -226,6 +253,11 @@ class MemoryQueryProcessorTest {
 		EObject address = ePackage.getEFactoryInstance().create(addressClass);
 		address.eSet(addressStreet, street);
 		((List<EObject>) person.eGet(personAddresses)).add(address);
+	}
+
+	@SuppressWarnings("unchecked")
+	private void attribute(EObject person, String key, String value) {
+		((EMap<String, String>) person.eGet(personAttributes)).put(key, value);
 	}
 
 	private List<Object> names(QueryResult result) {
@@ -899,6 +931,51 @@ class MemoryQueryProcessorTest {
 				.build();
 		try (QueryResult result = MemoryQueries.execute(none, persons, null)) {
 			assertThat(names(result)).containsExactlyInAnyOrder("Alice", "Carol");
+		}
+	}
+
+	/**
+	 * Map access is the reference semantics of {@code MapValue} (issue #186): a plain
+	 * {@code EMap.get}. A missing key is null, so the comparison is UNKNOWN and the object is
+	 * excluded — the same three-valued exclusion every other absent value gets, which is what
+	 * the database backends have to reproduce.
+	 */
+	@Test
+	void mapValueAddressesOneEntry() throws QueryException {
+		Query red = QueryBuilder.from(personClass)
+				.where(Expressions.mapValue(personAttributes, "color").eq("red"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(red, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+		Query large = QueryBuilder.from(personClass)
+				.where(Expressions.mapValue(personAttributes, "size").eq("L"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(large, persons, null)) {
+			assertThat(names(result)).containsExactly("Alice");
+		}
+	}
+
+	@Test
+	void mapValueOfAnAbsentKeyExcludesTheObject() throws QueryException {
+		// Bob has no "size" entry and Carol has no attributes at all
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.mapValue(personAttributes, "size").eq("XL"))
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(names(result)).isEmpty();
+		}
+	}
+
+	@Test
+	void mapValueSortsAndProjectsLikeAnyValue() throws QueryException {
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.mapValue(personAttributes, "color").isNotNull())
+				.orderByAsc(Expressions.mapValue(personAttributes, "color").toExpression())
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			// blue before red
+			assertThat(names(result)).containsExactly("Bob", "Alice");
 		}
 	}
 

@@ -373,6 +373,13 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.MAP_VALUE: {
+				MapValue mapValue = (MapValue)theEObject;
+				T result = caseMapValue(mapValue);
+				if (result == null) result = caseExpression(mapValue);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.COLLECTION_COUNT: {
 				CollectionCount collectionCount = (CollectionCount)theEObject;
 				T result = caseCollectionCount(collectionCount);
@@ -1024,6 +1031,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseIndexOf(IndexOf object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Map Value</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Map Value</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseMapValue(MapValue object) {
 		return null;
 	}
 

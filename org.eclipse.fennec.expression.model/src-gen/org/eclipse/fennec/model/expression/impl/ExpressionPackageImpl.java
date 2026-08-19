@@ -51,6 +51,7 @@ import org.eclipse.fennec.model.expression.IntegerLiteral;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NullLiteral;
@@ -369,6 +370,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass indexOfEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass mapValueEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1530,6 +1538,36 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getMapValue() {
+		return mapValueEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getMapValue_Map() {
+		return (EReference)mapValueEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getMapValue_Key() {
+		return (EReference)mapValueEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getCollectionCount() {
 		return collectionCountEClass;
 	}
@@ -1935,6 +1973,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEReference(indexOfEClass, INDEX_OF__SOURCE);
 		createEReference(indexOfEClass, INDEX_OF__SEARCH);
 
+		mapValueEClass = createEClass(MAP_VALUE);
+		createEReference(mapValueEClass, MAP_VALUE__MAP);
+		createEReference(mapValueEClass, MAP_VALUE__KEY);
+
 		collectionCountEClass = createEClass(COLLECTION_COUNT);
 		createEReference(collectionCountEClass, COLLECTION_COUNT__SOURCE);
 		createEReference(collectionCountEClass, COLLECTION_COUNT__VARIABLE);
@@ -2032,6 +2074,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		negateEClass.getESuperTypes().add(this.getExpression());
 		concatEClass.getESuperTypes().add(this.getExpression());
 		indexOfEClass.getESuperTypes().add(this.getExpression());
+		mapValueEClass.getESuperTypes().add(this.getExpression());
 		collectionCountEClass.getESuperTypes().add(this.getExpression());
 		typeCheckEClass.getESuperTypes().add(this.getExpression());
 		numericFunctionEClass.getESuperTypes().add(this.getExpression());
@@ -2180,6 +2223,10 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEClass(indexOfEClass, IndexOf.class, "IndexOf", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getIndexOf_Source(), this.getExpression(), null, "source", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getIndexOf_Search(), this.getExpression(), null, "search", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(mapValueEClass, MapValue.class, "MapValue", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getMapValue_Map(), this.getPropertyPath(), null, "map", null, 1, 1, MapValue.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getMapValue_Key(), this.getExpression(), null, "key", null, 1, 1, MapValue.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(collectionCountEClass, CollectionCount.class, "CollectionCount", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getCollectionCount_Source(), this.getPropertyPath(), null, "source", null, 1, 1, CollectionCount.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

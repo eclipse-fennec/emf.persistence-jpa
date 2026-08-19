@@ -63,6 +63,7 @@ class JpaQueryProcessorTest {
 	private EReference mentor;
 	private EReference owner;
 	private EAttribute street;
+	private EReference attributes;
 
 	@BeforeEach
 	void setUp() {
@@ -106,6 +107,49 @@ class JpaQueryProcessorTest {
 		owner.setName("owner");
 		owner.setEType(person);
 		address.getEStructuralFeatures().add(owner);
+
+		// an EMap (issue #186): containment-many onto a Map.Entry class
+		EClass entry = ecore.createEClass();
+		entry.setName("StringToStringMapEntry");
+		entry.setInstanceClassName("java.util.Map$Entry");
+		EAttribute key = ecore.createEAttribute();
+		key.setName("key");
+		key.setEType(EcorePackage.Literals.ESTRING);
+		entry.getEStructuralFeatures().add(key);
+		EAttribute value = ecore.createEAttribute();
+		value.setName("value");
+		value.setEType(EcorePackage.Literals.ESTRING);
+		entry.getEStructuralFeatures().add(value);
+		attributes = ecore.createEReference();
+		attributes.setName("attributes");
+		attributes.setEType(entry);
+		attributes.setUpperBound(-1);
+		attributes.setContainment(true);
+		person.getEStructuralFeatures().add(attributes);
+	}
+
+	/**
+	 * A map is an entry table on a relational store (contract §9.2), so one entry is a
+	 * correlated subselect keyed on the entry's key column (issue #186).
+	 */
+	@Test
+	void mapAccessRendersACorrelatedSubselect() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.where(Expressions.mapValue(attributes, "color").eq("red"))
+				.build());
+		assertThat(plan.jpql()).isEqualTo("SELECT e FROM Person e WHERE "
+				+ "(SELECT me0.value FROM e.attributes me0 WHERE me0.key = :p0) = :p1");
+		assertThat(plan.parameters()).containsEntry("p0", "color").containsEntry("p1", "red");
+	}
+
+	@Test
+	void mapAccessSortsAndBindsTheKeyOncePerAccess() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.orderByAsc(Expressions.mapValue(attributes, "size").toExpression())
+				.build());
+		assertThat(plan.jpql()).contains("ORDER BY (SELECT me0.value FROM e.attributes me0"
+				+ " WHERE me0.key = :p0) ASC");
+		assertThat(plan.parameters()).containsEntry("p0", "size");
 	}
 
 	private JpaQueryPlan translate(Query query) throws QueryException {

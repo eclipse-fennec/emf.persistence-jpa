@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:871d3c52b1f1648b234cd1b0e476091b55ce6547de4a149d142a79ad6f80a9a7", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:b30e5cef5bba05b705bc4de08105cf5930d63a4433dc6dc9ce4f876f64e883a9", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1838,6 +1838,52 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int INDEX_OF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.MapValueImpl <em>Map Value</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.MapValueImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getMapValue()
+	 * @generated
+	 */
+	int MAP_VALUE = 41;
+
+	/**
+	 * The feature id for the '<em><b>Map</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE__MAP = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Key</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE__KEY = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Map Value</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Map Value</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.CollectionCountImpl <em>Collection Count</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1845,7 +1891,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getCollectionCount()
 	 * @generated
 	 */
-	int COLLECTION_COUNT = 41;
+	int COLLECTION_COUNT = 42;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1900,7 +1946,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTypeCheck()
 	 * @generated
 	 */
-	int TYPE_CHECK = 42;
+	int TYPE_CHECK = 43;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1946,7 +1992,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION = 43;
+	int NUMERIC_FUNCTION = 44;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1992,7 +2038,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION = 44;
+	int TEMPORAL_FUNCTION = 45;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -2038,7 +2084,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 45;
+	int SUBSTRING = 46;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -2093,7 +2139,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 46;
+	int COMPARISON_OPERATOR = 47;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -2103,7 +2149,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 47;
+	int STRING_MATCH_KIND = 48;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -2113,7 +2159,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 48;
+	int STRING_FUNCTION_KIND = 49;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
@@ -2123,7 +2169,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION_KIND = 49;
+	int TEMPORAL_FUNCTION_KIND = 50;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -2133,7 +2179,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 50;
+	int NUMERIC_FUNCTION_KIND = 51;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -2143,7 +2189,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 51;
+	int ARITHMETIC_OPERATOR = 52;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -2153,7 +2199,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 52;
+	int TEMPORAL_KIND = 53;
 
 
 	/**
@@ -3225,6 +3271,38 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getIndexOf_Search();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.MapValue <em>Map Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Map Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.MapValue
+	 * @generated
+	 */
+	EClass getMapValue();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.MapValue#getMap <em>Map</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Map</em>'.
+	 * @see org.eclipse.fennec.model.expression.MapValue#getMap()
+	 * @see #getMapValue()
+	 * @generated
+	 */
+	EReference getMapValue_Map();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.MapValue#getKey <em>Key</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Key</em>'.
+	 * @see org.eclipse.fennec.model.expression.MapValue#getKey()
+	 * @see #getMapValue()
+	 * @generated
+	 */
+	EReference getMapValue_Key();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.CollectionCount <em>Collection Count</em>}'.
@@ -4390,6 +4468,32 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference INDEX_OF__SEARCH = eINSTANCE.getIndexOf_Search();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.MapValueImpl <em>Map Value</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.MapValueImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getMapValue()
+		 * @generated
+		 */
+		EClass MAP_VALUE = eINSTANCE.getMapValue();
+
+		/**
+		 * The meta object literal for the '<em><b>Map</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference MAP_VALUE__MAP = eINSTANCE.getMapValue_Map();
+
+		/**
+		 * The meta object literal for the '<em><b>Key</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference MAP_VALUE__KEY = eINSTANCE.getMapValue_Key();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.CollectionCountImpl <em>Collection Count</em>}' class.

@@ -39,6 +39,7 @@ import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
@@ -67,6 +68,7 @@ import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.query.QueryConstants;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryContext;
 import org.eclipse.fennec.persistence.query.api.QueryPlan;
@@ -296,6 +298,15 @@ public class MemoryQueryProcessor implements QueryProcessor {
 					inner.add(count.getVariable());
 					walk(count.getPredicate(), inner);
 				}
+				return;
+			}
+			if (expression instanceof MapValue mapValue) {
+				// the map navigation resolves like any path; the key is a constant that has to
+				// be typed against the entry's key feature, not against the comparison target
+				path(mapValue.getMap(), scope);
+				values.put(mapValue.getKey(), ExpressionValues.resolve(mapValue.getKey(),
+						EMaps.keyFeature(EMaps.entryClass(ExpressionValues.targetFeature(mapValue.getMap()))),
+						context.parameters(), null));
 				return;
 			}
 			if (expression instanceof Arithmetic arithmetic) {

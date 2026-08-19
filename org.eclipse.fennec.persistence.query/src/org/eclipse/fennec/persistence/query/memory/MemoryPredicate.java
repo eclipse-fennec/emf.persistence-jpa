@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+import org.eclipse.emf.common.util.EMap;
 import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -54,6 +55,7 @@ import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IsNull;
+import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
@@ -323,6 +325,15 @@ final class MemoryPredicate {
 			case TRIM -> text.trim();
 			case LENGTH -> text.length();
 			};
+		}
+		if (expression instanceof MapValue mapValue) {
+			// the reference semantics of map access (issue #186): EMF hands out an EMap, so
+			// this is a plain get — no store shape in the way
+			Object map = pathValue(mapValue.getMap(), candidate, bindings);
+			if (!(map instanceof EMap<?, ?> entries)) {
+				return null;
+			}
+			return entries.get(values.get(mapValue.getKey()));
 		}
 		if (expression instanceof CollectionCount count) {
 			Object value = pathValue(count.getSource(), candidate, bindings);
