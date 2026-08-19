@@ -42,6 +42,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
@@ -190,6 +191,39 @@ class MongoQueryProcessorTest {
 				.where(Expressions.mapValue(attributes, "$color").eq("red"))
 				.build();
 		assertThat(processor.validate(dollar, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+	}
+
+	/**
+	 * A quantifier over a map is refused rather than translated (issue #188). Before the fix it
+	 * rendered {@code {"attributes": {"$elemMatch": {"key": "color"}}}} and validated OK — and
+	 * since a map is a sub-document here, that filter can never match. An empty result is the
+	 * most plausible wrong answer there is, which is exactly what §5 forbids.
+	 */
+	@Test
+	void quantifierOverAMapIsRefused() {
+		EStructuralFeature entryKey = attributes.getEReferenceType().getEStructuralFeature("key");
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.any(Expressions.propertyPath(attributes),
+						it -> it.path(entryKey).eq("color")))
+				.build();
+
+		Diagnostic diagnostic = processor.validate(query, person);
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> {
+					assertThat(child.getCode()).isEqualTo(MongoQueryProcessor.CODE_MAP_QUANTIFIER);
+					assertThat(child.getMessage()).contains("MapValue");
+				});
+		// translate refuses too — validate is a service, translate is the last line
+		assertThatThrownBy(() -> translate(query)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("$elemMatch would match nothing");
+
+		// the ordinary containment collection keeps working
+		Query overAddresses = QueryBuilder.from(person)
+				.where(Expressions.any(Expressions.propertyPath(addresses),
+						it -> it.path(street).eq("Main")))
+				.build();
+		assertThat(processor.validate(overAddresses, person).getSeverity()).isEqualTo(Diagnostic.OK);
 	}
 
 	@Test
