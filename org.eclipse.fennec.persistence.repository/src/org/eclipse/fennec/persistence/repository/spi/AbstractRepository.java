@@ -17,11 +17,12 @@ import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -31,6 +32,8 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.common.util.WrappedException;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -341,12 +344,49 @@ public abstract class AbstractRepository implements Repository {
 	public void reload(EObject object) throws IOException {
 		checkNotDisposed();
 		requireNonNull(object, "object must not be null");
-		Resource resource = object.eResource();
-		if (isNull(resource)) {
-			throw io("Cannot reload an object that is not attached to a resource: " + object, null);
+		URI uri = createUri(object);
+		if (isNull(uri)) {
+			throw io("Cannot reload an object without a determinable id: " + object, null);
 		}
-		resource.unload();
-		resource.load(effective(null, defaultLoadOptions));
+		EObject fresh;
+		try {
+			// keyed read in a scratch set: the owned set's collection resource may serve
+			// the cached instance — the very object being reloaded
+			Resource resource = getOrCreate(createResourceSet(), uri.trimFragment());
+			applyOptions(resource, null, ActionType.LOAD);
+			fresh = resource.getEObject(uri.fragment());
+		} catch (RuntimeException e) {
+			throw io("Failed to reload " + uri, e);
+		}
+		if (isNull(fresh)) {
+			throw io("Cannot reload " + uri + ": the object no longer exists in the backend", null);
+		}
+		copyState(fresh, object);
+	}
+
+	/**
+	 * Replaces the target's persistent state with the fresh read, in place: attribute and
+	 * reference values are taken over feature by feature (containment children move from
+	 * the fresh instance to the target), derived/transient/unchangeable features and the
+	 * container are left alone — so the target keeps its identity, resource attachment
+	 * and container.
+	 */
+	private static void copyState(EObject fresh, EObject target) {
+		for (EStructuralFeature feature : target.eClass().getEAllStructuralFeatures()) {
+			if (feature.isDerived() || feature.isTransient() || !feature.isChangeable()) {
+				continue;
+			}
+			if (feature instanceof EReference reference && reference.isContainer()) {
+				continue;
+			}
+			if (!fresh.eIsSet(feature)) {
+				target.eUnset(feature);
+			} else if (feature.isMany()) {
+				target.eSet(feature, new ArrayList<>((Collection<?>) fresh.eGet(feature)));
+			} else {
+				target.eSet(feature, fresh.eGet(feature));
+			}
+		}
 	}
 
 	@Override
@@ -420,8 +460,8 @@ public abstract class AbstractRepository implements Repository {
 	@Override
 	public void save(EObject object, Map<?, ?> options) throws IOException {
 		checkNotDisposed();
-		Resource resource = attach(object);
-		resource.save(effective(options, defaultSaveOptions));
+		requireNonNull(object, "object must not be null");
+		saveIsolated(List.of(object), effective(options, defaultSaveOptions));
 	}
 
 	@Override
@@ -450,13 +490,47 @@ public abstract class AbstractRepository implements Repository {
 	public void saveAll(Collection<EObject> objects, Map<?, ?> options) throws IOException {
 		checkNotDisposed();
 		requireNonNull(objects, "objects must not be null");
-		Set<Resource> resources = new LinkedHashSet<>();
-		for (EObject object : objects) {
-			resources.add(attach(object));
+		if (objects.isEmpty()) {
+			return;
 		}
-		Map<?, ?> effective = effective(options, defaultSaveOptions);
-		for (Resource resource : resources) {
-			resource.save(effective);
+		saveIsolated(objects, effective(options, defaultSaveOptions));
+	}
+
+	/**
+	 * Saves exactly the given objects — the old one-resource-per-object save semantics on
+	 * top of the collection-resource mechanic. The objects are moved into per-type scratch
+	 * resources (Resource.save writes all contents, so siblings sharing a loaded
+	 * collection resource must not be aboard), saved with one backend save per type, and
+	 * then restored to their previous attachment; previously unattached objects end up
+	 * attached to their collection resource in the owned ResourceSet, matching the old
+	 * repository contract. Generated ids are written back by the backends while the
+	 * objects sit in the scratch resources.
+	 */
+	private void saveIsolated(Collection<EObject> objects, Map<?, ?> options) throws IOException {
+		Map<EObject, Resource> origins = new LinkedHashMap<>();
+		ResourceSet scratch = createResourceSet();
+		try {
+			for (EObject object : objects) {
+				requireNonNull(object, "objects must not contain null");
+				if (origins.containsKey(object)) {
+					continue;
+				}
+				origins.put(object, object.eResource());
+				getOrCreate(scratch, collectionUri(object.eClass())).getContents().add(object);
+			}
+			for (Resource resource : List.copyOf(scratch.getResources())) {
+				resource.save(options);
+			}
+		} finally {
+			for (Map.Entry<EObject, Resource> origin : origins.entrySet()) {
+				if (nonNull(origin.getValue())) {
+					origin.getValue().getContents().add(origin.getKey());
+				} else {
+					// leave the scratch resource first — attach() would otherwise answer it
+					detach(origin.getKey());
+					attach(origin.getKey());
+				}
+			}
 		}
 	}
 

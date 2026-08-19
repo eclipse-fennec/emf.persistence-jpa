@@ -213,7 +213,7 @@
     </eOperations>
     <eOperations name="reload" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Re-reads the given EObject's state from the backend, replacing its in-memory state."/>
+        <details key="documentation" value="Re-reads the object's state from the backend via a keyed read and replaces the in-memory state of the given instance in place — its resource attachment stays untouched. Refused with an IOException when the object has no determinable id or no longer exists in the backend."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
     </eOperations>
@@ -304,13 +304,13 @@
     </eAnnotations>
     <eOperations name="save" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Saves the given EObject under its repository URI, attaching it to a Resource first if needed."/>
+        <details key="documentation" value="Saves exactly the given EObject under its repository URI — the old one-resource-per-object save semantics on top of the collection-resource mechanic. Objects sharing a loaded collection resource are not written: the repository isolates the object for the save and restores its attachment afterwards; an unattached object is attached to its collection resource after saving."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
     </eOperations>
     <eOperations name="save" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Saves the given EObject using the given save options."/>
+        <details key="documentation" value="Saves exactly the given EObject using the given save options — same isolation contract as save(object)."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
       <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
@@ -332,7 +332,7 @@
     </eOperations>
     <eOperations name="saveAll" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Saves all given EObjects, replacing the old save(Collection)/save(EObject...) overload family."/>
+        <details key="documentation" value="Saves exactly the given EObjects — one backend save per type, replacing the old save(Collection)/save(EObject...) overload family. Unrelated objects sharing a loaded collection resource are not written; the same isolation contract as save(object) applies."/>
       </eAnnotations>
       <eParameters name="objects" lowerBound="1" eType="#//EObjectCollection"/>
     </eOperations>

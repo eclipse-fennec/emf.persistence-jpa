@@ -89,6 +89,8 @@ public class AbstractRepositoryDelegationTest {
 		addressClass = eClassWithId(ePackage, "Address");
 		queryProcessor = new FakeQueryProcessor();
 		repository = newRepository(Map.of(), Map.of());
+		FakeResource.nextObjects = List.of();
+		FakeResource.lookup.clear();
 	}
 
 	private AbstractRepository newRepository(Map<Object, Object> loadDefaults, Map<Object, Object> saveDefaults) {
@@ -105,6 +107,10 @@ public class AbstractRepositoryDelegationTest {
 		id.setEType(EcorePackage.Literals.ESTRING);
 		id.setID(true);
 		eClass.getEStructuralFeatures().add(id);
+		EAttribute label = EcoreFactory.eINSTANCE.createEAttribute();
+		label.setName("label");
+		label.setEType(EcorePackage.Literals.ESTRING);
+		eClass.getEStructuralFeatures().add(label);
 		ePackage.getEClassifiers().add(eClass);
 		return eClass;
 	}
@@ -204,6 +210,76 @@ public class AbstractRepositoryDelegationTest {
 		assertThat(resourceFor("Person").saveCount).isEqualTo(1);
 		assertThat(resourceFor("Person").savedObjects).containsExactly(p1, p2);
 		assertThat(resourceFor("Address").saveCount).isEqualTo(1);
+	}
+
+	@Test
+	void saveTouchesOnlyTheGivenObject() throws IOException {
+		EObject p1 = person("p1");
+		EObject p2 = person("p2");
+		Resource loaded = repository.attach(p1);
+		repository.attach(p2);
+
+		repository.save(p1);
+
+		FakeResource saved = created.stream().filter(r -> r.saveCount > 0).findFirst().orElseThrow();
+		assertThat(saved).as("the loaded collection resource must not be saved").isNotSameAs(loaded);
+		assertThat(saved.savedObjects).containsExactly(p1);
+		assertThat(((FakeResource) loaded).saveCount).isZero();
+		assertThat(loaded.getContents()).as("attachment must be restored").containsExactlyInAnyOrder(p1, p2);
+	}
+
+	@Test
+	void saveAttachesAPreviouslyUnattachedObject() throws IOException {
+		EObject p1 = person("p1");
+		repository.save(p1);
+		assertThat(p1.eResource()).isNotNull();
+		assertThat(p1.eResource().getResourceSet()).isSameAs(repository.getResourceSet());
+	}
+
+	@Test
+	void saveAllSavesExactlyTheGivenObjects() throws IOException {
+		EObject p1 = person("p1");
+		EObject p2 = person("p2");
+		Resource loaded = repository.attach(p1);
+		repository.attach(p2);
+
+		repository.saveAll(List.of(p1));
+
+		FakeResource saved = created.stream().filter(r -> r.saveCount > 0).findFirst().orElseThrow();
+		assertThat(saved.savedObjects).containsExactly(p1);
+		assertThat(((FakeResource) loaded).saveCount).isZero();
+		assertThat(loaded.getContents()).containsExactlyInAnyOrder(p1, p2);
+	}
+
+	@Test
+	void reloadReplacesTheStateInPlace() throws IOException {
+		EAttribute labelAttribute = (EAttribute) personClass.getEStructuralFeature("label");
+		EObject stale = person("p1");
+		stale.eSet(labelAttribute, "locally-modified");
+		Resource attached = repository.attach(stale);
+
+		EObject fresh = person("p1");
+		fresh.eSet(labelAttribute, "backend-state");
+		FakeResource.lookup.put("p1", fresh);
+
+		repository.reload(stale);
+
+		assertThat(stale.eGet(labelAttribute)).isEqualTo("backend-state");
+		assertThat(stale.eResource()).as("attachment must stay untouched").isSameAs(attached);
+	}
+
+	@Test
+	void reloadRefusesWhenTheObjectIsGone() {
+		EObject orphan = person("p1");
+		assertThatIOException().isThrownBy(() -> repository.reload(orphan))
+				.withMessageContaining("no longer exists");
+	}
+
+	@Test
+	void reloadRefusesWithoutADeterminableId() {
+		EObject noId = personClass.getEPackage().getEFactoryInstance().create(personClass);
+		assertThatIOException().isThrownBy(() -> repository.reload(noId))
+				.withMessageContaining("determinable id");
 	}
 
 	@Test
@@ -332,6 +408,8 @@ public class AbstractRepositoryDelegationTest {
 			}
 		};
 		static List<EObject> nextObjects = List.of();
+		/** Keyed-read answers by id fragment, consulted when the contents hold no match. */
+		static final Map<String, EObject> lookup = new LinkedHashMap<>();
 
 		Query lastQuery;
 		String lastQueryName;
@@ -350,7 +428,8 @@ public class AbstractRepositoryDelegationTest {
 
 		@Override
 		public EObject getEObject(String uriFragment) {
-			return getContents().stream().filter(o -> uriFragment.equals(EcoreUtil.getID(o))).findFirst().orElse(null);
+			return getContents().stream().filter(o -> uriFragment.equals(EcoreUtil.getID(o))).findFirst()
+					.orElseGet(() -> lookup.get(uriFragment));
 		}
 
 		@Override

@@ -20,12 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
@@ -137,10 +141,29 @@ public class RepositoryIntegrationTest extends EPersistenceBase {
 		// count convenience over a canonical query
 		assertEquals(2, repository.count(QueryBuilder.from(personClass).build()));
 
+		// isolated save: both objects modified in memory, only Alice saved — the sibling
+		// sharing the loaded collection resource must not be written
+		EObject bobLoaded = repository.getEObject(personClass, "p2");
+		loaded.eSet(nameAttribute, "Alice2");
+		bobLoaded.eSet(nameAttribute, "Bob2");
+		repository.save(loaded);
+		ResourceSet verification = repository.createResourceSet();
+		Resource persons = verification.createResource(URI.createURI("jpa://repoUnit/Person"));
+		persons.load(null);
+		assertEquals(Set.of("Alice2", "Bob"),
+				persons.getContents().stream().map(person -> person.eGet(nameAttribute))
+						.collect(Collectors.toSet()),
+				"only the saved object's change may reach the store");
+
+		// reload: the unsaved local modification is discarded, in place
+		repository.reload(bobLoaded);
+		assertEquals("Bob", bobLoaded.eGet(nameAttribute));
+		assertNotNull(bobLoaded.eResource(), "attachment must survive the reload");
+
 		// delete isolates the object — Bob must survive
 		repository.delete(loaded);
 		assertEquals(1, repository.count(personClass));
-		try (QueryResult result = repository.find(byName, Map.of("wanted", "Alice"), null)) {
+		try (QueryResult result = repository.find(byName, Map.of("wanted", "Alice2"), null)) {
 			assertEquals(0, result.objects().count(), "deleted object must be gone");
 		}
 	}
