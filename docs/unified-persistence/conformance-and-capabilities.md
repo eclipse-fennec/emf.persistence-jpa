@@ -119,6 +119,7 @@ produces a contract statement plus an asserting test.
 | Cascade-delete | dropping a containment subtree deletes what it owned, transitively, across document/table boundaries. Implemented on both backends (#138/#139 for Mongo, #142/#143 for JPA); the timing guarantee is qualified in §4a |
 | Inheritance | polymorphic write and read of a subtype through a supertype resource |
 | Composite ids | **core** — every store can key on a concatenation, so absence is a defect, not a limitation |
+| Maps (`EMap`) | round trip of entries, keys and values, with map semantics (one key, one entry) for every key type that renders to a string and parses back. Mongo honours it today; JPA is blocked on two defects (§9.2, #185). Query *access* into a map is a separate question (#186) |
 | Command verbs | Insert / Update / Delete exist (§4) |
 | Refusal | anything not supported is refused with a diagnostic, never silently mis-answered (§5) |
 
@@ -142,8 +143,7 @@ decision on record rather than a hole nobody named.
 
 | Item | What holds instead |
 |---|---|
-| `EMap` | no mapping on either backend; an `EMap`-typed feature must be **refused with a diagnostic** at mapping time, never silently dropped or flattened (§9.2) |
-| Feature maps | same, for the same reason (§9.2) |
+| Feature maps | no mapping anywhere, and unlike `EMap` no codec support either; a feature-map-typed feature must be **refused with a diagnostic** at mapping time, never silently dropped or flattened (§9.2) |
 
 ### The seven hooks, sorted
 
@@ -492,9 +492,10 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
   repeated loads, default values, `resolveProxies=false` (which must *forbid* cross-resource
   containment), abstract/interface types, `EcoreUtil.delete` inverse cleanup.
 
-`EMap` and feature maps were on that last line until §9.2 put them out of contract. What they
-owe the suite now is not a round trip but a refusal: a model carrying such a feature must fail
-mapping with a diagnostic naming it.
+`EMap` and feature maps were on that last line until §9.2 split them: the map round trip is core
+and measured (`MongoEMapRoundTripTest` passes it; `JpaEMapRoundTripTest` is what #185 turns
+green), while a feature map owes the suite a refusal rather than a round trip — a model carrying
+one must fail mapping with a diagnostic naming it.
 
 ## 9. The boundary, frozen
 
@@ -524,30 +525,78 @@ declared, and refused with a diagnostic when it is not — which is the same obl
 cases. Whether *our* two backends should close their gaps is a roadmap question, tracked as
 ordinary issues, not a conformance question.
 
-### 9.2 `EMap` and feature maps are out of contract
+### 9.2 `EMap` is core; feature maps are out of contract
 
-Both are EMF semantics, so the §2 test says core. They are nevertheless declared **out of
-contract**, with the reason stated rather than implied: neither backend has a mapping for either
-— grep finds no `MapEntry`, no `EcoreEMap`, no map handling anywhere in the orm, eclipselink or
-mongo mapping code — none is designed, and making them core would make both backends
-non-conformant on the day the decision lands, for a construct nothing in the workspace's models
-uses. Core is meant to be the part every backend already honours; a core item nobody implements
-devalues every other row of §3.
+This one was decided twice on the same day. The first decision put both out of contract on the
+argument that neither backend maps them — and the argument was wrong for `EMap`, which is why
+this section carries the measurement rather than the reasoning that replaced it.
 
-Note what "no mapping" means here, because it is worse than a gap: an `EMap` feature is, in
-Ecore, a containment-many reference to a map-entry `EClass`, so it does not fail — it falls
-through the generic reference path and produces *something*, unmeasured, on both backends. That
-is exactly the silent-plausible-answer failure §5 forbids.
+**What the measurement says** (`MongoEMapRoundTripTest`, `JpaEMapRoundTripTest`, both over the
+same `EMapTestModel`: one `Catalog` with `EMap<EString,EString>`, `EMap<EInt,EString>` and
+`EMap<EString,Part>`):
 
-Out of contract is *not* permission to mishandle them. The obligation is §5's, unchanged:
-**refuse, never lie.** A model with an `EMap`-typed or feature-map-typed feature must fail at
-mapping time with a diagnostic naming the feature, not silently drop it, flatten it into a
-string, or persist half of it. That refusal is what makes this decision reversible: whoever
-needs `EMap` finds a clear error and a documented boundary, not a corrupt round trip.
+| case | mongo | jpa |
+|---|---|---|
+| string-keyed round trip | pass | — |
+| stored shape is a sub-document `{key: value}` | pass | — |
+| `EObject` value, containment | pass | — |
+| same key twice replaces the value | pass | — |
+| int-keyed round trip | **fail** — read drops every entry (emf.codec#154) | — |
+| bootstrap of a unit containing map entry classes | n/a | **fail** (#183, #184) |
 
-The suite consequence (§8) is therefore a refusal test, not a round trip. If a mapping is ever
-built, the item moves to core — the contract does not lose the semantics, it declines to claim
-them before they exist.
+Mongo maps `EMap` through the codec (`EMapHelper` plus the `serializeEMap`/`deserializeEMap`
+pair), and it works. JPA never gets as far as writing one: the entry class is handed
+`java.util.Map$Entry` as its entity class — an interface, and the *same* class for every entry
+type in the unit (#183) — and an entry class has no id attribute, which the synthetic-key path
+cannot bootstrap (#184, reproduced without any map by `JpaSyntheticIdRoundTripTest`, so it is a
+defect in its own right).
+
+**The decision: `EMap` is core.** One backend honours it, the other fails on two located defects
+with known fixes, and a construct EMF puts in every user's reach cannot be declined because one
+translator is behind — that is precisely the "translator gap is a defect" test of §9.1, and here
+it comes out the other way, because no store has a reason to refuse a map. What core covers:
+entries survive, keys keep their type, values keep their type, an `EObject` value comes back
+resolved, and map semantics hold — one key, one entry, a second put replaces.
+
+**The key-type limit is part of the contract, not a bug to grow out of.** A key is a *name* in
+every store worth having: a BSON field, a Lucene field, a column value. So core covers key types
+that render to a string and parse back through their `EDataType` factory — `EString`, `EInt`,
+enums, and anything a custom factory handles. A key type that cannot make that round trip is
+refused with a diagnostic. Mongo additionally has to state what it does with a key containing
+`.` or `$`: those are field-name syntax there, so they are refused rather than stored (a keyed
+sub-document cannot hold them without an escaping scheme nobody has designed).
+
+**The form divergence is expected and is not a defect** (§2C): mongo stores a map as a
+sub-document keyed by the map key, JPA as rows in an entry table with a unique constraint on
+`(owner, key)`. Same semantics, different shape — the residency precedent of §4b applies
+unchanged.
+
+**Feature maps stay out of contract.** No mapping on either backend and, unlike `EMap`, no codec
+support either, so there is nothing to make true. The obligation is §5's: refuse with a
+diagnostic at mapping time, never silently drop or flatten.
+
+**Where a search backend lands, since it is the third implementation now.** The Lucene backend
+(emf.search) maps a reference by one of three strategies — `ID_ONLY`, `EMBED`, `NESTED`
+(`ReferenceStrategy`, `IndexSchema`) — and a map is a containment-many reference, so it falls
+into that machinery without anyone having decided anything:
+
+- **`EMBED` loses the map.** Embedding contributes a name prefix and nothing else, so two entries
+  produce multi-valued `attributes.key` and `attributes.value` fields and the pairing between
+  them is gone. A map must therefore never be embedded — that is a silent wrong answer, not a
+  limitation.
+- **`NESTED` preserves it.** One child document per entry keeps key and value paired, and the
+  block join is exactly the `Exists`-over-entries shape. This is the honest default there.
+- **The keyed form** — one dynamic field `attributes.color` per key, which is what makes
+  `MapValue` cheap — is a *fourth* strategy that does not exist in that backend yet, and it
+  carries an index cost the other two do not: unbounded key variety means unbounded fields.
+
+So the expected declaration for a search backend is: the map round trip yes (via `NESTED`),
+`EMBED` of a map refused, and key enumeration never a query capability. This is the same
+pattern as §9.1 — the third backend is what turns an assumption into a decision.
+
+Work: #185 makes the round trip true (the two JPA defects, the codec fix, the unique constraint,
+and moving both measurement classes into the TCK). Query access into a map is *not* part of it —
+that needs an IR construct and one translation per backend, tracked as #186.
 
 ### 9.3 Geo keeps one grain until a backend forces a second
 
@@ -594,11 +643,13 @@ follow-up, not part of this decision (§10.1).
 
 1. Freeze the boundary — §3 and the four decisions in §9. **Done** (#171, 2026-08-19): query
    vocabulary stays capability, `EMap`/feature maps are out of contract, geo keeps one grain,
-   streaming becomes a capability. Three of the four confirm what the code already does and cost
-   nothing; the two that produce work are §9.2 (a refusal test, plus the mapping-time diagnostic
-   if it is not already there) and §9.4 (the `STREAMING` literal, gating the two streaming TCK
-   cases, and both declarations). Those are follow-up work, not part of this step — the point of
-   step 1 is that §3 no longer has an open drawer, not that everything it implies is built.
+   streaming becomes a capability. §9.2 was decided twice: the first cut put maps out of contract,
+   measurement showed mongo maps them today, and the decision became core — work in #185 (the two
+   JPA defects #183/#184, emf.codec#154, the entry-table unique constraint) plus #186 for query
+   access. §9.4 produces the `STREAMING` literal, the gating of the two streaming TCK cases and
+   both declarations. §9.1 and §9.3 confirm what the code already does and cost nothing. All of it
+   is follow-up, not part of this step — the point of step 1 is that §3 no longer has an open
+   drawer, not that everything it implies is built.
 2. Introduce the declaration surface of §5a with core items *absent by construction*. **Done**:
    `query-api.ecore` split by role into the new `org.eclipse.fennec.persistence.capabilities`
    bundle, `PersistenceCapabilities` and `StoreCapabilities` added, `TRANSACTION_BRACKET` moved
