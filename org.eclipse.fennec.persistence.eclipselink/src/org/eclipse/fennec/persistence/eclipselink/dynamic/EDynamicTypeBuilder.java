@@ -31,6 +31,7 @@ import org.eclipse.fennec.persistence.eorm.Inheritance;
 import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.SecondaryTable;
 import org.eclipse.fennec.persistence.eorm.Table;
+import org.eclipse.fennec.persistence.eorm.UniqueConstraint;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.descriptors.InheritancePolicy;
 import org.eclipse.persistence.descriptors.TablePerClassPolicy;
@@ -198,6 +199,28 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 	}
 
 	/**
+	 * Carries the eorm's unique constraints into the descriptor's table, so DDL generation
+	 * emits them ({@code DefaultTableGenerator} reads {@code DatabaseTable.getUniqueConstraints}).
+	 * <p>
+	 * The first declarer is a map's entry table (issue #185): {@code (owner_fk, MAP_KEY)} is
+	 * what makes "one key, one entry" true in the store rather than only in the EMap in memory.
+	 * Until now nothing read {@code Table.uniqueConstraint} at all — a declaration the model
+	 * carried and the schema never saw.
+	 */
+	private void addUniqueConstraints(DatabaseTable databaseTable, Table table) {
+		int index = 0;
+		for (UniqueConstraint constraint : table.getUniqueConstraint()) {
+			if (constraint.getColumnName().isEmpty()) {
+				continue;
+			}
+			String name = nonNull(constraint.getName()) ? constraint.getName()
+					: "UQ_" + table.getName() + "_" + index;
+			databaseTable.addUniqueConstraints(name, new ArrayList<>(constraint.getColumnName()));
+			index++;
+		}
+	}
+
+	/**
 	 * Configures primary and secondary database tables.
 	 */
 	public void configureDatabase(EDynamicType eDynamicType) {
@@ -215,6 +238,7 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 			if (nonNull(table.getSchema())) {
 				primaryDatabaseTable.setTableQualifier(table.getSchema());
 			}
+			addUniqueConstraints(primaryDatabaseTable, table);
 		} else {
 			primaryDatabaseTable.setName(eClassifier.getName());
 		}

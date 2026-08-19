@@ -23,6 +23,9 @@ import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.Id;
+import org.eclipse.fennec.persistence.eorm.Basic;
+import org.eclipse.fennec.persistence.eorm.UniqueConstraint;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.JoinColumn;
 import org.eclipse.fennec.persistence.eorm.JoinTable;
 import org.eclipse.fennec.persistence.eorm.MappedByRef;
@@ -111,6 +114,7 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 			if (nonNull(jc)) {
 				target.getJoinColumn().add(jc);
 				target.setForeignKey(createForeignKey(jc.getName()));
+				constrainMapKeys(jc);
 			}
 		} else {
 			// NON-CONTAINMENT: Use JoinTable
@@ -137,6 +141,36 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 	@Override
 	void addMappingToEntity(Entity entity) {
 		entity.getAttributes().getOneToMany().add(target);	
+	}
+
+	/**
+	 * Makes map semantics a schema constraint (issue #185): one key, one entry.
+	 * <p>
+	 * An {@code EMap} is a containment-many reference like any other, so without this the entry
+	 * table would happily hold two rows with the same key for the same owner — a list wearing a
+	 * map's interface, and the divergence would only show after a reload. The unique constraint
+	 * over {@code (owner_fk, MAP_KEY)} is what makes "a second put replaces" true in the store
+	 * and not just in memory.
+	 */
+	private void constrainMapKeys(JoinColumn ownerColumn) {
+		if (!EMaps.isMap(source)) {
+			return;
+		}
+		Entity entryEntity = context.getEntity(source.getEReferenceType());
+		if (isNull(entryEntity) || isNull(entryEntity.getTable())) {
+			return;
+		}
+		Basic keyBasic = entryEntity.getAttributes().getBasic().stream()
+				.filter(basic -> EMaps.KEY_FEATURE.equals(basic.getName()))
+				.findFirst()
+				.orElse(null);
+		if (isNull(keyBasic) || isNull(keyBasic.getColumn())) {
+			return;
+		}
+		UniqueConstraint constraint = EORMFactory.eINSTANCE.createUniqueConstraint();
+		constraint.getColumnName().add(ownerColumn.getName());
+		constraint.getColumnName().add(keyBasic.getColumn().getName());
+		entryEntity.getTable().getUniqueConstraint().add(constraint);
 	}
 
 	/**

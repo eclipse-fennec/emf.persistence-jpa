@@ -22,6 +22,7 @@ import java.util.Optional;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.AccessType;
 import org.eclipse.fennec.persistence.eorm.Attributes;
 import org.eclipse.fennec.persistence.eorm.Column;
@@ -86,7 +87,12 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	protected void doProcess() {
 		EClassObject eco = EORMFactory.eINSTANCE.createEClassObject();
 		eco.setEclass(source);
-		String className = source.getInstanceClassName();
+		// The instance class name is the entity class only when it names a real generated
+		// type. A map entry class carries "java.util.Map$Entry" (issue #183) — required, or
+		// EMF hands out a list instead of an EMap — and taking it literally would name every
+		// entry class in the unit identically and point at an interface. Those get the
+		// model-derived name and a generated dynamic class, like any other dynamic EClass.
+		String className = EMaps.isMapEntry(source) ? null : source.getInstanceClassName();
 		if (isNull(className)) {
 			className = source.getEPackage().getName() + "." + source.getName();
 		}
