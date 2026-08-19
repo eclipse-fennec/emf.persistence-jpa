@@ -34,6 +34,7 @@ import org.eclipse.fennec.persistence.eorm.AccessType;
 import org.eclipse.fennec.persistence.eorm.Base;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.Column;
+import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.EFeatureObject;
 import org.eclipse.fennec.persistence.eorm.ENamedBase;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
@@ -209,7 +210,11 @@ public class MappingHelper {
 	public static <T extends Base> T createBase(T base, EStructuralFeature feature, boolean strict, ProcessingContext diagnostics) {
 		base = createNamedBase(base, feature, diagnostics);
 		Column column = EORMFactory.eINSTANCE.createColumn();
-		String name = strict ? getFeatureName(feature) : checkReservedName(getFeatureName(feature), "Column", diagnostics, feature);
+		String name = mapEntryColumnName(feature);
+		if (isNull(name)) {
+			name = strict ? getFeatureName(feature)
+					: checkReservedName(getFeatureName(feature), "Column", diagnostics, feature);
+		}
 		column.setName(name);
 		column.setNullable(!feature.isRequired());
 		column.setUnique(feature.isUnique());
@@ -219,6 +224,28 @@ public class MappingHelper {
 		return base;
 	}
 	
+	/**
+	 * The column name for a map entry's {@code key}/{@code value} feature, or {@code null} for
+	 * anything else (issue #185).
+	 * <p>
+	 * Both names are SQL reserved words, and the ordinary answer to that — {@code
+	 * checkReservedName} warns and hands the name back, the model author renames or annotates
+	 * — cannot apply here: EMF fixes these two names, and the model belongs to the user. So the
+	 * mapping renames them, once and for every dialect, rather than leaving a
+	 * {@code CREATE TABLE} that {@code create-or-extend-tables} swallows and a missing table
+	 * that surfaces at the first insert.
+	 */
+	private static String mapEntryColumnName(EStructuralFeature feature) {
+		if (!EMaps.isMapEntry(feature.getEContainingClass())) {
+			return null;
+		}
+		return switch (feature.getName()) {
+		case EMaps.KEY_FEATURE -> "MAP_KEY";
+		case EMaps.VALUE_FEATURE -> "MAP_VALUE";
+		default -> null;
+		};
+	}
+
 	public static <T extends Base> String getBaseName(T base) {
 		requireNonNull(base);
 		Column c = base.getColumn();

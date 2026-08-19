@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.tck;
 
 import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.TimeZone;
 
@@ -26,9 +27,9 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
 /**
@@ -52,7 +53,6 @@ import jakarta.persistence.EntityManagerFactory;
  * @author Mark Hoffmann
  * @since 19.08.2026
  */
-@Disabled("#183 and #184 break the bootstrap before any map is written — enabled by #185")
 class JpaEMapRoundTripTest {
 
 	static {
@@ -114,8 +114,11 @@ class JpaEMapRoundTripTest {
 		EObject loaded = reload("c2");
 		EMap<Object, Object> reloaded = map(loaded, "counts");
 		assertThat(reloaded).as("both entries come back").hasSize(2);
-		assertThat(reloaded.get(1)).as("an int key must stay an int key").isEqualTo("one");
-		assertThat(reloaded.get(42)).isEqualTo("answer");
+		// Integer.valueOf, deliberately: EMap extends EList, so get(int) is the list index
+		// overload and get(1) would silently read the second entry instead of key 1
+		assertThat(reloaded.get(Integer.valueOf(1))).as("an int key must stay an int key")
+				.isEqualTo("one");
+		assertThat(reloaded.get(Integer.valueOf(42))).isEqualTo("answer");
 	}
 
 	@Test
@@ -160,6 +163,37 @@ class JpaEMapRoundTripTest {
 		EMap<Object, Object> reloaded = map(loaded, "attributes");
 		assertThat(reloaded).as("one key, one entry").hasSize(1);
 		assertThat(reloaded.get("color")).isEqualTo("blue");
+	}
+
+	/**
+	 * Map semantics as a schema constraint, not only as an in-memory promise (issue #185). The
+	 * entry table is an ordinary containment table, so without a unique constraint over
+	 * {@code (owner, key)} it would hold a list wearing a map's interface — and the divergence
+	 * would only show after a reload.
+	 */
+	@Test
+	void theEntryTableConstrainsOneKeyPerOwner() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject catalog = model.newCatalog("c5", "Constraint");
+		map(catalog, "attributes").put("color", "red");
+		Resource resource = writeSet.createResource(uriFor("Catalog"));
+		resource.getContents().add(catalog);
+		resource.save(null);
+
+		EntityManager em = emf.createEntityManager();
+		try {
+			em.getTransaction().begin();
+			assertThatThrownBy(() -> em.createNativeQuery("INSERT INTO STRINGTOSTRINGMAPENTRY"
+					+ " (PK_STRINGTOSTRINGMAPENTRY, MAP_KEY, MAP_VALUE, catalog_id)"
+					+ " VALUES ('duplicate', 'color', 'blue', 'c5')").executeUpdate())
+					.as("a second row for the same (owner, key) must be rejected by the schema")
+					.hasMessageContaining("MAP_KEY");
+		} finally {
+			if (em.getTransaction().isActive()) {
+				em.getTransaction().rollback();
+			}
+			em.close();
+		}
 	}
 
 	// ------------------------------------------------------------------ helpers

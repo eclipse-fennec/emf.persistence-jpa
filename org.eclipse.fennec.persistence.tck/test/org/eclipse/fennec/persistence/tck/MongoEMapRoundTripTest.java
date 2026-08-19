@@ -133,8 +133,11 @@ class MongoEMapRoundTripTest {
 		EObject loaded = reload("c2");
 		EMap<Object, Object> reloaded = map(loaded, "counts");
 		assertThat(reloaded).as("both entries come back").hasSize(2);
-		assertThat(reloaded.get(1)).as("an int key must stay an int key").isEqualTo("one");
-		assertThat(reloaded.get(42)).isEqualTo("answer");
+		// Integer.valueOf, deliberately: EMap extends EList, so get(int) is the list index
+		// overload and get(1) would silently read the second entry instead of key 1
+		assertThat(reloaded.get(Integer.valueOf(1))).as("an int key must stay an int key")
+				.isEqualTo("one");
+		assertThat(reloaded.get(Integer.valueOf(42))).isEqualTo("answer");
 	}
 
 	/**

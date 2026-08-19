@@ -119,7 +119,7 @@ produces a contract statement plus an asserting test.
 | Cascade-delete | dropping a containment subtree deletes what it owned, transitively, across document/table boundaries. Implemented on both backends (#138/#139 for Mongo, #142/#143 for JPA); the timing guarantee is qualified in §4a |
 | Inheritance | polymorphic write and read of a subtype through a supertype resource |
 | Composite ids | **core** — every store can key on a concatenation, so absence is a defect, not a limitation |
-| Maps (`EMap`) | round trip of entries, keys and values, with map semantics (one key, one entry) for every key type that renders to a string and parses back. Mongo honours it today; JPA is blocked on two defects (§9.2, #185). Query *access* into a map is a separate question (#186) |
+| Maps (`EMap`) | round trip of entries, keys and values, with map semantics (one key, one entry) for every key type that renders to a string and parses back. Honoured on both backends; the one open gap is a non-string key on mongo (emf.codec#154). Query *access* into a map is a separate question — `MAP_VALUE`, §9.2 and #186 |
 | Command verbs | Insert / Update / Delete exist (§4) |
 | Refusal | anything not supported is refused with a diagnostic, never silently mis-answered (§5) |
 
@@ -493,9 +493,11 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
   containment), abstract/interface types, `EcoreUtil.delete` inverse cleanup.
 
 `EMap` and feature maps were on that last line until §9.2 split them: the map round trip is core
-and measured (`MongoEMapRoundTripTest` passes it; `JpaEMapRoundTripTest` is what #185 turns
-green), while a feature map owes the suite a refusal rather than a round trip — a model carrying
-one must fail mapping with a diagnostic naming it.
+and green on both backends (`MongoEMapRoundTripTest`, `JpaEMapRoundTripTest`), with one gap left
+on mongo for a non-string key (emf.codec#154). What is still owed is the *place*: both classes
+sit beside the TCK rather than inside it, so only the default flavor runs them — moving them in
+is #185's remainder. A feature map owes the suite a refusal rather than a round trip: a model
+carrying one must fail mapping with a diagnostic naming it.
 
 ## 9. The boundary, frozen
 
@@ -537,23 +539,46 @@ same `EMapTestModel`: one `Catalog` with `EMap<EString,EString>`, `EMap<EInt,ESt
 
 | case | mongo | jpa |
 |---|---|---|
-| string-keyed round trip | pass | — |
-| stored shape is a sub-document `{key: value}` | pass | — |
-| `EObject` value, containment | pass | — |
-| same key twice replaces the value | pass | — |
-| int-keyed round trip | **fail** — read drops every entry (emf.codec#154) | — |
-| bootstrap of a unit containing map entry classes | n/a | **fail** (#183, #184) |
+| string-keyed round trip | pass | pass |
+| `EObject` value, containment | pass | pass |
+| same key twice replaces the value | pass | pass |
+| one key per owner enforced by the schema | n/a — the sub-document shape gives it | pass |
+| stored shape is a sub-document `{key: value}` | pass | n/a — rows in an entry table |
+| int-keyed round trip | **fail** — the read drops every entry (emf.codec#154) | pass |
 
 Mongo maps `EMap` through the codec (`EMapHelper` plus the `serializeEMap`/`deserializeEMap`
-pair), and it works. JPA never gets as far as writing one: the entry class is handed
-`java.util.Map$Entry` as its entity class — an interface, and the *same* class for every entry
-type in the unit (#183) — and an entry class has no id attribute, which the synthetic-key path
-cannot bootstrap (#184, reproduced without any map by `JpaSyntheticIdRoundTripTest`, so it is a
-defect in its own right).
+pair). JPA does since #185: four defects stood between the model and a table, and each one is
+worth knowing because none was about maps as such.
 
-**The decision: `EMap` is core.** One backend honours it, the other fails on two located defects
-with known fixes, and a construct EMF puts in every user's reach cannot be declined because one
-translator is behind — that is precisely the "translator gap is a defect" test of §9.1, and here
+1. **The entity class** (#183). `EClassDescriptor` took `eClass.getInstanceClass()` whenever it
+   was set — and a map entry class carries `java.util.Map$Entry`, which it must, or EMF hands
+   out a list instead of an `EMap`. That is an interface, and it is the *same* class for every
+   entry type in the unit. Now an instance class is used only when it can actually be an entity
+   class (not an interface, not abstract, has a no-arg constructor); otherwise a dynamic class
+   is generated, as for any other dynamic EClass. `EntityProcessor` needed the same correction —
+   it named the entity from the instance class name too.
+2. **The generated class's superclass.** An `EcoreEMap` stores entries in an array of
+   `BasicEMap.Entry`, so anything else in it is an `ArrayStoreException` during copying, far from
+   its cause. EMF's own entry class is `final` and shared, so a subclassable equivalent
+   (`EMapEntryEObject`) is what the generated per-entry class extends.
+3. **The synthetic key** (#184). A map entry has no id attribute and never will — EMF puts `key`
+   and `value` in it and nothing else — so this had to be fixed generally rather than for maps:
+   the synthetic `pk_<name>` now has a writable mapping whose value rides on an adapter
+   (`ESyntheticKeyAccessor`), and it generates a UUID rather than drawing from a sequence table
+   that no flavor creates. Reproduced without any map by `JpaSyntheticIdRoundTripTest`.
+4. **The column names.** `key` and `value` are SQL reserved words, and the usual answer —
+   `checkReservedName` warns, the model author renames — cannot apply when EMF fixes the names.
+   The mapping names them `MAP_KEY`/`MAP_VALUE` once, for every dialect. Worth noting how this
+   surfaced: `create-or-extend-tables` swallows a failing `CREATE TABLE`, so the miss appeared as
+   a missing table at the first insert, not as a DDL error.
+
+Map semantics is a schema constraint on that side, not just an in-memory promise: the entry
+table carries a unique constraint over `(owner_fk, MAP_KEY)`. That also made the eorm's
+`Table.uniqueConstraint` reach the descriptor for the first time — it was modelled and read by
+nobody.
+
+**The decision: `EMap` is core.** Both backends honour it now, and a construct EMF puts in every
+user's reach cannot be declined because one translator is behind — that is precisely the "translator gap is a defect" test of §9.1, and here
 it comes out the other way, because no store has a reason to refuse a map. What core covers:
 entries survive, keys keep their type, values keep their type, an `EObject` value comes back
 resolved, and map semantics hold — one key, one entry, a second put replaces.
@@ -610,9 +635,9 @@ serves map access natively somewhere, and whether a *concrete* map feature is se
 from that feature's mapping and is `validate()`'s answer with a Diagnostic naming the way out.
 One truth, one code path.
 
-Work: #185 makes the round trip true (the two JPA defects, the codec fix, the unique constraint,
-and moving both measurement classes into the TCK). On JPA the map access already renders, but it
-cannot be exercised end to end until #185 lands — there is no map in a table yet.
+Left in #185: the codec fix for non-string keys (emf.codec#154 — measured only on mongo, since a
+key is a typed column on JPA and survives without help), and moving the two measurement classes
+into the TCK proper so every `backend × flavor` runs them.
 
 ### 9.3 Geo keeps one grain until a backend forces a second
 

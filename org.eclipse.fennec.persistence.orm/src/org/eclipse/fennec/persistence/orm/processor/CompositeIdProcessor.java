@@ -185,6 +185,14 @@ public class CompositeIdProcessor {
             seqGen.setName("SEQ_" + eClass.getName().toUpperCase() + "_" + syntheticIdName.toUpperCase() + "_ID");
             seqGen.setSequenceName(seqGen.getName());
             id.setSequenceGenerator(seqGen);
+            // UUID rather than a table sequence (issue #184): a synthetic key has no meaning
+            // to the model, so the only requirement is that it exists everywhere without
+            // schema of its own — a sequence table would have to be created and kept per
+            // flavor, and its absence surfaces as "sequence table information is not
+            // complete" at the first insert.
+            GeneratedValue generated = EORMFactory.eINSTANCE.createGeneratedValue();
+            generated.setStrategy(GenerationType.UUID);
+            id.setGeneratedValue(generated);
         }
         
         return id;

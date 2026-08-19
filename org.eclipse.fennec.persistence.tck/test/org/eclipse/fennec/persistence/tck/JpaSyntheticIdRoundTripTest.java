@@ -33,7 +33,6 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.EntityManagerFactory;
@@ -56,7 +55,6 @@ import jakarta.persistence.EntityManagerFactory;
  * @author Mark Hoffmann
  * @since 19.08.2026
  */
-@Disabled("#184 — the synthetic key has no mapping, so the persistence unit cannot boot")
 class JpaSyntheticIdRoundTripTest {
 
 	static {
