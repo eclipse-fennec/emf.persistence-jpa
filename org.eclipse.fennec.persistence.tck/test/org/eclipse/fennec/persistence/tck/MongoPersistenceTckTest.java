@@ -129,7 +129,28 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		return resourceSet;
 	}
 
+	/**
+	 * A document store has no schema, so an unknown collection reads as empty rather than as a
+	 * failure. What it cannot answer is a document whose stored type does not resolve — the
+	 * shape that produced this issue in the first place (issue #197). Written straight through
+	 * the driver, so the codec meets a type nobody can look up.
+	 */
 	@Override
+	protected Resource provokeLoadDiagnostic() throws Exception {
+		database.getCollection("Person", org.bson.BsonDocument.class)
+				.insertOne(new org.bson.BsonDocument()
+						.append("_id", new org.bson.BsonString("999"))
+						.append("_type", new org.bson.BsonString("http://example.org/gone#//Ghost"))
+						.append("name", new org.bson.BsonString("Nobody")));
+		Resource resource = createBackendResourceSet().createResource(uriFor("Person"));
+		try {
+			resource.load(null);
+		} catch (IOException signalled) {
+			// conforming: the diagnostics stay on the resource either way
+		}
+		return resource;
+	}
+
 	protected URI uriFor(String typeName) {
 		return URI.createURI("mongodb://" + databaseName + "/" + typeName);
 	}
