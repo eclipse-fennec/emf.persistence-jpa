@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.tck;
 
+import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -183,12 +184,25 @@ public abstract class AbstractPersistenceTCK {
 		profileRank = profileClass.getEStructuralFeature("rank");
 		companyName = companyClass.getEStructuralFeature("name");
 		companyEmployees = companyClass.getEStructuralFeature("employees");
+		// Also register globally, and undo it in tearDown. The codec's type resolution does
+		// not find a package that lives only in the backend's MetadataService, so a document's
+		// stored type would not resolve and decoding would silently fall back to the expected
+		// type — losing the subtype (eclipse-fennec/emf.codec#160). In OSGi an EPackage is
+		// reachable this way anyway; here it has to be arranged. Both TCK models share one
+		// nsURI, so this must be per-test and undone afterwards, never left standing.
+		EPackage.Registry.INSTANCE.put(tckPackage.getNsURI(), tckPackage);
 		setUpBackend(tckPackage);
 	}
 
 	@AfterEach
 	void tearDownTck() throws Exception {
-		tearDownBackend();
+		try {
+			tearDownBackend();
+		} finally {
+			if (nonNull(tckPackage)) {
+				EPackage.Registry.INSTANCE.remove(tckPackage.getNsURI());
+			}
+		}
 	}
 
 	/**
@@ -213,6 +227,13 @@ public abstract class AbstractPersistenceTCK {
 			resource.load(stream, null);
 		}
 		EPackage ePackage = (EPackage) resource.getContents().get(0);
+		// Re-home the resource on the package's nsURI. EcoreUtil.getURI derives a classifier's
+		// identity from its resource, so a model loaded under its file path hands out
+		// "tck.ecore#//Car" — which a reader resolving against the package registry cannot
+		// find, and which a backend then stores as the type of every document it writes.
+		// Registered EPackages are addressed by nsURI, and the fixture has to look like one
+		// (issue #174: this is what made polymorphic documents unreadable on mongo).
+		resource.setURI(URI.createURI(ePackage.getNsURI()));
 		resourceSet.getPackageRegistry().put(ePackage.getNsURI(), ePackage);
 		return ePackage;
 	}
