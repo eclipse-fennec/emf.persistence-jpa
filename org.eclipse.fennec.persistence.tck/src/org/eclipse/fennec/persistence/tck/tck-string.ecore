@@ -101,5 +101,7 @@
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="rank" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
         defaultValueLiteral="7"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="badge" eType="#//Address"
+        containment="true" resolveProxies="false"/>
   </eClassifiers>
 </ecore:EPackage>
