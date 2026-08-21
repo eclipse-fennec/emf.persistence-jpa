@@ -25,9 +25,9 @@ subprojects {
     // is asked for and quietly not used is the worst outcome of the matrix, because the run is
     // green and measures the wrong thing — so a new axis property must be added here too.
     def backendSelectionProperties = ['mongo.uri', 'mongo.test.image', 'mongo.test.flavor',
-                                      'mongo.container.cli', 'mongo.require',
+                                      'mongo.container.cli', 'mongo.test.optional',
                                       'jpa.jdbc.url', 'jpa.test.image', 'jpa.test.flavor',
-                                      'jpa.container.cli', 'jpa.require', 'jpa.test.logging']
+                                      'jpa.container.cli', 'jpa.test.optional', 'jpa.test.logging']
 
     // Exclude @Tag("perf") tests from normal builds — run via perfTest task
     test {

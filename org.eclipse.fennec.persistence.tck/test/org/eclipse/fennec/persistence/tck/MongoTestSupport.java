@@ -33,11 +33,14 @@ import com.mongodb.client.MongoClients;
  *     otherwise {@code docker} is tried first and {@code podman} as fallback (relevant
  *     on macOS/Windows, where podman ships without a docker shim).</li>
  * </ol>
- * When neither is available the Mongo TCK tests are skipped via JUnit assumptions — with a
- * message naming the flavor and what actually failed, since a silently skipped suite is
- * indistinguishable from a passing one (issue #132). Set {@code -Dmongo.require=true} (or
- * {@code MONGO_REQUIRE=true}) to turn "no server" into a hard failure instead, which is
- * what CI wants: proof the suite really ran.
+ * When neither is available this is an <b>error</b> (issue #173). An unreachable backend is
+ * not a capability statement: the matrix workflow provisions the container, so "not reachable"
+ * there is infrastructure failing, and a suite that skipped everything is indistinguishable
+ * from one that verified everything.
+ * <p>
+ * A skip stays available for the developer without a container runtime, but by explicit
+ * opt-in only: {@code -Dmongo.test.optional=true} (or {@code MONGO_TEST_OPTIONAL=true})
+ * restores the JUnit assumption, with a message naming the flavor and what actually failed.
  *
  * @author Mark Hoffmann
  * @since 16.07.2026
@@ -96,8 +99,12 @@ final class MongoTestSupport {
 	 * passing one are indistinguishable in a green build, so CI — and anyone who wants to
 	 * know the suite really ran — sets this and gets an exception instead of assumptions.
 	 */
-	private static final boolean REQUIRED = Boolean.parseBoolean(
-			System.getProperty("mongo.require", System.getenv().getOrDefault("MONGO_REQUIRE", "false")));
+	/**
+	 * Whether a missing server may skip instead of failing (issue #173) — opt-in, because a
+	 * skip is indistinguishable from a pass and CI provisions the container itself.
+	 */
+	private static final boolean OPTIONAL = Boolean.parseBoolean(System.getProperty("mongo.test.optional",
+			System.getenv().getOrDefault("MONGO_TEST_OPTIONAL", "false")));
 
 	private static volatile String uri;
 	private static volatile String containerId;
@@ -136,7 +143,7 @@ final class MongoTestSupport {
 
 	/**
 	 * Returns the connection string, starting a container on first use; {@code null} if
-	 * unavailable — or, under {@code mongo.require=true}, throws. The failure is raised on
+	 * unavailable under {@code mongo.test.optional=true}; otherwise throws. The failure is raised on
 	 * <em>every</em> call rather than only the first, so a broken setup fails the whole
 	 * suite uniformly instead of reddening one test and skipping the rest.
 	 */
@@ -184,14 +191,16 @@ final class MongoTestSupport {
 	}
 
 	/**
-	 * Returns {@code uri}, or throws when it is missing and the caller demanded a server.
-	 * Never swallows: without {@code mongo.require} the {@code null} travels on to the
+	 * Returns {@code uri}, or throws when no server could be provided (issue #173). Only
+	 * under {@code mongo.test.optional=true} does the {@code null} travel on to the
 	 * assumption, which skips with {@link #unavailableMessage()}.
 	 */
 	private static String requireIfDemanded() {
-		if (isNull(uri) && REQUIRED) {
-			throw new IllegalStateException("mongo.require=true but no " + FLAVOR
-					+ " server could be provided: " + unavailableReason);
+		if (isNull(uri) && !OPTIONAL) {
+			throw new IllegalStateException("No " + FLAVOR + " server could be provided: "
+					+ unavailableReason
+					+ " — an unreachable backend is an error, not a capability statement."
+					+ " Set -Dmongo.test.optional=true to skip instead (issue #173).");
 		}
 		return uri;
 	}
@@ -204,7 +213,7 @@ final class MongoTestSupport {
 		String reason = unavailableReason;
 		return "No " + FLAVOR + " server available for the TCK"
 				+ (isNull(reason) ? "" : ": " + reason)
-				+ " (set -Dmongo.uri, or -Dmongo.require=true to fail instead of skipping)";
+				+ " (skipping because -Dmongo.test.optional=true; set -Dmongo.uri to run it)";
 	}
 
 	/** Unwraps the cause chain — the useful text is usually in the innermost message. */
