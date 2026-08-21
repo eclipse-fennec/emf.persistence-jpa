@@ -151,7 +151,7 @@ functions and arithmetic like any other value. The key must be **constant** — 
 or a parameter; it is never a path, on any backend. JPA renders a correlated subselect
 over the entry table, Mongo a field path into the stored sub-document.
 
-Two limits are worth knowing up front, because both are refusals rather than surprises:
+Two things about maps are worth knowing up front:
 
 - **A quantifier over a map is a backend divergence.** JPA serves `any`/`all` over a map
   by ranging over the entry table; Mongo refuses it (code 103), because a map is stored
@@ -163,6 +163,22 @@ Two limits are worth knowing up front, because both are refusals rather than sur
   ordinary column. The join is *outer* with the key in its `ON` clause, so an owner without
   that key groups under `null` rather than dropping out — which is what Mongo does for a
   missing sub-document field. Both backends therefore answer the same.
+
+Whether that `null` group belongs in the answer is a property of the question, not of the
+backend, so you exclude it in the query — a predicate before the grouping, portable across
+both:
+
+```java
+QueryBuilder.from(catalogClass)
+        .where(mapValue(attributes, "color").isNotNull())
+        .groupByAs("color", mapValue(attributes, "color").toExpression())
+        .countOf("total")
+        .build();
+```
+
+Note what happens on JPA: the predicate keeps the subselect form — a correlated reference
+is legal in `WHERE` — while the grouping joins, so both renderings of the same map access
+sit in one statement.
 
 ## Geo
 
