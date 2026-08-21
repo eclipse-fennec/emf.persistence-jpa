@@ -376,15 +376,21 @@ public abstract class AbstractPersistenceTCK {
 	/**
 	 * A load that cannot do what was asked reports it <b>on the resource</b> (issue #197).
 	 * <p>
-	 * `Resource#getErrors()` / `getWarnings()` is the EMF way to hand a caller what went wrong
-	 * during a load, and it is where this framework puts its diagnostics (see
+	 * {@code Resource#getErrors()} / {@code getWarnings()} is the EMF way to hand a caller what
+	 * went wrong during a load, and it is where this framework puts its diagnostics (see
 	 * {@code docs/diagnostics.md}). This case exists because that forwarding is easy to lose:
 	 * a codec collects into its own collector, a resource forgets to transfer it, and from the
 	 * outside the load looks like a success that simply returned less. Nothing about the value
 	 * of the diagnostics is asserted here — only that they arrive where a caller can read them.
+	 * <p>
+	 * <b>Both backends populate lazily</b>, and that is the trap this case walks into on
+	 * purpose: {@code load(...)} only records the request, while the work — and everything it
+	 * has to report — happens on first contents access. Reading the diagnostics before
+	 * touching the contents finds them empty and makes a working backend look silent. The
+	 * bindings therefore trigger the population in their trigger, and anyone debugging a
+	 * "missing" diagnostic should check that first.
 	 */
 	@Test
-	@Disabled("#197 — measured on both backends: nothing reaches the resource")
 	public void aFailedLoadReportsItsDiagnosticsOnTheResource() throws Exception {
 		Resource resource;
 		try {

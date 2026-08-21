@@ -150,7 +150,10 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 		Resource resource = createBackendResourceSet().createResource(uriFor("Person"));
 		try {
 			resource.load(null);
-		} catch (IOException signalled) {
+			// both backends populate lazily: load() only marks the request, and the work —
+			// including whatever it has to report — happens on first contents access
+			resource.getContents();
+		} catch (IOException | RuntimeException signalled) {
 			// conforming: the diagnostics stay on the resource either way
 		}
 		return resource;
