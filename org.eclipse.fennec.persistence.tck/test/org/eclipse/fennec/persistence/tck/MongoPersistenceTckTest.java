@@ -65,16 +65,7 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	 */
 	@Override
 	protected PersistenceCapabilities declaredCapabilities() {
-		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create();
-		if (!MongoTestSupport.isFerretDb()) {
-			store.support(StoreFeature.TRANSACTION_BRACKET);
-		}
-		return PersistenceCapabilities.of(MongoFlavorCapabilities.of(flavor()),
-				CommandCapabilitiesBuilder.create()
-						.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
-								CommandFeature.UPDATE_BY_SELECTOR)
-						.build(),
-				store.build());
+		return MongoFlavorCapabilities.persistenceCapabilities(flavor());
 	}
 
 	// composite ids map to a compound structured _id via the codec id plane since

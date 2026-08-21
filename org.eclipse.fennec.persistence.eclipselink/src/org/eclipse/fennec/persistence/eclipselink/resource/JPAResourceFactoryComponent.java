@@ -26,6 +26,8 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.emf.osgi.annotation.ConfiguratorType;
 import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.query.QueryConstants;
@@ -180,7 +182,7 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 
 	private Resource newResource(URI uri, JPAUnit unit) {
 		JPAResourceImpl resource = new JPAResourceImpl(uri, unit);
-		QueryProcessor processor = queryProcessor.get();
+		QueryProcessor processor = processorFor(uri.authority());
 		if (nonNull(processor)) {
 			resource.setQueryProcessor(processor);
 		}
@@ -189,6 +191,49 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 			resource.setConverterService(converters);
 		}
 		return resource;
+	}
+
+	/**
+	 * The processor for a unit's resources, matched to the unit's database flavor
+	 * (issue #172).
+	 * <p>
+	 * A bound service is used as it is when it already declares that flavor — the ordinary
+	 * case, since the flavor-less registration declares the portable baseline and a
+	 * decorator would be bound deliberately. Otherwise a processor for the unit's flavor is
+	 * created, so what a resource refuses matches the database behind it rather than the
+	 * union of every relational database.
+	 *
+	 * @param puName the persistence unit name from the URI authority; may be {@code null}
+	 * @return the processor to hand to the resource, or {@code null} to leave its default
+	 */
+	private QueryProcessor processorFor(String puName) {
+		QueryProcessor bound = queryProcessor.get();
+		JpaFlavor flavor = flavorOf(puName);
+		if (isNull(flavor)) {
+			return bound;
+		}
+		if (bound instanceof JpaQueryProcessor jpa) {
+			return jpa.flavor() == flavor ? jpa : new JpaQueryProcessor(flavor);
+		}
+		return isNull(bound) ? new JpaQueryProcessor(flavor) : bound;
+	}
+
+	/**
+	 * @param puName the unit name; may be {@code null}
+	 * @return the flavor the unit's service publishes, or {@code null} when the unit is
+	 *         unknown or predates the property
+	 */
+	private JpaFlavor flavorOf(String puName) {
+		if (isNull(puName)) {
+			return null;
+		}
+		ServiceReference<JPAUnit> reference = unitRefs.get(puName);
+		if (isNull(reference)) {
+			return null;
+		}
+		return reference.getProperty(CapabilityDeclaration.FLAVOR_PROPERTY) instanceof String id
+				? JpaFlavor.byId(id).orElse(null)
+				: null;
 	}
 
 	/**

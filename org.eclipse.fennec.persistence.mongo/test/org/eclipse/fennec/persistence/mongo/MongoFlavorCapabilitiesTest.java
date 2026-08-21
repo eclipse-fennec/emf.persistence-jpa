@@ -18,6 +18,10 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
+import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
+import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
+import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -94,5 +98,49 @@ class MongoFlavorCapabilitiesTest {
 			assertThat(gaps.getClass().getName()).contains("Unmodifiable");
 		}
 		assertThat(MongoFlavorCapabilities.BASELINE.supported().getClass().getName()).contains("Unmodifiable");
+	}
+
+	/**
+	 * The declaration answers query, command and store together (issue #172) — and store is
+	 * where the mongo flavors genuinely differ: a transaction bracket needs a session-capable
+	 * deployment, which FerretDB, a standalone server, is not. This used to live in the TCK
+	 * binding, where nothing held it against the production declaration.
+	 */
+	@Test
+	void storeCapabilitiesFollowTheFlavor() {
+		assertThat(MongoFlavorCapabilities.persistenceCapabilities(MongoFlavor.MONGO).store()
+				.supports(StoreFeature.TRANSACTION_BRACKET)).isTrue();
+		assertThat(MongoFlavorCapabilities.persistenceCapabilities(MongoFlavor.DOCUMENTDB_PG).store()
+				.supports(StoreFeature.TRANSACTION_BRACKET)).isTrue();
+		assertThat(MongoFlavorCapabilities.persistenceCapabilities(MongoFlavor.FERRETDB).store()
+				.supports(StoreFeature.TRANSACTION_BRACKET)).isFalse();
+	}
+
+	@Test
+	void everyFlavorDeclaresTheSameWriteVerbs() {
+		for (MongoFlavor flavor : MongoFlavor.values()) {
+			CommandCapabilities commands =
+					MongoFlavorCapabilities.persistenceCapabilities(flavor).command();
+			assertThat(commands.supports(CommandFeature.INSERT)).as("flavor %s", flavor.id()).isTrue();
+			assertThat(commands.supports(CommandFeature.DELETE_BY_SELECTOR)).isTrue();
+			assertThat(commands.supports(CommandFeature.UPDATE_BY_SELECTOR)).isTrue();
+		}
+	}
+
+	@Test
+	void declarationNamesBothAxes() {
+		CapabilityDeclaration declaration = MongoFlavorCapabilities.declaration(MongoFlavor.FERRETDB);
+
+		assertThat(declaration.backend()).isEqualTo("mongo");
+		assertThat(declaration.flavor()).isEqualTo("ferretdb");
+		assertThat(declaration.capabilities().query().supported())
+				.isEqualTo(MongoFlavorCapabilities.of(MongoFlavor.FERRETDB).supported());
+	}
+
+	@Test
+	void nullFlavorDeclaresMongo() {
+		assertThat(MongoFlavorCapabilities.persistenceCapabilities(null).query().supported())
+				.isEqualTo(MongoFlavorCapabilities.of(MongoFlavor.MONGO).supported());
+		assertThat(MongoFlavorCapabilities.declaration(null).flavor()).isEqualTo(MongoFlavor.MONGO.id());
 	}
 }

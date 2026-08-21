@@ -333,6 +333,30 @@ The name describes the first third. Split it by role, one name per role:
 The bundle is its own, not a package inside the core bundle: the core has no EMF codegen, and the
 vocabulary needs it. It depends on nothing but EMF, so every other bundle can depend on it.
 
+**Who answers a declaration** (issue #172, 2026-08-21). The vocabulary above says what can be
+declared; `CapabilityDeclaration` says *who* declares it, and the answer is not per backend
+but per **backend × flavor** — the same axis the TCK matrix runs on. It names both, answers
+with the full `PersistenceCapabilities`, and is plain Java so the TCK can read it outside any
+framework; an implementation may additionally be registered as a service carrying
+`persistence.backend` and `persistence.flavor`.
+
+Both backends derive their per-flavor sets from one baseline by exclusion
+(`MongoFlavorCapabilities`, `JpaFlavorCapabilities`): a newly supported feature is available
+everywhere by default, so a genuine gap has to be discovered and declared deliberately rather
+than a new feature having to be added in three places.
+
+The relational flavor is **probed**, not configured: the persistence unit asks the driver once
+at activation (`JpaFlavor.detect`), while the EclipseLink factory is still unbuilt. A
+configuration key would add a second truth that can disagree with the database — exactly the
+failure mode a declaration must not have. A database nobody measured is `unknown` and declares
+the portable baseline.
+
+Consequences already visible: the mongo transaction bracket (FerretDB cannot, MongoDB and the
+DocumentDB gateway can) is a production declaration instead of a line in the TCK binding, and
+the TCK bindings read what the backend declares rather than assembling half of it themselves.
+`StoreLimits` remains the open remainder — it rides this axis and gets built when something
+needs the scalars.
+
 `TRANSACTION_BRACKET` moves from `CommandFeature` to `StoreFeature`. It was never a command
 capability: §4a already uses it to explain the cascade-delete window on the **save** path, and
 `OwnershipMaintenance` refers to it — reaching that statement through a `CommandResource` is
