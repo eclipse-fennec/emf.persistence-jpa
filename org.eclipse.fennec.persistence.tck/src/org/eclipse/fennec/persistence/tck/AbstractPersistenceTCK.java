@@ -127,6 +127,11 @@ public abstract class AbstractPersistenceTCK {
 	protected EStructuralFeature personFriends;
 	protected EStructuralFeature personEmployer;
 	protected EStructuralFeature addressStreet;
+	/** {@code Profile}, the §8 EMF-semantics fixture (issue #174). */
+	protected EClass profileClass;
+	protected EStructuralFeature profileNicknames;
+	protected EStructuralFeature profileMotto;
+	protected EStructuralFeature profileRank;
 	protected EStructuralFeature companyName;
 	protected EStructuralFeature companyEmployees;
 
@@ -172,6 +177,10 @@ public abstract class AbstractPersistenceTCK {
 		personFriends = personClass.getEStructuralFeature("friends");
 		personEmployer = personClass.getEStructuralFeature("employer");
 		addressStreet = addressClass.getEStructuralFeature("street");
+		profileClass = (EClass) tckPackage.getEClassifier("Profile");
+		profileNicknames = profileClass.getEStructuralFeature("nicknames");
+		profileMotto = profileClass.getEStructuralFeature("motto");
+		profileRank = profileClass.getEStructuralFeature("rank");
 		companyName = companyClass.getEStructuralFeature("name");
 		companyEmployees = companyClass.getEStructuralFeature("employees");
 		setUpBackend(tckPackage);
@@ -306,6 +315,19 @@ public abstract class AbstractPersistenceTCK {
 		return (List<EObject>) owner.eGet(feature);
 	}
 
+	/** The many-valued <em>attribute</em> counterpart of {@link #listOf} (issue #174). */
+	@SuppressWarnings("unchecked")
+	protected List<Object> listOfValues(EObject owner, EStructuralFeature feature) {
+		return (List<Object>) owner.eGet(feature);
+	}
+
+	/** A {@code Profile} with nothing but its id — the §8 fixture (issue #174). */
+	protected EObject newProfile(int id) {
+		EObject profile = EcoreUtil.create(profileClass);
+		profile.eSet(profileClass.getEStructuralFeature("prid"), idValue(profileClass, id));
+		return profile;
+	}
+
 	// -------------------------------------------------------------------- tests
 
 	@Test
@@ -318,6 +340,170 @@ public abstract class AbstractPersistenceTCK {
 		assertThat(loaded).isNotNull();
 		assertThat(loaded.eGet(personName)).isEqualTo("Emil Tester");
 		assertThat(loaded.eGet(personAge)).isEqualTo(42);
+	}
+
+	// ------------------------------------------------ EMF semantics (§8, issue #174)
+	//
+	// The conformance core the TCK was thinnest on: plain EMF behaviour every backend owes,
+	// with no capability to gate it — "skip this core case" cannot be spelled. Each of these
+	// closes a gap §8 verified was untested; a failure here is a defect in that backend, not
+	// a capability it may decline.
+
+	/**
+	 * A multi-valued attribute round-trips (§8). Only {@code GeoPoint.coordinates} existed
+	 * before, exercised solely by geo tests that mongo alone runs — so on JPA, where a
+	 * many-valued attribute needs a collection table of its own, this had never been written
+	 * or read at all.
+	 */
+	@Test
+	public void multiValuedAttributeRoundTrips() throws Exception {
+		EObject profile = newProfile(1);
+		listOfValues(profile, profileNicknames).addAll(List.of("Ada", "Bee", "Cy"));
+
+		save(createBackendResourceSet(), "Profile", profile);
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Profile"), "1");
+		assertThat(loaded).isNotNull();
+		assertThat(listOfValues(loaded, profileNicknames))
+				.as("a multi-valued attribute keeps its values, in order")
+				.containsExactly("Ada", "Bee", "Cy");
+	}
+
+	/**
+	 * An empty multi-valued attribute stays empty rather than coming back as one null element
+	 * — the failure mode a collection table invites.
+	 */
+	@Test
+	public void emptyMultiValuedAttributeStaysEmpty() throws Exception {
+		save(createBackendResourceSet(), "Profile", newProfile(2));
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Profile"), "2");
+		assertThat(listOfValues(loaded, profileNicknames)).isEmpty();
+	}
+
+	/**
+	 * Single-valued containment round-trips (§8) — {@code Place.location}. Untested on JPA for
+	 * the same reason as the multi-valued attribute: the type was not in its bootstrap.
+	 */
+	@Test
+	public void singleValuedContainmentRoundTrips() throws Exception {
+		EClass placeClass = (EClass) tckPackage.getEClassifier("Place");
+		EClass geoPointClass = (EClass) tckPackage.getEClassifier("GeoPoint");
+		EStructuralFeature location = placeClass.getEStructuralFeature("location");
+		EObject place = EcoreUtil.create(placeClass);
+		place.eSet(placeClass.getEStructuralFeature("plid"), idValue(placeClass, 1));
+		place.eSet(placeClass.getEStructuralFeature("name"), "Market Square");
+		EObject point = EcoreUtil.create(geoPointClass);
+		point.eSet(geoPointClass.getEStructuralFeature("gid"), idValue(geoPointClass, 1));
+		point.eSet(geoPointClass.getEStructuralFeature("type"), "Point");
+		place.eSet(location, point);
+
+		save(createBackendResourceSet(), "Place", place);
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Place"), "1");
+		assertThat(loaded).isNotNull();
+		EObject loadedPoint = (EObject) loaded.eGet(location);
+		assertThat(loadedPoint).as("the contained object comes back").isNotNull();
+		assertThat(loadedPoint.eIsProxy()).as("containment children are materialised").isFalse();
+		assertThat(loadedPoint.eContainer()).isSameAs(loaded);
+		assertThat(loadedPoint.eGet(geoPointClass.getEStructuralFeature("type"))).isEqualTo("Point");
+	}
+
+	/**
+	 * A subtype written and read through its supertype's resource comes back as that subtype
+	 * (§8). The hierarchy was exercised thirteen times before this — every time through a
+	 * capability-gated type predicate, so the plain round trip, which no backend may decline,
+	 * was never asserted.
+	 */
+	@Test
+	public void polymorphicRoundTrip() throws Exception {
+		EClass vehicleClass = (EClass) tckPackage.getEClassifier("Vehicle");
+		EClass carClass = (EClass) tckPackage.getEClassifier("Car");
+		EClass motorcycleClass = (EClass) tckPackage.getEClassifier("Motorcycle");
+		EObject car = newVehicle(carClass, 1, "Beetle");
+		car.eSet(carClass.getEStructuralFeature("horsepower"), 50);
+		EObject motorcycle = newVehicle(motorcycleClass, 2, "Bonnie");
+		motorcycle.eSet(motorcycleClass.getEStructuralFeature("cc"), 900);
+
+		save(createBackendResourceSet(), "Vehicle", car, motorcycle);
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Vehicle");
+		EObject loadedCar = findById(loaded, "1");
+		EObject loadedMotorcycle = findById(loaded, "2");
+		assertThat(loadedCar).isNotNull();
+		assertThat(loadedMotorcycle).isNotNull();
+		assertThat(loadedCar.eClass().getName())
+				.as("a subtype read through its supertype keeps its type").isEqualTo("Car");
+		assertThat(loadedMotorcycle.eClass().getName()).isEqualTo("Motorcycle");
+		assertThat(loadedCar.eGet(carClass.getEStructuralFeature("horsepower"))).isEqualTo(50);
+		assertThat(loadedMotorcycle.eGet(motorcycleClass.getEStructuralFeature("cc"))).isEqualTo(900);
+	}
+
+	/**
+	 * {@code eUnset} on the EMF write path (§8). Only the command path covered unset before
+	 * ({@code commandUpdateUnsetClearsTheValue}), so the ordinary "clear it and save" route
+	 * was untested.
+	 */
+	@Test
+	public void unsetOnTheWritePathClearsTheValue() throws Exception {
+		EObject profile = newProfile(3);
+		profile.eSet(profileMotto, "carpe diem");
+		save(createBackendResourceSet(), "Profile", profile);
+
+		EObject stored = findById(loadAll(createBackendResourceSet(), "Profile"), "3");
+		assertThat(stored.eGet(profileMotto)).isEqualTo("carpe diem");
+		stored.eUnset(profileMotto);
+		stored.eResource().save(null);
+
+		EObject reloaded = findById(loadAll(createBackendResourceSet(), "Profile"), "3");
+		assertThat(reloaded.eGet(profileMotto)).as("the unset value is gone after reload").isNull();
+	}
+
+	/**
+	 * A feature never written comes back as its declared default (§8) — {@code Profile.rank}
+	 * defaults to 7, so a backend that stores a physical null must still answer the default.
+	 */
+	@Test
+	public void defaultValueSurvivesTheRoundTrip() throws Exception {
+		save(createBackendResourceSet(), "Profile", newProfile(4));
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Profile"), "4");
+		assertThat(loaded.eGet(profileRank)).as("an unwritten feature answers its default")
+				.isEqualTo(7);
+	}
+
+	/**
+	 * Containment order is part of the value (§8): a many-valued containment reference comes
+	 * back in the order it was written, not in whatever order the store returns rows.
+	 */
+	@Test
+	public void containmentOrderIsPreserved() throws Exception {
+		EObject person = newPerson(1, "Emil", 30);
+		listOf(person, personAddresses).add(newAddress(31, "First", "Jena"));
+		listOf(person, personAddresses).add(newAddress(32, "Second", "Jena"));
+		listOf(person, personAddresses).add(newAddress(33, "Third", "Jena"));
+
+		save(createBackendResourceSet(), "Person", person);
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Person"), "1");
+		assertThat(listOf(loaded, personAddresses)).extracting(a -> a.eGet(addressStreet))
+				.as("containment keeps insertion order")
+				.containsExactly("First", "Second", "Third");
+	}
+
+	/**
+	 * Two reads through one ResourceSet yield the same instance (§8): the collection resource
+	 * is the identity anchor, so a second load must dedup against it rather than produce a
+	 * second copy of the same object.
+	 */
+	@Test
+	public void objectIdentityIsStableAcrossRepeatedLoads() throws Exception {
+		save(createBackendResourceSet(), "Person", newPerson(1, "Emil", 30));
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject first = findById(loadAll(readSet, "Person"), "1");
+		EObject second = findById(loadAll(readSet, "Person"), "1");
+		assertThat(second).as("one ResourceSet answers one identity per object").isSameAs(first);
 	}
 
 	@Test

@@ -89,6 +89,14 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		// so its target type has to be bootstrapped with the rest
 		eClasses.add(tckPackage.getEClassifier("StringToStringMapEntry"));
 		eClasses.add(tckPackage.getEClassifier("IntToStringMapEntry"));
+		// Place/GeoPoint were reachable only from the geo tests, which mongo alone runs — so
+		// single-valued containment and the model's multi-valued attribute had never been
+		// mapped relationally at all (issue #174, §8)
+		eClasses.add(tckPackage.getEClassifier("Place"));
+		eClasses.add(tckPackage.getEClassifier("GeoPoint"));
+		// carries the EMF-semantics features §8 found untested: a plain multi-valued
+		// attribute, an unsettable one, and one with a default (issue #174)
+		eClasses.add(tckPackage.getEClassifier("Profile"));
 		emf = JpaTckSupport.bootstrap(PU_NAME, eClasses);
 	}
 

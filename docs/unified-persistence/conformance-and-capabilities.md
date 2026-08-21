@@ -760,7 +760,14 @@ follow-up, not part of this decision (§10.1).
    cannot reach its backend now fails by itself instead of being caught by counting executed
    tests afterwards.
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become
-   blocking rather than `@Disabled`.
+   blocking rather than `@Disabled`. **Mostly done** (#174): eight ungated core cases were
+   added — multi-valued attribute round trip (and the empty case), single-valued containment,
+   polymorphic round trip, `eUnset` on the write path, declared defaults, containment order,
+   object identity across repeated loads — plus the `Place`/`GeoPoint` and new `Profile` types
+   in the JPA bootstrap they needed. The polymorphic case found a real defect on mongo
+   (a subtype read through its supertype comes back as the supertype, eclipse-fennec/emf.codec#160)
+   and is disabled there with that reference until the codec resolves it. Three §8 items
+   remain and are each more than coverage — see the follow-up issue.
 6. Generate the command × selector cross product from the declarations (§4). **Done** (#175):
    a `@TestFactory` pairs every declared selector-shaped verb with every plain-filter probe
    from the same corpus the refusal test uses, so the case count follows the declaration
