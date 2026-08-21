@@ -770,7 +770,9 @@ follow-up, not part of this decision (§10.1).
    a `file:/…#//Car` as its type, and the package lived only in the backend's
    `MetadataService`, which type resolution does not consult. Both are fixed here and the case
    passes on all four bindings; the diagnosis is recorded on eclipse-fennec/emf.codec#160.
-   Three §8 items remain and are each more than coverage: #195.
+   The fixture root is abstract since, so the same case
+   covers §8's abstract-type item. Two §8 items remain, each a decision rather than coverage:
+   #195.
 6. Generate the command × selector cross product from the declarations (§4). **Done** (#175):
    a `@TestFactory` pairs every declared selector-shaped verb with every plain-filter probe
    from the same corpus the refusal test uses, so the case count follows the declaration

@@ -51,7 +51,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="employees" upperBound="-1"
         eType="#//Person" eOpposite="#//Person/employer"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Vehicle">
+  <eClassifiers xsi:type="ecore:EClass" name="Vehicle" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="vid" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
         iD="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

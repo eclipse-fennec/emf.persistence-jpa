@@ -435,10 +435,17 @@ public abstract class AbstractPersistenceTCK {
 	 * (§8). The hierarchy was exercised thirteen times before this — every time through a
 	 * capability-gated type predicate, so the plain round trip, which no backend may decline,
 	 * was never asserted.
+	 * <p>
+	 * The root is <b>abstract</b>, which makes this the §8 abstract-type case as well: nothing
+	 * can fall back to instantiating the root, so a backend that loses the stored type fails
+	 * here instead of quietly answering with a supertype instance.
 	 */
 	@Test
 	public void polymorphicRoundTrip() throws Exception {
 		EClass vehicleClass = (EClass) tckPackage.getEClassifier("Vehicle");
+		assertThat(vehicleClass.isAbstract())
+				.as("the fixture root is abstract — that is what makes this the abstract-type case")
+				.isTrue();
 		EClass carClass = (EClass) tckPackage.getEClassifier("Car");
 		EClass motorcycleClass = (EClass) tckPackage.getEClassifier("Motorcycle");
 		EObject car = newVehicle(carClass, 1, "Beetle");
