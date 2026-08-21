@@ -137,11 +137,16 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	 */
 	@Override
 	protected Resource provokeLoadDiagnostic() throws Exception {
+		// A foreign _type would simply be filtered out — it is not part of this extent, and
+		// ignoring it is correct. What the store cannot answer for is a document of the right
+		// type carrying data the model has no home for: the value is dropped on read.
 		database.getCollection("Person", org.bson.BsonDocument.class)
 				.insertOne(new org.bson.BsonDocument()
 						.append("_id", new org.bson.BsonString("999"))
-						.append("_type", new org.bson.BsonString("http://example.org/gone#//Ghost"))
-						.append("name", new org.bson.BsonString("Nobody")));
+						.append("_type", new org.bson.BsonString(
+								tckPackage.getNsURI() + "#//" + personClass.getName()))
+						.append("name", new org.bson.BsonString("Nobody"))
+						.append("noSuchFeature", new org.bson.BsonString("dropped on read")));
 		Resource resource = createBackendResourceSet().createResource(uriFor("Person"));
 		try {
 			resource.load(null);
