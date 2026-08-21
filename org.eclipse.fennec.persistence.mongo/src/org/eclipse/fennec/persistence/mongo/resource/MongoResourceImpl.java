@@ -539,6 +539,19 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			for (EObject eObject : getContents()) {
 				collectOwnedDocuments(eObject, owned);
 			}
+			// Nothing may be deleted while something still points at it (issue #195). A
+			// relational store gets this from its foreign keys; here it has to be asked for,
+			// once per object and before the first removal — a half-done delete would be
+			// worse than a refused one.
+			for (EObject eObject : getContents()) {
+				String referrer = findInboundReference(eObject);
+				if (nonNull(referrer)) {
+					String message = "Cannot delete " + eObject.eClass().getName() + " '"
+							+ EcoreUtil.getID(eObject) + "': " + referrer + " still references it";
+					getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+					throw new IOException(message);
+				}
+			}
 			List<BsonValue> deletedIds = new ArrayList<>();
 			for (EObject eObject : getContents()) {
 				BsonValue id = extractId(eObject);
@@ -559,6 +572,72 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to delete resource: " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to delete resource: " + getURI(), e);
+		}
+	}
+
+	/**
+	 * Looks for a non-containment reference pointing at {@code target} (issue #195).
+	 * <p>
+	 * Containment is ownership and cascades — that is a different question with a settled
+	 * answer (issues #142/#143). This is the other direction: a plain reference whose target
+	 * disappears leaves a proxy that resolves to nothing, and a store must not produce that
+	 * silently. A relational backend is told by its foreign keys; a document store has to look,
+	 * which is one query per reference that could point here.
+	 * <p>
+	 * Scope, stated because it is a limit rather than an oversight: the search covers the
+	 * EPackage of the deleted object's type. A reference from another package's model is not
+	 * found — finding it would mean scanning every collection in the database on every delete.
+	 *
+	 * @param target the object about to be deleted
+	 * @return a description of the first referrer found, or {@code null} when nothing points here
+	 */
+	private String findInboundReference(EObject target) {
+		String id = EcoreUtil.getID(target);
+		if (isNull(id) || isNull(target.eClass().getEPackage())) {
+			return null;
+		}
+		String ownCollection = getCollectionName(null);
+		for (EClassifier classifier : target.eClass().getEPackage().getEClassifiers()) {
+			if (!(classifier instanceof EClass candidate) || candidate.isAbstract()) {
+				continue;
+			}
+			for (EReference reference : candidate.getEAllReferences()) {
+				if (reference.isContainment() || reference.isDerived() || reference.isTransient()
+						|| !reference.getEReferenceType().isSuperTypeOf(target.eClass())) {
+					continue;
+				}
+				if (referenceExists(candidate.getName(), reference.getName(), id, ownCollection)) {
+					return candidate.getName() + "." + reference.getName();
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * The configured reference key, {@code $ref} unless the model configures otherwise.
+	 */
+	private String refKey() {
+		Object configured = getResolver().getGlobalProperty(ConfigProperty.REF_KEY);
+		return configured instanceof String key && !key.isBlank()
+				? key
+				: (String) ConfigProperty.REF_KEY.getDefaultValue();
+	}
+
+	/**
+	 * Whether any document of {@code collectionName} holds {@code refId} in {@code fieldName}.
+	 * Both stored forms are checked: a bare id within the same collection, and the
+	 * {@code /Collection#id} form a cross-collection reference carries.
+	 */
+	private boolean referenceExists(String collectionName, String fieldName, String refId,
+			String ownCollection) {
+		String field = fieldName + "." + refKey();
+		Bson filter = Filters.or(
+				eq(field, new BsonString(refId)),
+				eq(field, new BsonString("/" + ownCollection + "#" + refId)));
+		try (MongoCursor<BsonDocument> cursor = getCollection(collectionName)
+				.find(filter).limit(1).iterator()) {
+			return cursor.hasNext();
 		}
 	}
 

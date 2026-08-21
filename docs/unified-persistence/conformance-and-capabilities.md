@@ -243,6 +243,32 @@ Cross-resource changes require saving both resources — standard EMF practice �
 of not doing so is silent data loss rather than a stale reference. Re-parenting *within* one
 save, and re-parenting where the new owner is saved first, are both correct.
 
+### 4c. Deleting something that is still referenced is refused
+
+Decided 2026-08-21 (issue #195), measured on both backends before deciding.
+
+Containment is ownership and cascades — settled, and not this question. This is the other
+direction: a plain, non-containment reference whose target is deleted leaves a proxy that
+resolves to nothing. **No backend may produce that silently.** Deleting an object something
+still points at is refused, with a diagnostic naming the referrer.
+
+The backends arrived here from opposite ends. JPA already refused, because the mapping
+declares the reference as a foreign key and the database enforces it — nothing had to be
+built. Mongo deleted happily and left the reference dangling, so it now looks before it
+deletes: one query per reference in the model that could point at this type, all of them
+before the first removal, because a half-done delete is worse than a refused one.
+
+Two limits, stated because they are limits rather than oversights:
+
+- The mongo search covers the EPackage of the deleted object's type. A reference from
+  another model is not found — finding it would mean scanning every collection on every
+  delete.
+- The refusal is uniform, while the eorm mapping can in principle say something finer per
+  reference (`nullable`, cascade). Making the behaviour follow that declaration would be a
+  refinement; it is noted on issue #29 rather than guessed at here. Uniform refusal is the
+  conservative reading, and it is the one portable across a backend that has no mapping
+  model at all.
+
 ### 4b. Residency is form, not semantics — the one documented divergence
 
 Cross-document containment (a child owned by a parent *and* a root of its own `Resource`) is
