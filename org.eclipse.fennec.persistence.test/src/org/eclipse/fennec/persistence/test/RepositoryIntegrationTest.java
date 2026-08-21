@@ -51,6 +51,7 @@ import org.osgi.test.common.annotation.InjectBundleContext;
 import org.osgi.test.common.annotation.InjectService;
 import org.osgi.test.common.annotation.Property;
 import org.osgi.test.common.annotation.Property.TemplateArgument;
+import org.osgi.test.common.annotation.Property.Type;
 import org.osgi.test.common.annotation.Property.ValueSource;
 import org.osgi.test.common.annotation.config.WithFactoryConfiguration;
 import org.osgi.test.common.service.ServiceAware;
@@ -278,5 +279,49 @@ public class RepositoryIntegrationTest extends EPersistenceBase {
 		assertEquals("jpa", repository.baseUri().scheme());
 		assertNull(writeAware.getService(), "readOnly must withhold WriteRepository");
 		assertNull(fullAware.getService(), "readOnly must withhold Repository");
+	}
+
+	/**
+	 * The mapping-free chain documented in Getting Started B.6: the mapping is derived
+	 * from the registered EPackage by {@code fennec.jpa.EORMMappingService}, the unit
+	 * binds it by its {@code fennec.jpa.eorm.mapping} property, and the repository binds
+	 * the unit — no hand-written .eorm file anywhere. Pins the property namespaces the
+	 * three configurations use, which is what consumers get wrong.
+	 */
+	@Test
+	@TestAnnotations.DefaultEPersistenceSetup
+	@WithFactoryConfiguration(factoryPid = "fennec.jpa.EORMMappingService", name = "chain", location = "?", properties = {
+			@Property(key = "fennec.jpa.eorm.model.target", value = "(emf.name=fennec.persistence.model)"),
+			@Property(key = "fennec.jpa.eorm.eClasses", type = Type.Array, source = ValueSource.Value, value = "Person"),
+			@Property(key = "fennec.jpa.eorm.mappingName", value = "chainMapping")
+	})
+	@WithFactoryConfiguration(factoryPid = "fennec.jpa.EMPersistenceUnit", name = "chainUnit", properties = {
+			@Property(key = "fennec.jpa.persistenceUnitName", value = "chainUnit"),
+			@Property(key = "fennec.jpa.mapping.target", value = "(fennec.jpa.eorm.mapping=chainMapping)"),
+			@Property(key = "fennec.jpa.ext.eclipselink.ddl-generation", value = "create-or-extend-tables")
+	})
+	@WithFactoryConfiguration(factoryPid = "fennec.repository.jpa", name = "chainRepo", properties = {
+			@Property(key = "repositoryId", value = "chain-repo"),
+			@Property(key = "unit.target", value = "(osgi.unit.name=chainUnit)")
+	})
+	public void testMappingFreeChain(
+			@InjectService(filter = "(persistence.repository.id=chain-repo)", timeout = 10000)
+			ServiceAware<Repository> repositoryAware,
+			@InjectService(filter = "(emf.name=fennec.persistence.model)", timeout = 5000)
+			ServiceAware<EPackage> modelAware) throws Exception {
+		Repository repository = repositoryAware.getService();
+		assertNotNull(repository, "EORMMappingService -> EMPersistenceUnit -> repository must resolve");
+		EPackage model = modelAware.getService();
+		EClass personClass = (EClass) model.getEClassifier("Person");
+
+		assertEquals("chain-repo", repository.id());
+		assertEquals(URI.createURI("jpa://chainUnit"), repository.baseUri());
+
+		// the derived mapping carries a real schema: a round trip has to reach the table
+		repository.save(newPerson(model, "c1", "Carol"));
+		assertEquals(1, repository.count(personClass));
+		EObject loaded = repository.getEObject(personClass, "c1");
+		assertNotNull(loaded, "the derived mapping must support a keyed read");
+		assertEquals("Carol", loaded.eGet(personClass.getEStructuralFeature("stringDefault")));
 	}
 }

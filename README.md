@@ -29,6 +29,9 @@ On the relational path it maps ECore metamodels (EClass, EAttribute, EReference)
 | `org.eclipse.fennec.persistence.orm` | EORM metadata model (`eorm.ecore`) + processors (Entity, Basic, OneToMany, ManyToOne, etc.) |
 | `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard, the gated `DataSource` factory |
 | `org.eclipse.fennec.persistence.mongo` | MongoDB backend: liveness-gated client/database services, `mongodb://` resources, codec-based BSON mapping |
+| `org.eclipse.fennec.persistence.repository` | Repository facade: `ReadRepository`/`WriteRepository`/`Repository` model, prepared queries, the backend-neutral SPI |
+| `org.eclipse.fennec.persistence.repository.jpa` | Repository flavour over a JPA persistence unit (`fennec.repository.jpa`) |
+| `org.eclipse.fennec.persistence.repository.mongo` | Repository flavour over a MongoDB database (`fennec.repository.mongo`) |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` -- reverse-engineers Ecore models from database schemas |
 | `org.eclipse.fennec.persistence.query` | Backend-neutral query SPI: the canonical query model translated per backend via `QueryProcessor` |
 | `org.eclipse.fennec.persistence.query.derived` | Query-backed derived references: OCL derivation annotations resolved through backend queries |
@@ -178,6 +181,7 @@ via the VitePress site in `docs-site/`).
 | [Getting Started](docs/getting-started.md) | Full walkthrough: Ecore model, bootstrap (OSGi + Non-OSGi), CRUD via `jpa://` Resource, lazy-loading semantics |
 | [JPA User Guide](docs/jpa-user-guide.md) | Day-to-day work with `jpa://` resources, options, eorm mapping semantics, converters, unit lifecycle |
 | [MongoDB User Guide](docs/mongo-user-guide.md) | The MongoDB backend: configuration, `mongodb://` resources, codec-based BSON mapping |
+| [Repository User Guide](docs/repository-user-guide.md) | The primary user-facing service: repository interfaces, configuration per flavour, prepared queries, prototype-scope contract |
 | [Query User Guide](docs/unified-persistence/query-usage.md) | Building and executing backend-neutral queries: `Expressions`, `QueryBuilder`, capability matrix, write commands |
 | [Configuration Reference](docs/configuration-reference.md) | Every `fennec.jpa.*` property, forwarded EclipseLink keys, liveness keys, load/save `Options` |
 | [JPA & OSGi Architecture](docs/osgi-architecture.md) | Persistence units as services, the `jpa://` whiteboard, lazy factory lifecycle (`emfIdleTimeout`) |

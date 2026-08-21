@@ -239,9 +239,10 @@ available with property `fennec.jpa.orm.mapping.name=library`.
 
 ```properties
 # filename: fennec.jpa.EMPersistenceUnit~library.cfg
-persistenceUnitName=library
-batchWriting=JDBC
-batchSize=500
+# every configurator key carries the fennec.jpa. prefix
+fennec.jpa.persistenceUnitName=library
+fennec.jpa.batchWriting=JDBC
+fennec.jpa.batchSize=500
 
 # service filters — bind the right DataSource, EntityMappings, ConverterService.
 # The mapping filter below matches the EORMLoader variant. If you use
@@ -257,6 +258,10 @@ fennec.jpa.ext.eclipselink.logging.level=INFO
 
 When this configuration is applied, the configurator registers an
 `EntityManagerFactory` service with property `osgi.unit.name=library`.
+
+The `fennec.jpa.` prefix is not optional: `persistenceUnitName` without it is
+not seen, and activation fails with
+`ConfigurationException: No persistence unit name was provided`.
 
 See [`configuration-reference.md`](configuration-reference.md) for the full
 OCD property list and forwarded EclipseLink keys.
@@ -302,6 +307,92 @@ public class LibraryService {
 The OSGi reference filter `(osgi.unit.name=library)` picks exactly the
 `EntityManagerFactory` produced by the `fennec.jpa.EMPersistenceUnit~library`
 configuration. From here the CRUD usage is identical to the Non-OSGi path.
+
+### B.5 — Or let the repository facade do it
+
+Building the `ResourceSet` yourself, as B.4 does, is the low-level route. In
+OSGi you normally do not need it: add one more configuration and you get a
+`Repository` service that reads and writes EObjects directly.
+
+```properties
+# filename: fennec.repository.jpa~library.cfg
+# note: repository keys are unprefixed
+repositoryId=library
+unit.target=(osgi.unit.name=library)
+readOnly=false
+```
+
+```java
+import java.io.IOException;
+
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.fennec.persistence.repository.api.Repository;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+
+@Component
+public class LibraryService {
+
+    @Reference(target = "(persistence.repository.id=library)")
+    private Repository repository;
+
+    public EObject findBook(EClass bookEClass, String id) throws IOException {
+        return repository.getEObject(bookEClass, id);
+    }
+}
+```
+
+`readOnly=true` withholds the write interfaces from the service registry
+entirely, so a read-only consumer cannot even bind them. Queries, prepared
+queries and the full interface set are described in the
+[Repository User Guide](repository-user-guide.md).
+
+### B.6 — The whole chain without an .eorm file
+
+Putting B.1–B.5 together, the shortest OSGi setup that never touches a
+hand-written mapping file is four configurations:
+
+```properties
+# 1. the DataSource — see B.1
+# filename: org.osgi.service.jdbc.DataSourceFactory~library.cfg
+osgi.jdbc.driver.class=org.h2.Driver
+url=jdbc:h2:mem:library
+dataSourceName=libraryDs
+
+# 2. derive the mapping from the registered EPackage
+# filename: fennec.jpa.EORMMappingService~library.cfg
+fennec.jpa.eorm.model.target=(emf.nsURI=http://example.org/library/1.0)
+fennec.jpa.eorm.mappingName=library
+# fennec.jpa.eorm.eClasses=Author,Book   # omit to map the whole EPackage
+
+# 3. the persistence unit over that mapping
+# filename: fennec.jpa.EMPersistenceUnit~library.cfg
+fennec.jpa.persistenceUnitName=library
+fennec.jpa.dataSource.target=(dataSourceName=libraryDs)
+fennec.jpa.mapping.target=(fennec.jpa.eorm.mapping=library)
+fennec.jpa.ext.eclipselink.ddl-generation=create-or-extend-tables
+
+# 4. the repository over that unit
+# filename: fennec.repository.jpa~library.cfg
+repositoryId=library
+unit.target=(osgi.unit.name=library)
+readOnly=true
+```
+
+Watch the three property namespaces — they are different on purpose and are
+the most common source of a silently missing service:
+
+| Configuration | Key prefix | Service property it publishes |
+|---------------|-----------|-------------------------------|
+| `fennec.jpa.EORMMappingService` | `fennec.jpa.eorm.` | `fennec.jpa.eorm.mapping=<mappingName>` |
+| `fennec.jpa.EORMLoader` | `fennec.jpa.eorm.` | `fennec.jpa.orm.mapping.name=<name>` |
+| `fennec.jpa.EMPersistenceUnit` | `fennec.jpa.` | `osgi.unit.name=<persistenceUnitName>` |
+| `fennec.repository.jpa` | *(none)* | `persistence.repository.id=<repositoryId>` |
+
+Each step binds the previous one by the property in the right-hand column. If
+a service never appears, `scr:list` in the Gogo shell tells you which
+reference is unsatisfied.
 
 ---
 
@@ -411,13 +502,19 @@ If you want the runtime to generate the mapping from a registered
 ```properties
 # filename: fennec.jpa.EORMMappingService~library.cfg
 fennec.jpa.eorm.model.target=(emf.name=library)
-eClasses=Author,Book
-mappingName=library
-strict=false
+fennec.jpa.eorm.eClasses=Author,Book
+fennec.jpa.eorm.mappingName=library
+fennec.jpa.eorm.strict=false
 ```
 
-- `eClasses` — names of EClasses in the referenced `EPackage` to map.
-  Omit to map all persistent EClasses.
+**Every key carries the `fennec.jpa.eorm.` prefix** — the component declares it
+as its object class definition prefix. An unprefixed `eClasses=…` is not an
+error; it is simply ignored, and you end up with an empty mapping.
+
+- `eClasses` — names of EClasses in the referenced `EPackage` to map. Omit the
+  key to map every EClass of the package. A configured name that is not an
+  EClass of that package (a typo, or an EEnum) is skipped with a warning in
+  the log, not an activation failure.
 - `strict` — when `true` the generator takes EClass/attribute names as
   authoritative and skips column-name guessing. Default `false`.
 
@@ -446,10 +543,17 @@ the only thing the downstream config cares about.
 ### Customising a generated mapping (OSGi)
 
 If auto-generation is almost right but you need a small tweak, register an
-optional `EORMMappingCustomizer` service. `fennec.jpa.EORMMappingService`
+`EORMMappingCustomizer` service. `fennec.jpa.EORMMappingService`
 runs your customizer on the generated model before publishing the
 `EntityMappings` service — useful for overriding one column name without
 maintaining a full `.eorm` file.
+
+You do not have to register one: the reference is satisfied by the built-in
+`EmptyMappingCustomizer`. But it is a **mandatory static reference**, so a
+`fennec.jpa.eorm.customizer.target` filter that matches nothing leaves the
+component unsatisfied — no `EntityMappings` service appears, and nothing in the
+log says why. If your mapping never shows up, check that filter first
+(`scr:list` / `scr:info` in the Gogo shell shows the unsatisfied reference).
 
 ---
 
@@ -659,6 +763,7 @@ view.
 
 ## Next steps
 
+- [`repository-user-guide.md`](repository-user-guide.md) — the repository facade in full: interfaces, queries, prepared queries, both flavours
 - [`configuration-reference.md`](configuration-reference.md) — full property catalogue (both modes)
 - [`REVIEW.md`](REVIEW.md) — structured review and status of every work package
 - [`development-guide.md`](development-guide.md) — internals, session continuity, contribution notes

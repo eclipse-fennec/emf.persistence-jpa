@@ -169,10 +169,7 @@ public abstract class AbstractPersistenceUnitConfigurator {
 	 * {@value #DEFAULT_EMF_IDLE_TIMEOUT_SECONDS}s.
 	 */
 	private static long readIdleTimeoutMillis(Map<String, Object> properties) {
-		Object value = properties.get(PROPERTY_PREFIX + CONFIG_EMF_IDLE_TIMEOUT);
-		if (isNull(value)) {
-			value = properties.get(CONFIG_EMF_IDLE_TIMEOUT);
-		}
+		Object value = readPrefixedOrPlain(properties, CONFIG_EMF_IDLE_TIMEOUT);
 		long seconds = DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;
 		if (value instanceof Number n) {
 			seconds = n.longValue();
@@ -243,19 +240,33 @@ public abstract class AbstractPersistenceUnitConfigurator {
 
 	/**
 	 * Maps the typed OCD properties {@code batchWriting} / {@code batchSize} onto the
-	 * corresponding EclipseLink properties. Explicit {@code fennec.jpa.ext.eclipselink.jdbc.batch-writing*}
-	 * entries take precedence — they are forwarded first and we do not overwrite them.
+	 * corresponding EclipseLink properties. Both are read prefixed
+	 * ({@code fennec.jpa.batchWriting}, as the object class definition declares them) or
+	 * unprefixed, like the idle timeout. Explicit
+	 * {@code fennec.jpa.ext.eclipselink.jdbc.batch-writing*} entries take precedence —
+	 * they are forwarded first and we do not overwrite them.
 	 */
 	private static void translateBatchWriting(Map<String, Object> src, Map<String, Object> dst) {
-		Object mode = src.get(CONFIG_BATCH_WRITING);
+		Object mode = readPrefixedOrPlain(src, CONFIG_BATCH_WRITING);
 		if (mode instanceof String s && !s.isEmpty()) {
 			dst.putIfAbsent(PersistenceUnitProperties.BATCH_WRITING, s);
 		}
-		Object size = src.get(CONFIG_BATCH_SIZE);
+		Object size = readPrefixedOrPlain(src, CONFIG_BATCH_SIZE);
 		int sizeValue = asPositiveInt(size);
 		if (sizeValue > 0) {
 			dst.putIfAbsent(PersistenceUnitProperties.BATCH_WRITING_SIZE, String.valueOf(sizeValue));
 		}
+	}
+
+	/**
+	 * Reads a configuration value under its prefixed key, falling back to the unprefixed one.
+	 * @param properties the raw configuration properties
+	 * @param key the unprefixed configuration key
+	 * @return the value or <code>null</code>, if neither key is set
+	 */
+	private static Object readPrefixedOrPlain(Map<String, Object> properties, String key) {
+		Object value = properties.get(PROPERTY_PREFIX + key);
+		return isNull(value) ? properties.get(key) : value;
 	}
 
 	private static int asPositiveInt(Object value) {

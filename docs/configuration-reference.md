@@ -3,10 +3,11 @@
 Every knob exposed by Fennec Persistence JPA at a glance. Grouped by layer:
 
 1. [OSGi persistence-unit properties](#osgi-persistence-unit-properties)
-2. [Forwarded EclipseLink properties](#forwarded-eclipselink-properties)
-3. [Resource load and save options](#resource-load-and-save-options)
-4. [Non-OSGi bootstrap properties](#non-osgi-bootstrap-properties)
-5. [Repository facade](#repository-facade)
+2. [Mapping producers](#mapping-producers)
+3. [Forwarded EclipseLink properties](#forwarded-eclipselink-properties)
+4. [Resource load and save options](#resource-load-and-save-options)
+5. [Non-OSGi bootstrap properties](#non-osgi-bootstrap-properties)
+6. [Repository facade](#repository-facade)
 
 ## OSGi persistence-unit properties
 
@@ -15,14 +16,23 @@ Used as keys in the factory configuration for the two PIDs:
 - `fennec.jpa.PersistenceUnit` -- loads a persistence unit from an XMI file or a mapping file
 - `fennec.jpa.EMPersistenceUnit` -- loads from an injected `EntityMappings` OSGi service
 
+**Every key in this table carries the `fennec.jpa.` prefix** -- both configurators
+declare it as their object class definition prefix. An unprefixed
+`persistenceUnitName` is not read at all and activation fails with
+`ConfigurationException: No persistence unit name was provided`.
+
 | Key | Type | Default | Purpose |
 |-----|------|---------|---------|
-| `persistenceUnitName` | String | -- | Logical unit name, exposed as the `osgi.unit.name` service property and used as the `jpa://puName/...` URI authority |
-| `persistenceUnitFile` | String | -- | `PersistenceUnitConfigurator` only: URI of a serialised PersistenceUnit model |
-| `mappingFile` | String | -- | `PersistenceUnitConfigurator` only: URI of an EntityMappings file (required when no `persistenceUnitFile`) |
-| `batchWriting` | String | -- | JDBC batch mode -- one of `JDBC`, `BUFFERED`, `OracleJDBC`, or `NONE`. Empty/unset disables explicit batch configuration |
-| `batchSize` | int | 0 | Statements per batch. `0` leaves EclipseLink's default |
-| `emfIdleTimeout` | long | 60 | Seconds without any use after which the lazily-built EclipseLink factory is closed (releasing caches and connections); the next use rebuilds it. `0` = close immediately after the last use, `-1` = keep open until the configuration is deleted. See [OSGi architecture](osgi-architecture.md) |
+| `fennec.jpa.persistenceUnitName` | String | -- | Logical unit name, exposed as the `osgi.unit.name` service property and used as the `jpa://puName/...` URI authority |
+| `fennec.jpa.persistenceUnitFile` | String | -- | `PersistenceUnitConfigurator` only: URI of a serialised PersistenceUnit model |
+| `fennec.jpa.mappingFile` | String | -- | `PersistenceUnitConfigurator` only: URI of an EntityMappings file (required when no `persistenceUnitFile`) |
+| `fennec.jpa.batchWriting` | String | -- | JDBC batch mode -- one of `JDBC`, `BUFFERED`, `OracleJDBC`, or `NONE`. Empty/unset disables explicit batch configuration |
+| `fennec.jpa.batchSize` | int | 0 | Statements per batch. `0` leaves EclipseLink's default |
+| `fennec.jpa.emfIdleTimeout` | long | 60 | Seconds without any use after which the lazily-built EclipseLink factory is closed (releasing caches and connections); the next use rebuilds it. `0` = close immediately after the last use, `-1` = keep open until the configuration is deleted. See [OSGi architecture](osgi-architecture.md) |
+
+`batchWriting`, `batchSize` and `emfIdleTimeout` are additionally accepted
+unprefixed, because they are read from the raw property map rather than through the
+typed configuration. Prefer the prefixed form; it is what the metatype describes.
 
 Each configuration registers two services carrying `osgi.unit.name`: the narrow
 `JPAUnit` capability (used by the `jpa://` whiteboard resource factory) and the real
@@ -51,11 +61,50 @@ filter target that can be constrained per factory instance:
 
 ```properties
 # .cfg file -- factory PID fennec.jpa.EMPersistenceUnit, filename suffix picks the instance
-persistenceUnitName=library
-batchWriting=JDBC
-batchSize=500
+fennec.jpa.persistenceUnitName=library
+fennec.jpa.batchWriting=JDBC
+fennec.jpa.batchSize=500
 fennec.jpa.dataSource.target=(dataSourceName=libraryDs)
 fennec.jpa.converter.target=(component.name=org.eclipse.fennec.persistence.converter.DefaultConverterService)
+```
+
+## Mapping producers
+
+The `EntityMappings` service that `fennec.jpa.EMPersistenceUnit` binds is produced by one
+of two factory components. **Both take their keys under the `fennec.jpa.eorm.` prefix**,
+which is *not* the `fennec.jpa.` prefix of the persistence unit -- an unprefixed key is
+silently ignored.
+
+### `fennec.jpa.EORMMappingService` -- derive the mapping from an EPackage
+
+| Key | Type | Default | Purpose |
+|-----|------|---------|---------|
+| `fennec.jpa.eorm.mappingName` | String | -- (required) | Published as the `fennec.jpa.eorm.mapping` service property; this is what the unit filters on |
+| `fennec.jpa.eorm.eClasses` | String[] | -- | Names of the EClasses to map. **Omit the key to map every EClass of the EPackage.** A name that is not an EClass of that package is skipped with a log warning |
+| `fennec.jpa.eorm.strict` | boolean | `false` | Take EClass/attribute names as authoritative, skip column-name guessing |
+| `fennec.jpa.eorm.model.target` | filter | -- | Selects the `EPackage` service, e.g. `(emf.nsURI=http://example.org/library/1.0)` |
+| `fennec.jpa.eorm.customizer.target` | filter | -- | Selects an `EORMMappingCustomizer`. Satisfied by the built-in `EmptyMappingCustomizer` when unset -- **a filter matching nothing leaves the component unsatisfied and no mapping appears** |
+
+Registers `EntityMappings` with `fennec.jpa.eorm.mapping=<mappingName>` and
+`fennec.jpa.eorm.model=<EPackage name>`.
+
+### `fennec.jpa.EORMLoader` -- read a pre-serialised .eorm file
+
+| Key | Type | Default | Purpose |
+|-----|------|---------|---------|
+| `fennec.jpa.eorm.name` | String | -- (required) | Published as the `fennec.jpa.orm.mapping.name` service property |
+| `fennec.jpa.eorm.uri` | String | -- (required) | URI of the serialised `EntityMappings` resource |
+| `fennec.jpa.eorm.model.target` | filter | -- | Selects the `EPackage` service the mapping belongs to |
+
+Registers `EntityMappings` with `fennec.jpa.orm.mapping.name=<name>`, as a prototype
+service handing out a copy per consumer.
+
+The two publish **different** service properties, so the unit's
+`fennec.jpa.mapping.target` differs accordingly:
+
+```properties
+fennec.jpa.mapping.target=(fennec.jpa.eorm.mapping=library)      # EORMMappingService
+fennec.jpa.mapping.target=(fennec.jpa.orm.mapping.name=library)  # EORMLoader
 ```
 
 ## Forwarded EclipseLink properties
@@ -91,8 +140,8 @@ passed explicitly wins (Fennec uses `putIfAbsent` for the overridable ones):
 | `eclipselink.logging.level` | `OFF`, `SEVERE`, `WARNING`, `INFO`, `CONFIG`, `FINE`, `FINER`, `FINEST`, `ALL` |
 | `eclipselink.cache.shared.default` | `true`/`false` -- set to `false` to disable the shared L2 cache (useful for tests) |
 | `eclipselink.cache.size.default` | max entries in the shared cache |
-| `eclipselink.jdbc.batch-writing` | batch mode; prefer the first-class `batchWriting` OCD property |
-| `eclipselink.jdbc.batch-writing.size` | batch size; prefer `batchSize` |
+| `eclipselink.jdbc.batch-writing` | batch mode; prefer the first-class `fennec.jpa.batchWriting` property |
+| `eclipselink.jdbc.batch-writing.size` | batch size; prefer `fennec.jpa.batchSize` |
 | `eclipselink.flush-clear.cache` | how the UoW resets after a flush/clear |
 
 Example:
