@@ -30,6 +30,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.EMap;
@@ -68,6 +69,7 @@ import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.pushstreams.PersistencePushStreams;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
@@ -80,6 +82,8 @@ import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.osgi.util.pushstream.PushStream;
@@ -2614,6 +2618,167 @@ public abstract class AbstractPersistenceTCK {
 					.isInstanceOf(IOException.class)
 					.hasMessageContaining(probe.getKey().getName());
 		}
+	}
+
+	/**
+	 * Contract §4, the derived cross product (issue #175): command <b>verbs</b> are core
+	 * vocabulary, the selector vocabulary is a capability, and their combination is derived —
+	 * never declared. If a backend declares verb V and expression capability X, then V over a
+	 * selector using X must work; otherwise the flag set explodes into
+	 * {@code DELETE_WITH_GEO_SELECTOR} and friends.
+	 * <p>
+	 * Before this, the command cases exercised a handful of hand-picked selectors, so a
+	 * backend could declare {@code DELETE_BY_SELECTOR} and {@code EXISTS} and break on the
+	 * combination without any test noticing. Here <b>the case count follows the
+	 * declaration</b>: every declared selector-shaped verb is paired with every plain-filter
+	 * probe from the same corpus the refusal test uses, and each pair asserts the consistency
+	 * the contract promises — a declared feature executes, an undeclared one is refused with a
+	 * Diagnostic naming it.
+	 * <p>
+	 * The effect asserted is the one that holds for every selector regardless of what it
+	 * matches: the command reports exactly as many affected objects as the same selector finds
+	 * as a query. A probe that matches nothing is still worth running — a broken join or
+	 * subselect fails when the statement executes, not when it matches.
+	 * <p>
+	 * A declared capability may still be refused for a <em>concrete</em> feature, and that is
+	 * contract, not a loophole: declaration is backend-wide (§5a), while whether one feature is
+	 * served follows from its mapping and is {@code validate()}'s answer — Mongo declares
+	 * nested paths and refuses one that crosses a document boundary. So a declared cell must
+	 * either execute with the right reach or refuse with a {@code Diagnostic}; what it must
+	 * never do is answer wrongly. To keep that from degenerating into "refuse everything and
+	 * stay green", each verb must additionally have executed at least one cell for real.
+	 *
+	 * @return one dynamic case per declared verb × plain-filter selector, plus one case per
+	 *         verb asserting that the verb really ran somewhere
+	 */
+	@TestFactory
+	public Stream<DynamicTest> commandSelectorCrossProductFollowsTheDeclaration() {
+		Set<CommandFeature> verbs = declaredCapabilities().command().supported();
+		Set<QueryFeature> declaredQuery = declaredCapabilities().query().supported();
+		Map<QueryFeature, Query> selectors = plainFilterProbes();
+		List<DynamicTest> cases = new ArrayList<>();
+		for (CommandFeature verb : List.of(CommandFeature.DELETE_BY_SELECTOR, CommandFeature.UPDATE_BY_SELECTOR)) {
+			if (!verbs.contains(verb)) {
+				continue;
+			}
+			AtomicInteger executed = new AtomicInteger();
+			for (Map.Entry<QueryFeature, Query> selector : selectors.entrySet()) {
+				QueryFeature feature = selector.getKey();
+				cases.add(DynamicTest.dynamicTest(verb.getName() + " × " + feature.getName(),
+						() -> assertCommandOverSelector(verb, feature, selector.getValue(),
+								declaredQuery.contains(feature), executed)));
+			}
+			cases.add(DynamicTest.dynamicTest(verb.getName() + " executed at least one selector",
+					() -> assertThat(executed.get())
+							.as("%s refused every selector in the corpus — a verb that never runs"
+									+ " makes the cross product vacuous", verb.getName())
+							.isPositive()));
+		}
+		return cases.stream();
+	}
+
+	/**
+	 * One cell of the cross product: the command either executes with the same reach as its
+	 * selector, or is refused with a Diagnostic naming the undeclared feature.
+	 */
+	private void assertCommandOverSelector(CommandFeature verb, QueryFeature feature, Query selector,
+			boolean declared, AtomicInteger executed) throws Exception {
+		// every cell restores the fixture: the dynamic cases of one factory share the
+		// per-method setup, and a delete would otherwise empty the store for its successors
+		saveQueryFixture();
+
+		if (!declared) {
+			assertThatThrownBy(() -> execute(command(verb, EcoreUtil.copy(selector))))
+					.as("%s over an undeclared %s selector must be refused with a Diagnostic",
+							verb.getName(), feature.getName())
+					.isInstanceOf(IOException.class)
+					.hasMessageContaining(feature.getName());
+			return;
+		}
+
+		long matched;
+		try {
+			try (QueryResult result = queryable(createBackendResourceSet()).query(EcoreUtil.copy(selector))) {
+				matched = result.objects().count();
+			}
+		} catch (IOException refused) {
+			assertRefusedWithADiagnostic(verb, feature, refused);
+			return;
+		}
+		long affected;
+		try {
+			affected = execute(command(verb, EcoreUtil.copy(selector)));
+		} catch (IOException refused) {
+			assertRefusedWithADiagnostic(verb, feature, refused);
+			return;
+		}
+		executed.incrementAndGet();
+		assertThat(affected)
+				.as("%s must affect exactly what its %s selector matches", verb.getName(), feature.getName())
+				.isEqualTo(matched);
+	}
+
+	/**
+	 * A declared capability refused for one concrete feature is conforming — but only as a
+	 * <em>refusal</em>: the failure must carry a {@link Diagnostic}, which is what separates
+	 * "this mapping is not served" from a backend that broke while executing.
+	 */
+	private static void assertRefusedWithADiagnostic(CommandFeature verb, QueryFeature feature,
+			IOException failure) {
+		for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+			if (cause instanceof QueryException queryException && queryException.getDiagnostic() != null) {
+				return;
+			}
+		}
+		throw new AssertionError(String.format(
+				"%s over a %s selector failed without a Diagnostic — a declared capability may be"
+						+ " refused for a concrete feature, but not fail while executing: %s",
+				verb.getName(), feature.getName(), failure), failure);
+	}
+
+	/** The command for a verb over {@code selector} — the selector is the only variable here. */
+	private Object command(CommandFeature verb, Query selector) {
+		if (verb == CommandFeature.DELETE_BY_SELECTOR) {
+			DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+			delete.setSelector(selector);
+			return delete;
+		}
+		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
+		setName.setValueNew("patched");
+		return updateCommand(selector, setName);
+	}
+
+	private long execute(Object command) throws IOException {
+		CommandResource resource = commands(createBackendResourceSet());
+		return command instanceof DeleteCommand delete
+				? resource.execute(delete)
+				: resource.execute((UpdateCommand) command);
+	}
+
+	/**
+	 * The selector corpus: every {@link #featureProbes() probe} that is a plain filter, which
+	 * is what a command selector must be ({@code commandSelectorMustBeAPlainFilter}). Derived
+	 * mechanically rather than listed, so a probe added for a new feature joins the cross
+	 * product by itself.
+	 */
+	private Map<QueryFeature, Query> plainFilterProbes() {
+		Map<QueryFeature, Query> filters = new LinkedHashMap<>();
+		featureProbes().forEach((feature, query) -> {
+			if (feature == QueryFeature.PARAMETERS) {
+				// not a backend property: CommandResource.execute(Command) takes no bindings,
+				// so a parameterized selector has nowhere to get its values from and is
+				// refused on every backend. Excluded from the corpus rather than expected to
+				// fail — the cross product measures backends, not the shape of this API.
+				return;
+			}
+			if (query.getPredicate() != null && query.getSelect().isEmpty() && query.getApply() == null
+					&& query.getOrderBy().isEmpty() && query.getExpand().isEmpty()
+					&& query.getTop() == 0 && query.getSkip() == 0
+					&& !query.isDistinct() && !query.isCountOnly() && !query.isWithScores()) {
+				filters.put(feature, query);
+			}
+		});
+		return filters;
 	}
 
 	/**
