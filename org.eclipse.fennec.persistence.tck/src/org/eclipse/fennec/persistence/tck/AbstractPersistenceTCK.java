@@ -576,6 +576,39 @@ public abstract class AbstractPersistenceTCK {
 		assertThat(second).as("one ResourceSet answers one identity per object").isSameAs(first);
 	}
 
+	/**
+	 * Deleting an object that something still points at is <b>refused</b> (§8, issue #195).
+	 * <p>
+	 * The reference in question is a plain, non-containment one — containment is ownership and
+	 * cascades (issues #142/#143), which is a different question with a settled answer. What
+	 * this pins is the other direction: a store must not leave a reference pointing at
+	 * something that is gone, and it must not decide that quietly. JPA arrives here through
+	 * its foreign key, mongo has to look before it deletes; both must refuse, and say why.
+	 */
+	@Test
+	public void deletingAReferencedObjectIsRefused() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBestFriend, alice);
+		save(createBackendResourceSet(), "Person", alice, bob);
+
+		EObject storedAlice = findById(loadAll(createBackendResourceSet(), "Person"), "1");
+		assertThat(storedAlice).isNotNull();
+		Resource holder = createBackendResourceSet().createResource(uriFor("Person"));
+		holder.getContents().add(storedAlice);
+
+		assertThatThrownBy(() -> holder.delete(null))
+				.as("an object something still references must not be deleted silently")
+				.isInstanceOf(IOException.class);
+		assertThat(holder.getErrors()).as("the refusal has to say why").isNotEmpty();
+
+		Resource reloaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(reloaded.getContents()).as("the refused delete changed nothing").hasSize(2);
+		EObject reloadedBob = findById(reloaded, "2");
+		assertThat(reloadedBob.eGet(personBestFriend, false))
+				.as("the reference still points at something that exists").isNotNull();
+	}
+
 	@Test
 	public void containmentManyRoundtrip() throws Exception {
 		EObject person = newPerson(1, "Emil", 30);
