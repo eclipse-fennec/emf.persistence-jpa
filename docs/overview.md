@@ -36,6 +36,9 @@ MongoDB shares the same EMF resource contract.
 | `org.eclipse.fennec.persistence.orm` | Ecore-based ORM metadata model (`eorm.ecore`) + processors transforming EClass→Entity, EAttribute→Basic, EReference→relationships |
 | `org.eclipse.fennec.persistence.eclipselink` | EclipseLink JPA provider: dynamic type generation, descriptors, `JPAUnit` lifecycle, the `jpa://` resource whiteboard, the gated `DataSource` factory |
 | `org.eclipse.fennec.persistence.mongo` | MongoDB backend: liveness-gated client/database services, `mongodb://` resources, codec-based BSON mapping |
+| `org.eclipse.fennec.persistence.repository` | Repository facade: `ReadRepository`/`WriteRepository`/`Repository` model, prepared queries, the backend-neutral SPI — see the [Repository User Guide](repository-user-guide.md) |
+| `org.eclipse.fennec.persistence.repository.jpa` | Repository flavour over a JPA persistence unit (`fennec.repository.jpa`) |
+| `org.eclipse.fennec.persistence.repository.mongo` | Repository flavour over a MongoDB database (`fennec.repository.mongo`) |
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — reverse-engineers Ecore models from database schemas |
 | `org.eclipse.fennec.persistence.pushstreams` | OSGi PushStream integration for persistence results |
 | `org.eclipse.fennec.persistence.tck` | Backend-agnostic compatibility test kit, run against both the JPA and the Mongo backend |
@@ -69,6 +72,7 @@ through the Fennec codec framework — see the
 | You want to… | Read |
 |--------------|------|
 | Set the framework up end-to-end (OSGi and plain Java) | [Getting Started](getting-started.md) |
+| Read and write EObjects through a service, without touching a `ResourceSet` | [Repository User Guide](repository-user-guide.md) |
 | Work with `jpa://` resources, mappings, options day-to-day | [JPA User Guide](jpa-user-guide.md) |
 | Persist EMF models in MongoDB | [MongoDB User Guide](mongo-user-guide.md) |
 | Look up a configuration property | [Configuration Reference](configuration-reference.md) |

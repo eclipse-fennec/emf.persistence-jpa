@@ -62,6 +62,33 @@ class AbstractPersistenceUnitConfiguratorTest {
 	}
 
 	@Test
+	void createForwardedProperties_translatesPrefixedBatchWriting() {
+		Map<String, Object> raw = new HashMap<>();
+		raw.put(AbstractPersistenceUnitConfigurator.PROPERTY_PREFIX
+				+ AbstractPersistenceUnitConfigurator.CONFIG_BATCH_WRITING, "JDBC");
+		raw.put(AbstractPersistenceUnitConfigurator.PROPERTY_PREFIX
+				+ AbstractPersistenceUnitConfigurator.CONFIG_BATCH_SIZE, 500);
+
+		Map<String, Object> forwarded = subject.createForwardedProperties(raw);
+
+		assertThat(forwarded)
+				.containsEntry(PersistenceUnitProperties.BATCH_WRITING, "JDBC")
+				.containsEntry(PersistenceUnitProperties.BATCH_WRITING_SIZE, "500");
+	}
+
+	@Test
+	void createForwardedProperties_prefixedBatchWritingWinsOverUnprefixed() {
+		Map<String, Object> raw = new HashMap<>();
+		raw.put(AbstractPersistenceUnitConfigurator.PROPERTY_PREFIX
+				+ AbstractPersistenceUnitConfigurator.CONFIG_BATCH_WRITING, "JDBC");
+		raw.put(AbstractPersistenceUnitConfigurator.CONFIG_BATCH_WRITING, "BUFFERED");
+
+		Map<String, Object> forwarded = subject.createForwardedProperties(raw);
+
+		assertThat(forwarded).containsEntry(PersistenceUnitProperties.BATCH_WRITING, "JDBC");
+	}
+
+	@Test
 	void createForwardedProperties_batchSizeFromString() {
 		Map<String, Object> raw = new HashMap<>();
 		raw.put(AbstractPersistenceUnitConfigurator.CONFIG_BATCH_WRITING, "BUFFERED");

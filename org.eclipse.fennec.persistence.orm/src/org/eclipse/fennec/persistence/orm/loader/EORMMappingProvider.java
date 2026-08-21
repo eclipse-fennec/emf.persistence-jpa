@@ -12,12 +12,14 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm.loader;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
@@ -51,13 +53,15 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 @Component(name=ORMConstants.ORM_MAPPING_SERVICE_PID, configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class EORMMappingProvider {
 	
+	private static final Logger LOG = Logger.getLogger(EORMMappingProvider.class.getName());
+	
 	@ObjectClassDefinition
 	public @interface ORMMappingConfig {
 
 		public static final String PREFIX_ = ORMConstants.PROPERTY_PREFIX;
 
-		@AttributeDefinition(name = "EClass names", description="Array of EClass names to be registered")
-		String[] eClasses();
+		@AttributeDefinition(name = "EClass names", description="Array of EClass names to be registered. Left out, every EClass of the referenced EPackage is mapped", required = false)
+		String[] eClasses() default {};
 
 		@AttributeDefinition(name = "Entity mapping name")
 		String mappingName();
@@ -79,22 +83,37 @@ public class EORMMappingProvider {
 	public void activate(BundleContext bctx, ORMMappingConfig config) {
 		EntityMapper mapper = new EntityMapper();
 		mapper.setStrict(config.strict());
-		String[] eClassNames = config.eClasses();
-		List<EClassifier> eClasses = new LinkedList<>(); 
-		if (nonNull(eClassNames) && eClassNames.length > 0) {
-			for (String eClassName : eClassNames) {
-				EClass eClass = (EClass) mappingEPackage.getEClassifier(eClassName);
-				if (nonNull(eClass)) {
-					eClasses.add(eClass);
-				}
-			}
-		}
-		EntityMappings mappings = mapper.createMappings(eClasses);
+		EntityMappings mappings = createMappings(mapper, config.eClasses());
 		mappings = customizer.customizeMapping(mappings);
 		Dictionary<String, Object> properties = new Hashtable<>();
 		properties.put(ORMConstants.PROPERTY_PREFIX + "mapping", config.mappingName());
 		properties.put(ORMConstants.PROPERTY_PREFIX + "model", mappingEPackage.getName());
 		mappingRegistration = bctx.registerService(EntityMappings.class, mappings, properties);
+	}
+	
+	/**
+	 * Maps the configured {@link EClass}es, or every {@link EClass} of the referenced
+	 * {@link EPackage} when no name is configured at all.
+	 * @param mapper the {@link EntityMapper} to map with
+	 * @param eClassNames the configured EClass names, may be <code>null</code> or empty
+	 * @return the {@link EntityMappings}, never <code>null</code>
+	 */
+	private EntityMappings createMappings(EntityMapper mapper, String[] eClassNames) {
+		if (isNull(eClassNames) || eClassNames.length == 0) {
+			return mapper.createMappingsFromEPackage(mappingEPackage);
+		}
+		List<EClassifier> eClasses = new LinkedList<>();
+		for (String eClassName : eClassNames) {
+			EClassifier eClassifier = mappingEPackage.getEClassifier(eClassName);
+			if (eClassifier instanceof EClass eClass) {
+				eClasses.add(eClass);
+			} else {
+				LOG.warning(() -> String.format(
+						"Configured name '%s' is no EClass of EPackage '%s' and is left out of the mapping",
+						eClassName, mappingEPackage.getNsURI()));
+			}
+		}
+		return mapper.createMappings(eClasses);
 	}
 	
 	@Deactivate

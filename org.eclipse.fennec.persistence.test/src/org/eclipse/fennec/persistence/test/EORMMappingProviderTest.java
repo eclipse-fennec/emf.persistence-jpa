@@ -30,6 +30,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.persistence.eorm.EORMPackage;
+import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.eorm.util.EORMResourceFactoryImpl;
 import org.eclipse.fennec.persistence.epersistence.EPersistencePackage;
@@ -111,6 +112,39 @@ public class EORMMappingProviderTest extends EPersistenceBase {
 		mapping.getEntity().forEach(e->entities.remove(e.getName()));
 		assertTrue(entities.isEmpty());
 		
+	}
+	
+	@WithFactoryConfiguration(factoryPid = ORMConstants.ORM_MAPPING_SERVICE_PID, name = "test", location = "?", properties = {
+			@Property(key = ORMConstants.PROPERTY_PREFIX + "mappingName", value = "testModel"),
+			@Property(key = ORMConstants.PROPERTY_PREFIX + "model.target", value = "(emf.name=fennec.persistence.model)"),
+	})
+	@Test
+	public void withoutEClassesTheWholeEPackageIsMapped(@InjectService(timeout = 1000, filter = "(fennec.jpa.eorm.mapping=testModel)") ServiceAware<EntityMappings> mappingAware)
+					throws Exception {
+		
+		assertFalse(mappingAware.isEmpty());
+		EntityMappings mapping = mappingAware.getService();
+		assertEquals("fennec.persistence.model", mapping.getName());
+		List<String> entities = mapping.getEntity().stream().map(Entity::getName).toList();
+		// no eClasses configured: everything mappable in the EPackage, not just a hand-picked few
+		assertTrue(entities.size() > 3, "expected the whole EPackage, but got " + entities);
+		assertTrue(entities.containsAll(List.of("ClassAM2M", "ClassBM2M", "ClassCM2M")));
+	}
+	
+	@WithFactoryConfiguration(factoryPid = ORMConstants.ORM_MAPPING_SERVICE_PID, name = "test", location = "?", properties = {
+			@Property(key = ORMConstants.PROPERTY_PREFIX + "eClasses", type = Type.Array, source = ValueSource.Value, value = {"ClassAM2M", "PersonType", "NoSuchClassifier"}),
+			@Property(key = ORMConstants.PROPERTY_PREFIX + "mappingName", value = "testModel"),
+			@Property(key = ORMConstants.PROPERTY_PREFIX + "model.target", value = "(emf.name=fennec.persistence.model)"),
+	})
+	@Test
+	public void namesThatAreNoEClassAreSkipped(@InjectService(timeout = 1000, filter = "(fennec.jpa.eorm.mapping=testModel)") ServiceAware<EntityMappings> mappingAware)
+					throws Exception {
+		
+		// PersonType is an EEnum, NoSuchClassifier does not exist — neither may take the component down
+		assertFalse(mappingAware.isEmpty());
+		EntityMappings mapping = mappingAware.getService();
+		assertEquals(1, mapping.getEntity().size());
+		assertEquals("ClassAM2M", mapping.getEntity().get(0).getName());
 	}
 	
 	@WithFactoryConfiguration(factoryPid = ORMConstants.ORM_MAPPING_SERVICE_PID, name = "test", location = "?", properties = {
