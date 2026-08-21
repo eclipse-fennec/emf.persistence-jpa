@@ -761,7 +761,16 @@ follow-up, not part of this decision (§10.1).
    tests afterwards.
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become
    blocking rather than `@Disabled`.
-6. Generate the command × selector cross product from the declarations (§4).
+6. Generate the command × selector cross product from the declarations (§4). **Done** (#175):
+   a `@TestFactory` pairs every declared selector-shaped verb with every plain-filter probe
+   from the same corpus the refusal test uses, so the case count follows the declaration
+   rather than the suite author's imagination (54 cells per backend today). A declared cell
+   must execute with the same reach its selector has as a query, or refuse with a
+   `Diagnostic` — the feature-and-mapping axis of §5a, which is how mongo declares nested
+   paths and still refuses one that crosses a document. To keep that from degenerating into
+   "refuse everything and stay green", each verb must also have executed at least one cell.
+   `PARAMETERS` is outside the corpus: `CommandResource.execute(Command)` takes no bindings,
+   so a parameterized selector has nowhere to get its values from on any backend.
 7. Extend the matrix to `backend × flavor` (§6). **Done**: the container harness is factored out
    of `MongoTestSupport` into `ContainerHarness` + `ContainerSpec`, `JpaTestSupport` provides `h2`
    and `postgres`, both axes reach the test JVM, and the four defects the second flavor found are

@@ -176,6 +176,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			throw new QueryException("select and apply are mutually exclusive — aggregation defines its own columns");
 		}
 		Translation translation = new Translation(context);
+		translation.rootEClass = query.getFrom();
 		String where = query.getPredicate() == null ? "" : translation.render(query.getPredicate());
 
 		StringBuilder jpql = new StringBuilder("SELECT ");
@@ -415,11 +416,28 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 	private static String pathFrom(String alias, PropertyPath path) {
 		// castBase downcasts the navigation origin (issue #80) — JPQL TREAT resolves
-		// by entity name, sidestepping the deliberately flat dynamic Java classes
-		StringBuilder rendered = new StringBuilder(path.getCastBase() == null ? alias
-				: "TREAT(" + alias + " AS " + path.getCastBase().getName() + ")");
+		// by entity name, sidestepping the deliberately flat dynamic Java classes.
+		// A cast that cannot narrow anything is dropped: TREAT over an entity without an
+		// inheritance hierarchy is rejected by the database, and the cast is a no-op anyway
+		// (issue #175 found this through the command × selector cross product).
+		StringBuilder rendered = new StringBuilder(castsWithinAHierarchy(path)
+				? "TREAT(" + alias + " AS " + path.getCastBase().getName() + ")"
+				: alias);
 		path.getSegments().forEach(segment -> rendered.append('.').append(segment.getName()));
 		return rendered.toString();
+	}
+
+	/**
+	 * Whether a downcast has a hierarchy to downcast <em>in</em>.
+	 * <p>
+	 * {@code TREAT} resolves through the entity's type discriminator, which only exists where
+	 * there is inheritance. Casting a type that has no supertype cannot narrow anything, and
+	 * asking the database for it fails instead of answering — found by the command × selector
+	 * cross product (issue #175), where a cast to the root's own type reached the database for
+	 * the first time.
+	 */
+	private static boolean castsWithinAHierarchy(PropertyPath path) {
+		return path.getCastBase() != null && !path.getCastBase().getESuperTypes().isEmpty();
 	}
 
 	// -------------------------------------------------- predicate rendering
@@ -453,6 +471,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 		/** While set, a {@code MapValue} renders as a join reference — see {@link #mapJoin}. */
 		private boolean joinMapAccess;
+
+		/** The query's root type — what {@code ALIAS} statically is (issue #175). */
+		private EClass rootEClass;
 
 		private Translation(QueryContext context) {
 			this.context = context;
@@ -690,6 +711,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (concrete.isEmpty()) {
 				// no concrete subtype can ever match (abstract-only hierarchy)
 				return "1 = 0";
+			}
+			if (typeCheck.getSource() == null && rootEClass != null
+					&& typeCheck.getType().isSuperTypeOf(rootEClass)) {
+				// every row of this extent passes the test — asking the database for a TYPE
+				// discriminator it may not have would fail rather than answer (issue #175)
+				return "1 = 1";
 			}
 			return "TYPE(" + subject + ") IN (" + String.join(", ", concrete) + ")";
 		}
