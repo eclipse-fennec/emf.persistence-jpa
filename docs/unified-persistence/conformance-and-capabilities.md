@@ -767,7 +767,7 @@ follow-up, not part of this decision (§10.1).
    in the JPA bootstrap they needed. The polymorphic case found a real defect on mongo
    (a subtype read through its supertype comes back as the supertype, eclipse-fennec/emf.codec#160)
    and is disabled there with that reference until the codec resolves it. Three §8 items
-   remain and are each more than coverage — see the follow-up issue.
+   remain and are each more than coverage: #195.
 6. Generate the command × selector cross product from the declarations (§4). **Done** (#175):
    a `@TestFactory` pairs every declared selector-shaped verb with every plain-filter probe
    from the same corpus the refusal test uses, so the case count follows the declaration
