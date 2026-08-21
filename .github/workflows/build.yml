@@ -22,3 +22,9 @@ concurrency:
 jobs:
   verify:
     uses: eclipse-fennec/.github/.github/workflows/reusable-verify.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1
+    with:
+      # Eight bundles run the EMF code generator, which logs every model resource it
+      # touches to System.out — thousands of lines per task. Run in parallel, those tasks
+      # share the daemon's task-bound stdout and a generate occasionally dies with
+      # "Stream closed" (issue #192). Sequential builds have never shown it.
+      gradle-parallel: false
