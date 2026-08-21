@@ -521,6 +521,52 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void projectionExpressionsAreDetected() {
+		// issue #189: the projection counterpart of a sort expression
+		QueryAnalysis analysis = ExpressionAnalyzer.analyze(
+				QueryBuilder.from(person)
+						.selectAs("shouted", Expressions.path(name).toUpper().toExpression())
+						.build());
+		assertThat(analysis.features()).contains(QueryFeature.PROJECTION,
+				QueryFeature.PROJECTION_EXPRESSION, QueryFeature.STRING_FUNCTIONS);
+		assertThat(analysis.shape()).isEqualTo(QueryShape.PROJECTION);
+		assertThat(analysis.invalidProjection()).isNull();
+	}
+
+	@Test
+	void projectionWithBothPathAndKeyIsRefused() {
+		Query query = query(null);
+		Selection selection = factory.createSelection();
+		selection.setPath(path(name));
+		selection.setKey(Expressions.propertyPath(age));
+		selection.setAlias("both");
+		query.getSelect().add(selection);
+
+		assertThat(ExpressionAnalyzer.analyze(query).invalidProjection())
+				.contains("both path and key");
+	}
+
+	@Test
+	void projectionWithNeitherPathNorKeyIsRefused() {
+		Query query = query(null);
+		query.getSelect().add(factory.createSelection());
+
+		assertThat(ExpressionAnalyzer.analyze(query).invalidProjection())
+				.contains("neither path nor key");
+	}
+
+	@Test
+	void expressionProjectionWithoutAliasIsRefused() {
+		// an expression has no derivable column name — unlike a path
+		Query query = query(null);
+		Selection selection = factory.createSelection();
+		selection.setKey(Expressions.path(age).plus(1).toExpression());
+		query.getSelect().add(selection);
+
+		assertThat(ExpressionAnalyzer.analyze(query).invalidProjection()).contains("needs an alias");
+	}
+
+	@Test
 	void fuzzyMatchIsDetectedAndShapeChecked() {
 		// issue #167: FUZZY is a refinement of WHERE_STRING_MATCH like case-insensitivity
 		QueryAnalysis analysis = ExpressionAnalyzer.analyze(

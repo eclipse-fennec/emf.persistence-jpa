@@ -183,7 +183,10 @@ public final class MemoryQueryPlan implements QueryPlan {
 	private QueryResultRow projectionRow(EObject object) {
 		List<Object> values = new ArrayList<>(source.getSelect().size());
 		for (Selection selection : source.getSelect()) {
-			values.add(predicate.pathValue(selection.getPath(), object));
+			// an expression projection (issue #189) evaluates per object, a path navigates
+			values.add(selection.getKey() != null
+					? predicate.value(selection.getKey(), object)
+					: predicate.pathValue(selection.getPath(), object));
 		}
 		return QueryResultRows.of(rowAliases, values);
 	}

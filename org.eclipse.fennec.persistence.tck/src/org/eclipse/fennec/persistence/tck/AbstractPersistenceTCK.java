@@ -1637,6 +1637,31 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
+	/**
+	 * Issue #189: a projection column that is computed rather than navigated. Both
+	 * database backends serve it, and the memory oracle defines the expected values —
+	 * the point of the case is that all three agree on the computed column.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.PROJECTION, QueryFeature.PROJECTION_EXPRESSION,
+			QueryFeature.ARITHMETIC, QueryFeature.WHERE_COMPARISON })
+	public void queryProjectionOfAnExpression() throws Exception {
+		saveQueryFixture();
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(40))
+				.selectAs("n", personName)
+				.selectAs("nextAge", Expressions.path(personAge).plus(1).toExpression())
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			assertThat(result.shape()).isEqualTo(QueryShape.PROJECTION);
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).extracting(row -> row.get("n"))
+					.containsExactlyInAnyOrder("Bob", "Carol");
+			assertThat(rows).extracting(row -> ((Number) row.get("nextAge")).longValue())
+					.containsExactlyInAnyOrder(41L, 51L);
+		}
+	}
+
 	@Test
 	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_AVG,
 			QueryFeature.AGG_COUNT })
@@ -2665,6 +2690,8 @@ public abstract class AbstractPersistenceTCK {
 				.selectAs("n", personName).build());
 		probes.put(QueryFeature.PROJECTION_NESTED, QueryBuilder.from(personClass)
 				.selectAs("s", personBestFriend, personName).build());
+		probes.put(QueryFeature.PROJECTION_EXPRESSION, QueryBuilder.from(personClass)
+				.selectAs("c", Expressions.path(personAge).plus(1).toExpression()).build());
 		probes.put(QueryFeature.EXPAND, QueryBuilder.from(personClass)
 				.expand(personBestFriend).build());
 		probes.put(QueryFeature.PARAMETERS, QueryBuilder.from(personClass)

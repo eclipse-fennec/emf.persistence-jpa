@@ -175,6 +175,23 @@ public final class QueryBuilder {
 	}
 
 	/**
+	 * Adds a projection subject that is an arbitrary value expression (issue #189) —
+	 * the projection counterpart of {@link #orderByAsc(Expression)}. The alias is
+	 * mandatory: unlike a path, an expression has no derivable column name.
+	 *
+	 * @param alias the result column alias of this projection
+	 * @param key the value expression to project
+	 * @return this builder
+	 */
+	public QueryBuilder selectAs(String alias, Expression key) {
+		Selection selection = factory.createSelection();
+		selection.setAlias(Objects.requireNonNull(alias, "projection alias must not be null"));
+		selection.setKey(Objects.requireNonNull(key, "projection expression must not be null"));
+		query.getSelect().add(selection);
+		return this;
+	}
+
+	/**
 	 * Adds an eager-fetch hint.
 	 *
 	 * @param segments the reference path to materialise, root feature first

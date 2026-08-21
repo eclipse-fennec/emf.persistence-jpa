@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
@@ -229,6 +230,42 @@ class QueryValidatorTest {
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.getChildren())
 				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_DIVISION_BY_ZERO));
+	}
+
+	@Test
+	void malformedProjectionYieldsError() {
+		// issue #189: exactly one of path/key, and an expression column needs its alias
+		Query bothSet = QueryFactory.eINSTANCE.createQuery();
+		bothSet.setFrom(person);
+		Selection both = QueryFactory.eINSTANCE.createSelection();
+		both.setPath(Expressions.propertyPath(name));
+		both.setKey(Expressions.propertyPath(name));
+		both.setAlias("both");
+		bothSet.getSelect().add(both);
+
+		Diagnostic diagnostic = QueryValidator.validate(bothSet, person,
+				capabilities(QueryFeature.PROJECTION, QueryFeature.PROJECTION_EXPRESSION));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_PROJECTION));
+	}
+
+	@Test
+	void expressionProjectionNeedsTheCapability() {
+		Query query = QueryBuilder.from(person)
+				.selectAs("shouted", path(name).toUpper().toExpression())
+				.build();
+
+		Diagnostic refused = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.PROJECTION, QueryFeature.STRING_FUNCTIONS));
+		assertThat(refused.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(refused.getChildren())
+				.anySatisfy(child -> assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_UNSUPPORTED_FEATURE));
+
+		Diagnostic served = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.PROJECTION, QueryFeature.PROJECTION_EXPRESSION,
+						QueryFeature.STRING_FUNCTIONS));
+		assertThat(served.getSeverity()).isEqualTo(Diagnostic.OK);
 	}
 
 	@Test

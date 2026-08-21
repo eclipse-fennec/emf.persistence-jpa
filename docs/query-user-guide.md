@@ -210,6 +210,22 @@ QueryBuilder.from(personClass)
         .build();                            // → PROJECTION
 ```
 
+A column can also be **computed** rather than navigated — the projection counterpart of
+sorting by an expression:
+
+```java
+QueryBuilder.from(personClass)
+        .selectAs("n", name)
+        .selectAs("nextAge", path(age).plus(1).toExpression())
+        .selectAs("colour", mapValue(attributes, "color").toExpression())
+        .build();
+```
+
+The alias is **mandatory** for a computed column: a path has a derivable column name, an
+expression does not. A `Selection` carries either a path or an expression, never both and
+never neither — the same shape `OrderBy` has. Both backends serve it; the capability is
+`PROJECTION_EXPRESSION`.
+
 **Aggregation** — a grouping stage, or aggregates without one (which aggregate the whole
 result set into a single row):
 
@@ -441,6 +457,7 @@ reports each violation as a `Diagnostic` ERROR before anything runs.
 | Sort by expression | ✅ | ❌ refused | use `aliasRef` on row shapes |
 | DISTINCT | ✅ incl. whole entities | ⚠️ projection only (code 101) | |
 | Projection, grouping, aggregates, COUNT_DISTINCT | ✅ | ✅ | group keys alias-addressable |
+| Projection of an expression | ✅ inline in the select list | ✅ `$project` expression | alias mandatory |
 | Expression group keys / aggregate sources | ✅ re-rendered inline | ✅ `$group` accumulators | |
 | Multi-stage pipelines | ⚠️ filter/compute/having, and paging **after** the grouping | ✅ native, in stage order | JPA refuses paging before the grouping and a second grouping |
 | `expand` fetch hints | ✅ `LEFT JOIN FETCH` (depth 1) | ❌ | |
@@ -464,6 +481,7 @@ Diagnostic codes, source `org.eclipse.fennec.persistence.query`:
 | 6 | malformed geo structure |
 | 7 | malformed string match (fuzzy parameters on a non-fuzzy kind, budget out of range) |
 | 8 | malformed map access (path does not end in a map, or a non-constant key) |
+| 9 | malformed projection (both or neither of path/key, or an expression column without an alias) |
 | 100 | Mongo: cross-document or non-embedded path |
 | 101 | Mongo: distinct without a projection |
 | 102 | Mongo: invalid map key |

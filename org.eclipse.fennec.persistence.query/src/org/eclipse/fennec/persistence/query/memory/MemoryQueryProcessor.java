@@ -144,6 +144,13 @@ public class MemoryQueryProcessor implements QueryProcessor {
 		List<String> rowAliases = new ArrayList<>();
 		if (shape == QueryShape.PROJECTION) {
 			for (Selection selection : query.getSelect()) {
+				if (selection.getKey() != null) {
+					// expression projection (issue #189): a value expression in object
+					// space, resolved like a sort key — the alias is the column name
+					resolution.operand(selection.getKey(), null, Set.of());
+					registerKey(selection.getAlias(), selection.getAlias(), rowKeys, rowAliases);
+					continue;
+				}
 				resolution.rootPath(selection.getPath());
 				registerKey(outputKey(selection.getAlias(), selection.getPath()), selection.getAlias(),
 						rowKeys, rowAliases);

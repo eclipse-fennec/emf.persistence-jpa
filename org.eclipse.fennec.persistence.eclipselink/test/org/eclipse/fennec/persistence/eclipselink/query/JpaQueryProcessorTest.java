@@ -328,6 +328,39 @@ class JpaQueryProcessorTest {
 	}
 
 	/**
+	 * Issue #189: a projection can name an expression, not only a path — the counterpart
+	 * of the issue-#84 sort seam. The alias is the column name; JPQL renders inline.
+	 */
+	@Test
+	void projectionOfAnExpression() throws QueryException {
+		Query query = QueryBuilder.from(person)
+				.selectAs("n", name)
+				.selectAs("nextAge", path(age).plus(1).toExpression())
+				.build();
+		JpaQueryPlan plan = translate(query);
+		assertThat(plan.shape()).isEqualTo(QueryShape.PROJECTION);
+		assertThat(plan.jpql()).isEqualTo(
+				"SELECT e.name AS n, (e.age + :p0) AS nextAge FROM Person e");
+		assertThat(plan.rowKeys()).containsExactly("n", "nextAge");
+		assertThat(plan.rowAliases()).containsExactly("n", "nextAge");
+	}
+
+	/**
+	 * Issue #189 with #186: the map access that could not be projected before. It is the
+	 * same correlated subselect the predicate uses, now in the select list.
+	 */
+	@Test
+	void projectionOfAMapValue() throws QueryException {
+		Query query = QueryBuilder.from(person)
+				.selectAs("colour", Expressions.mapValue(attributes, "color").toExpression())
+				.build();
+		JpaQueryPlan plan = translate(query);
+		assertThat(plan.jpql()).isEqualTo("SELECT (SELECT me0.value FROM e.attributes me0"
+				+ " WHERE me0.key = :p0) AS colour FROM Person e");
+		assertThat(plan.rowKeys()).containsExactly("colour");
+	}
+
+	/**
 	 * Issue #155: substring offsets must be bound as {@code Integer}. The IR carries them as longs,
 	 * and PostgreSQL declares only {@code substr(text, int, int)} — it refuses to narrow
 	 * {@code bigint} during function resolution, while H2 narrows silently.

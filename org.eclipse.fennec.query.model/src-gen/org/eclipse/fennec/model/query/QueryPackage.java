@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:77a8518a4235da633787b25ca1e92022059f2aa2f90ce1eac5685b9df4f54654", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:d81dd280d83df39ba45cafd4131b67e335924c2535580f71ec399bdf5491e060", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -306,13 +306,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int SELECTION__PATH = 0;
 
 	/**
+	 * The feature id for the '<em><b>Key</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SELECTION__KEY = 1;
+
+	/**
 	 * The feature id for the '<em><b>Alias</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SELECTION__ALIAS = 1;
+	int SELECTION__ALIAS = 2;
 
 	/**
 	 * The number of structural features of the '<em>Selection</em>' class.
@@ -321,7 +330,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SELECTION_FEATURE_COUNT = 2;
+	int SELECTION_FEATURE_COUNT = 3;
 
 	/**
 	 * The number of operations of the '<em>Selection</em>' class.
@@ -1052,6 +1061,17 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getSelection_Path();
 
 	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.Selection#getKey <em>Key</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Key</em>'.
+	 * @see org.eclipse.fennec.model.query.Selection#getKey()
+	 * @see #getSelection()
+	 * @generated
+	 */
+	EReference getSelection_Key();
+
+	/**
 	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.Selection#getAlias <em>Alias</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1586,6 +1606,14 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference SELECTION__PATH = eINSTANCE.getSelection_Path();
+
+		/**
+		 * The meta object literal for the '<em><b>Key</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference SELECTION__KEY = eINSTANCE.getSelection_Key();
 
 		/**
 		 * The meta object literal for the '<em><b>Alias</b></em>' attribute feature.
