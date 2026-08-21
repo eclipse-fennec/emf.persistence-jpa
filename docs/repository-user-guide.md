@@ -150,9 +150,10 @@ merged underneath.
 
 ## Queries and prepared queries
 
-`find` executes a canonical [query-model](../org.eclipse.fennec.query.model/) query
-against the bound backend. The root type comes from `Query.from`; capability violations
-are refused with a diagnostic — never silently post-filtered:
+`find` executes a canonical query against the bound backend — how such a query is built,
+and what each backend can serve, is the [Query User Guide](query-user-guide.md). The root
+type comes from `Query.from`; capability violations are refused with a diagnostic — never
+silently post-filtered:
 
 ```java
 Query byAge = QueryBuilder.from(personClass)

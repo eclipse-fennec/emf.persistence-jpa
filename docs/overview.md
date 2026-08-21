@@ -73,6 +73,7 @@ through the Fennec codec framework — see the
 |--------------|------|
 | Set the framework up end-to-end (OSGi and plain Java) | [Getting Started](getting-started.md) |
 | Read and write EObjects through a service, without touching a `ResourceSet` | [Repository User Guide](repository-user-guide.md) |
+| Query across backends: predicates, projections, aggregation, write commands | [Query User Guide](query-user-guide.md) |
 | Work with `jpa://` resources, mappings, options day-to-day | [JPA User Guide](jpa-user-guide.md) |
 | Persist EMF models in MongoDB | [MongoDB User Guide](mongo-user-guide.md) |
 | Look up a configuration property | [Configuration Reference](configuration-reference.md) |

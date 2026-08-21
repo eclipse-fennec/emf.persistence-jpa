@@ -17,6 +17,7 @@ export const GUIDES = [
   { file: 'jpa-user-guide.md', slug: 'jpa', title: 'JPA User Guide' },
   { file: 'mongo-user-guide.md', slug: 'mongo', title: 'MongoDB User Guide' },
   { file: 'repository-user-guide.md', slug: 'repository', title: 'Repository User Guide' },
+  { file: 'query-user-guide.md', slug: 'query', title: 'Query User Guide' },
   { file: 'configuration-reference.md', slug: 'configuration', title: 'Configuration Reference' },
 ];
 

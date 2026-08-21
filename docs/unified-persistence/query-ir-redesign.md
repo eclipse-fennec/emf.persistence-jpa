@@ -1,6 +1,6 @@
 # Query IR redesign — the Fennec Expression Model
 
-**Status:** implemented (2026-07-24, #47–#58; user guide: `query-usage.md`). Deviations from
+**Status:** implemented (2026-07-24, #47–#58; user guide: `../query-user-guide.md`). Deviations from
 the plan are recorded in the issues — notably: the legacy retirement was pulled forward
 (maintainer call, no transitional names shipped), builder v2 is `Expressions` +
 `QueryBuilder`, group keys are alias-addressable, JPA delete removes children-first, and
@@ -14,11 +14,11 @@ completing the M11 vocabulary retirement; decisions D1–D5 are closed (§8); Mo
 `STRING_FUNCTIONS` and the new `FIELD_TO_FIELD` capability via `$expr` (null-guarded, SQL
 semantics; root-based paths only); persisted queries (`saveQuery`, concept §14 P2) execute
 on both backends — XMI payload in a per-backend catalog, named execution via
-`QueryableResource.query(name, …)` (see `query-usage.md`). Originally the approved concept
+`QueryableResource.query(name, …)` (see `../query-user-guide.md`). Originally the approved concept
 of 2026-07-23. Supersedes the *IR part* of
 `query-processor-spi.md`; the SPI layer described there (QueryProcessor, capabilities,
 diagnostics, QueryResult, TCK) **stays** and is re-targeted. Companion: `concept.md`
-§3.1/§5/§14, `query-usage.md` (to be rewritten on completion).
+§3.1/§5/§14, `../query-user-guide.md` (the published user guide).
 
 ---
 
@@ -217,7 +217,7 @@ swap.
 | M8 | TCK ported + extended: grouping trees, ne/null/in, exists/forAll, case-insensitivity flag, pipeline stages | M7 |
 | M9 | Bridge bundle + reference-evaluator differential tests in the TCK | M1, M8 |
 | M10 | CUD v1: command model execution for Insert/Delete; Update modelled + refused pending patch engine | M2, M7 |
-| M11 | Legacy retirement: old `query.ecore` content, old builder, old analyzer vocabulary removed; docs rewritten (`query-usage.md`) | M8 |
+| M11 | Legacy retirement: old `query.ecore` content, old builder, old analyzer vocabulary removed; docs rewritten (`../query-user-guide.md`) | M8 |
 | — | OData phases 1/2 | tracked in fennec-odata |
 
 **Explicitly out of scope here:** the patch-apply engine (own epic per concept §18.1),

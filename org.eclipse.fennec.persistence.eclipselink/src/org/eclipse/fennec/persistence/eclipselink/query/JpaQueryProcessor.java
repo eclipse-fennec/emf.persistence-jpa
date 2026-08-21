@@ -98,8 +98,12 @@ import org.osgi.service.component.annotations.Component;
  * {@code LOWER/UPPER/TRIM/LENGTH}.
  * <p>
  * Aggregation: a single {@code GroupByStage} pipeline translates to
- * {@code GROUP BY} + aggregate functions; multi-stage pipelines
- * ({@link QueryFeature#PIPELINE}) are not yet served. Sorting in row shapes addresses
+ * {@code GROUP BY} + aggregate functions. Multi-stage pipelines
+ * ({@link QueryFeature#PIPELINE}) are served as far as one JPQL statement reaches:
+ * filters before the grouping become {@code WHERE}, after it {@code HAVING}, computes
+ * bind aliases or output columns, and {@code Top}/{@code Skip} compose a window
+ * <em>after</em> the grouping. Object-space paging before the grouping and a second
+ * {@code GroupByStage} are refused. Sorting in row shapes addresses
  * the result variables. {@code expand} hints translate to aliased {@code LEFT JOIN
  * FETCH} chains for single-valued segments and batch-fetch hints from the first
  * to-many segment on (issue #95).

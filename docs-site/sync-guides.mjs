@@ -33,15 +33,18 @@ for (const { items, dir } of sections) {
   for (const g of items) published.set(g.file, { dir, slug: g.slug });
 }
 
-// Rewrite ](target.md...) links: published -> route, others -> GitHub blob.
+// Rewrite ](target.md...) links: published -> route, others -> GitHub blob. Targets in a
+// subdirectory (unified-persistence/...) are never published, but they still need the blob
+// prefix — a bare relative path would resolve against the route, not against docs/.
 function rewriteLinks(md) {
-  return md.replace(/\]\((\.?\/?)([a-z0-9-]+)\.md(#[^)]*)?\)/gi, (m, _prefix, name, anchor = '') => {
+  return md.replace(/\]\((\.?\/?)((?:[a-z0-9-]+\/)*)([a-z0-9-]+)\.md(#[^)]*)?\)/gi,
+      (m, _prefix, dirPath = '', name, anchor = '') => {
     const file = `${name}.md`;
-    if (published.has(file)) {
+    if (!dirPath && published.has(file)) {
       const { dir, slug } = published.get(file);
       return `](/${dir}/${slug}${anchor})`;
     }
-    return `](${blobBase}/${file}${anchor})`;
+    return `](${blobBase}/${dirPath}${file}${anchor})`;
   });
 }
 
