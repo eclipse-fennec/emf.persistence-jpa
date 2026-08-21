@@ -117,12 +117,6 @@ public class JpaQueryProcessor implements QueryProcessor {
 	/** The backend id of this processor. */
 	public static final String BACKEND = "jpa";
 
-	/**
-	 * Diagnostic code: a map access used as a group key or aggregate source (issue #190) —
-	 * the correlated subselect it renders to cannot appear in {@code GROUP BY}.
-	 */
-	public static final int CODE_MAP_VALUE_GROUPING = 200;
-
 	/** The JPQL root alias. */
 	static final String ALIAS = "e";
 
@@ -161,72 +155,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 	@Override
 	public Diagnostic validate(Query query, EClass rootEClass) {
-		Diagnostic base = QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
-		String grouping = mapValueInGrouping(query);
-		if (grouping == null) {
-			return base;
-		}
-		BasicDiagnostic result = new BasicDiagnostic(QueryValidator.DIAGNOSTIC_SOURCE, 0,
-				"JPA query validation", new Object[] { query });
-		if (base.getSeverity() != Diagnostic.OK) {
-			base.getChildren().forEach(result::add);
-		}
-		result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
-				CODE_MAP_VALUE_GROUPING, grouping, new Object[] { query }));
-		return result;
-	}
-
-	/**
-	 * A map access as a group key or aggregate source, which this backend cannot render
-	 * (issue #190).
-	 * <p>
-	 * {@code MapValue} becomes a correlated subselect over the entry table, and a correlated
-	 * subselect cannot appear in {@code GROUP BY}: it references the grouped row
-	 * ({@code t0.cid}), so the database demands that column in the group list — H2 says
-	 * <em>"Column T0.CID must be in the GROUP BY list"</em>, and it is right. A join-based
-	 * rendering would work and is a different translation strategy than the one this processor
-	 * uses; until it exists the query is refused rather than answered with a database error.
-	 */
-	private static String mapValueInGrouping(Query query) {
-		if (query.getApply() == null) {
-			return null;
-		}
-		for (Stage stage : query.getApply().getStages()) {
-			if (!(stage instanceof GroupByStage groupBy)) {
-				continue;
-			}
-			for (GroupKey key : groupBy.getKeys()) {
-				if (containsMapValue(key.getExpression())) {
-					return "Group key '" + key.getAlias() + "' addresses a map entry — the JPA"
-							+ " backend renders that as a correlated subselect, which cannot appear"
-							+ " in GROUP BY";
-				}
-			}
-			for (Aggregate aggregate : groupBy.getAggregates()) {
-				if (containsMapValue(aggregate.getSource())) {
-					return "Aggregate '" + aggregate.getAlias() + "' sources a map entry — the JPA"
-							+ " backend renders that as a correlated subselect, which cannot appear"
-							+ " in an aggregate over a grouped query";
-				}
-			}
-		}
-		return null;
-	}
-
-	private static boolean containsMapValue(Expression expression) {
-		if (expression == null) {
-			return false;
-		}
-		if (expression instanceof MapValue) {
-			return true;
-		}
-		Iterator<EObject> contents = expression.eAllContents();
-		while (contents.hasNext()) {
-			if (contents.next() instanceof MapValue) {
-				return true;
-			}
-		}
-		return false;
+		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
 	}
 
 	@Override
@@ -268,6 +197,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 		}
 		jpql.append(" FROM ").append(entity).append(' ').append(ALIAS);
 		List<String> batchFetchPaths = appendFetchJoins(jpql, query);
+		// map-entry joins collected while rendering the grouping (issue #190)
+		translation.mapJoins.forEach(jpql::append);
 		String conjuncts = pipeline == null ? where
 				: Stream.concat(where.isEmpty() ? Stream.empty() : Stream.of(where),
 						pipeline.preFilters.stream())
@@ -504,6 +435,18 @@ public class JpaQueryProcessor implements QueryProcessor {
 		/** Pipeline output columns (alias → rendered JPQL) for AliasRef resolution (issue #82). */
 		private final Map<String, String> columnExpressions = new LinkedHashMap<>();
 
+		/**
+		 * Map accesses rendered as joins instead of correlated subselects (issue #190):
+		 * {@code <entry path>|<key>} → join alias, plus the join clauses in FROM order.
+		 * One join per distinct map-and-key pair, so the SELECT list and the GROUP BY of
+		 * the same key address the very same alias.
+		 */
+		private final Map<String, String> mapJoinAliases = new LinkedHashMap<>();
+		private final List<String> mapJoins = new ArrayList<>();
+
+		/** While set, a {@code MapValue} renders as a join reference — see {@link #mapJoin}. */
+		private boolean joinMapAccess;
+
 		private Translation(QueryContext context) {
 			this.context = context;
 		}
@@ -569,6 +512,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			StringBuilder columns = new StringBuilder();
 			if (group != null) {
+				// from the grouping on, every map access renders as a join (issue #190): the
+				// subselect form would reference the grouped row from GROUP BY. It stays on
+				// for HAVING and the trailing ORDER BY, which re-render the same expressions;
+				// the pre-group filters were rendered above and keep the subselect form,
+				// where a correlated reference is perfectly legal.
+				joinMapAccess = true;
 				List<String> groupByItems = new ArrayList<>();
 				for (PropertyPath path : group.getPaths()) {
 					String key = outputKey(null, path);
@@ -825,8 +774,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (expression instanceof MapValue mapValue) {
 				// a map is an entry table here (contract §9.2), so one entry is a correlated
 				// subselect keyed on the entry's key column — the same shape the filtered
-				// CollectionCount above uses, projecting value instead of counting
-				return mapValueSubselect(mapValue);
+				// CollectionCount above uses, projecting value instead of counting. In a
+				// grouped query that subselect is illegal, and a join takes its place (#190)
+				return joinMapAccess ? mapJoin(mapValue) : mapValueSubselect(mapValue);
 			}
 			if (expression instanceof NumericFunction numericFunction) {
 				String inner = operand(numericFunction.getSource(), target);
@@ -913,6 +863,43 @@ public class JpaQueryProcessor implements QueryProcessor {
 			String alias = "me" + aliasCounter++;
 			return "(SELECT " + alias + "." + valueFeature.getName() + " FROM " + pathFrom(base, map)
 					+ " " + alias + " WHERE " + alias + "." + keyFeature.getName() + " = " + bind(key) + ")";
+		}
+
+		/**
+		 * {@code mj0.value} against a {@code LEFT JOIN <owner>.<map> mj0 ON mj0.key = :p} —
+		 * the grouped rendering of a map access (issue #190).
+		 * <p>
+		 * The correlated subselect this replaces references the grouped row, which no database
+		 * accepts in {@code GROUP BY}. A join lifts the entry into the FROM clause, where the
+		 * value is an ordinary column that SELECT and GROUP BY can both address. The join is
+		 * <b>outer</b> and carries the key in its {@code ON} clause rather than in {@code WHERE}:
+		 * an owner without that key then groups under {@code null} instead of dropping out of the
+		 * result, which is what the mongo backend does for a missing sub-document field.
+		 * <p>
+		 * One join per distinct map-and-key pair — a query grouping and aggregating over the same
+		 * entry joins once.
+		 */
+		private String mapJoin(MapValue mapValue) throws QueryException {
+			PropertyPath map = mapValue.getMap();
+			EClass entryClass = EMaps.entryClass(ExpressionValues.targetFeature(map));
+			if (entryClass == null) {
+				throw new QueryException("MapValue does not address a map: " + pathFrom(ALIAS, map));
+			}
+			EStructuralFeature keyFeature = EMaps.keyFeature(entryClass);
+			EStructuralFeature valueFeature = EMaps.valueFeature(entryClass);
+			Object key = ExpressionValues.resolve(mapValue.getKey(), keyFeature, context.parameters(),
+					context.converter());
+			String base = map.getBase() == null ? ALIAS : alias(map.getBase());
+			String entryPath = pathFrom(base, map);
+			String joinKey = entryPath + "|" + key;
+			String alias = mapJoinAliases.get(joinKey);
+			if (alias == null) {
+				alias = "mj" + aliasCounter++;
+				mapJoinAliases.put(joinKey, alias);
+				mapJoins.add(" LEFT JOIN " + entryPath + " " + alias + " ON " + alias + "."
+						+ keyFeature.getName() + " = " + bind(key));
+			}
+			return alias + "." + valueFeature.getName();
 		}
 
 		private EStructuralFeature targetOf(Expression left, Expression right) {

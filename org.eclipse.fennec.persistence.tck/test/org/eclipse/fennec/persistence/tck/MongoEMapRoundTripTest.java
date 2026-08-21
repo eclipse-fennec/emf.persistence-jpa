@@ -200,6 +200,34 @@ class MongoEMapRoundTripTest {
 		}
 	}
 
+	/**
+	 * The counterpart of {@code JpaEMapRoundTripTest.mapValueGroupingKeepsOwnersWithoutTheKey}
+	 * (issue #190): a document whose map lacks the grouped key groups under {@code null}. This
+	 * is the semantics the JPA outer join was chosen to match, so it is pinned on both sides.
+	 */
+	@Test
+	void mapValueGroupingKeepsOwnersWithoutTheKey() throws Exception {
+		EObject coloured = model.newCatalog("c11", "Coloured");
+		map(coloured, "attributes").put("color", "green");
+		save(coloured);
+		EObject other = model.newCatalog("c12", "Other");
+		map(other, "attributes").put("size", "L");
+		save(other);
+
+		Query query = QueryBuilder.from(model.catalogClass)
+				.groupByAs("color", Expressions.mapValue(model.attributes, "color").toExpression())
+				.countOf("total")
+				.build();
+		QueryableResource resource = (QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = resource.query(query)) {
+			Map<Object, Object> counts = new LinkedHashMap<>();
+			result.rows().forEach(row -> counts.put(row.get("color"), row.get("total")));
+			assertThat(counts).containsKey("green");
+			assertThat(counts).containsKey(null);
+			assertThat(((Number) counts.get(null)).intValue()).isEqualTo(1);
+		}
+	}
+
 	// ------------------------------------------------------------------ helpers
 
 	private ResourceSet resourceSet() {
