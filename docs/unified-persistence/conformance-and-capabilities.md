@@ -269,6 +269,25 @@ Two limits, stated because they are limits rather than oversights:
   conservative reading, and it is the one portable across a backend that has no mapping
   model at all.
 
+### 4d. `resolveProxies="false"` is enforced by EMF, not by the store
+
+Decided 2026-08-21 (issue #195), after trying to enforce it and finding there was nothing to
+enforce.
+
+Cross-document containment is core (§4b), and a model can decline it per reference:
+`resolveProxies="false"` states that this reference never yields a proxy, which only holds
+while the child lives in its owner's resource. The obvious reading is that a store must
+refuse a child stored as a root of its own.
+
+**EMF settles it earlier.** Adding such a child to another resource does not create the
+forbidden shape, it dissolves the containment: the reference goes empty and the child loses
+its container, before any backend sees anything. A store-side check for it would be code
+that can never run — one was written for this issue and removed again.
+
+What remains for a backend is the other direction, and it is asserted as a core case: do not
+reconstruct on load what the model ruled out. A `resolveProxies="false"` reference must not
+come back holding a proxy.
+
 ### 4b. Residency is form, not semantics — the one documented divergence
 
 Cross-document containment (a child owned by a parent *and* a root of its own `Resource`) is

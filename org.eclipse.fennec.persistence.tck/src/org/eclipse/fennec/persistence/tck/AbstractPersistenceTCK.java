@@ -40,6 +40,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -607,6 +608,54 @@ public abstract class AbstractPersistenceTCK {
 		EObject reloadedBob = findById(reloaded, "2");
 		assertThat(reloadedBob.eGet(personBestFriend, false))
 				.as("the reference still points at something that exists").isNotNull();
+	}
+
+	/**
+	 * A containment reference declaring {@code resolveProxies="false"} keeps its child at home
+	 * — and nothing in the store may undo that (§8, issue #195).
+	 * <p>
+	 * Cross-document containment is core and both backends serve it (§4b), but a model can
+	 * decline it per reference: {@code resolveProxies="false"} states that this reference
+	 * never yields a proxy, which only holds while the child lives with its owner.
+	 * <p>
+	 * <b>EMF enforces that itself</b>, which is the finding this case records: making such a
+	 * child a root of its own resource does not produce the forbidden shape, it dissolves the
+	 * containment — the reference goes empty and the child loses its container, before any
+	 * backend is involved. So there is nothing for a store to refuse, and a check for it would
+	 * be code that can never run. What a store still owes is not to reconstruct the shape on
+	 * the way back, which is what the round trip below asserts.
+	 */
+	@Test
+	public void containmentThatForbidsProxiesKeepsItsChildAtHome() throws Exception {
+		EStructuralFeature badge = profileClass.getEStructuralFeature("badge");
+		assertThat(((EReference) badge).isResolveProxies())
+				.as("the fixture reference is the one that forbids proxies").isFalse();
+
+		EObject profile = newProfile(9);
+		EObject child = newAddress(91, "Badge Street 1", "Jena");
+		profile.eSet(badge, child);
+		assertThat(child.eContainer()).as("contained to begin with").isSameAs(profile);
+
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource own = writeSet.createResource(uriFor("Address"));
+		own.getContents().add(child);
+
+		// EMF dissolves the containment rather than allowing a proxy-bearing one
+		assertThat(profile.eGet(badge))
+				.as("EMF empties a resolveProxies=false reference instead of letting the child leave")
+				.isNull();
+		assertThat(child.eContainer()).as("and the child keeps no container").isNull();
+
+		Resource holder = writeSet.createResource(uriFor("Profile"));
+		holder.getContents().add(profile);
+		own.save(null);
+		holder.save(null);
+
+		EObject reloaded = findById(loadAll(createBackendResourceSet(), "Profile"), "9");
+		assertThat(reloaded).isNotNull();
+		assertThat(reloaded.eGet(badge, false))
+				.as("the store must not hand back a proxy the model ruled out")
+				.isNull();
 	}
 
 	@Test
