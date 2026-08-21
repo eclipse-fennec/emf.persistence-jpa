@@ -12,11 +12,13 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.tck;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -69,6 +71,22 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		return JpaFlavor.byId(JpaTestSupport.flavor())
 				.orElseThrow(() -> new IllegalArgumentException(
 						"Unknown -Djpa.test.flavor=" + JpaTestSupport.flavor()));
+	}
+
+	/**
+	 * A relational store has a schema, so a URI naming a type it does not map is a load the
+	 * backend cannot answer: no descriptor, nothing to read (issue #197).
+	 */
+	@Override
+	protected Resource provokeLoadDiagnostic() throws Exception {
+		Resource resource = createBackendResourceSet()
+				.createResource(URI.createURI("jpa://" + PU_NAME + "/NoSuchEntity"));
+		try {
+			resource.load(null);
+		} catch (IOException signalled) {
+			// conforming: the diagnostics stay on the resource either way
+		}
+		return resource;
 	}
 
 	@Override

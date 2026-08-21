@@ -85,6 +85,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.osgi.util.pushstream.PushStream;
@@ -158,6 +159,21 @@ public abstract class AbstractPersistenceTCK {
 	 * {@link #effectiveCapabilitiesNeverExceedTheDeclaration()} holds the binding to that.
 	 */
 	protected abstract PersistenceCapabilities declaredCapabilities();
+
+	/**
+	 * Provokes a load that the backend cannot fully answer, and returns the resource it was
+	 * attempted on (issue #197).
+	 * <p>
+	 * The <em>contract</em> is portable — a load that could not do what was asked says so on
+	 * the resource — but nothing that triggers it is: JPA rejects an unknown entity because it
+	 * has a schema, while mongo will happily read a collection nobody wrote. So the binding
+	 * supplies the trigger and the core case asserts the contract.
+	 *
+	 * @return the resource the load was attempted on, carrying its diagnostics
+	 * @throws Exception when the backend signals the failure by throwing — also conforming,
+	 *             as long as the diagnostics are on the resource
+	 */
+	protected abstract Resource provokeLoadDiagnostic() throws Exception;
 
 	// ----------------------------------------------------------------- set up
 
@@ -356,6 +372,39 @@ public abstract class AbstractPersistenceTCK {
 	// with no capability to gate it — "skip this core case" cannot be spelled. Each of these
 	// closes a gap §8 verified was untested; a failure here is a defect in that backend, not
 	// a capability it may decline.
+
+	/**
+	 * A load that cannot do what was asked reports it <b>on the resource</b> (issue #197).
+	 * <p>
+	 * `Resource#getErrors()` / `getWarnings()` is the EMF way to hand a caller what went wrong
+	 * during a load, and it is where this framework puts its diagnostics (see
+	 * {@code docs/diagnostics.md}). This case exists because that forwarding is easy to lose:
+	 * a codec collects into its own collector, a resource forgets to transfer it, and from the
+	 * outside the load looks like a success that simply returned less. Nothing about the value
+	 * of the diagnostics is asserted here — only that they arrive where a caller can read them.
+	 */
+	@Test
+	@Disabled("#197 — measured on both backends: neither reports anything on the resource yet")
+	public void aFailedLoadReportsItsDiagnosticsOnTheResource() throws Exception {
+		Resource resource;
+		try {
+			resource = provokeLoadDiagnostic();
+		} catch (IOException signalled) {
+			// throwing is conforming too — the diagnostics still have to be on the resource,
+			// which the binding hands back through the exception-free path below
+			resource = null;
+		}
+		if (resource == null) {
+			return;
+		}
+		assertThat(resource.getErrors().isEmpty() && resource.getWarnings().isEmpty())
+				.as("a load that could not answer must leave a diagnostic on the resource —"
+						+ " otherwise the caller cannot tell it apart from an empty result")
+				.isFalse();
+		Stream.concat(resource.getErrors().stream(), resource.getWarnings().stream())
+				.forEach(diagnostic -> assertThat(diagnostic.toString())
+						.as("a diagnostic without a message helps nobody").isNotBlank());
+	}
 
 	/**
 	 * A multi-valued attribute round-trips (§8). Only {@code GeoPoint.coordinates} existed
