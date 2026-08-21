@@ -241,6 +241,41 @@ class JpaEMapRoundTripTest {
 		}
 	}
 
+	/**
+	 * Excluding the null group is the caller's decision, expressed in the query rather than in
+	 * the backend (issue #190): a predicate before the grouping drops the owners that have no
+	 * such key. Here the predicate keeps the subselect form — a correlated reference is legal
+	 * in WHERE — while the grouping joins, so both renderings of the same map access coexist
+	 * in one statement.
+	 */
+	@Test
+	void mapValueGroupingCanExcludeOwnersWithoutTheKey() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject coloured = model.newCatalog("c13", "Coloured");
+		map(coloured, "attributes").put("color", "green");
+		EObject other = model.newCatalog("c14", "Other");
+		map(other, "attributes").put("size", "L");
+		Resource resource = writeSet.createResource(uriFor("Catalog"));
+		resource.getContents().add(coloured);
+		resource.getContents().add(other);
+		resource.save(null);
+
+		emf.getCache().evictAll();
+		Query query = QueryBuilder.from(model.catalogClass)
+				.where(Expressions.mapValue(model.attributes, "color").isNotNull())
+				.groupByAs("color", Expressions.mapValue(model.attributes, "color").toExpression())
+				.countOf("total")
+				.build();
+		QueryableResource queryable =
+				(QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = queryable.query(query)) {
+			Map<Object, Object> counts = new LinkedHashMap<>();
+			result.rows().forEach(row -> counts.put(row.get("color"), row.get("total")));
+			assertThat(counts).containsOnlyKeys("green");
+			assertThat(((Number) counts.get("green")).intValue()).isEqualTo(1);
+		}
+	}
+
 	// ------------------------------------------------------------------ helpers
 
 	private ResourceSet resourceSet() {

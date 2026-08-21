@@ -228,6 +228,34 @@ class MongoEMapRoundTripTest {
 		}
 	}
 
+	/**
+	 * The counterpart of {@code JpaEMapRoundTripTest.mapValueGroupingCanExcludeOwnersWithoutTheKey}
+	 * (issue #190): dropping the null group is a predicate before the grouping, and it is the same
+	 * query on both backends — a `$match` here, a WHERE over the correlated subselect there.
+	 */
+	@Test
+	void mapValueGroupingCanExcludeOwnersWithoutTheKey() throws Exception {
+		EObject coloured = model.newCatalog("c13", "Coloured");
+		map(coloured, "attributes").put("color", "green");
+		save(coloured);
+		EObject other = model.newCatalog("c14", "Other");
+		map(other, "attributes").put("size", "L");
+		save(other);
+
+		Query query = QueryBuilder.from(model.catalogClass)
+				.where(Expressions.mapValue(model.attributes, "color").isNotNull())
+				.groupByAs("color", Expressions.mapValue(model.attributes, "color").toExpression())
+				.countOf("total")
+				.build();
+		QueryableResource resource = (QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = resource.query(query)) {
+			Map<Object, Object> counts = new LinkedHashMap<>();
+			result.rows().forEach(row -> counts.put(row.get("color"), row.get("total")));
+			assertThat(counts).containsOnlyKeys("green");
+			assertThat(((Number) counts.get("green")).intValue()).isEqualTo(1);
+		}
+	}
+
 	// ------------------------------------------------------------------ helpers
 
 	private ResourceSet resourceSet() {
