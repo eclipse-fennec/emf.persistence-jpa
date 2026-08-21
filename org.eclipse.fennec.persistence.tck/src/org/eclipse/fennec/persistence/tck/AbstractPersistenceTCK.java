@@ -384,7 +384,7 @@ public abstract class AbstractPersistenceTCK {
 	 * of the diagnostics is asserted here — only that they arrive where a caller can read them.
 	 */
 	@Test
-	@Disabled("#197 — measured on both backends: neither reports anything on the resource yet")
+	@Disabled("#197 — measured on both backends: nothing reaches the resource")
 	public void aFailedLoadReportsItsDiagnosticsOnTheResource() throws Exception {
 		Resource resource;
 		try {
