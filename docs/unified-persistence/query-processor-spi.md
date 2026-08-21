@@ -1,6 +1,6 @@
 # QueryProcessor SPI & Capability model
 
-**Status:** implemented (2026-07-23, #32–#46; user guide: `query-usage.md`). **The IR part
+**Status:** implemented (2026-07-23, #32–#46; user guide: `../query-user-guide.md`). **The IR part
 (query.ecore where/comparator vocabulary) is superseded by `query-ir-redesign.md`** — the
 SPI layer described here stays. Original design
 proposal of 2026-07-22 — kept as the architecture reference; deviations are recorded in the

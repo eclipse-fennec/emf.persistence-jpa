@@ -182,7 +182,7 @@ via the VitePress site in `docs-site/`).
 | [JPA User Guide](docs/jpa-user-guide.md) | Day-to-day work with `jpa://` resources, options, eorm mapping semantics, converters, unit lifecycle |
 | [MongoDB User Guide](docs/mongo-user-guide.md) | The MongoDB backend: configuration, `mongodb://` resources, codec-based BSON mapping |
 | [Repository User Guide](docs/repository-user-guide.md) | The primary user-facing service: repository interfaces, configuration per flavour, prepared queries, prototype-scope contract |
-| [Query User Guide](docs/unified-persistence/query-usage.md) | Building and executing backend-neutral queries: `Expressions`, `QueryBuilder`, capability matrix, write commands |
+| [Query User Guide](docs/query-user-guide.md) | Building and executing backend-neutral queries: `Expressions`, `QueryBuilder`, maps, geo, capability matrix, write commands |
 | [Configuration Reference](docs/configuration-reference.md) | Every `fennec.jpa.*` property, forwarded EclipseLink keys, liveness keys, load/save `Options` |
 | [JPA & OSGi Architecture](docs/osgi-architecture.md) | Persistence units as services, the `jpa://` whiteboard, lazy factory lifecycle (`emfIdleTimeout`) |
 | [MongoDB Backend Architecture](docs/mongo-architecture.md) | Mongo component chain, liveness gating, resource pipeline, BSON codec bridge |

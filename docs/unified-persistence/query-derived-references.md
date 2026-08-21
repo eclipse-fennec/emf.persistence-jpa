@@ -2,7 +2,7 @@
 
 **Status:** approved concept (2026-07-28) — P1–P8 as proposed, decisions D1–D5 closed
 (§8); implementation pending (§9). Companions: `query-ir-redesign.md` (Expression IR,
-OCL bridge, decision record R1–R10), `query-usage.md` (execution API, capability
+OCL bridge, decision record R1–R10), `../query-user-guide.md` (execution API, capability
 matrix), `concept.md` §3.1/§14. Cross-reference: DataInMotion/xdp#87 — this is the
 original "OCL to any persistence provider" use case.
 
