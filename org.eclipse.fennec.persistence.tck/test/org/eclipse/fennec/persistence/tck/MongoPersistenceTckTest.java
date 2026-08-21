@@ -64,24 +64,6 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 	 * {@code MongoResourceImpl} narrows to exactly the same answer, which
 	 * {@code effectiveCapabilitiesNeverExceedTheDeclaration} asserts.
 	 */
-	/**
-	 * Disabled on mongo by a codec defect, not by a capability: a subtype read through its
-	 * supertype's collection comes back as the supertype, because the decode path lets the
-	 * expected-type hint outrank the stored {@code _type} discriminator — reported as
-	 * <a href="https://github.com/eclipse-fennec/emf.codec/issues/160">emf.codec#160</a>.
-	 * <p>
-	 * Deliberately an override rather than a capability gate (issue #174): a core case cannot
-	 * be declined, so this has to read as "known defect, tracked" and disappear again the
-	 * moment the codec resolves it. Queries are unaffected — they match on the stored
-	 * discriminator, which is why {@code queryTypeCheckAndTreat} stays green here.
-	 */
-	@Test
-	@Disabled("emf.codec#160 — decode prefers EXPECTED_TYPE over the stored _type discriminator")
-	@Override
-	public void polymorphicRoundTrip() throws Exception {
-		super.polymorphicRoundTrip();
-	}
-
 	@Override
 	protected PersistenceCapabilities declaredCapabilities() {
 		return MongoFlavorCapabilities.persistenceCapabilities(flavor());

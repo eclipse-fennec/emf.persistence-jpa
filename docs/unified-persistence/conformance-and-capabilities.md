@@ -764,10 +764,13 @@ follow-up, not part of this decision (§10.1).
    added — multi-valued attribute round trip (and the empty case), single-valued containment,
    polymorphic round trip, `eUnset` on the write path, declared defaults, containment order,
    object identity across repeated loads — plus the `Place`/`GeoPoint` and new `Profile` types
-   in the JPA bootstrap they needed. The polymorphic case found a real defect on mongo
-   (a subtype read through its supertype comes back as the supertype, eclipse-fennec/emf.codec#160)
-   and is disabled there with that reference until the codec resolves it. Three §8 items
-   remain and are each more than coverage: #195.
+   in the JPA bootstrap they needed. The polymorphic case found a real one: a subtype read
+   through its supertype came back as the supertype on mongo. The cause turned out to be the
+   fixture, not the codec — the model resource carried its file path, so every document stored
+   a `file:/…#//Car` as its type, and the package lived only in the backend's
+   `MetadataService`, which type resolution does not consult. Both are fixed here and the case
+   passes on all four bindings; the diagnosis is recorded on eclipse-fennec/emf.codec#160.
+   Three §8 items remain and are each more than coverage: #195.
 6. Generate the command × selector cross product from the declarations (§4). **Done** (#175):
    a `@TestFactory` pairs every declared selector-shaped verb with every plain-filter probe
    from the same corpus the refusal test uses, so the case count follows the declaration
