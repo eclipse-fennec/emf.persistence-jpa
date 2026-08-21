@@ -16,6 +16,8 @@ import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.eclipse.emf.common.util.EMap;
@@ -162,15 +164,18 @@ class JpaEMapRoundTripTest {
 	}
 
 	/**
-	 * A map value as a group key is <b>refused</b> here (issue #190), and that is the finding
-	 * this case exists for: {@code MapValue} renders to a correlated subselect, and a correlated
-	 * subselect cannot appear in {@code GROUP BY} — it references the grouped row, so the
-	 * database demands that column in the group list. Mongo groups by the same expression
-	 * happily ({@code MongoEMapRoundTripTest.mapValueGroupsAndAggregates}), which makes this a
-	 * real divergence, refused with a diagnostic rather than answered with a database error.
+	 * A map value as a group key, answered rather than refused (issue #190).
+	 * <p>
+	 * The correlated subselect {@code MapValue} renders in a predicate cannot appear in
+	 * {@code GROUP BY} — it references the grouped row, so the database demands that column
+	 * in the group list. Inside a grouping the entry therefore joins into the FROM clause,
+	 * where its value is an ordinary column that SELECT and GROUP BY both address. The join
+	 * is outer with the key in its {@code ON} clause, so a catalog without that key groups
+	 * under {@code null} instead of vanishing — the same answer mongo gives
+	 * ({@code MongoEMapRoundTripTest.mapValueGroupsAndAggregates}).
 	 */
 	@Test
-	void mapValueAsGroupKeyIsRefused() throws Exception {
+	void mapValueGroupsAndAggregates() throws Exception {
 		ResourceSet writeSet = resourceSet();
 		EObject one = model.newCatalog("c8", "One");
 		map(one, "attributes").put("color", "red");
@@ -190,13 +195,50 @@ class JpaEMapRoundTripTest {
 				.countOf("total")
 				.build();
 
-		Diagnostic diagnostic = new JpaQueryProcessor().validate(query, model.catalogClass);
-		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
-		assertThat(diagnostic.getChildren())
-				.anySatisfy(child -> {
-					assertThat(child.getCode()).isEqualTo(JpaQueryProcessor.CODE_MAP_VALUE_GROUPING);
-					assertThat(child.getMessage()).contains("GROUP BY");
-				});
+		assertThat(new JpaQueryProcessor().validate(query, model.catalogClass).getSeverity())
+				.isEqualTo(Diagnostic.OK);
+		QueryableResource queryable =
+				(QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = queryable.query(query)) {
+			Map<Object, Object> counts = new LinkedHashMap<>();
+			result.rows().forEach(row -> counts.put(row.get("color"), row.get("total")));
+			assertThat(counts).containsOnlyKeys("red", "blue");
+			assertThat(((Number) counts.get("red")).intValue()).isEqualTo(2);
+			assertThat(((Number) counts.get("blue")).intValue()).isEqualTo(1);
+		}
+	}
+
+	/**
+	 * The outer-join decision made visible (issue #190): an owner without the grouped key
+	 * groups under {@code null} rather than dropping out of the result. Putting the key
+	 * condition in {@code WHERE} instead of {@code ON} would silently lose that row.
+	 */
+	@Test
+	void mapValueGroupingKeepsOwnersWithoutTheKey() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject coloured = model.newCatalog("c11", "Coloured");
+		map(coloured, "attributes").put("color", "green");
+		EObject other = model.newCatalog("c12", "Other");
+		map(other, "attributes").put("size", "L");
+		Resource resource = writeSet.createResource(uriFor("Catalog"));
+		resource.getContents().add(coloured);
+		resource.getContents().add(other);
+		resource.save(null);
+
+		emf.getCache().evictAll();
+		Query query = QueryBuilder.from(model.catalogClass)
+				.groupByAs("color", Expressions.mapValue(model.attributes, "color").toExpression())
+				.countOf("total")
+				.build();
+		QueryableResource queryable =
+				(QueryableResource) resourceSet().createResource(uriFor("Catalog"));
+		try (QueryResult result = queryable.query(query)) {
+			Map<Object, Object> counts = new LinkedHashMap<>();
+			result.rows().forEach(row -> counts.put(row.get("color"), row.get("total")));
+			assertThat(counts).containsKey("green");
+			assertThat(counts).containsKey(null);
+			assertThat(((Number) counts.get(null)).intValue()).isEqualTo(1);
+		}
 	}
 
 	// ------------------------------------------------------------------ helpers

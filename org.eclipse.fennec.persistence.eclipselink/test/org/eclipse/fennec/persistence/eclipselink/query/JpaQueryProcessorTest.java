@@ -152,6 +152,41 @@ class JpaQueryProcessorTest {
 		assertThat(plan.parameters()).containsEntry("p0", "size");
 	}
 
+	/**
+	 * Inside a grouping the same access joins instead (issue #190): a correlated subselect
+	 * references the grouped row and is illegal in {@code GROUP BY}. The join is outer with
+	 * the key in {@code ON}, so owners without the key group under null.
+	 */
+	@Test
+	void mapAccessInAGroupingRendersAJoin() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.groupByAs("colour", Expressions.mapValue(attributes, "color").toExpression())
+				.countOf("total")
+				.build());
+		assertThat(plan.jpql()).isEqualTo("SELECT mj0.value AS colour, COUNT(e) AS total"
+				+ " FROM Person e LEFT JOIN e.attributes mj0 ON mj0.key = :p0"
+				+ " GROUP BY mj0.value");
+		assertThat(plan.parameters()).containsEntry("p0", "color");
+	}
+
+	/**
+	 * One join per distinct map-and-key pair (issue #190) — grouping and aggregating over the
+	 * same entry must address the same alias, or GROUP BY and SELECT would disagree.
+	 */
+	@Test
+	void mapAccessJoinsOncePerKey() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.groupByAs("colour", Expressions.mapValue(attributes, "color").toExpression())
+				.countDistinct("colours", Expressions.mapValue(attributes, "color").toExpression())
+				.max("largest", Expressions.mapValue(attributes, "size").toExpression())
+				.build());
+		assertThat(plan.jpql()).contains("LEFT JOIN e.attributes mj0 ON mj0.key = :p0")
+				.contains("LEFT JOIN e.attributes mj1 ON mj1.key = :p1")
+				.contains("COUNT(DISTINCT (mj0.value)) AS colours")
+				.contains("MAX((mj1.value)) AS largest");
+		assertThat(plan.parameters()).containsEntry("p0", "color").containsEntry("p1", "size");
+	}
+
 	private JpaQueryPlan translate(Query query) throws QueryException {
 		return translate(query, QueryContexts.of(person, null));
 	}

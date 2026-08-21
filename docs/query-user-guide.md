@@ -157,11 +157,12 @@ Two limits are worth knowing up front, because both are refusals rather than sur
   by ranging over the entry table; Mongo refuses it (code 103), because a map is stored
   as a sub-document rather than an array and the equivalent filter would silently match
   nothing. Address the entry by its key with `mapValue` if the query has to be portable.
-- **A map value cannot be a group key or an aggregate source on JPA** (code 200). The
-  correlated subselect would have to appear in `GROUP BY`, where it correlates to the
-  very row being grouped, and the database rejects it. Mongo groups by a map value
-  without trouble, so this is a genuine backend divergence, refused with a named
-  diagnostic rather than a database error.
+- **Grouping by a map value changes how JPA renders it.** In a predicate the entry is a
+  correlated subselect; inside a grouping that form is illegal (it references the very row
+  being grouped), so the entry joins into the FROM clause instead and the value becomes an
+  ordinary column. The join is *outer* with the key in its `ON` clause, so an owner without
+  that key groups under `null` rather than dropping out — which is what Mongo does for a
+  missing sub-document field. Both backends therefore answer the same.
 
 ## Geo
 
@@ -451,7 +452,7 @@ reports each violation as a `Diagnostic` ERROR before anything runs.
 | Collection counts, filtered counts | ✅ `SIZE` / correlated subquery | ✅ `$size` / `$size($filter)` | |
 | Type check and cast | ✅ `TREAT` | ✅ type discriminator | |
 | Map access (`mapValue`) | ✅ correlated subselect | ✅ sub-document field | constant key on both; see [Maps](#maps) |
-| Map value as group key | ❌ refused (code 200) | ✅ | genuine divergence |
+| Map value as group key | ✅ via an outer join | ✅ | owners without the key group under `null` |
 | Quantifier over a map | ✅ over the entry table | ❌ refused (code 103) | prefer `mapValue` for portability |
 | Sort / top / skip / count | ✅ | ✅ | |
 | Sort by expression | ✅ | ❌ refused | use `aliasRef` on row shapes |
@@ -486,7 +487,6 @@ Diagnostic codes, source `org.eclipse.fennec.persistence.query`:
 | 101 | Mongo: distinct without a projection |
 | 102 | Mongo: invalid map key |
 | 103 | Mongo: quantifier over a map |
-| 200 | JPA: map value used as a group key or aggregate source |
 
 ## Querying in memory
 
