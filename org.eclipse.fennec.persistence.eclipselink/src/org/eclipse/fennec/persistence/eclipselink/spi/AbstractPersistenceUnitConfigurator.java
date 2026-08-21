@@ -28,6 +28,9 @@ import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
@@ -74,6 +77,7 @@ public abstract class AbstractPersistenceUnitConfigurator {
 
 	private volatile ServiceRegistration<JPAUnit> unitRegistration;
 	private volatile ServiceRegistration<EntityManagerFactory> emfRegistration;
+	private volatile ServiceRegistration<CapabilityDeclaration> declarationRegistration;
 	private volatile LazyJPAUnit unit;
 
 	/**
@@ -130,13 +134,31 @@ public abstract class AbstractPersistenceUnitConfigurator {
 				}
 			}, idleTimeoutMillis);
 
+			// Probe the database once, here: the data source is bound and open, while the
+			// EclipseLink factory is deliberately not built yet (issue #172). Asking the
+			// driver is the only answer that cannot disagree with reality — a configured
+			// flavor could.
+			JpaFlavor flavor = JpaFlavor.detect(getDataSource());
+			getLogger().info(() -> String.format("Persistence unit '%s' runs on flavor '%s'",
+					getPersistenceUnitName(), flavor.id()));
+
 			Dictionary<String, Object> serviceProps = new Hashtable<>();
 			serviceProps.put(JPAUnit.UNIT_NAME, getPersistenceUnitName());
 			serviceProps.put("osgi.unit.version", bctx.getBundle().getVersion().toString());
 			serviceProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
+			serviceProps.put(CapabilityDeclaration.FLAVOR_PROPERTY, flavor.id());
 			unitRegistration = bctx.registerService(JPAUnit.class, unit, serviceProps);
 			emfRegistration = bctx.registerService(EntityManagerFactory.class,
 					new LeasedEntityManagerFactoryFactory(unit, getLogger()), serviceProps);
+
+			// What this unit's database declares, published for consumers that must decide
+			// without opening a connection of their own (issue #172).
+			Dictionary<String, Object> declarationProps = new Hashtable<>();
+			declarationProps.put(CapabilityDeclaration.BACKEND_PROPERTY, JpaFlavorCapabilities.BACKEND);
+			declarationProps.put(CapabilityDeclaration.FLAVOR_PROPERTY, flavor.id());
+			declarationProps.put(JPAUnit.UNIT_NAME, getPersistenceUnitName());
+			declarationRegistration = bctx.registerService(CapabilityDeclaration.class,
+					JpaFlavorCapabilities.declaration(flavor), declarationProps);
 		} catch (Exception e) {
 			throw new IllegalStateException("Error configuring persistence unit", e);
 		}
@@ -147,6 +169,10 @@ public abstract class AbstractPersistenceUnitConfigurator {
 	 * the real factory if it is currently built).
 	 */
 	protected void doDeactivate() {
+		if (nonNull(declarationRegistration)) {
+			declarationRegistration.unregister();
+			declarationRegistration = null;
+		}
 		if (nonNull(emfRegistration)) {
 			emfRegistration.unregister();
 			emfRegistration = null;

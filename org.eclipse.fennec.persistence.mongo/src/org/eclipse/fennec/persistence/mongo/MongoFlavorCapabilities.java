@@ -18,9 +18,17 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
+import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
+import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.CommandFeature;
+import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
+import org.eclipse.fennec.persistence.capabilities.StoreCapabilities;
+import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 
 /**
  * The query capabilities of each {@link MongoFlavor} (issue #118).
@@ -38,6 +46,9 @@ import org.eclipse.fennec.persistence.capabilities.QueryFeature;
  * @since 09.08.2026
  */
 public final class MongoFlavorCapabilities {
+
+	/** The backend id these declarations describe — the {@code mongo} query processor's id. */
+	public static final String BACKEND = "mongo";
 
 	/**
 	 * Everything the Mongo translation can express, served by MongoDB itself.
@@ -141,5 +152,50 @@ public final class MongoFlavorCapabilities {
 		EnumSet<QueryFeature> set = EnumSet.noneOf(QueryFeature.class);
 		set.addAll(Arrays.asList(features));
 		return Collections.unmodifiableSet(set);
+	}
+
+	/**
+	 * The write verbs, identical on every flavor: the command plane goes through the same
+	 * codec and the same collection operations everywhere.
+	 */
+	private static final CommandCapabilities COMMANDS = CommandCapabilitiesBuilder.create()
+			.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
+					CommandFeature.UPDATE_BY_SELECTOR)
+			.build();
+
+	/**
+	 * Store capabilities per flavor — the one place the flavors genuinely differ outside the
+	 * query plane (issues #112/#119/#122): a transaction bracket needs a session-capable
+	 * deployment, which MongoDB (replica set) and the DocumentDB gateway (announces itself as
+	 * mongos) provide and FerretDB, a standalone server, does not.
+	 * <p>
+	 * This is the <em>declaration</em>. Whether a concrete deployment really serves it is
+	 * probed per resource at runtime and can only narrow this, never exceed it.
+	 */
+	private static StoreCapabilities storeOf(MongoFlavor flavor) {
+		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create();
+		if (flavor != MongoFlavor.FERRETDB) {
+			store.support(StoreFeature.TRANSACTION_BRACKET);
+		}
+		return store.build();
+	}
+
+	/**
+	 * @param flavor the server flavor; {@code null} means {@link MongoFlavor#MONGO}
+	 * @return everything {@code flavor} declares — query, command and store (issue #172)
+	 */
+	public static PersistenceCapabilities persistenceCapabilities(MongoFlavor flavor) {
+		MongoFlavor resolved = flavor == null ? MongoFlavor.MONGO : flavor;
+		return PersistenceCapabilities.of(of(resolved), COMMANDS, storeOf(resolved));
+	}
+
+	/**
+	 * @param flavor the server flavor; {@code null} means {@link MongoFlavor#MONGO}
+	 * @return the declaration of this backend and flavor, ready to be registered as a service
+	 *         or read directly (issue #172)
+	 */
+	public static CapabilityDeclaration declaration(MongoFlavor flavor) {
+		MongoFlavor resolved = flavor == null ? MongoFlavor.MONGO : flavor;
+		return CapabilityDeclaration.of(BACKEND, resolved.id(), persistenceCapabilities(resolved));
 	}
 }

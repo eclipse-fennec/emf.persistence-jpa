@@ -26,7 +26,8 @@ import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
-import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 
 import jakarta.persistence.EntityManagerFactory;
@@ -44,22 +45,30 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 	private EntityManagerFactory emf;
 
 	/**
-	 * The JPA declaration (issue #160), answerable without a connection: the query
-	 * vocabulary is the processor's static declaration, command verbs and the transaction
-	 * bracket are unconditional on a relational store.
-	 * {@code effectiveCapabilitiesNeverExceedTheDeclaration} holds this against the live
-	 * resource.
+	 * The declaration of the backend and flavor under test, read from the backend rather
+	 * than assembled here (issue #172): the binding names the flavor, the backend answers
+	 * what it serves. Before this, the query set came from the processor and the command and
+	 * store sets were restated in the test — a second place to keep in sync, and one that
+	 * could disagree with what the runtime declares.
+	 * <p>
+	 * Answerable without a connection, which is what makes it the gate for
+	 * {@link RequiresCapabilities}; {@code effectiveCapabilitiesNeverExceedTheDeclaration}
+	 * holds it against the live resource.
 	 */
 	@Override
 	protected PersistenceCapabilities declaredCapabilities() {
-		return PersistenceCapabilities.of(new JpaQueryProcessor().capabilities(),
-				CommandCapabilitiesBuilder.create()
-						.support(CommandFeature.INSERT, CommandFeature.DELETE_BY_SELECTOR,
-								CommandFeature.UPDATE_BY_SELECTOR)
-						.build(),
-				StoreCapabilitiesBuilder.create()
-						.support(StoreFeature.TRANSACTION_BRACKET)
-						.build());
+		return JpaFlavorCapabilities.persistenceCapabilities(flavor());
+	}
+
+	/**
+	 * The database flavor under test, from {@code -Djpa.test.flavor}. Unknown ids fail
+	 * loudly: silently testing H2 while believing it is PostgreSQL would make a green run
+	 * meaningless — the same rule the mongo binding follows.
+	 */
+	private static JpaFlavor flavor() {
+		return JpaFlavor.byId(JpaTestSupport.flavor())
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Unknown -Djpa.test.flavor=" + JpaTestSupport.flavor()));
 	}
 
 	@Override

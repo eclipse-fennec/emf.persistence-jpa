@@ -72,7 +72,8 @@ import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
-import org.eclipse.fennec.persistence.capabilities.QueryCapabilitiesBuilder;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.query.QueryConstants;
@@ -120,28 +121,34 @@ public class JpaQueryProcessor implements QueryProcessor {
 	/** The JPQL root alias. */
 	static final String ALIAS = "e";
 
-	private static final QueryCapabilities CAPABILITIES = QueryCapabilitiesBuilder.create()
-			.support(QueryFeature.WHERE_EQ, QueryFeature.WHERE_NE, QueryFeature.WHERE_COMPARISON,
-					QueryFeature.WHERE_RANGE, QueryFeature.IS_NULL, QueryFeature.IN,
-					QueryFeature.WHERE_STRING_MATCH, QueryFeature.STRING_MATCH_CASE_INSENSITIVE,
-					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
-					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
-					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,
-					QueryFeature.COLLECTION_COUNT, QueryFeature.COLLECTION_COUNT_FILTERED,
-					QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE, QueryFeature.SORT_EXPRESSION,
-					QueryFeature.GROUP_EXPRESSION,
-					QueryFeature.FIELD_TO_FIELD,
-					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
-					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
-					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
-					QueryFeature.PROJECTION, QueryFeature.PROJECTION_NESTED,
-					QueryFeature.PROJECTION_EXPRESSION, QueryFeature.GROUP_BY,
-					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
-					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
-					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED, QueryFeature.MAP_VALUE,
-					QueryFeature.EXPAND)
-			.maxFeaturePathDepth(-1)
-			.build();
+	private final JpaFlavor flavor;
+	private final QueryCapabilities capabilities;
+
+	/**
+	 * Creates a processor declaring the portable baseline — the flavor-less form the
+	 * declarative-services registration uses, and the right answer before any database has
+	 * been probed.
+	 */
+	public JpaQueryProcessor() {
+		this(JpaFlavor.UNKNOWN);
+	}
+
+	/**
+	 * Creates a processor whose capability declaration matches {@code flavor} (issue #172).
+	 * Translation itself is flavor-independent — every targeted database speaks the same
+	 * JPQL — so the flavor only selects what is declared, never how a query is rendered.
+	 *
+	 * @param flavor the database flavor; {@code null} is treated as {@link JpaFlavor#UNKNOWN}
+	 */
+	public JpaQueryProcessor(JpaFlavor flavor) {
+		this.flavor = flavor == null ? JpaFlavor.UNKNOWN : flavor;
+		this.capabilities = JpaFlavorCapabilities.of(this.flavor);
+	}
+
+	/** @return the database flavor this processor declares capabilities for */
+	public JpaFlavor flavor() {
+		return flavor;
+	}
 
 	@Override
 	public String backend() {
@@ -150,12 +157,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 	@Override
 	public QueryCapabilities capabilities() {
-		return CAPABILITIES;
+		return capabilities;
 	}
 
 	@Override
 	public Diagnostic validate(Query query, EClass rootEClass) {
-		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, CAPABILITIES);
+		return QueryValidator.validate(ExpressionAnalyzer.analyze(query), rootEClass, capabilities);
 	}
 
 	@Override
