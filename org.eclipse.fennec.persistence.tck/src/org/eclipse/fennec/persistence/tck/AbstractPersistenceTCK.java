@@ -184,25 +184,12 @@ public abstract class AbstractPersistenceTCK {
 		profileRank = profileClass.getEStructuralFeature("rank");
 		companyName = companyClass.getEStructuralFeature("name");
 		companyEmployees = companyClass.getEStructuralFeature("employees");
-		// Also register globally, and undo it in tearDown. The codec's type resolution does
-		// not find a package that lives only in the backend's MetadataService, so a document's
-		// stored type would not resolve and decoding would silently fall back to the expected
-		// type — losing the subtype (eclipse-fennec/emf.codec#160). In OSGi an EPackage is
-		// reachable this way anyway; here it has to be arranged. Both TCK models share one
-		// nsURI, so this must be per-test and undone afterwards, never left standing.
-		EPackage.Registry.INSTANCE.put(tckPackage.getNsURI(), tckPackage);
 		setUpBackend(tckPackage);
 	}
 
 	@AfterEach
 	void tearDownTck() throws Exception {
-		try {
-			tearDownBackend();
-		} finally {
-			if (nonNull(tckPackage)) {
-				EPackage.Registry.INSTANCE.remove(tckPackage.getNsURI());
-			}
-		}
+		tearDownBackend();
 	}
 
 	/**
