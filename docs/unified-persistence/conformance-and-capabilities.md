@@ -747,11 +747,18 @@ follow-up, not part of this decision (§10.1).
    (`undeclaredFeaturesAreRefusedWithADiagnostic`, a minimal probe query per feature), and
    `effectiveCapabilitiesNeverExceedTheDeclaration` pins declaration against the live
    resource in both directions. `supportsCompositeIds` did not become an annotation — the
-   §3 decision made it core, so its refusal branch is simply gone. One deviation from the
-   sentence above: the condition reads the binding's declaration, not a *service* — the
-   service registration per backend × flavor is still step 2's open remainder.
+   §3 decision made it core, so its refusal branch is simply gone. The deviation recorded
+   here — the condition reading the binding's own declaration rather than a service — is
+   closed with #172: both bindings now answer `declaredCapabilities()` from what the backend
+   declares for their flavor (`JpaFlavorCapabilities` / `MongoFlavorCapabilities`), so the
+   gate reads one mechanism instead of a hand-assembled copy.
 4. Make the boot fail loudly: undeclared capability → skip, unreachable backend → error.
-   Retires the XML-parsing guard in `flavor-matrix.yml` (#132).
+   **Done** (#173): both support classes raise an error when no server can be provided, and a
+   skip is available only by explicit opt-in (`-D<backend>.test.optional=true`) for the
+   developer without a container runtime — never by accident, and never in CI, which sets
+   nothing. That retired the XML-parsing guard in `flavor-matrix.yml` (#132): a suite that
+   cannot reach its backend now fails by itself instead of being caught by counting executed
+   tests afterwards.
 5. Close the core gaps of §8 as mandatory tests — the two known defects (#130, #133) become
    blocking rather than `@Disabled`.
 6. Generate the command × selector cross product from the declarations (§4).

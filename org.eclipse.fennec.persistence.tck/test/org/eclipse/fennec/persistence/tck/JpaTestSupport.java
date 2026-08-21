@@ -48,10 +48,15 @@ import org.junit.jupiter.api.Assumptions;
  * Flavors of one backend must not differ in core conformance; where they do, it is a bug in that
  * flavor's mapping rather than a capability (§6). This class is what makes that claim measurable.
  * <p>
- * When a flavor's server cannot be provided the JPA tests are <b>skipped</b> through a JUnit
- * assumption naming what failed — and {@code -Djpa.require=true} (or {@code JPA_REQUIRE=true})
- * turns that into a hard failure, because a silently skipped suite is indistinguishable from a
- * passing one (issue #132). Note that {@code h2} can never skip: it needs nothing.
+ * When a flavor's server cannot be provided this is an <b>error</b> (issue #173). An
+ * unreachable backend is not a capability statement: the matrix workflow provisions the
+ * container, so "not reachable" there is infrastructure failing, and a run that skipped
+ * everything is indistinguishable from one that verified everything.
+ * <p>
+ * A skip stays available for the developer without a container runtime, but by explicit
+ * opt-in only: {@code -Djpa.test.optional=true} (or {@code JPA_TEST_OPTIONAL=true}) restores
+ * the JUnit assumption, with a message naming the flavor and what failed. Note that
+ * {@code h2} can neither skip nor fail: it needs nothing.
  *
  * @author Mark Hoffmann
  * @since 14.08.2026
@@ -87,9 +92,16 @@ final class JpaTestSupport {
 	private static final String MARIADB_USER = "root";
 	private static final String MARIADB_PASSWORD = "fennec";
 
-	/** @see MongoTestSupport for the same rationale — a skip must be distinguishable from a pass */
-	private static final boolean REQUIRED = Boolean.parseBoolean(
-			System.getProperty("jpa.require", System.getenv().getOrDefault("JPA_REQUIRE", "false")));
+	/**
+	 * Whether a missing server may skip instead of failing (issue #173) — opt-in, because the
+	 * default has to be the safe one: a skip is indistinguishable from a pass, and in CI the
+	 * container is provisioned by the workflow, so its absence is infrastructure rather than a
+	 * capability statement.
+	 *
+	 * @see MongoTestSupport for the same rationale
+	 */
+	private static final boolean OPTIONAL = Boolean.parseBoolean(System.getProperty("jpa.test.optional",
+			System.getenv().getOrDefault("JPA_TEST_OPTIONAL", "false")));
 
 	private static final ContainerHarness CONTAINERS = new ContainerHarness("jpa.container.cli");
 
@@ -124,7 +136,7 @@ final class JpaTestSupport {
 	 * MariaDB its own database — a MariaDB schema <em>is</em> a database (issue #158), so the
 	 * isolation strategy is per flavor, not per backend.
 	 * <p>
-	 * Skips (or fails, under {@code jpa.require=true}) when the configured flavor has no server.
+	 * Fails (or skips, under {@code jpa.test.optional=true}) when the configured flavor has no server.
 	 *
 	 * @param puName the persistence unit name, used to make the database or schema recognisable
 	 * @return properties to merge into the persistence unit configuration
@@ -216,11 +228,13 @@ final class JpaTestSupport {
 	private static String requireBaseUrl() {
 		String url = baseUrl();
 		if (isNull(url)) {
-			if (REQUIRED) {
-				throw new IllegalStateException("jpa.require=true but no " + FLAVOR
-						+ " database could be provided: " + unavailableReason);
+			if (OPTIONAL) {
+				Assumptions.abort(unavailableMessage());
 			}
-			Assumptions.abort(unavailableMessage());
+			throw new IllegalStateException("No " + FLAVOR + " database could be provided: "
+					+ unavailableReason
+					+ " — an unreachable backend is an error, not a capability statement."
+					+ " Set -Djpa.test.optional=true to skip instead (issue #173).");
 		}
 		return url;
 	}
@@ -326,7 +340,7 @@ final class JpaTestSupport {
 		String reason = unavailableReason;
 		return "No " + FLAVOR + " database available for the TCK"
 				+ (isNull(reason) ? "" : ": " + reason)
-				+ " (set -Djpa.jdbc.url, or -Djpa.require=true to fail instead of skipping)";
+				+ " (skipping because -Djpa.test.optional=true; set -Djpa.jdbc.url to run it)";
 	}
 
 	/** Unwraps the cause chain — the useful text is usually in the innermost message. */
