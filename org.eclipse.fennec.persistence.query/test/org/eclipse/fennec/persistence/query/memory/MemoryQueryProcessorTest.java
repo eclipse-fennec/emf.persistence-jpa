@@ -1024,6 +1024,26 @@ class MemoryQueryProcessorTest {
 		}
 	}
 
+	/**
+	 * Issue #189: the reference oracle evaluates an expression projection per object, so a
+	 * computed column has the same semantics here as in the database backends.
+	 */
+	@Test
+	void projectionOfAnExpression() throws QueryException {
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(40))
+				.selectAs("n", personName)
+				.selectAs("nextAge", Expressions.path(personAge).plus(1).toExpression())
+				.build();
+		try (QueryResult result = MemoryQueries.execute(query, persons, null)) {
+			assertThat(result.shape()).isEqualTo(QueryShape.PROJECTION);
+			List<QueryResultRow> rows = result.rows().toList();
+			assertThat(rows).extracting(row -> row.get("n")).containsExactlyInAnyOrder("Bob", "Carol");
+			assertThat(rows).extracting(row -> ((Number) row.get("nextAge")).longValue())
+					.containsExactlyInAnyOrder(41L, 51L);
+		}
+	}
+
 	@Test
 	void wholeSetAggregation() throws QueryException {
 		Query query = QueryBuilder.from(personClass)

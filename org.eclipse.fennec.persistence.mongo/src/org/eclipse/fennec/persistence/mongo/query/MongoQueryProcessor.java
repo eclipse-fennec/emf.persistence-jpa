@@ -1054,7 +1054,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 
 		List<Bson> deferredPaging = new ArrayList<>();
 		if (shape == QueryShape.PROJECTION) {
-			projectionStages(query, pipeline, rowKeys, rowAliases);
+			projectionStages(query, pipeline, rowKeys, rowAliases, context);
 		} else {
 			aggregationStages(query, pipeline, rowKeys, rowAliases, deferredPaging, context);
 		}
@@ -1076,31 +1076,37 @@ public class MongoQueryProcessor implements QueryProcessor {
 				Math.max(0, query.getTop()), pipeline, rowKeys, rowAliases);
 	}
 
-	private void projectionStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases)
-			throws QueryException {
-		Map<String, String> columns = new LinkedHashMap<>();
+	private void projectionStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
+			QueryContext context) throws QueryException {
+		// a column is either a field reference ("$field") or, for an expression projection
+		// (issue #189), the rendered aggregation expression — $project takes both
+		Map<String, Object> columns = new LinkedHashMap<>();
 		for (Selection selection : query.getSelect()) {
-			String key = outputKey(selection.getAlias(), selection.getPath());
-			if (columns.put(key, MongoFieldNames.render(selection.getPath())) != null) {
+			boolean computed = selection.getKey() != null;
+			String key = computed ? selection.getAlias() : outputKey(selection.getAlias(), selection.getPath());
+			Object column = computed
+					? exprOperand(selection.getKey(), null, context, new ArrayList<>())
+					: new BsonString("$" + MongoFieldNames.render(selection.getPath()));
+			if (columns.put(key, column) != null) {
 				throw new QueryException("Duplicate result key '" + key + "' — use distinct aliases");
 			}
 			rowKeys.add(key);
 			rowAliases.add(selection.getAlias());
 		}
 		if (query.isDistinct()) {
-			BsonDocument id = new BsonDocument();
-			BsonDocument flatten = new BsonDocument("_id", new BsonInt32(0));
-			columns.forEach((key, fieldName) -> {
-				id.put(key, new BsonString("$" + fieldName));
-				flatten.put(key, new BsonString("$_id." + key));
+			Document id = new Document();
+			Document flatten = new Document("_id", 0);
+			columns.forEach((key, column) -> {
+				id.put(key, column);
+				flatten.put(key, "$_id." + key);
 			});
-			pipeline.add(new BsonDocument("$group", new BsonDocument("_id", id)));
-			pipeline.add(Aggregates.project(flatten));
+			pipeline.add(new Document("$group", new Document("_id", id)));
+			pipeline.add(new Document("$project", flatten));
 			return;
 		}
-		BsonDocument project = new BsonDocument("_id", new BsonInt32(0));
-		columns.forEach((key, fieldName) -> project.put(key, new BsonString("$" + fieldName)));
-		pipeline.add(Aggregates.project(project));
+		Document project = new Document("_id", 0);
+		columns.forEach(project::put);
+		pipeline.add(new Document("$project", project));
 	}
 
 	private void aggregationStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,

@@ -77,6 +77,12 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_MAP_VALUE = 8;
 
+	/**
+	 * Diagnostic code: a {@code Selection} that sets both or neither of {@code path}/{@code key},
+	 * or projects an expression without the mandatory alias (issue #189).
+	 */
+	public static final int CODE_INVALID_PROJECTION = 9;
+
 	private QueryValidator() {
 	}
 
@@ -156,6 +162,11 @@ public final class QueryValidator {
 		if (analysis.invalidMapValue() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_MAP_VALUE,
 					analysis.invalidMapValue() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+		if (analysis.invalidProjection() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_PROJECTION,
+					analysis.invalidProjection() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

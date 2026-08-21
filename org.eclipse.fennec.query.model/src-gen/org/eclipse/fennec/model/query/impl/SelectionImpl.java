@@ -21,6 +21,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 
 import org.eclipse.fennec.model.query.QueryPackage;
@@ -35,6 +36,7 @@ import org.eclipse.fennec.model.query.Selection;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.model.query.impl.SelectionImpl#getPath <em>Path</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.SelectionImpl#getKey <em>Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.SelectionImpl#getAlias <em>Alias</em>}</li>
  * </ul>
  *
@@ -50,6 +52,16 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 	 * @ordered
 	 */
 	protected PropertyPath path;
+
+	/**
+	 * The cached value of the '{@link #getKey() <em>Key</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getKey()
+	 * @generated
+	 * @ordered
+	 */
+	protected Expression key;
 
 	/**
 	 * The default value of the '{@link #getAlias() <em>Alias</em>}' attribute.
@@ -141,6 +153,51 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 	 * @generated
 	 */
 	@Override
+	public Expression getKey() {
+		return key;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NotificationChain basicSetKey(Expression newKey, NotificationChain msgs) {
+		Expression oldKey = key;
+		key = newKey;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, QueryPackage.SELECTION__KEY, oldKey, newKey);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
+		}
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setKey(Expression newKey) {
+		if (newKey != key) {
+			NotificationChain msgs = null;
+			if (key != null)
+				msgs = ((InternalEObject)key).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - QueryPackage.SELECTION__KEY, null, msgs);
+			if (newKey != null)
+				msgs = ((InternalEObject)newKey).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - QueryPackage.SELECTION__KEY, null, msgs);
+			msgs = basicSetKey(newKey, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, QueryPackage.SELECTION__KEY, newKey, newKey));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public String getAlias() {
 		return alias;
 	}
@@ -168,6 +225,8 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 		switch (featureID) {
 			case QueryPackage.SELECTION__PATH:
 				return basicSetPath(null, msgs);
+			case QueryPackage.SELECTION__KEY:
+				return basicSetKey(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -182,6 +241,8 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 		switch (featureID) {
 			case QueryPackage.SELECTION__PATH:
 				return getPath();
+			case QueryPackage.SELECTION__KEY:
+				return getKey();
 			case QueryPackage.SELECTION__ALIAS:
 				return getAlias();
 		}
@@ -198,6 +259,9 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 		switch (featureID) {
 			case QueryPackage.SELECTION__PATH:
 				setPath((PropertyPath)newValue);
+				return;
+			case QueryPackage.SELECTION__KEY:
+				setKey((Expression)newValue);
 				return;
 			case QueryPackage.SELECTION__ALIAS:
 				setAlias((String)newValue);
@@ -217,6 +281,9 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 			case QueryPackage.SELECTION__PATH:
 				setPath((PropertyPath)null);
 				return;
+			case QueryPackage.SELECTION__KEY:
+				setKey((Expression)null);
+				return;
 			case QueryPackage.SELECTION__ALIAS:
 				setAlias(ALIAS_EDEFAULT);
 				return;
@@ -234,6 +301,8 @@ public class SelectionImpl extends MinimalEObjectImpl.Container implements Selec
 		switch (featureID) {
 			case QueryPackage.SELECTION__PATH:
 				return path != null;
+			case QueryPackage.SELECTION__KEY:
+				return key != null;
 			case QueryPackage.SELECTION__ALIAS:
 				return ALIAS_EDEFAULT == null ? alias != null : !ALIAS_EDEFAULT.equals(alias);
 		}

@@ -140,7 +140,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
-					QueryFeature.PROJECTION, QueryFeature.PROJECTION_NESTED, QueryFeature.GROUP_BY,
+					QueryFeature.PROJECTION, QueryFeature.PROJECTION_NESTED,
+					QueryFeature.PROJECTION_EXPRESSION, QueryFeature.GROUP_BY,
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
 					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED, QueryFeature.MAP_VALUE,
@@ -261,7 +262,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (query.isDistinct()) {
 				jpql.append("DISTINCT ");
 			}
-			jpql.append(projectionColumns(query, rowKeys, rowAliases));
+			jpql.append(projectionColumns(query, rowKeys, rowAliases, translation));
 		}
 		case AGGREGATION -> jpql.append(pipeline.columns);
 		}
@@ -320,16 +321,22 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 	// -------------------------------------------------- select / group / order
 
-	private String projectionColumns(Query query, List<String> rowKeys, List<String> rowAliases)
-			throws QueryException {
+	private String projectionColumns(Query query, List<String> rowKeys, List<String> rowAliases,
+			Translation translation) throws QueryException {
 		StringBuilder columns = new StringBuilder();
 		for (Selection selection : query.getSelect()) {
-			String key = outputKey(selection.getAlias(), selection.getPath());
+			// an expression projection (issue #189) renders inline under its mandatory
+			// alias, exactly like an expression sort key; a path keeps its derived key
+			boolean computed = selection.getKey() != null;
+			String key = computed ? selection.getAlias() : outputKey(selection.getAlias(), selection.getPath());
 			registerKey(key, selection.getAlias(), rowKeys, rowAliases);
 			if (columns.length() > 0) {
 				columns.append(", ");
 			}
-			columns.append(rootPath(selection.getPath())).append(" AS ").append(key);
+			String rendered = computed
+					? translation.operand(selection.getKey(), null)
+					: rootPath(selection.getPath());
+			columns.append(rendered).append(" AS ").append(key);
 		}
 		return columns.toString();
 	}

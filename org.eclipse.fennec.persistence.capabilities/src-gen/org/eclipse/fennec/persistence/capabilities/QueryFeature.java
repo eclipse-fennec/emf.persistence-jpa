@@ -646,6 +646,19 @@ public enum QueryFeature implements Enumerator {
 	MAP_VALUE(78, "MAP_VALUE", "MAP_VALUE"),
 
 	/**
+	 * The '<em><b>PROJECTION EXPRESSION</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Projecting an arbitrary value expression (v2 query Selection.key - issue #189), the projection counterpart of SORT_EXPRESSION: a column that is computed rather than navigated, addressed by its mandatory alias. JPQL renders the expression inline in the SELECT list; Mongo projects the aggregation expression; memory evaluates it per object. A backend that declares PROJECTION but not this one serves only path projections.
+	 * <!-- end-model-doc -->
+	 * @see #PROJECTION_EXPRESSION_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	PROJECTION_EXPRESSION(79, "PROJECTION_EXPRESSION", "PROJECTION_EXPRESSION"),
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1369,6 +1382,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int MAP_VALUE_VALUE = 78;
 
 	/**
+	 * The '<em><b>PROJECTION EXPRESSION</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Projecting an arbitrary value expression (v2 query Selection.key - issue #189), the projection counterpart of SORT_EXPRESSION: a column that is computed rather than navigated, addressed by its mandatory alias. JPQL renders the expression inline in the SELECT list; Mongo projects the aggregation expression; memory evaluates it per object. A backend that declares PROJECTION but not this one serves only path projections.
+	 * <!-- end-model-doc -->
+	 * @see #PROJECTION_EXPRESSION
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int PROJECTION_EXPRESSION_VALUE = 79;
+
+	/**
 	 * The '<em><b>FEATUREPATH NESTED</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1493,6 +1520,7 @@ public enum QueryFeature implements Enumerator {
 			GEO_WITHIN,
 			GEO_DISTANCE,
 			MAP_VALUE,
+			PROJECTION_EXPRESSION,
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
@@ -1601,6 +1629,7 @@ public enum QueryFeature implements Enumerator {
 			case GEO_WITHIN_VALUE: return GEO_WITHIN;
 			case GEO_DISTANCE_VALUE: return GEO_DISTANCE;
 			case MAP_VALUE_VALUE: return MAP_VALUE;
+			case PROJECTION_EXPRESSION_VALUE: return PROJECTION_EXPRESSION;
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;

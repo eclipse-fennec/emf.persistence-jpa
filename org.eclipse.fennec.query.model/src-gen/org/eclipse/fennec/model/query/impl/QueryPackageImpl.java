@@ -439,8 +439,18 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EReference getSelection_Key() {
+		return (EReference)selectionEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EAttribute getSelection_Alias() {
-		return (EAttribute)selectionEClass.getEStructuralFeatures().get(1);
+		return (EAttribute)selectionEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -805,6 +815,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		selectionEClass = createEClass(SELECTION);
 		createEReference(selectionEClass, SELECTION__PATH);
+		createEReference(selectionEClass, SELECTION__KEY);
 		createEAttribute(selectionEClass, SELECTION__ALIAS);
 
 		parameterDeclEClass = createEClass(PARAMETER_DECL);
@@ -912,7 +923,8 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEAttribute(getOrderBy_Direction(), this.getSortDirection(), "direction", "ASC", 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(selectionEClass, Selection.class, "Selection", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getSelection_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 1, 1, Selection.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getSelection_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 0, 1, Selection.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getSelection_Key(), theExpressionPackage.getExpression(), null, "key", null, 0, 1, Selection.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getSelection_Alias(), ecorePackage.getEString(), "alias", null, 0, 1, Selection.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(parameterDeclEClass, ParameterDecl.class, "ParameterDecl", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);

@@ -540,6 +540,36 @@ class MongoQueryProcessorTest {
 				.isEqualTo(BsonDocument.parse("{'$group': {'_id': {'n': '$name'}}}"));
 	}
 
+	/**
+	 * Issue #189: projecting a value expression. $project takes an aggregation expression
+	 * in the same position as a field reference, so the column is the rendered operand.
+	 */
+	@Test
+	void projectionOfAnExpression() throws QueryException {
+		MongoQueryPlan plan = translate(QueryBuilder.from(person)
+				.selectAs("n", name)
+				.selectAs("nextAge", path(age).plus(1).toExpression())
+				.build());
+		assertThat(plan.shape()).isEqualTo(QueryShape.PROJECTION);
+		assertThat(plan.rowKeys()).containsExactly("n", "nextAge");
+		assertThat(render(plan.pipeline().get(plan.pipeline().size() - 1))).isEqualTo(BsonDocument.parse(
+				"{'$project': {'_id': 0, 'n': '$name',"
+				+ " 'nextAge': {'$add': ['$age', {'$literal': {'$numberLong': '1'}}]}}}"));
+	}
+
+	/**
+	 * Issue #189 over a distinct projection: the group key is the expression itself.
+	 */
+	@Test
+	void distinctProjectionOfAnExpression() throws QueryException {
+		MongoQueryPlan plan = translate(QueryBuilder.from(person)
+				.selectAs("shouted", path(name).toUpper().toExpression())
+				.distinct()
+				.build());
+		assertThat(render(plan.pipeline().get(0))).isEqualTo(BsonDocument.parse(
+				"{'$group': {'_id': {'shouted': {'$toUpper': '$name'}}}}"));
+	}
+
 	@Test
 	void groupByAggregationWithCountDistinct() throws QueryException {
 		MongoQueryPlan plan = translate(QueryBuilder.from(person)

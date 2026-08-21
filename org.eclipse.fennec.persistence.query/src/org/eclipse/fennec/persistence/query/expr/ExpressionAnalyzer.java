@@ -131,12 +131,30 @@ public final class ExpressionAnalyzer {
 				path(orderBy.getPath(), features, maxDepth);
 			}
 		}
+		String[] invalidProjection = { null };
 		for (Selection selection : query.getSelect()) {
 			features.add(QueryFeature.PROJECTION);
-			int depth = depthOf(selection.getPath());
-			track(depth, features, maxDepth);
-			if (depth > 1) {
-				features.add(QueryFeature.PROJECTION_NESTED);
+			boolean hasPath = selection.getPath() != null;
+			boolean hasKey = selection.getKey() != null;
+			if (hasPath == hasKey) {
+				// exactly one of the two, like OrderBy (issue #189)
+				invalidProjection[0] = hasPath
+						? "Projection '" + selection.getAlias() + "' sets both path and key"
+						: "A projection sets neither path nor key";
+			} else if (hasKey) {
+				// projecting an arbitrary value expression (issue #189)
+				features.add(QueryFeature.PROJECTION_EXPRESSION);
+				if (selection.getAlias() == null || selection.getAlias().isBlank()) {
+					// an expression has no derivable column name — the alias is the name
+					invalidProjection[0] = "An expression projection needs an alias";
+				}
+				walk(selection.getKey(), features, maxDepth, zeroDivision);
+			} else {
+				int depth = depthOf(selection.getPath());
+				track(depth, features, maxDepth);
+				if (depth > 1) {
+					features.add(QueryFeature.PROJECTION_NESTED);
+				}
 			}
 		}
 		boolean aggregating = analyzePipeline(query.getApply(), features, maxDepth, zeroDivision,
@@ -173,7 +191,7 @@ public final class ExpressionAnalyzer {
 				? scanStringMatches(query) : null;
 		String invalidMapValue = features.contains(QueryFeature.MAP_VALUE) ? scanMapValues(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
-				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue);
+				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection[0]);
 	}
 
 	/**

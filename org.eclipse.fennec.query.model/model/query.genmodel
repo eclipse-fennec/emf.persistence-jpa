@@ -44,6 +44,7 @@
     </genClasses>
     <genClasses ecoreClass="query.ecore#//Selection">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Selection/path"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Selection/key"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Selection/alias"/>
     </genClasses>
     <genClasses ecoreClass="query.ecore#//ParameterDecl">

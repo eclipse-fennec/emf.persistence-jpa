@@ -247,6 +247,7 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.GEO_WITHIN);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.GEO_DISTANCE);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.MAP_VALUE);
+		addEEnumLiteral(queryFeatureEEnum, QueryFeature.PROJECTION_EXPRESSION);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.FEATUREPATH_NESTED);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.TYPE_FILTER);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.PARAMETERS);
