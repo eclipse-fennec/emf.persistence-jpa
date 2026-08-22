@@ -88,6 +88,7 @@ import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
@@ -1446,6 +1447,15 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	static final String QUERY_CATALOG_TABLE = "FENNEC_QUERIES";
 
 	private void saveNamedQuery(String name, Query query) throws IOException {
+		NamedOperations catalog = namedOperations;
+		if (nonNull(catalog)) {
+			catalog.store(name, query);
+			return;
+		}
+		saveNamedQueryToTable(name, query);
+	}
+
+	private void saveNamedQueryToTable(String name, Query query) throws IOException {
 		String xmi;
 		try {
 			xmi = PersistedQueries.toXmi(query);
@@ -1475,7 +1485,37 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 	}
 
+	/**
+	 * The catalog a named operation is resolved through, when one was set (issue #203).
+	 * Unset means the store-native catalog below, which is what every backend used to have as
+	 * its only option.
+	 */
+	private volatile NamedOperations namedOperations;
+
+	/**
+	 * Points this resource at a shared named-operation catalog. Set, it replaces the
+	 * store-native table for lookups — the table stays the fallback for resources that were
+	 * never given one, so nothing that works today stops working.
+	 *
+	 * @param namedOperations the catalog, or {@code null} to go back to the store-native one
+	 */
+	public void setNamedOperations(NamedOperations namedOperations) {
+		this.namedOperations = namedOperations;
+	}
+
 	private Query loadNamedQuery(String name) throws IOException {
+		NamedOperations catalog = namedOperations;
+		if (nonNull(catalog)) {
+			return catalog.lookup(name)
+					.filter(Query.class::isInstance)
+					.map(Query.class::cast)
+					.orElseThrow(() -> new IOException("No query named '" + name
+							+ "' in the configured catalog"));
+		}
+		return loadNamedQueryFromTable(name);
+	}
+
+	private Query loadNamedQueryFromTable(String name) throws IOException {
 		List<?> rows;
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();

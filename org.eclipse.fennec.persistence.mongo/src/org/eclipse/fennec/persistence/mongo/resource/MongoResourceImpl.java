@@ -102,6 +102,7 @@ import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.query.support.ChangeTemplates;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
@@ -787,7 +788,33 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	/** The query catalog collection (concept.md §14 saveQuery): _id = name, xmi = payload. */
 	static final String QUERY_CATALOG_COLLECTION = "fennec.queries";
 
+	/**
+	 * The catalog a named operation is resolved through, when one was set (issue #203);
+	 * unset means the store-native collection below.
+	 */
+	private volatile NamedOperations namedOperations;
+
+	/**
+	 * Points this resource at a shared named-operation catalog. Set, it replaces the
+	 * {@code fennec.queries} collection for lookups — the collection stays the fallback, and
+	 * keeps its charm of travelling with the database for resources that use it.
+	 *
+	 * @param namedOperations the catalog, or {@code null} to go back to the collection
+	 */
+	public void setNamedOperations(NamedOperations namedOperations) {
+		this.namedOperations = namedOperations;
+	}
+
 	private void saveNamedQuery(String name, Query query) throws IOException {
+		NamedOperations catalog = namedOperations;
+		if (nonNull(catalog)) {
+			catalog.store(name, query);
+			return;
+		}
+		saveNamedQueryToCollection(name, query);
+	}
+
+	private void saveNamedQueryToCollection(String name, Query query) throws IOException {
 		try {
 			BsonDocument document = new BsonDocument();
 			document.put("_id", new BsonString(name));
@@ -802,6 +829,18 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	private Query loadNamedQuery(String name) throws IOException {
+		NamedOperations catalog = namedOperations;
+		if (nonNull(catalog)) {
+			return catalog.lookup(name)
+					.filter(Query.class::isInstance)
+					.map(Query.class::cast)
+					.orElseThrow(() -> new IOException("No query named '" + name
+							+ "' in the configured catalog"));
+		}
+		return loadNamedQueryFromCollection(name);
+	}
+
+	private Query loadNamedQueryFromCollection(String name) throws IOException {
 		BsonDocument document;
 		try {
 			document = getCollection(QUERY_CATALOG_COLLECTION)
