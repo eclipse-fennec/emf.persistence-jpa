@@ -126,7 +126,11 @@ class PersistedQueriesTest {
 		Query loaded = PersistedQueries.fromXmi("adults", xmi, registry());
 		assertThat(loaded.getFrom()).isSameAs(person);
 		assertThat(loaded.getName()).isEqualTo("adults");
-		assertThat(loaded.isSaveQuery()).isTrue();
+		// deliberately NOT carried over (issue #163): a query that comes out of a catalog is
+		// already deposited, and keeping the flag would write it back on every execution —
+		// wasteful against a writable catalog, a failure against a read-only one
+		assertThat(loaded.isSaveQuery())
+				.as("a loaded query must not ask to be stored again").isFalse();
 		assertThat(loaded.getTop()).isEqualTo(5);
 		assertThat(loaded.getParameters()).hasSize(1);
 
