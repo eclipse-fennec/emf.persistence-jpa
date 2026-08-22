@@ -702,26 +702,13 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Point-in-time reads (asOf) — future, see unified-persistence concept §14.
+	 * Point-in-time reads of the CURRENT STATE: reconstruct an object as of a sequence or timestamp via the latest keyframe plus replay (concept §10, §14). A CHANGELOG-profile operation and deliberately orthogonal to series access (issue #207) — a series query never needs it, because every sample is an absolute value. Keeping them apart is what lets a store declare one without the other. Value 101 is retired and stays unused (SERIES_RANGE, issue #207).
 	 * <!-- end-model-doc -->
 	 * @see #AS_OF_VALUE
 	 * @generated
 	 * @ordered
 	 */
-	AS_OF(100, "AS_OF", "AS_OF"),
-
-	/**
-	 * The '<em><b>SERIES RANGE</b></em>' literal object.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Range/aggregation over time-series streams — future, see unified-persistence concept §14.
-	 * <!-- end-model-doc -->
-	 * @see #SERIES_RANGE_VALUE
-	 * @generated
-	 * @ordered
-	 */
-	SERIES_RANGE(101, "SERIES_RANGE", "SERIES_RANGE");
+	AS_OF(100, "AS_OF", "AS_OF");
 
 	/**
 	 * The '<em><b>WHERE EQ</b></em>' literal value.
@@ -1442,7 +1429,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Point-in-time reads (asOf) — future, see unified-persistence concept §14.
+	 * Point-in-time reads of the CURRENT STATE: reconstruct an object as of a sequence or timestamp via the latest keyframe plus replay (concept §10, §14). A CHANGELOG-profile operation and deliberately orthogonal to series access (issue #207) — a series query never needs it, because every sample is an absolute value. Keeping them apart is what lets a store declare one without the other. Value 101 is retired and stays unused (SERIES_RANGE, issue #207).
 	 * <!-- end-model-doc -->
 	 * @see #AS_OF
 	 * @model
@@ -1450,20 +1437,6 @@ public enum QueryFeature implements Enumerator {
 	 * @ordered
 	 */
 	public static final int AS_OF_VALUE = 100;
-
-	/**
-	 * The '<em><b>SERIES RANGE</b></em>' literal value.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Range/aggregation over time-series streams — future, see unified-persistence concept §14.
-	 * <!-- end-model-doc -->
-	 * @see #SERIES_RANGE
-	 * @model
-	 * @generated
-	 * @ordered
-	 */
-	public static final int SERIES_RANGE_VALUE = 101;
 
 	/**
 	 * An array of all the '<em><b>Query Feature</b></em>' enumerators.
@@ -1525,7 +1498,6 @@ public enum QueryFeature implements Enumerator {
 			TYPE_FILTER,
 			PARAMETERS,
 			AS_OF,
-			SERIES_RANGE,
 		};
 
 	/**
@@ -1634,7 +1606,6 @@ public enum QueryFeature implements Enumerator {
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;
 			case AS_OF_VALUE: return AS_OF;
-			case SERIES_RANGE_VALUE: return SERIES_RANGE;
 		}
 		return null;
 	}

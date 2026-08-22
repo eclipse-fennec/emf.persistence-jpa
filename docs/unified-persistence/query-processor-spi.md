@@ -86,7 +86,9 @@ public enum QueryFeature {
     PARAMETERS,                        // bound placeholders (prepared queries)
 
     // --- future (concept §14) ---
-    AS_OF, SERIES_RANGE
+    AS_OF                              // point-in-time read of the current state (CHANGELOG)
+    // series vocabulary (SERIES_SUBJECT, TIME_BUCKET, ...) arrives with the phase that
+    // declares it — issue #207 settled that a literal is written when a backend claims it
 }
 ```
 

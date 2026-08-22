@@ -1,9 +1,10 @@
 # Time-series access on the stream model — TIMESERIES profile store SPI + series queries
 
-**Status:** draft concept for discussion (2026-08-05, issue #96). Settled so far
-(discussion 2026-08-05): the ingest-ladder evaluation strategy (§6.1 — expression IR, not
-the OData evaluator), the project cut, repository placement and the OData boundary (§12).
-Everything else remains open.
+**Status:** draft concept for discussion (2026-08-05, issue #96). Settled so far:
+the ingest-ladder evaluation strategy (§6.1 — expression IR, not the OData evaluator), the
+project cut, repository placement and the OData boundary (§12, 2026-08-05); mode separation
+per feature and the ClickHouse cut (§13, 2026-08-22 — these reorder the §11 phases and move
+`tracking.model` into P1). Everything else remains open.
 Companions: `concept.md` §2 (requirements 2/4/5), §7 (capture hybrid), §8 (tracking
 aspect), §9 (storage profiles), §10 (keyframing), §14 (query integration), §19 (technology
 mapping); `query-ir-redesign.md` (Expression IR, capability discipline);
@@ -411,3 +412,115 @@ welcome to live in `emf.odata` as special solutions. The dividing rule:
   journal in odata is an acceptable interim, its durable successor comes from here), and
   time bucketing is cut 2's pushdown — re-implementing either as an odata special
   solution would fork the truth this concept just unified.
+
+## 13. Mode separation and the ClickHouse cut (settled 2026-08-22)
+
+Two decisions that reorder §11 and change what P1 must contain.
+
+### 13.1 The mode is declared per feature, and there is only one enum for it
+
+§9 has always described two profiles, but nothing in the built code knows about them:
+`stream.ecore` carries no profile, and the only `TrackingMode` in existence
+(`NONE | CHANGELOG | TIMESERIES`) sits in `fennec-tracking.ecore` under `docs/`, which is
+not a bundle. So the distinction the whole concept rests on is, today, prose.
+
+**Settled: the mode is a property of a tracked feature, declared in the tracking model.**
+Not of a stream and not of a batch. A device wants `Sensor.temp` as a series and
+`Sensor.owner` as an audit trail at the same time, which a per-stream mode cannot express
+without splitting one object across two streams. Nor does the mode travel on the
+`ChangeSet`: there are millions of those per day, the store knows the declaration, and a
+value repeated on every batch is a second truth that can drift from the first.
+
+**What separates the modes is not structure but which fields carry meaning.** Both use the
+same `ChangeSet`/`ChangeEntry`, and that is the point of §9 — but:
+
+| Field | CHANGELOG (audit) | TIMESERIES |
+|---|---|---|
+| `author`, `cause`, `transactionId` | the substance — who changed it, why, in which commit | unset; no human was involved, and per-sample overhead at ingest rates |
+| `valueOld` | required for invertibility (undo, conflict guards) | unset by rule (§9.1) |
+| `manifest` / KEYFRAME | the retention and replay anchor (§10) | unused — every sample is its own keyframe |
+| coalescing | at most one entry per `(objectId, featureId, address)` | never — two equal temperatures are two measurements (§9.2) |
+| retention | cuts at manifests | cuts at time horizons |
+
+A store that is told the mode can enforce all six rows. A store that has to infer it from
+which fields happen to be filled cannot, and will silently coalesce away samples the first
+time an audit-shaped batch arrives on a series feature.
+
+**Consequence for the bundle cut (§12.1): `org.eclipse.fennec.tracking.model` moves from
+P3 to P1.** The SPI sketch in §4 writes `supports(EClass, StorageProfile)`, and
+`StorageProfile` is `TrackingMode` — defining both would be two enums for one concept, the
+exact duplication this section just refused. The dependency runs
+`persistence.stream` → `tracking.model`, which is sound: a declaration model may exist
+before its consumers.
+
+To avoid cementing untested design, the bundle is promoted **narrowly**: `TrackingMode`,
+`ClassTracking`, `FeatureTracking`, `TrackingConfig` — what P1 needs to be told what a
+stream is. The capture-side content of the draft (`KeyframeConfig`, `FaultPolicy`,
+`GapPolicy`, `StalePolicy`, `IdentityStrategy`, `ArrayMode`, `DanglingRefPolicy`) stays out
+until P3 exercises it, and arrives additively then, under the same discipline as
+`DeltaKind`.
+
+### 13.2 ClickHouse as the first real series backend, before Mongo TS
+
+**Settled: a ClickHouse store gets its own phase, directly after the SPI and the in-memory
+reference, ahead of the Mongo and Timescale mappings.**
+
+The reason is that it is the *honest* test of the SPI. The JPA narrow table and Mongo both
+sit on engines that can update a row, delete a row and bracket a transaction, so an SPI cut
+only against them will quietly assume all three. ClickHouse cannot do any of them —
+append-only with asynchronous mutations, no transactions — and is nevertheless exactly the
+engine a series workload wants: columnar compression, TTL-driven retention, materialized
+views as rollups. If the SPI survives ClickHouse, the generalisation is real rather than a
+Postgres shape with two dialects.
+
+Two things follow:
+
+- **It is not a JPA path.** There is no EclipseLink dialect for ClickHouse, and §4.2's
+  reasoning about Timescale ("not a backend, a dialect optimization") does *not* transfer:
+  this is a separate store bundle over the ClickHouse client, at the same level as
+  `stream.mongo`. Project name `org.eclipse.fennec.persistence.stream.clickhouse`.
+- **It answers `supports(root, CHANGELOG)` with false, and that must be a declaration
+  rather than a failure.** The audit profile needs invertible entries and a retention cut
+  at manifests; an engine whose deletes are asynchronous mutations is the wrong home for a
+  record whose purpose is to be exact about what happened when. The mode separation of
+  §13.1 is what makes this a one-line capability answer instead of a caveat.
+
+Retention (`truncate`) maps to TTL clauses, the §5 time bucket to `toStartOfInterval`, and
+first/last-per-bucket to `argMin`/`argMax` — all native, so the pushdown story is stronger
+here than on plain JPA.
+
+### 13.3 Capability vocabulary (O5, settled — issue #207)
+
+`QueryFeature` reserved two future placeholders that nothing declared and
+`MemoryQueryProcessor` excluded: `AS_OF` (100) and `SERIES_RANGE` (101). §5 meanwhile
+proposed `SERIES_SUBJECT`, `TIME_BUCKET`, `SERIES_FIRST_LAST`, `SERIES_GAPFILL` — a second
+vocabulary overlapping the first without saying how.
+
+This was settled first, ahead of every other cut, because of an asymmetry: literal values
+are additive and never renumbered (the `DeltaKind` discipline), so **removing** a literal is
+free only while there is no baselining and no release (#177) and impossible afterwards,
+whereas **adding** one has no deadline at all.
+
+1. **`SERIES_RANGE` is retired**, and value 101 stays unused. "Range" was never the new
+   capability: restricting a series to a time window is an ordinary predicate on the time
+   axis, and the `WHERE_*`/date-comparison vocabulary already covers it — a backend that can
+   serve series at all can serve a range. What is genuinely new is that the *subject* is a
+   series rather than the current state, which is what §14 says and what the literal should
+   name.
+2. **`AS_OF` stays, with its meaning sharpened**: reconstructing the current state at a
+   point in time via keyframe plus replay is a CHANGELOG operation, orthogonal to series
+   access. A series query never needs it — every sample is absolute. Keeping them apart is
+   what lets a store declare one without the other.
+3. **Naming rule:** `SERIES_*` for anything that presupposes a series subject; a pipeline
+   stage is named after the stage (`TIME_BUCKET`, like the existing `GROUP_BY`), not after a
+   group prefix.
+4. **A literal appears when something declares it**, never in advance — the rule
+   `conformance-and-capabilities.md` already states for `StoreFeature`. So `SERIES_SUBJECT`
+   and `TIME_BUCKET` arrive with the IR phase, `SERIES_FIRST_LAST`/`SERIES_GAPFILL`/
+   delta-rate with the extras phase, and `StoreFeature.TIMESERIES`/`CHANGELOG` with the
+   store SPI, as the coarse answer behind `StreamStore.supports(root, mode)`.
+
+The reserved-placeholder habit is what this replaces. A placeholder looks like foresight and
+behaves like a decision taken without the information: `SERIES_RANGE` was written before
+anyone knew what a series query would look like, and by the time §5 worked that out, the
+name was already wrong.
