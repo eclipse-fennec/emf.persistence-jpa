@@ -13,6 +13,7 @@
 package org.eclipse.fennec.model.command;
 
 
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
 
@@ -41,7 +42,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = CommandPackage.eNS_URI, fingerprint = "fp1:1cb2473b75720ee9b613504439854976d41960f72cfc18e8bc03cfb3c736d544", genModel = "/model/command.genmodel", genModelSourceLocations = {"model/command.genmodel","org.eclipse.fennec.command.model/model/command.genmodel"}, ecore = "/model/command.ecore", ecoreSourceLocations = "/model/command.ecore")
+@EPackage(uri = CommandPackage.eNS_URI, fingerprint = "fp1:70a97c518570c62223f2828fb24af875242d655c5adbae077e5a311ec444cc5d", genModel = "/model/command.genmodel", genModelSourceLocations = {"model/command.genmodel","org.eclipse.fennec.command.model/model/command.genmodel"}, ecore = "/model/command.ecore", ecoreSourceLocations = "/model/command.ecore")
 public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -86,13 +87,22 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	int COMMAND = 0;
 
 	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMMAND__NAME = 0;
+
+	/**
 	 * The number of structural features of the '<em>Command</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int COMMAND_FEATURE_COUNT = 0;
+	int COMMAND_FEATURE_COUNT = 1;
 
 	/**
 	 * The number of operations of the '<em>Command</em>' class.
@@ -112,6 +122,15 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	int INSERT_COMMAND = 1;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INSERT_COMMAND__NAME = COMMAND__NAME;
 
 	/**
 	 * The feature id for the '<em><b>Objects</b></em>' containment reference list.
@@ -151,6 +170,15 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	int DELETE_COMMAND = 2;
 
 	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int DELETE_COMMAND__NAME = COMMAND__NAME;
+
+	/**
 	 * The feature id for the '<em><b>Selector</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -186,6 +214,15 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	int UPDATE_COMMAND = 3;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_COMMAND__NAME = COMMAND__NAME;
 
 	/**
 	 * The feature id for the '<em><b>Selector</b></em>' containment reference.
@@ -233,6 +270,17 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EClass getCommand();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.command.Command#getName <em>Name</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Name</em>'.
+	 * @see org.eclipse.fennec.model.command.Command#getName()
+	 * @see #getCommand()
+	 * @generated
+	 */
+	EAttribute getCommand_Name();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.command.InsertCommand <em>Insert Command</em>}'.
@@ -340,6 +388,14 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EClass COMMAND = eINSTANCE.getCommand();
+
+		/**
+		 * The meta object literal for the '<em><b>Name</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute COMMAND__NAME = eINSTANCE.getCommand_Name();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.command.impl.InsertCommandImpl <em>Insert Command</em>}' class.
