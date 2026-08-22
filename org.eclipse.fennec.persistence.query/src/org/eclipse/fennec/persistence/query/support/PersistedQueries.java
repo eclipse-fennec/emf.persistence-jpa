@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.query.support;
 
+import static java.util.Objects.requireNonNull;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -127,6 +129,10 @@ public final class PersistedQueries {
 		if (resource.getContents().isEmpty() || !(resource.getContents().get(0) instanceof Query query)) {
 			throw new QueryException("Persisted payload of '" + name + "' is no query");
 		}
+		// A stored query is by definition already deposited, so the flag that put it there
+		// must not travel with it (issue #163): otherwise every execution writes it back —
+		// wasteful against a writable catalog, and a hard failure against a read-only one.
+		query.setSaveQuery(false);
 		EcoreUtil.resolveAll(query);
 		TreeIterator<EObject> contents = query.eAllContents();
 		while (contents.hasNext()) {
@@ -139,6 +145,25 @@ public final class PersistedQueries {
 			}
 		}
 		return query;
+	}
+
+	/**
+	 * A stored query, ready to execute (issue #163).
+	 * <p>
+	 * Copies it and clears {@code saveQuery}, for the two reasons that make a catalog entry
+	 * different from a submitted query. It is already deposited, so re-depositing it on every
+	 * execution is a write nobody asked for — and against a read-only catalog it is not a
+	 * waste but a failure. The copy protects the catalog's own instance: execution binds
+	 * values and resolves against a resource set, and none of that belongs to the entry
+	 * everyone else reads.
+	 *
+	 * @param stored the query as the catalog holds it, must not be {@code null}
+	 * @return an executable copy that will not be written back
+	 */
+	public static Query forExecution(Query stored) {
+		Query copy = EcoreUtil.copy(requireNonNull(stored, "stored query must not be null"));
+		copy.setSaveQuery(false);
+		return copy;
 	}
 
 	/**

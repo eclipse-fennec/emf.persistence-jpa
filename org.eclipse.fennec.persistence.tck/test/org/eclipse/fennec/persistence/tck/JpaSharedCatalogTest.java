@@ -108,6 +108,55 @@ class JpaSharedCatalogTest {
 	}
 
 	/**
+	 * A read-only catalog is usable (issue #163). It was not before: a named query carries
+	 * {@code saveQuery}, so executing one loaded from a catalog tried to write it straight
+	 * back — which a read-only catalog refuses, making the query unusable through no fault of
+	 * the caller. A loaded query no longer asks to be stored again.
+	 */
+	@Test
+	void aQueryFromAReadOnlyCatalogRuns() throws Exception {
+		EObject spring = model.newCatalog("c1", "Spring");
+		Resource written = resourceSet(catalog).createResource(uriFor("Catalog"));
+		written.getContents().add(spring);
+		written.save(null);
+
+		// named(), so the query carries saveQuery — exactly the case that used to fail
+		Query byName = QueryBuilder.from(model.catalogClass)
+				.where(Expressions.path(model.catalogClass.getEStructuralFeature("name"))
+						.eq(Expressions.param("wanted")))
+				.parameter("wanted", null)
+				.named("readOnlyQuery")
+				.build();
+		catalog.store("readOnlyQuery", byName);
+
+		emf.getCache().evictAll();
+		NamedOperations readOnly = new RegistryNamedOperations(registry.getRegistry());
+		try (QueryResult result = queryable(readOnly)
+				.query("readOnlyQuery", Map.of("wanted", "Spring"), null)) {
+			assertThat(result.objects()
+					.map(c -> c.eGet(model.catalogClass.getEStructuralFeature("cid"))))
+					.containsExactly("c1");
+		}
+	}
+
+	/**
+	 * And the catalog's own copy is untouched by an execution — binding values and resolving
+	 * against a resource set happens on a copy, not on the entry everyone else reads.
+	 */
+	@Test
+	void executingDoesNotMutateTheStoredQuery() throws Exception {
+		Query stored = QueryBuilder.from(model.catalogClass).named("stored").build();
+		catalog.store("stored", stored);
+
+		try (QueryResult ignored = queryable(catalog).query("stored", Map.of(), null)) {
+			// the run is not the point
+		}
+		assertThat(stored.isSaveQuery())
+				.as("the catalog entry keeps whatever it was deposited with").isTrue();
+		assertThat(catalog.lookup("stored")).containsSame(stored);
+	}
+
+	/**
 	 * Without the catalog the same name is unknown — which is the proof that the previous
 	 * case really resolved through it and not through the store.
 	 */

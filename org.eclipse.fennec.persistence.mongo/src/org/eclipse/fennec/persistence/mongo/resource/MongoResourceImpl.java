@@ -834,6 +834,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			return catalog.lookup(name)
 					.filter(Query.class::isInstance)
 					.map(Query.class::cast)
+					.map(PersistedQueries::forExecution)
 					.orElseThrow(() -> new IOException("No query named '" + name
 							+ "' in the configured catalog"));
 		}

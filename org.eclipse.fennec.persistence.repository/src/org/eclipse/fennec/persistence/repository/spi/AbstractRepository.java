@@ -53,6 +53,7 @@ import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.repository.RepositoryConstants;
 import java.util.Optional;
 import org.eclipse.fennec.persistence.query.support.NamedOperations;
+import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.repository.api.PreparedQuery;
 import org.eclipse.fennec.persistence.repository.api.Repository;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -456,7 +457,7 @@ public abstract class AbstractRepository implements Repository {
 			Optional<EObject> found = catalog.lookup(name);
 			if (found.isPresent()) {
 				if (found.get() instanceof Query query) {
-					return new DefaultPreparedQuery(this, query);
+					return new DefaultPreparedQuery(this, PersistedQueries.forExecution(query));
 				}
 				throw io("'" + name + "' is not a query but a "
 						+ found.get().eClass().getName(), null);
