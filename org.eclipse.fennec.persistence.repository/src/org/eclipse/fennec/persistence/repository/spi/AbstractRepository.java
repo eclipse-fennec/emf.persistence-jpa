@@ -51,6 +51,8 @@ import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.repository.RepositoryConstants;
+import java.util.Optional;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.repository.api.PreparedQuery;
 import org.eclipse.fennec.persistence.repository.api.Repository;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -73,6 +75,7 @@ import org.eclipse.fennec.persistence.resource.PersistenceResource.ActionType;
 public abstract class AbstractRepository implements Repository {
 
 	private final String id;
+	private volatile NamedOperations namedOperations;
 	private final URI baseUri;
 	private final Supplier<ResourceSet> resourceSets;
 	private final QueryProcessor queryProcessor;
@@ -445,7 +448,33 @@ public abstract class AbstractRepository implements Repository {
 	public PreparedQuery prepare(String name) throws IOException {
 		checkNotDisposed();
 		requireNonNull(name, "query name must not be null");
+		NamedOperations catalog = namedOperations;
+		if (nonNull(catalog)) {
+			// with a catalog the query itself is available, so the handle knows its
+			// parameters and its root type — the limitation that made OPTION_QUERY_ROOT
+			// necessary was the catalog having no way to hand the object back (issue #203)
+			Optional<EObject> found = catalog.lookup(name);
+			if (found.isPresent()) {
+				if (found.get() instanceof Query query) {
+					return new DefaultPreparedQuery(this, query);
+				}
+				throw io("'" + name + "' is not a query but a "
+						+ found.get().eClass().getName(), null);
+			}
+		}
 		return new DefaultPreparedQuery(this, name);
+	}
+
+	/**
+	 * Points this repository at a named-operation catalog (issue #203). Set, {@code prepare}
+	 * resolves a name to the query object itself, which is what lets a prepared handle answer
+	 * {@code parameterDeclarations()} — a caller can then see which values it must supply
+	 * without having seen the query.
+	 *
+	 * @param namedOperations the catalog, or {@code null} to resolve names in the backend
+	 */
+	public void setNamedOperations(NamedOperations namedOperations) {
+		this.namedOperations = namedOperations;
 	}
 
 	/*

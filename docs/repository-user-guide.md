@@ -174,6 +174,31 @@ PreparedQuery adults = repository.prepare(byAge);
 try (QueryResult result = adults.execute(Map.of("min", 18))) { ... }
 ```
 
+### A named query as a configured service
+
+When a component only ever runs one named query, it does not need a repository at all. A
+`fennec.repository.preparedquery` configuration binds the query by name and publishes the
+handle; the consumer supplies the values and nothing else:
+
+```properties
+# filename: fennec.repository.preparedquery~readings.cfg
+repositoryId=readings
+queryName=readingsInRange
+repository.target=(persistence.repository.id=shop)
+```
+
+```java
+@Reference(target = "(persistence.repository.id=readings)")
+private PreparedQuery readings;
+
+try (QueryResult result = readings.execute(Map.of("from", start, "to", end))) { … }
+```
+
+`parameterDeclarations()` tells the consumer which values are expected — `from` and `to`
+here — so the query itself never has to be visible to it. The query is validated against the
+backend when the configuration is applied, so one the backend cannot serve never becomes a
+service, and an unknown name yields no service rather than a handle that fails later.
+
 Prepared queries also come into existence by name from the backend's saved-query catalog
 (`QueryBuilder.named(...)` persists on first execution): `repository.find(name, params,
 options)` and `repository.prepare(name)`. One current limitation: the catalog has no

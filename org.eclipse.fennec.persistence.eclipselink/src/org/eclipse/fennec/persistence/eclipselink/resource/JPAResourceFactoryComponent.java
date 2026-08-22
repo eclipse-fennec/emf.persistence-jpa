@@ -32,6 +32,7 @@ import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
@@ -180,8 +181,29 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 		return newResource(uri, unit);
 	}
 
+	/**
+	 * The shared named-operation catalog handed to created resources (issue #203). Optional
+	 * and greedy, like the processor: without one the resources keep resolving names through
+	 * the {@code FENNEC_QUERIES} table, which is what every deployment does today.
+	 */
+	private final AtomicReference<NamedOperations> namedOperations = new AtomicReference<>();
+
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY)
+	void bindNamedOperations(NamedOperations operations) {
+		namedOperations.set(operations);
+	}
+
+	void unbindNamedOperations(NamedOperations operations) {
+		namedOperations.compareAndSet(operations, null);
+	}
+
 	private Resource newResource(URI uri, JPAUnit unit) {
 		JPAResourceImpl resource = new JPAResourceImpl(uri, unit);
+		NamedOperations catalog = namedOperations.get();
+		if (nonNull(catalog)) {
+			resource.setNamedOperations(catalog);
+		}
 		QueryProcessor processor = processorFor(uri.authority());
 		if (nonNull(processor)) {
 			resource.setQueryProcessor(processor);

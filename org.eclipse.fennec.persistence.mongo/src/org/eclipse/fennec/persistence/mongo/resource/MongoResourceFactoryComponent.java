@@ -35,6 +35,7 @@ import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
@@ -209,9 +210,31 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 		return newResource(uri, database, flavor(alias));
 	}
 
+	/**
+	 * The shared named-operation catalog handed to created resources (issue #203). Optional
+	 * and greedy, like the processor: without one the resources keep resolving names through
+	 * the {@code fennec.queries} collection, which is what every deployment does today.
+	 */
+	private final AtomicReference<NamedOperations> namedOperations = new AtomicReference<>();
+
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY)
+	void bindNamedOperations(NamedOperations operations) {
+		namedOperations.set(operations);
+	}
+
+	void unbindNamedOperations(NamedOperations operations) {
+		namedOperations.compareAndSet(operations, null);
+	}
+
 	private Resource newResource(URI uri, MongoDatabase database, MongoFlavor flavor) {
-		return new MongoResourceFactory(database, metadataService, valueRegistry.get(), queryProcessor.get(), null,
-				flavor, converterService.get()).createResource(uri);
+		Resource resource = new MongoResourceFactory(database, metadataService, valueRegistry.get(),
+				queryProcessor.get(), null, flavor, converterService.get()).createResource(uri);
+		NamedOperations catalog = namedOperations.get();
+		if (nonNull(catalog) && resource instanceof MongoResourceImpl mongo) {
+			mongo.setNamedOperations(catalog);
+		}
+		return resource;
 	}
 
 	/**
