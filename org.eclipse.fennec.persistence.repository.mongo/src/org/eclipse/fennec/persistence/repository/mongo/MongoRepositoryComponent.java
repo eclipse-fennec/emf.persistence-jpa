@@ -20,6 +20,7 @@ import org.eclipse.fennec.emf.osgi.ResourceSetFactory;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.repository.spi.AbstractRepository;
 import org.eclipse.fennec.persistence.repository.spi.AbstractRepositoryComponent;
 import org.osgi.framework.BundleContext;
@@ -108,11 +109,30 @@ public class MongoRepositoryComponent extends AbstractRepositoryComponent {
 		unregister();
 	}
 
+	/**
+	 * The shared named-operation catalog (issue #203). Optional and greedy: without one the
+	 * repository resolves names in its backend, as it always has.
+	 */
+	private final AtomicReference<NamedOperations> namedOperations = new AtomicReference<>();
+
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY)
+	void bindNamedOperations(NamedOperations operations) {
+		namedOperations.set(operations);
+	}
+
+	void unbindNamedOperations(NamedOperations operations) {
+		namedOperations.compareAndSet(operations, null);
+	}
+
 	@Override
 	protected AbstractRepository createRepository() {
-		return new AbstractRepository(repositoryId, baseUri, resourceSetFactory::createResourceSet,
+		AbstractRepository repository = new AbstractRepository(repositoryId, baseUri,
+				resourceSetFactory::createResourceSet,
 				queryProcessor.get(), Map.of(), Map.of()) {
 			// all behavior is generic; the flavour only wires lifecycle and base URI
 		};
+		repository.setNamedOperations(namedOperations.get());
+		return repository;
 	}
 }

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +39,17 @@ import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
+import java.util.Collection;
+import java.util.Dictionary;
+import java.util.Hashtable;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
+import org.eclipse.fennec.model.query.ParameterDecl;
+import org.eclipse.fennec.persistence.repository.RepositoryConstants;
+import java.util.Optional;
+import org.osgi.framework.ServiceRegistration;
+import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.repository.api.PreparedQuery;
 import org.eclipse.fennec.persistence.repository.api.ReadRepository;
 import org.eclipse.fennec.persistence.repository.api.Repository;
@@ -279,6 +291,115 @@ public class RepositoryIntegrationTest extends EPersistenceBase {
 		assertEquals("jpa", repository.baseUri().scheme());
 		assertNull(writeAware.getService(), "readOnly must withhold WriteRepository");
 		assertNull(fullAware.getService(), "readOnly must withhold Repository");
+	}
+
+	/**
+	 * A named query configured as a service, and run by handing over values (issue #204).
+	 * <p>
+	 * The shape a consumer asked for: configure the query's name, bind the resulting handle,
+	 * supply the bindings. Nothing about the query, its root type or its backend reaches the
+	 * consuming component — which is why this is a {@code PreparedQuery} and not a repository
+	 * configured for one query: there is no {@code getEObject} here that would need a meaning.
+	 * <p>
+	 * The configuration is created from the test rather than by annotation, because the
+	 * component prepares at activation: it validates the query against the backend then, so a
+	 * query the backend cannot serve never becomes a service. That means the query has to
+	 * exist first — which is also the order a deployment follows.
+	 */
+	@Test
+	@TestAnnotations.DefaultEPersistenceSetup
+	@WithFactoryConfiguration(factoryPid = "fennec.jpa.PersistenceUnit", name = "preparedUnit", properties = {
+			@Property(key = "fennec.jpa.model", value = "(emf.name=fennec.persistence.model)"),
+			@Property(key = "fennec.jpa.mappingFile", value = "%s", templateArguments =
+					@TemplateArgument(source = ValueSource.SystemProperty, value = PROP_MODEL_FILE_PATH)),
+			@Property(key = "fennec.jpa.persistenceUnitName", value = "preparedUnit"),
+			@Property(key = "fennec.jpa.ext.eclipselink.ddl-generation", value = "create-or-extend-tables")
+	})
+	@WithFactoryConfiguration(factoryPid = "fennec.repository.jpa", name = "preparedRepo", properties = {
+			@Property(key = "repositoryId", value = "prepared-repo"),
+			@Property(key = "unit.target", value = "(osgi.unit.name=preparedUnit)")
+	})
+	public void testConfiguredPreparedQuery(
+			@InjectService(filter = "(persistence.repository.id=prepared-repo)", timeout = 10000)
+			ServiceAware<Repository> repositoryAware,
+			@InjectService(filter = "(emf.name=fennec.persistence.model)", timeout = 5000)
+			ServiceAware<EPackage> modelAware,
+			@InjectService(timeout = 5000) ServiceAware<ConfigurationAdmin> configAdminAware,
+			@InjectBundleContext BundleContext context) throws Exception {
+		Repository repository = repositoryAware.getService();
+		EPackage model = modelAware.getService();
+		EClass personClass = (EClass) model.getEClassifier("Person");
+		EAttribute nameAttribute = (EAttribute) personClass.getEStructuralFeature("stringDefault");
+
+		repository.saveAll(List.of(newPerson(model, "p1", "Young"), newPerson(model, "p2", "Old")));
+
+		// deposit the query in a catalog service — no store involved, which is the point of
+		// the shared contract (issue #203): the repository resolves the name through it
+		Query byName = QueryBuilder.from(personClass)
+				.where(Expressions.path(nameAttribute).eq(Expressions.param("wanted")))
+				.parameter("wanted", null)
+				.named("byName")
+				.build();
+		Map<String, EObject> deposited = new HashMap<>(Map.of("byName", byName));
+		ServiceRegistration<NamedOperations> catalog = context.registerService(NamedOperations.class,
+				new NamedOperations() {
+
+					@Override
+					public Optional<EObject> lookup(String name) {
+						return Optional.ofNullable(deposited.get(name));
+					}
+
+					@Override
+					public void store(String name, EObject operation) {
+						// a named query still carries saveQuery, so executing it upserts here
+						deposited.put(name, operation);
+					}
+
+					@Override
+					public void remove(String name) {
+						deposited.remove(name);
+					}
+				}, null);
+
+		Configuration configuration = configAdminAware.getService()
+				.getFactoryConfiguration("fennec.repository.preparedquery", "byName", "?");
+		Dictionary<String, Object> properties = new Hashtable<>();
+		properties.put("repositoryId", "byName");
+		properties.put("queryName", "byName");
+		properties.put("repository.target", "(persistence.repository.id=prepared-repo)");
+		configuration.update(properties);
+		try {
+			PreparedQuery prepared = awaitPreparedQuery(context, "byName");
+			assertNotNull(prepared, "a configured prepared query must be registered");
+			assertEquals("byName", prepared.name());
+			assertEquals(List.of("wanted"),
+					prepared.parameterDeclarations().stream().map(ParameterDecl::getName).toList(),
+					"the consumer can see which values it must supply");
+
+			// the whole point: hand over values, run it
+			try (QueryResult result = prepared.execute(Map.of("wanted", "Old"))) {
+				assertEquals(List.of("Old"),
+						result.objects().map(person -> person.eGet(nameAttribute)).toList());
+			}
+		} finally {
+			configuration.delete();
+			catalog.unregister();
+		}
+	}
+
+	/** Waits for the prepared query the configuration above produces. */
+	private PreparedQuery awaitPreparedQuery(BundleContext context, String id) throws Exception {
+		String filter = "(&(objectClass=" + PreparedQuery.class.getName() + ")("
+				+ RepositoryConstants.REPOSITORY_ID + "=" + id + "))";
+		for (int attempt = 0; attempt < 100; attempt++) {
+			Collection<ServiceReference<PreparedQuery>> found =
+					context.getServiceReferences(PreparedQuery.class, filter);
+			if (!found.isEmpty()) {
+				return context.getService(found.iterator().next());
+			}
+			Thread.sleep(50);
+		}
+		return null;
 	}
 
 	/**
