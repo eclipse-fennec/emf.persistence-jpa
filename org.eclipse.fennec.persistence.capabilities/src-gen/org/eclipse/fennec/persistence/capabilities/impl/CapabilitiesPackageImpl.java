@@ -252,7 +252,6 @@ public class CapabilitiesPackageImpl extends EPackageImpl implements Capabilitie
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.TYPE_FILTER);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.PARAMETERS);
 		addEEnumLiteral(queryFeatureEEnum, QueryFeature.AS_OF);
-		addEEnumLiteral(queryFeatureEEnum, QueryFeature.SERIES_RANGE);
 
 		initEEnum(commandFeatureEEnum, CommandFeature.class, "CommandFeature");
 		addEEnumLiteral(commandFeatureEEnum, CommandFeature.INSERT);

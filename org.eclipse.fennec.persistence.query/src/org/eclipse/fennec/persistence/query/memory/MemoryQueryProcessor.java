@@ -108,7 +108,7 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			// text-scoring model has no reference semantics — the first feature the
 			// reference engine deliberately does not implement
 			.support(EnumSet.complementOf(
-					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SERIES_RANGE, QueryFeature.SCORE))
+					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SCORE))
 					.toArray(QueryFeature[]::new))
 			.maxFeaturePathDepth(-1)
 			.build();

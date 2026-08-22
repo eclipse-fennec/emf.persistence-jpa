@@ -274,12 +274,7 @@
     </eLiterals>
     <eLiterals name="AS_OF" value="100">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Point-in-time reads (asOf) — future, see unified-persistence concept §14."/>
-      </eAnnotations>
-    </eLiterals>
-    <eLiterals name="SERIES_RANGE" value="101">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Range/aggregation over time-series streams — future, see unified-persistence concept §14."/>
+        <details key="documentation" value="Point-in-time reads of the CURRENT STATE: reconstruct an object as of a sequence or timestamp via the latest keyframe plus replay (concept §10, §14). A CHANGELOG-profile operation and deliberately orthogonal to series access (issue #207) — a series query never needs it, because every sample is an absolute value. Keeping them apart is what lets a store declare one without the other. Value 101 is retired and stays unused (SERIES_RANGE, issue #207)."/>
       </eAnnotations>
     </eLiterals>
   </eClassifiers>
