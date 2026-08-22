@@ -170,6 +170,11 @@
       <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/execute">
         <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/execute/command"/>
       </genOperations>
+      <genOperations ecoreOperation="repository-api.ecore#//WriteRepository/execute.1">
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/execute.1/command"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/execute.1/parameters"/>
+        <genParameters ecoreParameter="repository-api.ecore#//WriteRepository/execute.1/options"/>
+      </genOperations>
     </genClasses>
     <genClasses image="false" ecoreClass="repository-api.ecore#//Repository"/>
   </genPackages>

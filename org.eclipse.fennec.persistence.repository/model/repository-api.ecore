@@ -376,6 +376,15 @@
       </eAnnotations>
       <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
     </eOperations>
+    <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
+        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Executes a write command with bound parameters (issue #202) - the write-side counterpart of find(query, parameters, options). A selector may use ParameterRef nodes; this is where their values come from. Both maps may be null."/>
+      </eAnnotations>
+      <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
+      <eParameters name="parameters" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//ParameterMap"/>
+      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+    </eOperations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Repository" abstract="true" interface="true"
       eSuperTypes="#//ReadRepository #//WriteRepository">

@@ -14,6 +14,8 @@ package org.eclipse.fennec.persistence.query.api;
 
 import java.io.IOException;
 
+import java.util.Map;
+
 import org.eclipse.fennec.model.command.Command;
 
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
@@ -46,6 +48,17 @@ public interface CommandResource {
 	 * @generated
 	 */
 	long execute(Command command) throws IOException;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Executes the command with bound parameters (issue #202) - the write-side counterpart of the query overload, and what a prepared command needs: a selector may use ParameterRef nodes, and this is where their values come from. Without bindings such a selector cannot be served by any backend, which is why the parameterless overload refuses it. Options behave as on the parameterless form; both maps may be null.
+	 * <!-- end-model-doc -->
+	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" commandRequired="true" parametersDataType="org.eclipse.fennec.persistence.query.api.ParameterMap" optionsDataType="org.eclipse.fennec.persistence.query.api.OptionsMap"
+	 * @generated
+	 */
+	long execute(Command command, Map<String, Object> parameters, Map<?, ?> options) throws IOException;
 
 	/**
 	 * <!-- begin-user-doc -->

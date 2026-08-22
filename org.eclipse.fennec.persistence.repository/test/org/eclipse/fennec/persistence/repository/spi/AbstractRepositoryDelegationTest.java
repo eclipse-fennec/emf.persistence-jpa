@@ -421,6 +421,7 @@ public class AbstractRepositoryDelegationTest {
 		int saveCount;
 		FakeResult lastResult;
 		org.eclipse.fennec.model.command.Command lastCommand;
+		java.util.Map<String, Object> lastCommandParameters;
 
 		FakeResource(URI uri) {
 			super(uri);
@@ -475,7 +476,14 @@ public class AbstractRepositoryDelegationTest {
 
 		@Override
 		public long execute(org.eclipse.fennec.model.command.Command command) {
+			return execute(command, null, null);
+		}
+
+		@Override
+		public long execute(org.eclipse.fennec.model.command.Command command,
+				java.util.Map<String, Object> parameters, java.util.Map<?, ?> options) {
 			lastCommand = command;
+			lastCommandParameters = parameters;
 			return EXECUTE_ANSWER;
 		}
 

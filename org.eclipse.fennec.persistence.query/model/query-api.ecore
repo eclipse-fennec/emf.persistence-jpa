@@ -294,6 +294,15 @@
       </eAnnotations>
       <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
     </eOperations>
+    <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
+        eExceptions="#//IOException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Executes the command with bound parameters (issue #202) - the write-side counterpart of the query overload, and what a prepared command needs: a selector may use ParameterRef nodes, and this is where their values come from. Without bindings such a selector cannot be served by any backend, which is why the parameterless overload refuses it. Options behave as on the parameterless form; both maps may be null."/>
+      </eAnnotations>
+      <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
+      <eParameters name="parameters" eType="#//ParameterMap"/>
+      <eParameters name="options" eType="#//OptionsMap"/>
+    </eOperations>
     <eOperations name="begin" eType="#//CommandTransaction" eExceptions="#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Opens a transaction bracket (issue #108): subsequent execute() calls on this resource join it and become effective atomically on commit — the OData $batch atomicity-group contract. Backends or deployments without multi-command transactions throw IOException here (capability refusal, declared as TRANSACTION_BRACKET); at most one bracket may be open per resource. The handle is AutoCloseable — close() without commit rolls back."/>

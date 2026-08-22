@@ -567,12 +567,18 @@ public abstract class AbstractRepository implements Repository {
 
 	@Override
 	public long execute(Command command) throws IOException {
+		return execute(command, null, null);
+	}
+
+	@Override
+	public long execute(Command command, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		checkNotDisposed();
 		requireNonNull(command, "command must not be null");
 		EClass root = commandRoot(command);
 		Resource resource = getOrCreate(getResourceSet(), collectionUri(root));
 		if (resource instanceof CommandResource commands) {
-			return commands.execute(command);
+			return commands.execute(command, parameters, effective(options, Map.of()));
 		}
 		throw io("Backend of repository '" + id + "' does not support commands", null);
 	}

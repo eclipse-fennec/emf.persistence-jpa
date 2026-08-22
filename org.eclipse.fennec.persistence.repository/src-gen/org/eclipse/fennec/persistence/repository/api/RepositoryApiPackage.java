@@ -44,7 +44,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = RepositoryApiPackage.eNS_URI, fingerprint = "fp1:0f053a93098f18c499c2d2d006959a2f3ae5556ec7499837bc1ce1ba53b026e5", genModel = "/model/repository-api.genmodel", genModelSourceLocations = {"model/repository-api.genmodel","org.eclipse.fennec.persistence.repository/model/repository-api.genmodel"}, ecore = "/model/repository-api.ecore", ecoreSourceLocations = "/model/repository-api.ecore")
+@EPackage(uri = RepositoryApiPackage.eNS_URI, fingerprint = "fp1:b31abcbdc87b4c1c611fbe3d277f714838111325a3510a82f70d967a8c6fe8e1", genModel = "/model/repository-api.genmodel", genModelSourceLocations = {"model/repository-api.genmodel","org.eclipse.fennec.persistence.repository/model/repository-api.genmodel"}, ecore = "/model/repository-api.ecore", ecoreSourceLocations = "/model/repository-api.ecore")
 public interface RepositoryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -893,13 +893,22 @@ public interface RepositoryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int WRITE_REPOSITORY___EXECUTE__COMMAND = REPOSITORY_SERVICE_OPERATION_COUNT + 10;
 
 	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int WRITE_REPOSITORY___EXECUTE__COMMAND_MAP_MAP = REPOSITORY_SERVICE_OPERATION_COUNT + 11;
+
+	/**
 	 * The number of operations of the '<em>Write Repository</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int WRITE_REPOSITORY_OPERATION_COUNT = REPOSITORY_SERVICE_OPERATION_COUNT + 11;
+	int WRITE_REPOSITORY_OPERATION_COUNT = REPOSITORY_SERVICE_OPERATION_COUNT + 12;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.repository.api.Repository <em>Repository</em>}' class.
@@ -1317,13 +1326,22 @@ public interface RepositoryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int REPOSITORY___EXECUTE__COMMAND = READ_REPOSITORY_OPERATION_COUNT + 10;
 
 	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPOSITORY___EXECUTE__COMMAND_MAP_MAP = READ_REPOSITORY_OPERATION_COUNT + 11;
+
+	/**
 	 * The number of operations of the '<em>Repository</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int REPOSITORY_OPERATION_COUNT = READ_REPOSITORY_OPERATION_COUNT + 11;
+	int REPOSITORY_OPERATION_COUNT = READ_REPOSITORY_OPERATION_COUNT + 12;
 
 	/**
 	 * The meta object id for the '<em>Uri</em>' data type.
@@ -1887,6 +1905,16 @@ public interface RepositoryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	EOperation getWriteRepository__Execute__Command();
 
 	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.repository.api.WriteRepository#execute(org.eclipse.fennec.model.command.Command, java.util.Map, java.util.Map) <em>Execute</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Execute</em>' operation.
+	 * @see org.eclipse.fennec.persistence.repository.api.WriteRepository#execute(org.eclipse.fennec.model.command.Command, java.util.Map, java.util.Map)
+	 * @generated
+	 */
+	EOperation getWriteRepository__Execute__Command_Map_Map();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.persistence.repository.api.Repository <em>Repository</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -2392,6 +2420,14 @@ public interface RepositoryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EOperation WRITE_REPOSITORY___EXECUTE__COMMAND = eINSTANCE.getWriteRepository__Execute__Command();
+
+		/**
+		 * The meta object literal for the '<em><b>Execute</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation WRITE_REPOSITORY___EXECUTE__COMMAND_MAP_MAP = eINSTANCE.getWriteRepository__Execute__Command_Map_Map();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.persistence.repository.api.Repository <em>Repository</em>}' class.
