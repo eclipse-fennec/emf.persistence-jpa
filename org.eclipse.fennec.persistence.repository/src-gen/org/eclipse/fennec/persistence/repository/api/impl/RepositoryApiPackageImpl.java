@@ -707,6 +707,16 @@ public class RepositoryApiPackageImpl extends EPackageImpl implements Repository
 	 * @generated
 	 */
 	@Override
+	public EOperation getWriteRepository__Execute__Command_Map_Map() {
+		return writeRepositoryEClass.getEOperations().get(11);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getRepository() {
 		return repositoryEClass;
 	}
@@ -826,6 +836,7 @@ public class RepositoryApiPackageImpl extends EPackageImpl implements Repository
 		createEOperation(writeRepositoryEClass, WRITE_REPOSITORY___DELETE__URI);
 		createEOperation(writeRepositoryEClass, WRITE_REPOSITORY___DELETE__URI_MAP);
 		createEOperation(writeRepositoryEClass, WRITE_REPOSITORY___EXECUTE__COMMAND);
+		createEOperation(writeRepositoryEClass, WRITE_REPOSITORY___EXECUTE__COMMAND_MAP_MAP);
 
 		repositoryEClass = createEClass(REPOSITORY);
 
@@ -1073,6 +1084,12 @@ public class RepositoryApiPackageImpl extends EPackageImpl implements Repository
 
 		op = initEOperation(getWriteRepository__Execute__Command(), ecorePackage.getELong(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, theCommandPackage.getCommand(), "command", 1, 1, IS_UNIQUE, IS_ORDERED);
+		addEException(op, theQueryApiPackage.getIOException());
+
+		op = initEOperation(getWriteRepository__Execute__Command_Map_Map(), ecorePackage.getELong(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, theCommandPackage.getCommand(), "command", 1, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, theQueryApiPackage.getParameterMap(), "parameters", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, theQueryApiPackage.getOptionsMap(), "options", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, theQueryApiPackage.getIOException());
 
 		initEClass(repositoryEClass, Repository.class, "Repository", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);

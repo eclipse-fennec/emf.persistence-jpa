@@ -162,4 +162,15 @@ public interface WriteRepository extends RepositoryService {
 	 */
 	long execute(Command command) throws IOException;
 
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Executes a write command with bound parameters (issue #202) - the write-side counterpart of find(query, parameters, options). A selector may use ParameterRef nodes; this is where their values come from. Both maps may be null.
+	 * <!-- end-model-doc -->
+	 * @model exceptions="org.eclipse.fennec.persistence.query.api.IOException" commandRequired="true" parametersDataType="org.eclipse.fennec.persistence.query.api.ParameterMap" optionsDataType="org.eclipse.fennec.persistence.query.api.OptionsMap"
+	 * @generated
+	 */
+	long execute(Command command, Map<String, Object> parameters, Map<?, ?> options) throws IOException;
+
 } // WriteRepository

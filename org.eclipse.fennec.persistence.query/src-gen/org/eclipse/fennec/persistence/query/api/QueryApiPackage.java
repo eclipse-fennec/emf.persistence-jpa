@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:ab0db26655984510d5487ac1e08124d857fee45aefc86e5478e84b852c4bddf1", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
+@EPackage(uri = QueryApiPackage.eNS_URI, fingerprint = "fp1:e9e22097c1d73f2e46dd1929a07777432749a1d7777e2ba1fcf3f99aa0261869", genModel = "/model/query-api.genmodel", genModelSourceLocations = {"model/query-api.genmodel","org.eclipse.fennec.persistence.query/model/query-api.genmodel"}, ecore = "/model/query-api.ecore", ecoreSourceLocations = "/model/query-api.ecore")
 public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -555,13 +555,22 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	int COMMAND_RESOURCE___EXECUTE__COMMAND = 0;
 
 	/**
+	 * The operation id for the '<em>Execute</em>' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int COMMAND_RESOURCE___EXECUTE__COMMAND_MAP_MAP = 1;
+
+	/**
 	 * The operation id for the '<em>Begin</em>' operation.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int COMMAND_RESOURCE___BEGIN = 1;
+	int COMMAND_RESOURCE___BEGIN = 2;
 
 	/**
 	 * The number of operations of the '<em>Command Resource</em>' class.
@@ -570,7 +579,7 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int COMMAND_RESOURCE_OPERATION_COUNT = 2;
+	int COMMAND_RESOURCE_OPERATION_COUNT = 3;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.persistence.query.api.QueryShape <em>Query Shape</em>}' enum.
@@ -1063,6 +1072,16 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EOperation getCommandResource__Execute__Command();
+
+	/**
+	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandResource#execute(org.eclipse.fennec.model.command.Command, java.util.Map, java.util.Map) <em>Execute</em>}' operation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the '<em>Execute</em>' operation.
+	 * @see org.eclipse.fennec.persistence.query.api.CommandResource#execute(org.eclipse.fennec.model.command.Command, java.util.Map, java.util.Map)
+	 * @generated
+	 */
+	EOperation getCommandResource__Execute__Command_Map_Map();
 
 	/**
 	 * Returns the meta object for the '{@link org.eclipse.fennec.persistence.query.api.CommandResource#begin() <em>Begin</em>}' operation.
@@ -1586,6 +1605,14 @@ public interface QueryApiPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EOperation COMMAND_RESOURCE___EXECUTE__COMMAND = eINSTANCE.getCommandResource__Execute__Command();
+
+		/**
+		 * The meta object literal for the '<em><b>Execute</b></em>' operation.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EOperation COMMAND_RESOURCE___EXECUTE__COMMAND_MAP_MAP = eINSTANCE.getCommandResource__Execute__Command_Map_Map();
 
 		/**
 		 * The meta object literal for the '<em><b>Begin</b></em>' operation.

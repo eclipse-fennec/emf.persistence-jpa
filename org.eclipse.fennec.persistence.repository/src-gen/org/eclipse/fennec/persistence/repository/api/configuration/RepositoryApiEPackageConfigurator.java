@@ -40,7 +40,7 @@ public class RepositoryApiEPackageConfigurator implements EPackageConfigurator {
 	 * service property.
 	 * @generated
 	 */
-	public static final String FINGERPRINT = "fp1:0f053a93098f18c499c2d2d006959a2f3ae5556ec7499837bc1ce1ba53b026e5";
+	public static final String FINGERPRINT = "fp1:b31abcbdc87b4c1c611fbe3d277f714838111325a3510a82f70d967a8c6fe8e1";
 
 	private RepositoryApiPackage ePackage;
 

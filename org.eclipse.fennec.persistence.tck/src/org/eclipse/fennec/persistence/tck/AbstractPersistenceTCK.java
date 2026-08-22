@@ -2375,6 +2375,57 @@ public abstract class AbstractPersistenceTCK {
 		assertThat(remaining.getContents().get(0).eGet(personName)).isEqualTo("Alice");
 	}
 
+	/**
+	 * A command selector can use parameters, and the values come with the call (issue #202).
+	 * <p>
+	 * Until now {@code execute(Command)} took no bindings, so a selector using
+	 * {@code param(...)} had nowhere to get its values from and failed on every backend —
+	 * measured in #175, which had to leave `PARAMETERS` out of its selector corpus for exactly
+	 * that reason. This is the write-side counterpart of {@code find(query, parameters, …)},
+	 * and the thing a prepared command is built on.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = { QueryFeature.PARAMETERS, QueryFeature.WHERE_COMPARISON })
+	public void commandSelectorTakesParameterBindings() throws Exception {
+		saveQueryFixture();
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(Expressions.param("minAge")))
+				.parameter("minAge", null)
+				.build());
+
+		long affected = commands(createBackendResourceSet()).execute(delete, Map.of("minAge", 40), null);
+
+		assertThat(affected).as("the binding decides what the selector matches").isEqualTo(2);
+		Resource remaining = loadAll(createBackendResourceSet(), "Person");
+		assertThat(remaining.getContents()).hasSize(1);
+		assertThat(remaining.getContents().get(0).eGet(personName)).isEqualTo("Alice");
+	}
+
+	/**
+	 * The same selector without bindings is still refused — the parameter has no value, and
+	 * inventing one would be worse than failing (issue #202).
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = { QueryFeature.PARAMETERS, QueryFeature.WHERE_COMPARISON })
+	public void anUnboundCommandParameterIsRefused() throws Exception {
+		saveQueryFixture();
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(Expressions.param("minAge")))
+				.parameter("minAge", null)
+				.build());
+
+		CommandResource resource = commands(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.execute(delete))
+				.as("an unbound parameter must fail rather than match something arbitrary")
+				.isInstanceOf(IOException.class);
+		assertThat(loadAll(createBackendResourceSet(), "Person").getContents())
+				.as("and nothing may have been deleted").hasSize(3);
+	}
+
 	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {
 		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
 		entry.setKind(kind);
@@ -3019,6 +3070,17 @@ public abstract class AbstractPersistenceTCK {
 	 * One cell of the cross product: the command either executes with the same reach as its
 	 * selector, or is refused with a Diagnostic naming the undeclared feature.
 	 */
+	/**
+	 * Values for whatever parameters a probe declares. The corpus is generated, so a selector
+	 * may carry a {@code ParameterRef} — since #202 the command side can bind them, which is
+	 * what let `PARAMETERS` rejoin the corpus rather than being excluded from it.
+	 */
+	private static Map<String, Object> bindingsFor(Query selector) {
+		Map<String, Object> bindings = new LinkedHashMap<>();
+		selector.getParameters().forEach(declaration -> bindings.put(declaration.getName(), 1));
+		return bindings;
+	}
+
 	private void assertCommandOverSelector(CommandFeature verb, QueryFeature feature, Query selector,
 			boolean declared, AtomicInteger executed) throws Exception {
 		// every cell restores the fixture: the dynamic cases of one factory share the
@@ -3026,7 +3088,7 @@ public abstract class AbstractPersistenceTCK {
 		saveQueryFixture();
 
 		if (!declared) {
-			assertThatThrownBy(() -> execute(command(verb, EcoreUtil.copy(selector))))
+			assertThatThrownBy(() -> execute(command(verb, EcoreUtil.copy(selector)), bindingsFor(selector)))
 					.as("%s over an undeclared %s selector must be refused with a Diagnostic",
 							verb.getName(), feature.getName())
 					.isInstanceOf(IOException.class)
@@ -3036,7 +3098,8 @@ public abstract class AbstractPersistenceTCK {
 
 		long matched;
 		try {
-			try (QueryResult result = queryable(createBackendResourceSet()).query(EcoreUtil.copy(selector))) {
+			try (QueryResult result = queryable(createBackendResourceSet())
+					.query(EcoreUtil.copy(selector), bindingsFor(selector), null)) {
 				matched = result.objects().count();
 			}
 		} catch (IOException refused) {
@@ -3045,7 +3108,7 @@ public abstract class AbstractPersistenceTCK {
 		}
 		long affected;
 		try {
-			affected = execute(command(verb, EcoreUtil.copy(selector)));
+			affected = execute(command(verb, EcoreUtil.copy(selector)), bindingsFor(selector));
 		} catch (IOException refused) {
 			assertRefusedWithADiagnostic(verb, feature, refused);
 			return;
@@ -3086,11 +3149,11 @@ public abstract class AbstractPersistenceTCK {
 		return updateCommand(selector, setName);
 	}
 
-	private long execute(Object command) throws IOException {
+	private long execute(Object command, Map<String, Object> bindings) throws IOException {
 		CommandResource resource = commands(createBackendResourceSet());
 		return command instanceof DeleteCommand delete
-				? resource.execute(delete)
-				: resource.execute((UpdateCommand) command);
+				? resource.execute(delete, bindings, null)
+				: resource.execute((UpdateCommand) command, bindings, null);
 	}
 
 	/**
@@ -3102,13 +3165,6 @@ public abstract class AbstractPersistenceTCK {
 	private Map<QueryFeature, Query> plainFilterProbes() {
 		Map<QueryFeature, Query> filters = new LinkedHashMap<>();
 		featureProbes().forEach((feature, query) -> {
-			if (feature == QueryFeature.PARAMETERS) {
-				// not a backend property: CommandResource.execute(Command) takes no bindings,
-				// so a parameterized selector has nowhere to get its values from and is
-				// refused on every backend. Excluded from the corpus rather than expected to
-				// fail — the cross product measures backends, not the shape of this API.
-				return;
-			}
 			if (query.getPredicate() != null && query.getSelect().isEmpty() && query.getApply() == null
 					&& query.getOrderBy().isEmpty() && query.getExpand().isEmpty()
 					&& query.getTop() == 0 && query.getSkip() == 0
@@ -3197,8 +3253,11 @@ public abstract class AbstractPersistenceTCK {
 				.selectAs("c", Expressions.path(personAge).plus(1).toExpression()).build());
 		probes.put(QueryFeature.EXPAND, QueryBuilder.from(personClass)
 				.expand(personBestFriend).build());
+		// declared, not just referenced: a ParameterRef without its ParameterDecl is an
+		// incomplete query, and the cross product needs the declaration to know what to bind
 		probes.put(QueryFeature.PARAMETERS, QueryBuilder.from(personClass)
-				.where(Expressions.path(personAge).eq(Expressions.param("p"))).build());
+				.where(Expressions.path(personAge).eq(Expressions.param("p")))
+				.parameter("p", null).build());
 		probes.put(QueryFeature.GROUP_BY, QueryBuilder.from(personClass)
 				.groupBy(personAge).countOf("cnt").build());
 		probes.put(QueryFeature.AGG_AVG, QueryBuilder.from(personClass)

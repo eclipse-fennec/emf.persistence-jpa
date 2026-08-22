@@ -972,6 +972,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 	@Override
 	public long execute(Command command) throws IOException {
+		return execute(command, null, null);
+	}
+
+	@Override
+	public long execute(Command command, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		requireNonNull(command, "command must not be null");
 		if (command instanceof InsertCommand insert) {
 			for (EObject payload : insert.getObjects()) {
@@ -981,11 +987,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		if (command instanceof DeleteCommand delete) {
 			ensureCommandSupported(CommandFeature.DELETE_BY_SELECTOR, delete.getSelector().getFrom());
-			return executeDelete(delete);
+			return executeDelete(delete, parameters);
 		}
 		if (command instanceof UpdateCommand update) {
 			ensureCommandSupported(CommandFeature.UPDATE_BY_SELECTOR, update.getSelector().getFrom());
-			return executeUpdate(update);
+			return executeUpdate(update, parameters);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
@@ -1160,12 +1166,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/** Delete = selector-scoped bulk DELETE (concept §14: Delete = query selector). */
-	private long executeDelete(DeleteCommand delete) throws IOException {
+	private long executeDelete(DeleteCommand delete, Map<String, Object> parameters) throws IOException {
 		JpaQueryPlan plan;
 		try {
 			guardPlainSelector(delete.getSelector());
 			plan = JpaQueries.translate(queryProcessor, delete.getSelector(),
-					delete.getSelector().getFrom(), converters, null, null);
+					delete.getSelector().getFrom(), converters, parameters, null);
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
@@ -1212,13 +1218,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/** Update = selector + ChangeSet template per match (concept §14, patch-apply engine §18.1). */
-	private long executeUpdate(UpdateCommand update) throws IOException {
+	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters) throws IOException {
 		JpaQueryPlan plan;
 		try {
 			guardPlainSelector(update.getSelector());
 			ChangeTemplates.validate(update.getTemplate(), update.getSelector().getFrom());
 			plan = JpaQueries.translate(queryProcessor, update.getSelector(),
-					update.getSelector().getFrom(), converters, null, null);
+					update.getSelector().getFrom(), converters, parameters, null);
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);

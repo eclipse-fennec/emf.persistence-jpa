@@ -846,6 +846,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	@Override
 	public long execute(Command command) throws IOException {
+		return execute(command, null, null);
+	}
+
+	@Override
+	public long execute(Command command, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		requireNonNull(command, "command must not be null");
 		if (command instanceof InsertCommand insert) {
 			for (EObject payload : insert.getObjects()) {
@@ -855,11 +861,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		if (command instanceof DeleteCommand delete) {
 			ensureCommandSupported(CommandFeature.DELETE_BY_SELECTOR, delete.getSelector().getFrom());
-			return executeDelete(delete);
+			return executeDelete(delete, parameters);
 		}
 		if (command instanceof UpdateCommand update) {
 			ensureCommandSupported(CommandFeature.UPDATE_BY_SELECTOR, update.getSelector().getFrom());
-			return executeUpdate(update);
+			return executeUpdate(update, parameters);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
@@ -1083,7 +1089,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	/** Delete = selector-scoped deleteMany (concept §14: Delete = query selector). */
-	private long executeDelete(DeleteCommand delete) throws IOException {
+	private long executeDelete(DeleteCommand delete, Map<String, Object> parameters) throws IOException {
 		String collectionName = getCollectionName(null);
 		if (isNull(collectionName)) {
 			throw new IOException("Resource URI has no collection segment — cannot delete: " + getURI());
@@ -1092,7 +1098,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			guardPlainSelector(delete.getSelector());
 			plan = MongoQueries.translate(queryProcessor, delete.getSelector(),
-					delete.getSelector().getFrom(), converters, null, queryOptions(null));
+					delete.getSelector().getFrom(), converters, parameters, queryOptions(null));
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
@@ -1114,7 +1120,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * Update = selector + ChangeSet template per match (concept §14, patch-apply engine
 	 * §18.1): decode each matched document, patch it, replace it under its {@code _id}.
 	 */
-	private long executeUpdate(UpdateCommand update) throws IOException {
+	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters) throws IOException {
 		String collectionName = getCollectionName(null);
 		if (isNull(collectionName)) {
 			throw new IOException("Resource URI has no collection segment — cannot update: " + getURI());
@@ -1124,8 +1130,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		try {
 			guardPlainSelector(update.getSelector());
 			ChangeTemplates.validate(update.getTemplate(), eClass);
-			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, converters, null,
-					queryOptions(null));
+			plan = MongoQueries.translate(queryProcessor, update.getSelector(), eClass, converters,
+					parameters, queryOptions(null));
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);

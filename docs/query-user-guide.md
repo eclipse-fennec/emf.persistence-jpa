@@ -448,6 +448,20 @@ long updated = repository.execute(update);
   and `valueOld` is *not* evaluated as an optimistic guard.
 - **Selectors must be plain filters.** Projection, aggregation, ordering or paging on a
   selector is refused.
+- **A selector may use parameters**, and the values come with the call:
+
+  ```java
+  DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+  delete.setSelector(QueryBuilder.from(personClass)
+          .where(path(age).ge(param("minAge")))
+          .parameter("minAge", null)
+          .build());
+  repository.execute(delete, Map.of("minAge", 40), null);
+  ```
+
+  The parameterless `execute(command)` refuses such a selector rather than guessing — an
+  unbound parameter has no value, and matching something arbitrary would be worse than
+  failing. Commands can also carry a `name`, the write-side counterpart of `Query.name`.
 
 ## Capabilities and refusals
 

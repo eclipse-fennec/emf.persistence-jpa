@@ -92,6 +92,11 @@
       <genOperations ecoreOperation="query-api.ecore#//CommandResource/execute">
         <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute/command"/>
       </genOperations>
+      <genOperations ecoreOperation="query-api.ecore#//CommandResource/execute.1">
+        <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute.1/command"/>
+        <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute.1/parameters"/>
+        <genParameters ecoreParameter="query-api.ecore#//CommandResource/execute.1/options"/>
+      </genOperations>
       <genOperations ecoreOperation="query-api.ecore#//CommandResource/begin"/>
     </genClasses>
   </genPackages>

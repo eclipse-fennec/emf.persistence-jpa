@@ -649,8 +649,18 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 	 * @generated
 	 */
 	@Override
-	public EOperation getCommandResource__Begin() {
+	public EOperation getCommandResource__Execute__Command_Map_Map() {
 		return commandResourceEClass.getEOperations().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EOperation getCommandResource__Begin() {
+		return commandResourceEClass.getEOperations().get(2);
 	}
 
 	/**
@@ -865,6 +875,7 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 
 		commandResourceEClass = createEClass(COMMAND_RESOURCE);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND);
+		createEOperation(commandResourceEClass, COMMAND_RESOURCE___EXECUTE__COMMAND_MAP_MAP);
 		createEOperation(commandResourceEClass, COMMAND_RESOURCE___BEGIN);
 
 		// Create enums
@@ -1008,6 +1019,12 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 
 		op = initEOperation(getCommandResource__Execute__Command(), ecorePackage.getELong(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, theCommandPackage.getCommand(), "command", 1, 1, IS_UNIQUE, IS_ORDERED);
+		addEException(op, this.getIOException());
+
+		op = initEOperation(getCommandResource__Execute__Command_Map_Map(), ecorePackage.getELong(), "execute", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, theCommandPackage.getCommand(), "command", 1, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, this.getParameterMap(), "parameters", 0, 1, IS_UNIQUE, IS_ORDERED);
+		addEParameter(op, this.getOptionsMap(), "options", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEException(op, this.getIOException());
 
 		op = initEOperation(getCommandResource__Begin(), this.getCommandTransaction(), "begin", 0, 1, IS_UNIQUE, IS_ORDERED);
