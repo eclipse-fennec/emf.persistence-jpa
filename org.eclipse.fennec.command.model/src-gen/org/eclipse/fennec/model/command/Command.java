@@ -25,6 +25,12 @@ import org.osgi.annotation.versioning.ProviderType;
  * Abstract write command. Execution is a backend capability (CommandResource); refusal follows the diagnostics contract of the query SPI.
  * <!-- end-model-doc -->
  *
+ * <p>
+ * The following features are supported:
+ * </p>
+ * <ul>
+ *   <li>{@link org.eclipse.fennec.model.command.Command#getName <em>Name</em>}</li>
+ * </ul>
  *
  * @see org.eclipse.fennec.model.command.CommandPackage#getCommand()
  * @model abstract="true"
@@ -32,4 +38,29 @@ import org.osgi.annotation.versioning.ProviderType;
  */
 @ProviderType
 public interface Command extends EObject {
+	/**
+	 * Returns the value of the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Command name - the key a named command is deposited and looked up under (issue #201), the write-side counterpart of Query.name. Optional: a command executed directly needs no name.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Name</em>' attribute.
+	 * @see #setName(String)
+	 * @see org.eclipse.fennec.model.command.CommandPackage#getCommand_Name()
+	 * @model id="true"
+	 * @generated
+	 */
+	String getName();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.command.Command#getName <em>Name</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Name</em>' attribute.
+	 * @see #getName()
+	 * @generated
+	 */
+	void setName(String value);
+
 } // Command

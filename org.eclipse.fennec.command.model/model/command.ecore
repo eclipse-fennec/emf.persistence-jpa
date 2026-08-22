@@ -15,6 +15,12 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract write command. Execution is a backend capability (CommandResource); refusal follows the diagnostics contract of the query SPI."/>
     </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Command name - the key a named command is deposited and looked up under (issue #201), the write-side counterpart of Query.name. Optional: a command executed directly needs no name."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="InsertCommand" eSuperTypes="#//Command">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

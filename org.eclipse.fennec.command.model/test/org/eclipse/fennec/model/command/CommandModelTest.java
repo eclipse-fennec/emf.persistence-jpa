@@ -21,6 +21,7 @@ import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.query.QueryPackage;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -31,6 +32,45 @@ import org.junit.jupiter.api.Test;
 class CommandModelTest {
 
 	private final CommandFactory factory = CommandFactory.eINSTANCE;
+
+	/**
+	 * A command can name itself, exactly as a query can (issue #201). That is what makes it
+	 * depositable in a named-operation catalog on the same terms — and why no wrapper model is
+	 * needed around either: the registry keys on the name the object carries.
+	 */
+	@Test
+	void everyCommandKindCanCarryAName() {
+		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
+		insert.setName("importPeople");
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setName("purgeMinors");
+		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
+		update.setName("ageEveryone");
+
+		assertThat(insert.getName()).isEqualTo("importPeople");
+		assertThat(delete.getName()).isEqualTo("purgeMinors");
+		assertThat(update.getName()).isEqualTo("ageEveryone");
+	}
+
+	/**
+	 * The name is optional: a command executed directly needs none, and nothing may start
+	 * requiring one.
+	 */
+	@Test
+	void aCommandWithoutANameIsStillValid() {
+		assertThat(CommandFactory.eINSTANCE.createInsertCommand().getName()).isNull();
+	}
+
+	/**
+	 * Named the same way on both planes — the write side reuses the query side's shape rather
+	 * than inventing a second convention (issue #163).
+	 */
+	@Test
+	void theNameIsTheIdOnBothPlanes() {
+		assertThat(CommandPackage.eINSTANCE.getCommand_Name().isID())
+				.as("a command's name identifies it, as a query's does").isTrue();
+		assertThat(QueryPackage.eINSTANCE.getQuery_Name().isID()).isTrue();
+	}
 
 	@Test
 	void insertCarriesContainedPayload() {

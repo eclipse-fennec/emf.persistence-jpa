@@ -40,7 +40,7 @@ public class CommandEPackageConfigurator implements EPackageConfigurator {
 	 * service property.
 	 * @generated
 	 */
-	public static final String FINGERPRINT = "fp1:1cb2473b75720ee9b613504439854976d41960f72cfc18e8bc03cfb3c736d544";
+	public static final String FINGERPRINT = "fp1:70a97c518570c62223f2828fb24af875242d655c5adbae077e5a311ec444cc5d";
 
 	private CommandPackage ePackage;
 

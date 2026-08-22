@@ -8,7 +8,9 @@
   <foreignModel>command.ecore</foreignModel>
   <genPackages prefix="Command" basePackage="org.eclipse.fennec.model" disposableProviderFactory="true"
       ecorePackage="command.ecore#/">
-    <genClasses image="false" ecoreClass="command.ecore#//Command"/>
+    <genClasses image="false" ecoreClass="command.ecore#//Command">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute command.ecore#//Command/name"/>
+    </genClasses>
     <genClasses ecoreClass="command.ecore#//InsertCommand">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference command.ecore#//InsertCommand/objects"/>
     </genClasses>

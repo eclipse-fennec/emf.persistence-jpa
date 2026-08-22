@@ -12,6 +12,7 @@
  */
 package org.eclipse.fennec.model.command.impl;
 
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
@@ -147,6 +148,16 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 	 * @generated
 	 */
 	@Override
+	public EAttribute getCommand_Name() {
+		return (EAttribute)commandEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getInsertCommand() {
 		return insertCommandEClass;
 	}
@@ -241,6 +252,7 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 
 		// Create classes and their features
 		commandEClass = createEClass(COMMAND);
+		createEAttribute(commandEClass, COMMAND__NAME);
 
 		insertCommandEClass = createEClass(INSERT_COMMAND);
 		createEReference(insertCommandEClass, INSERT_COMMAND__OBJECTS);
@@ -291,6 +303,7 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(commandEClass, Command.class, "Command", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getCommand_Name(), ecorePackage.getEString(), "name", null, 0, 1, Command.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(insertCommandEClass, InsertCommand.class, "InsertCommand", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getInsertCommand_Objects(), ecorePackage.getEObject(), null, "objects", null, 1, -1, InsertCommand.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
