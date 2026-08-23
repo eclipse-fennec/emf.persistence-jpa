@@ -1,7 +1,9 @@
 # Interval predicates and group representatives — the joint IR round (#215, #214)
 
-**Status:** proposed (concept round 2026-08-23). Decisions I1–I7 and R1–R7 are open until
-the maintainer round closes them; the §5 semantic rules are proposed as binding.
+**Status:** proposed (concept round 2026-08-23); Part A is **in implementation** (I-P1),
+which corrected one proposed rule — see §A.5.4 and the changelog at the end of Part A.
+Decisions I1–I7 and R1–R7 are open until the maintainer round closes them; the semantic
+rules are proposed as binding.
 No capability literal and no model element is written before that — per the #207 rule
 ("add only what a phase declares"), the literals land with their implementation phase.
 Companions: `query-ir-redesign.md` (Expression IR, capability discipline, D4 on result
@@ -128,9 +130,10 @@ same relationship G2 set up for coordinates.
 **Null is a modelling decision, not an accident.** `validTo = null` meaning "still valid" is
 the normal shape of temporal models; a missing upper bound on a measurement range is
 missing data. The two need opposite answers, so `nullMeansUnbounded` picks one, defaulting
-to `false` — which is the 3VL discipline of #94/#97 and geo §5.2 unchanged (a null bound
-poisons the predicate to UNKNOWN). With `true`, a null lower bound is −∞ and a null upper
-bound is +∞.
+to `false` — the 3VL discipline of #94/#97. With `true`, a null lower bound is −∞ and a null
+upper bound is +∞. What `false` means precisely is the one thing the implementation round
+had to sharpen: UNKNOWN attaches to the *bound comparison*, not to the predicate as a whole
+(§A.5.4).
 
 The index-encoding consequence is the thing to write down loudly: Lucene stores an
 unbounded end as `Long.MIN_VALUE`/`MAX_VALUE` and an exclusive bound as the adjacent
@@ -153,9 +156,20 @@ flags cost nothing — they only pick which comparison operator is rendered.
    error, like `CODE_DIVISION_BY_ZERO`. An **inverted subject row** is the empty interval and
    matches **no** relation, including `WITHIN` — vacuous truth is the answer nobody wants,
    and Lucene cannot index an inverted range at all, so the writer refuses it there.
-4. **Null follows `nullMeansUnbounded`** (A.4). Under `false` a null bound makes the
-   predicate UNKNOWN: excluded positively, excluded under `not(…)`, guarded explicitly in
-   every push-down — the #97 recipe verbatim.
+4. **Null follows `nullMeansUnbounded`** (A.4), and UNKNOWN belongs to the single bound
+   comparison. Under `false` a missing bound makes *that comparison* UNKNOWN and the
+   conjunction then decides under ordinary 3VL — so a row whose end is unknown answers
+   UNKNOWN where the end would have decided (excluded positively and under `not(…)`), and
+   FALSE where its start already rules the question out (so its negation holds).
+
+   This replaces the concept round's first proposal, which read "a missing bound makes the
+   predicate UNKNOWN, guarded explicitly in every push-down". That rule is **not
+   expressible in SQL**: the predicate is a conjunction, `FALSE AND UNKNOWN` is `FALSE`, and
+   no arrangement of conjuncts preserves the UNKNOWN once another conjunct is FALSE.
+   Reaching it would need a negation-aware translation in every backend — and even then only
+   for a directly negated `IntervalMatch`, not for one nested under `not(and(…))`. The rule
+   above, by contrast, is what SQL and Mongo already do with these two comparisons: no
+   guards, no negation surgery, correct under arbitrary nesting. The cost is stated in §A.6.
 5. **Boundary flags are semantics, not hints.** A backend that cannot render an exclusive
    bound refuses the query; it never rounds it to the inclusive one.
 
@@ -175,6 +189,17 @@ three. When a backend appears that overlaps but cannot contain, the split is add
 | Lucene (`emf.search` S15) | one `LongRange`/`DoubleRange` field, BKD tree over both bounds, one query per relation — the reason this vocabulary exists |
 | PostgreSQL range types + GiST | not reachable through JPQL; a dialect follow-up in the shape of G-P4/PostGIS, own issue |
 
+**The consequence of §A.5.4 for range indexes.** A row with a missing bound and
+`nullMeansUnbounded = false` is not representable as a range field: an index stores one
+interval per document, so a document with an unknown end is either absent (then it can never
+answer FALSE, only "no match", which loses the negation case) or stored with a sentinel (then
+it is indistinguishable from an unbounded one). So the mapping side owes one of two things —
+refuse such rows at write time and say so, or carry a "bound present" marker field next to
+the range and combine it into the query. `emf.search` picks one in I-P2; a backend that picks
+neither diverges from the reference on exactly those rows, which is a divergence to declare,
+not to discover. Under `nullMeansUnbounded = true` the question disappears: the extremal
+value *is* the meaning, and that is the case a range index serves natively.
+
 **The honest note about why the literal exists.** Unlike geo, every backend here *can*
 serve the vocabulary through the fallback, so the literal is not "this store cannot do it"
 — it is the ordinary translator-gap declaration §9.1 already blesses, and the thing an
@@ -190,10 +215,18 @@ right place for it.
 | I1 | Subject binding: split pair only, or split + packed from the start | **split only** — §9.3, no backend forces the packed form yet; additive later like `GeoSubject.pathPoint` |
 | I2 | Where the interval is declared: structurally in the query (G1/G2) or as a mapping aspect | **structurally** — the geo precedent, unchanged; an aspect may later derive the paths |
 | I3 | Boundary semantics: fixed closed-closed, or modelled flags | **modelled, on both sides** (A.4), defaulting to closed-closed — `Between` already carries the query-side pair |
-| I4 | Null bounds: always UNKNOWN, or a `nullMeansUnbounded` switch | **the switch, default false** — both readings are real, and the default stays with the 3VL discipline |
+| I4 | Null bounds: always UNKNOWN, or a `nullMeansUnbounded` switch | **the switch, default false** — both readings are real, and the default stays with the 3VL discipline; UNKNOWN attaches per bound comparison (§A.5.4, corrected in implementation) |
 | I5 | Capability grain: one literal or one per relation | **one** — §9.3; no backend can answer the halves differently |
 | I6 | Feature id | **84** — the next free value; 82 is an unassigned gap in the sequence and stays unused (#207 rule 5 discipline) |
 | I7 | Is an interval also a *sortable* value ("order by duration/start") | **no in v1** — `Arithmetic` over the two paths already sorts by duration; an interval-valued expression has no use case yet |
+
+## A.8 Changelog
+
+- **2026-08-23, I-P1 implementation:** §A.5.4 replaced. The proposed "a missing bound makes
+  the whole predicate UNKNOWN, guarded in every push-down" cannot be rendered in SQL, where
+  a FALSE conjunct swallows the UNKNOWN; the rule is now ordinary 3VL over the two bound
+  comparisons, which needs no guards and survives nested negation. §A.6 records what that
+  costs a range-indexing backend. Everything else in Part A went in as proposed.
 
 ---
 

@@ -83,6 +83,12 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_PROJECTION = 9;
 
+	/**
+	 * Diagnostic code: an {@code IntervalSubject} that does not bind both bound paths, or an
+	 * {@code IntervalMatch} whose query interval is inverted over two literals (issue #215).
+	 */
+	public static final int CODE_INVALID_INTERVAL = 10;
+
 	private QueryValidator() {
 	}
 
@@ -167,6 +173,11 @@ public final class QueryValidator {
 		if (analysis.invalidProjection() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_PROJECTION,
 					analysis.invalidProjection() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+		if (analysis.invalidInterval() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_INTERVAL,
+					analysis.invalidInterval() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

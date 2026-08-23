@@ -36,6 +36,8 @@ import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -261,6 +263,16 @@ public class MemoryQueryProcessor implements QueryProcessor {
 				geoSubject(geoWithin.getSubject(), scope);
 				return;
 			}
+			if (expression instanceof IntervalMatch interval) {
+				intervalSubject(interval.getSubject(), scope);
+				// the query bounds convert against the subject's lower bound feature — both
+				// bound paths share one domain, which the analyzer has already checked
+				EStructuralFeature target = interval.getSubject() == null ? null
+						: targetOf(interval.getSubject().getPathLower(), null);
+				operand(interval.getLower(), target, scope);
+				operand(interval.getUpper(), target, scope);
+				return;
+			}
 			throw new QueryException("Unsupported predicate " + expression.eClass().getName());
 		}
 
@@ -276,6 +288,18 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			}
 			if (subject.getPathPoint() != null) {
 				path(subject.getPathPoint(), scope);
+			}
+		}
+
+		private void intervalSubject(IntervalSubject subject, Set<Variable> scope) throws QueryException {
+			if (subject == null) {
+				return;
+			}
+			if (subject.getPathLower() != null) {
+				path(subject.getPathLower(), scope);
+			}
+			if (subject.getPathUpper() != null) {
+				path(subject.getPathUpper(), scope);
 			}
 		}
 

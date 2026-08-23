@@ -272,6 +272,11 @@
         <details key="documentation" value="Bound placeholders for prepared queries."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="INTERVAL_MATCH" value="84">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Interval predicates over a declared pair of bounds — INTERSECTS/WITHIN/CONTAINS (issue #215). One literal for all three relations: a capability splits when a backend exists that can answer the halves differently, and none does — Lucene serves all three natively, PostgreSQL range types serve all three, and the two-comparison fallback serves all three. Declares CORRECTNESS, never index usage: every backend can serve this vocabulary through two scalar comparisons, and whether a plan touched a range index is the subject of issue #199. Value 82 is an unassigned gap in this sequence and stays unused."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="AS_OF" value="100">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Point-in-time reads of the CURRENT STATE: reconstruct an object as of a sequence or timestamp via the latest keyframe plus replay (concept §10, §14). A CHANGELOG-profile operation and deliberately orthogonal to series access (issue #207) — a series query never needs it, because every sample is an absolute value. Keeping them apart is what lets a store declare one without the other. Value 101 is retired and stays unused (SERIES_RANGE, issue #207)."/>

@@ -118,6 +118,8 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		// carries the EMF-semantics features §8 found untested: a plain multi-valued
 		// attribute, an unsettable one, and one with a default (issue #174)
 		eClasses.add(tckPackage.getEClassifier("Profile"));
+		// the interval fixture (issue #215): two nullable bounds that form one interval
+		eClasses.add(tckPackage.getEClassifier("Booking"));
 		emf = JpaTckSupport.bootstrap(PU_NAME, eClasses);
 	}
 

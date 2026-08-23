@@ -51,6 +51,8 @@ import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -285,6 +287,9 @@ public final class ExprToOcl {
 				throw new QueryException("Score has no OCL form — relevance is a ranking-backend"
 						+ " execution value, not a model expression");
 			}
+			if (expression instanceof IntervalMatch interval) {
+				return interval(interval);
+			}
 			if (expression instanceof GeoWithin || expression instanceof GeoDistance) {
 				// the third totality exception (issue #101): OCL has no geo vocabulary
 				throw new QueryException(expression.eClass().getName()
@@ -451,6 +456,76 @@ public final class ExprToOcl {
 			StringLiteralExp exp = OCL.createStringLiteralExp();
 			exp.setStringSymbol(value);
 			return exp;
+		}
+
+		/**
+		 * Interval predicates (issue #215) keep the bridge total: their meaning <em>is</em> the
+		 * conjunction of bound comparisons (concept §A.5.1), so there is a faithful OCL form —
+		 * unlike geo, which has no OCL vocabulary at all. The rendering mirrors the reference
+		 * engine down to the empty-subject guard and the unbounded disjunctions, which is what
+		 * makes the OclEvaluator usable as a third opinion on these predicates.
+		 */
+		private OclExpression interval(IntervalMatch interval) throws QueryException {
+			IntervalSubject subject = interval.getSubject();
+			EStructuralFeature target = targetOf(subject.getPathLower(), null);
+			OclExpression lowerBound = map(subject.getPathLower(), null);
+			OclExpression upperBound = map(subject.getPathUpper(), null);
+			OclExpression queryLower = map(interval.getLower(), target);
+			OclExpression queryUpper = map(interval.getUpper(), target);
+			boolean subjectLowerIncluded = subject.isLowerIncluded();
+			boolean subjectUpperIncluded = subject.isUpperIncluded();
+			boolean queryLowerIncluded = interval.isLowerIncluded();
+			boolean queryUpperIncluded = interval.isUpperIncluded();
+			boolean unbounded = subject.isNullMeansUnbounded();
+
+			OclExpression nonEmpty = call(subjectLowerIncluded && subjectUpperIncluded ? "<=" : "<",
+					map(subject.getPathLower(), null), map(subject.getPathUpper(), null));
+			if (unbounded) {
+				nonEmpty = call("or", call("or", undefined(subject.getPathLower()),
+						undefined(subject.getPathUpper())), nonEmpty);
+			}
+
+			OclExpression first;
+			OclExpression second;
+			switch (interval.getRelation()) {
+			case INTERSECTS -> {
+				first = bound(lowerBound, subjectLowerIncluded && queryUpperIncluded ? "<=" : "<",
+						queryUpper, subject.getPathLower(), unbounded, true);
+				second = bound(upperBound, subjectUpperIncluded && queryLowerIncluded ? ">=" : ">",
+						queryLower, subject.getPathUpper(), unbounded, true);
+			}
+			case WITHIN -> {
+				first = bound(lowerBound, queryLowerIncluded || !subjectLowerIncluded ? ">=" : ">",
+						queryLower, subject.getPathLower(), unbounded, false);
+				second = bound(upperBound, queryUpperIncluded || !subjectUpperIncluded ? "<=" : "<",
+						queryUpper, subject.getPathUpper(), unbounded, false);
+			}
+			default -> {
+				first = bound(lowerBound, subjectLowerIncluded || !queryLowerIncluded ? "<=" : "<",
+						queryLower, subject.getPathLower(), unbounded, true);
+				second = bound(upperBound, subjectUpperIncluded || !queryUpperIncluded ? ">=" : ">",
+						queryUpper, subject.getPathUpper(), unbounded, true);
+			}
+			}
+			return call("and", call("and", nonEmpty, first), second);
+		}
+
+		/** One bound comparison, wrapped in the declared infinity where the subject asks for it. */
+		private OclExpression bound(OclExpression boundValue, String operator, OclExpression limit,
+				PropertyPath boundPath, boolean unbounded,
+				boolean absentSatisfies) throws QueryException {
+			OclExpression comparison = call(operator, boundValue, limit);
+			if (!unbounded) {
+				return comparison;
+			}
+			return absentSatisfies
+					? call("or", undefined(boundPath), comparison)
+					: call("and", call("not", undefined(boundPath)), comparison);
+		}
+
+		private OclExpression undefined(PropertyPath path)
+				throws QueryException {
+			return call("oclIsUndefined", map(path, null));
 		}
 
 		private OperationCallExp call(String operation, OclExpression source, OclExpression... arguments) {

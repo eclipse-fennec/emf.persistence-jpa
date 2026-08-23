@@ -680,6 +680,64 @@ class ExpressionAnalyzerTest {
 	}
 
 	@Test
+	void intervalVocabularyIsDetectedAndStructurallyValidated() {
+		// issue #215: IntervalMatch registers its capability and both bound paths
+		QueryAnalysis intersects = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.where(Expressions.intersects(
+						Expressions.intervalSubject(Expressions.propertyPath(age),
+								Expressions.propertyPath(age)),
+						10, 20))
+				.build());
+		assertThat(intersects.features()).contains(QueryFeature.INTERVAL_MATCH);
+		assertThat(intersects.invalidInterval()).isNull();
+
+		// a bound given as a parameter is a parameter, and stays well-formed
+		QueryAnalysis parameterised = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.where(Expressions.intervalWithin(
+						Expressions.intervalSubject(Expressions.propertyPath(age),
+								Expressions.propertyPath(age)),
+						Expressions.param("from"), Expressions.param("to")))
+				.build());
+		assertThat(parameterised.features())
+				.contains(QueryFeature.INTERVAL_MATCH, QueryFeature.PARAMETERS);
+		assertThat(parameterised.invalidInterval()).isNull();
+	}
+
+	@Test
+	void invertedLiteralBoundsAreRefusedStatically() {
+		QueryAnalysis inverted = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.where(Expressions.intersects(
+						Expressions.intervalSubject(Expressions.propertyPath(age),
+								Expressions.propertyPath(age)),
+						20, 10))
+				.build());
+		assertThat(inverted.invalidInterval()).contains("inverted");
+	}
+
+	@Test
+	void intervalBoundsOfDifferentDomainsAreRefused() {
+		// a textual and a numeric bound are not one interval (§A.5.2)
+		QueryAnalysis mixed = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.where(Expressions.intersects(
+						Expressions.intervalSubject(Expressions.propertyPath(name),
+								Expressions.propertyPath(age)),
+						10, 20))
+				.build());
+		assertThat(mixed.invalidInterval()).contains("different domains");
+	}
+
+	@Test
+	void intervalBoundPathsMustEndInAnAttribute() {
+		QueryAnalysis reference = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.where(Expressions.intersects(
+						Expressions.intervalSubject(Expressions.propertyPath(addresses),
+								Expressions.propertyPath(age)),
+						10, 20))
+				.build());
+		assertThat(reference.invalidInterval()).contains("must end in an attribute");
+	}
+
+	@Test
 	void scoreIsDetected() {
 		// the relevance sort key (issue #100) requires the SCORE capability — and since
 		// issue #165 only SCORE, not SORT_EXPRESSION (see bareScoreSortIsScoreNotSortExpression)

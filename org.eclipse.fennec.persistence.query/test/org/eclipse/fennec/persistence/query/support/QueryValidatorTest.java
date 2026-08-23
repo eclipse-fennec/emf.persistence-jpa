@@ -48,6 +48,7 @@ class QueryValidatorTest {
 
 	private EClass person;
 	private EAttribute name;
+	private EAttribute age;
 	private EReference address;
 	private EAttribute street;
 
@@ -60,6 +61,10 @@ class QueryValidatorTest {
 		name.setName("name");
 		name.setEType(EcorePackage.Literals.ESTRING);
 		person.getEStructuralFeatures().add(name);
+		age = ecore.createEAttribute();
+		age.setName("age");
+		age.setEType(EcorePackage.Literals.EINT);
+		person.getEStructuralFeatures().add(age);
 
 		EClass addressClass = ecore.createEClass();
 		addressClass.setName("Address");
@@ -161,6 +166,38 @@ class QueryValidatorTest {
 					assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_STRING_MATCH);
 					assertThat(child.getMessage()).contains("1 or 2");
 				});
+	}
+
+	@Test
+	void malformedIntervalIsRefused() {
+		// issue #215: an inverted query interval can never match — a static error, not a run
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.intersects(
+						Expressions.intervalSubject(Expressions.propertyPath(age),
+								Expressions.propertyPath(age)),
+						30, 10))
+				.build();
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.INTERVAL_MATCH, QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren().get(0).getCode())
+				.isEqualTo(QueryValidator.CODE_INVALID_INTERVAL);
+		assertThat(diagnostic.getChildren().get(0).getMessage()).contains("inverted");
+	}
+
+	@Test
+	void undeclaredIntervalMatchIsRefused() {
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.intervalAt(
+						Expressions.intervalSubject(Expressions.propertyPath(age),
+								Expressions.propertyPath(age)),
+						5))
+				.build();
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getMessage()).contains("INTERVAL_MATCH"));
 	}
 
 	@Test

@@ -207,6 +207,49 @@ GeoJSON. Malformed geometry (a subject without exactly one binding, out-of-range
 coordinates, a degenerate or antimeridian-crossing polygon) is refused at validation with
 code 6.
 
+## Intervals
+
+A validity period, a price band, a measurement range — two features that together are one
+interval. Asking about it needs no hand-wired pair of comparisons:
+
+```java
+// how the DATA is stored: closed on both ends, an unset bound is unknown
+IntervalSubject band = intervalSubject(propertyPath(minPrice), propertyPath(maxPrice));
+
+// how a temporal model stores it: half-open [from, to), unset end = still valid
+IntervalSubject validity = intervalSubject(
+        propertyPath(validFrom), propertyPath(validTo), true, false, true);
+
+// the three questions
+QueryBuilder.from(offerClass).where(intersects(validity, day(1), day(30))).build();
+QueryBuilder.from(offerClass).where(intervalWithin(validity, day(1), day(30))).build();
+QueryBuilder.from(offerClass).where(intervalContains(validity, day(10), day(12))).build();
+
+// "valid at t" is containment of a single point
+QueryBuilder.from(offerClass).where(intervalAt(validity, today)).build();
+```
+
+The two boundary conventions are deliberately separate. The **subject** carries the
+convention of the stored data, because that is what an index encodes when the rows are
+written; the **predicate** carries the convention of the question, the same two flags
+`between(...)` has. Half-open data is why the subject needs its own: under `[from, to)` two
+adjacent periods do not overlap, and no bound on the query side can express that.
+
+`nullMeansUnbounded` (the last flag) decides what an unset bound means. Left `false`, a
+missing bound makes that bound's comparison UNKNOWN and the conjunction decides as SQL
+does — a row whose end is unknown is still excluded when its start already answers the
+question, and its negation then holds. Set `true`, a missing lower bound is −∞ and a
+missing upper bound +∞, which is the "still valid" shape of temporal models.
+
+Two more rules. A query interval given by two inverted literals is refused at validation
+with code 10, and a stored row whose bounds are inverted (or equal with an exclusive end)
+is the empty interval: it matches no relation, `intervalWithin` included.
+
+JPA and MongoDB both serve `INTERVAL_MATCH`, as the pair of comparisons — correct, and not
+index-accelerated. Backends with range fields (Lucene, PostgreSQL range types) are where
+the single-predicate fast path lives; the capability declares that the answer is right, not
+that an index was used.
+
 ## Result shapes: objects, rows, count
 
 The envelope decides what comes back. `QueryResult.shape()` tells you which accessor is
@@ -492,6 +535,7 @@ reports each violation as a `Diagnostic` ERROR before anything runs.
 | Expression group keys / aggregate sources | ✅ re-rendered inline | ✅ `$group` accumulators | |
 | Multi-stage pipelines | ⚠️ filter/compute/having, and paging **after** the grouping | ✅ native, in stage order | JPA refuses paging before the grouping and a second grouping |
 | `expand` fetch hints | ✅ `LEFT JOIN FETCH` (depth 1) | ❌ | |
+| Intervals (`intersects`, `intervalWithin`, `intervalContains`) | ✅ paired comparisons | ✅ paired comparisons | correct, not index-accelerated; see [Intervals](#intervals) |
 | Geo (`geoWithin`, `geoDistance`) | ❌ | ✅ 2dsphere | see [Geo](#geo) |
 | Parameters | ✅ | ✅ | model-level |
 | Relevance scores | ❌ | ❌ | search backends |
@@ -513,6 +557,7 @@ Diagnostic codes, source `org.eclipse.fennec.persistence.query`:
 | 7 | malformed string match (fuzzy parameters on a non-fuzzy kind, budget out of range) |
 | 8 | malformed map access (path does not end in a map, or a non-constant key) |
 | 9 | malformed projection (both or neither of path/key, or an expression column without an alias) |
+| 10 | malformed interval (a bound path missing or not an attribute, mixed domains, inverted literal bounds) |
 | 100 | Mongo: cross-document or non-embedded path |
 | 101 | Mongo: distinct without a projection |
 | 102 | Mongo: invalid map key |

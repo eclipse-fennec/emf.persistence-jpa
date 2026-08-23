@@ -47,6 +47,8 @@ import org.eclipse.fennec.model.expression.GeoDistance;
 import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -302,6 +304,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 					between.isUpperIncluded() ? Filters.lte(field, upper) : Filters.lt(field, upper)),
 					between.getSource(), context);
 		}
+		if (expression instanceof IntervalMatch interval) {
+			return intervalFilter(interval, context);
+		}
 		if (expression instanceof In in) {
 			String field = field(in.getSource(), context);
 			EStructuralFeature target = targetOf(in.getSource());
@@ -417,6 +422,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 					between.isUpperIncluded() ? Filters.gt(field, upper) : Filters.gte(field, upper)),
 					between.getSource(), context);
 		}
+		if (expression instanceof IntervalMatch interval) {
+			return negatedIntervalFilter(interval, context);
+		}
 		if (expression instanceof In in) {
 			String field = field(in.getSource(), context);
 			EStructuralFeature target = targetOf(in.getSource());
@@ -519,6 +527,125 @@ public class MongoQueryProcessor implements QueryProcessor {
 		// unreachable: STRING_MATCH_FUZZY is undeclared, validation refused already (issue #167)
 		case FUZZY -> throw new QueryException("FUZZY matching is not served by the mongo backend");
 		};
+	}
+
+	/**
+	 * Interval predicates (issue #215) as the pair of comparisons the concept defines
+	 * (§A.5.1). Mongo has no range type, so this is the same correct-but-unindexed shape the
+	 * JPA translation renders; the fast path belongs to backends with range fields.
+	 * <p>
+	 * Each clause is paired with the fields it reads, because the negation needs them. The
+	 * leading non-empty clause uses {@code $expr} — it compares two fields of one document —
+	 * while the bound clauses stay plain, so the planner can still serve them from an index.
+	 */
+	private List<IntervalClause> intervalClauses(IntervalMatch interval, QueryContext context)
+			throws QueryException {
+		IntervalSubject subject = interval.getSubject();
+		String lowerField = field(subject.getPathLower(), context);
+		String upperField = field(subject.getPathUpper(), context);
+		EStructuralFeature target = targetOf(subject.getPathLower());
+		Object queryLower = value(interval.getLower(), target, context);
+		Object queryUpper = value(interval.getUpper(), target, context);
+		boolean subjectLowerIncluded = subject.isLowerIncluded();
+		boolean subjectUpperIncluded = subject.isUpperIncluded();
+		boolean queryLowerIncluded = interval.isLowerIncluded();
+		boolean queryUpperIncluded = interval.isUpperIncluded();
+		boolean unbounded = subject.isNullMeansUnbounded();
+
+		List<IntervalClause> clauses = new ArrayList<>(3);
+		clauses.add(new IntervalClause(
+				nonEmptySubject(lowerField, upperField,
+						subjectLowerIncluded && subjectUpperIncluded, unbounded),
+				List.of(lowerField, upperField)));
+		switch (interval.getRelation()) {
+		case INTERSECTS -> {
+			clauses.add(new IntervalClause(intervalBound(lowerField, true,
+					subjectLowerIncluded && queryUpperIncluded, queryUpper, unbounded, true),
+					List.of(lowerField)));
+			clauses.add(new IntervalClause(intervalBound(upperField, false,
+					subjectUpperIncluded && queryLowerIncluded, queryLower, unbounded, true),
+					List.of(upperField)));
+		}
+		case WITHIN -> {
+			clauses.add(new IntervalClause(intervalBound(lowerField, false,
+					queryLowerIncluded || !subjectLowerIncluded, queryLower, unbounded, false),
+					List.of(lowerField)));
+			clauses.add(new IntervalClause(intervalBound(upperField, true,
+					queryUpperIncluded || !subjectUpperIncluded, queryUpper, unbounded, false),
+					List.of(upperField)));
+		}
+		default -> {
+			clauses.add(new IntervalClause(intervalBound(lowerField, true,
+					subjectLowerIncluded || !queryLowerIncluded, queryLower, unbounded, true),
+					List.of(lowerField)));
+			clauses.add(new IntervalClause(intervalBound(upperField, false,
+					subjectUpperIncluded || !queryUpperIncluded, queryUpper, unbounded, true),
+					List.of(upperField)));
+		}
+		}
+		return clauses;
+	}
+
+	/** One clause of the interval conjunction, with the fields whose absence undecides it. */
+	private record IntervalClause(Bson filter, List<String> fields) {
+	}
+
+	private Bson intervalFilter(IntervalMatch interval, QueryContext context) throws QueryException {
+		return Filters.and(intervalClauses(interval, context).stream().map(IntervalClause::filter).toList());
+	}
+
+	/**
+	 * The negation, three-valued. {@code $nor} over the whole conjunction would be wrong in
+	 * both directions, because Mongo has no UNKNOWN: a document whose bound is missing simply
+	 * fails every comparison, so a blanket flip turns "we cannot tell" into "true".
+	 * <p>
+	 * De Morgan is the way out, the same recipe as issue #97: the negation of a conjunction is
+	 * the disjunction of the negated clauses, and each negated clause is guarded by the
+	 * existence of the fields it reads. A missing bound then makes that clause undecided
+	 * rather than negatively true — while a clause the present bounds already refute still
+	 * carries the row, which is exactly what SQL's {@code FALSE AND UNKNOWN} does (§A.5.4).
+	 */
+	private Bson negatedIntervalFilter(IntervalMatch interval, QueryContext context) throws QueryException {
+		boolean unbounded = interval.getSubject().isNullMeansUnbounded();
+		List<Bson> negated = new ArrayList<>();
+		for (IntervalClause clause : intervalClauses(interval, context)) {
+			if (unbounded) {
+				// every clause is two-valued already — it carries its own null disjunction
+				negated.add(Filters.nor(clause.filter()));
+				continue;
+			}
+			List<Bson> guarded = new ArrayList<>(clause.fields().size() + 1);
+			clause.fields().forEach(field -> guarded.add(Filters.ne(field, null)));
+			guarded.add(Filters.nor(clause.filter()));
+			negated.add(Filters.and(guarded));
+		}
+		return Filters.or(negated);
+	}
+
+	/** An empty subject row — inverted, or coincident with an exclusive end — matches nothing. */
+	private static Bson nonEmptySubject(String lowerField, String upperField, boolean equalAllowed,
+			boolean unbounded) {
+		Document ordered = new Document(equalAllowed ? "$lte" : "$lt",
+				Arrays.asList("$" + lowerField, "$" + upperField));
+		Bson guard = Filters.expr(ordered);
+		return unbounded
+				? Filters.or(Filters.eq(lowerField, null), Filters.eq(upperField, null), guard)
+				: guard;
+	}
+
+	/**
+	 * One bound comparison. {@code absentSatisfies} renders the declared infinity: with the
+	 * unbounded declaration a missing bound satisfies the comparison vacuously, otherwise
+	 * Mongo's operator drops the document, which is the UNKNOWN we want.
+	 */
+	private static Bson intervalBound(String field, boolean atMost, boolean equalAllowed, Object limit,
+			boolean unbounded, boolean absentSatisfies) {
+		Bson comparison = atMost
+				? (equalAllowed ? Filters.lte(field, limit) : Filters.lt(field, limit))
+				: (equalAllowed ? Filters.gte(field, limit) : Filters.gt(field, limit));
+		return unbounded && absentSatisfies
+				? Filters.or(Filters.eq(field, null), comparison)
+				: comparison;
 	}
 
 	/**

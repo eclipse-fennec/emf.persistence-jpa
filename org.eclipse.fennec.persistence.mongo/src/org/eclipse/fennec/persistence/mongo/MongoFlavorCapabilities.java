@@ -76,7 +76,8 @@ public final class MongoFlavorCapabilities {
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
 					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
-					QueryFeature.GEO_WITHIN, QueryFeature.GEO_DISTANCE, QueryFeature.MAP_VALUE)
+					QueryFeature.GEO_WITHIN, QueryFeature.GEO_DISTANCE, QueryFeature.MAP_VALUE,
+					QueryFeature.INTERVAL_MATCH)
 			.maxFeaturePathDepth(-1)
 			.build();
 

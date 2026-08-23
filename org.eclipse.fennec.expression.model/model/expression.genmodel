@@ -55,6 +55,11 @@
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalKind/DATE_TIME"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalKind/INSTANT"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//IntervalRelation">
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//IntervalRelation/INTERSECTS"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//IntervalRelation/WITHIN"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//IntervalRelation/CONTAINS"/>
+    </genEnums>
     <genClasses image="false" ecoreClass="expression.ecore#//Expression"/>
     <genClasses image="false" ecoreClass="expression.ecore#//Junction">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//Junction/operands"/>
@@ -138,6 +143,21 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoDistance/subject"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//GeoDistance/point"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//IntervalSubject">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntervalSubject/lowerIncluded"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntervalSubject/upperIncluded"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntervalSubject/nullMeansUnbounded"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IntervalSubject/pathLower"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IntervalSubject/pathUpper"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//IntervalMatch">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntervalMatch/relation"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntervalMatch/lowerIncluded"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//IntervalMatch/upperIncluded"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IntervalMatch/subject"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IntervalMatch/lower"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IntervalMatch/upper"/>
+    </genClasses>
     <genClasses ecoreClass="expression.ecore#//Score"/>
     <genClasses ecoreClass="expression.ecore#//ParameterRef">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//ParameterRef/name"/>
@@ -188,14 +208,14 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//IndexOf/search"/>
     </genClasses>
-    <genClasses ecoreClass="expression.ecore#//MapValue">
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//MapValue/map"/>
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//MapValue/key"/>
-    </genClasses>
     <genClasses ecoreClass="expression.ecore#//CollectionCount">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/source"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/variable"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//CollectionCount/predicate"/>
+    </genClasses>
+    <genClasses ecoreClass="expression.ecore#//MapValue">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//MapValue/map"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//MapValue/key"/>
     </genClasses>
     <genClasses ecoreClass="expression.ecore#//TypeCheck">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//TypeCheck/source"/>
