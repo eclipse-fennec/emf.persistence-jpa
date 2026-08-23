@@ -28,7 +28,6 @@ import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Pipeline;
-import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;

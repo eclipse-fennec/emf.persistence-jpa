@@ -28,15 +28,10 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
-import org.eclipse.fennec.persistence.capabilities.CommandCapabilitiesBuilder;
-import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
-import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
-import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoFlavorCapabilities;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.MongoClient;
