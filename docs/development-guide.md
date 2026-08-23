@@ -60,6 +60,7 @@ Eclipse Fennec Persistence JPA ist ein OSGi-basiertes Persistence-Framework, das
 | `org.eclipse.fennec.persistence.ecore` | `DatabaseEcoreParser` — Reverse-Engineering von ECore-Modellen aus Datenbank-Schemata via JDBC |
 | `org.eclipse.fennec.persistence.test` | OSGi-Integrationstests mit JUnit 5, H2-Datenbank, Test-ECore/EORM-Fixtures |
 | `org.eclipse.fennec.persistence.workspace.library` | bnd Library Template (`-library: fennecPersistence`) für externe Workspace-Nutzung — Setup siehe README, Abschnitt „Consuming from a bnd workspace" |
+| `org.eclipse.fennec.persistence.test.workspace.library` | bnd Library Template (`-library: fennecPersistenceTest`) für die Test-Seite — TCK als Subclass-API plus `query.derived`; getrennt gehalten, damit ein Produktions-`-buildpath` kein Test-Bundle bekommt (Issue #216) |
 | `org.eclipse.fennec.persistence.bom` | Bill of Materials — re-exportiert den Workspace-Library-Buildpath |
 
 ## 3. Kern-Datenfluss: ECore → Datenbank

@@ -1,0 +1,19 @@
+-resourceonly: true
+-workingset: persistence
+-include: ${.}/buildpath.bnd	
+mavendeps: ${sjoin;\n; ${template;-maven-dependencies;${@}}}
+
+-includeresource: {resources}	
+	
+Provide-Capability: \
+	${fennec-base}
+
+fennec-base:\
+    bnd.library;\
+        bnd.library     = fennecPersistenceTest; \
+        path            = template
+Bundle-Name: Eclipse Fennec Persistence Test Workspace Library
+Bundle-Description: Workspace library for the test-only side of the persistence stack — the \
+	TCK as subclass API (issue #99) and the bundles its cases need. Kept apart from \
+	fennecPersistence so a production -buildpath never gains a test bundle; enable both \
+	(-library: fennecPersistence, fennecPersistenceTest) to bind the TCK. Issue #216.
