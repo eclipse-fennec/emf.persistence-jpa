@@ -57,7 +57,9 @@ import org.eclipse.fennec.model.expression.GeoPointLiteral;
 import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.IntervalSubject;
+import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.Expressions;
@@ -2801,6 +2803,106 @@ public abstract class AbstractPersistenceTCK {
 				"Erfurt", "Suva", "Apia");
 	}
 
+	// --------------------------------------------- group representatives (issue #214)
+
+	/**
+	 * Two groups, one of them bigger than the window — which is what makes the difference
+	 * between "three of many" and "three in all" observable.
+	 */
+	private List<EObject> representativeCorpus() {
+		return List.of(
+				newPerson(11, "Ada", 30),
+				newPerson(12, "Ben", 30),
+				newPerson(13, "Cleo", 30),
+				newPerson(14, "Dan", 40),
+				newPerson(15, "Eve", 40));
+	}
+
+	/** The rows of a representative query, keyed by group, from the oracle and the backend. */
+	private Map<Integer, List<String>> representativeNames(Query query, boolean backend) throws Exception {
+		Map<Integer, List<String>> byAge = new LinkedHashMap<>();
+		if (backend) {
+			save(createBackendResourceSet(), "Person", representativeCorpus().toArray(EObject[]::new));
+			try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+				result.rows().forEach(row -> byAge.put(((Number) row.get("age")).intValue(),
+						namesOf(row.get("top"))));
+			}
+			return byAge;
+		}
+		try (QueryResult oracle = MemoryQueries.execute(query, representativeCorpus(), null)) {
+			oracle.rows().forEach(row -> byAge.put(((Number) row.get("age")).intValue(),
+					namesOf(row.get("top"))));
+		}
+		return byAge;
+	}
+
+	/**
+	 * The cell contract of decision R1: a representative column holds EObjects, never null,
+	 * in the declared order.
+	 */
+	@SuppressWarnings("unchecked")
+	private List<String> namesOf(Object cell) {
+		assertThat(cell).as("a representative cell is a list, never null").isInstanceOf(List.class);
+		return ((List<EObject>) cell).stream().map(object -> (String) object.eGet(personName)).toList();
+	}
+
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+			QueryFeature.AGG_COUNT, QueryFeature.SORT })
+	public void groupRepresentativesHandOutTheGroupsOwnDocuments() throws Exception {
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.representativesOrderedBy("top", 2, SortDirection.ASC, personName)
+				.build();
+		Map<Integer, List<String>> expected = Map.of(30, List.of("Ada", "Ben"), 40, List.of("Dan", "Eve"));
+		assertThat(representativeNames(query, false)).isEqualTo(expected);
+		assertThat(representativeNames(query, true)).isEqualTo(expected);
+
+		// the group's full size is an ordinary COUNT aggregate — that is what makes the
+		// truncation of the first group visible, rather than a field of its own
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			Map<Integer, Long> counts = result.rows().collect(Collectors.toMap(
+					row -> ((Number) row.get("age")).intValue(),
+					row -> ((Number) row.get("cnt")).longValue()));
+			assertThat(counts).containsEntry(30, 3L).containsEntry(40, 2L);
+		}
+	}
+
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+			QueryFeature.AGG_COUNT, QueryFeature.SORT })
+	public void groupRepresentativeWindowSkipsWithinTheGroup() throws Exception {
+		Query offsetQuery = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.representativesOrderedBy("top", 2, SortDirection.ASC, personName)
+				.build();
+		((GroupByStage) offsetQuery.getApply().getStages().get(0))
+				.getRepresentatives().setOffset(Expressions.literal(1));
+		Map<Integer, List<String>> windowed = Map.of(30, List.of("Ben", "Cleo"), 40, List.of("Eve"));
+		assertThat(representativeNames(offsetQuery, false)).isEqualTo(windowed);
+		assertThat(representativeNames(offsetQuery, true)).isEqualTo(windowed);
+	}
+
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+			QueryFeature.AGG_COUNT, QueryFeature.SORT })
+	public void groupSurvivesAnEmptyRepresentativeWindow() throws Exception {
+		// an offset past the end of every group: empty cells, but the rows and their
+		// aggregates still appear
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.representativesOrderedBy("top", 2, SortDirection.ASC, personName)
+				.build();
+		((GroupByStage) query.getApply().getStages().get(0))
+				.getRepresentatives().setOffset(Expressions.literal(9));
+		Map<Integer, List<String>> empty = Map.of(30, List.of(), 40, List.of());
+		assertThat(representativeNames(query, false)).isEqualTo(empty);
+		assertThat(representativeNames(query, true)).isEqualTo(empty);
+	}
+
 	// ------------------------------------------------------ intervals (issue #215)
 
 	/**
@@ -3441,6 +3543,8 @@ public abstract class AbstractPersistenceTCK {
 						Expressions.geoBox(Expressions.geoPoint(10, 50),
 								Expressions.geoPoint(13, 52))))
 				.build());
+		probes.put(QueryFeature.GROUP_REPRESENTATIVES, QueryBuilder.from(personClass)
+				.groupBy(personAge).countOf("cnt").representatives("top", 1).build());
 		probes.put(QueryFeature.INTERVAL_MATCH, QueryBuilder.from(personClass)
 				.where(Expressions.intersects(
 						Expressions.intervalSubject(Expressions.propertyPath(personAge),

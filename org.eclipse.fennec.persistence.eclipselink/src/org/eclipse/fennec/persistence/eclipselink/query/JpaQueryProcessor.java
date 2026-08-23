@@ -540,6 +540,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 							+ " not expressible in one JPQL statement");
 				}
 			}
+			if (group != null && group.getRepresentatives() != null) {
+				// backstop — GROUP_REPRESENTATIVES is undeclared, validation refuses first
+				throw new QueryException("Representatives per group are not supported by the JPA"
+						+ " backend (feature GROUP_REPRESENTATIVES): JPQL has no window functions,"
+						+ " so the route — native SQL or a two-pass execution — is its own decision");
+			}
 			StringBuilder columns = new StringBuilder();
 			if (group != null) {
 				// from the grouping on, every map access renders as a join (issue #190): the

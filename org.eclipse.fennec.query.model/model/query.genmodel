@@ -62,6 +62,13 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/paths"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/keys"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/aggregates"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupByStage/representatives"/>
+    </genClasses>
+    <genClasses ecoreClass="query.ecore#//RepresentativeSpec">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//RepresentativeSpec/alias"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//RepresentativeSpec/count"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//RepresentativeSpec/offset"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//RepresentativeSpec/orderBy"/>
     </genClasses>
     <genClasses ecoreClass="query.ecore#//GroupKey">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//GroupKey/expression"/>

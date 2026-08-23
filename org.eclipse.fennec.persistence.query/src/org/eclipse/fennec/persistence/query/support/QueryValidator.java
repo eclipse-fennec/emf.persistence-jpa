@@ -89,6 +89,12 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_INTERVAL = 10;
 
+	/**
+	 * Diagnostic code: a representative window without an alias, or with a bound that is not a
+	 * positive constant (issue #214).
+	 */
+	public static final int CODE_INVALID_REPRESENTATIVES = 11;
+
 	private QueryValidator() {
 	}
 
@@ -178,6 +184,12 @@ public final class QueryValidator {
 		if (analysis.invalidInterval() != null) {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_INTERVAL,
 					analysis.invalidInterval() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+		if (analysis.invalidRepresentatives() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE,
+					CODE_INVALID_REPRESENTATIVES,
+					analysis.invalidRepresentatives() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 

@@ -74,7 +74,8 @@ class QueryFeatureCatalogTest {
 		assertThat(QueryFeature.values())
 				.as("adding a QueryFeature? MemoryQueryProcessor claims it automatically "
 						+ "(complementOf) — implement it there or exclude it, then fix this count")
-				// 53 since INTERVAL_MATCH (issue #215): the reference engine implements it
-				.hasSize(53);
+				// 54 since INTERVAL_MATCH (#215) and GROUP_REPRESENTATIVES (#214) — the
+				// reference engine implements both
+				.hasSize(54);
 	}
 }

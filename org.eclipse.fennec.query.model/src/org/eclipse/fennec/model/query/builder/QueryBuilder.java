@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -231,6 +232,72 @@ public final class QueryBuilder {
 		groupKey.setExpression(Objects.requireNonNull(key, "group key expression must not be null"));
 		groupByStage().getKeys().add(groupKey);
 		return this;
+	}
+
+	/**
+	 * Asks for the top-{@code count} documents of each group next to its aggregates
+	 * (issue #214, capability {@code GROUP_REPRESENTATIVES}). The alias names one result cell
+	 * holding them as a {@code List<EObject>}; the order within a group is the query's own
+	 * {@code orderBy} unless
+	 * {@link #representativesOrderedBy(String, int, SortDirection, EStructuralFeature...)}
+	 * gives it its own.
+	 * <p>
+	 * The group's full size is not part of this — add a {@link #countOf(String) count
+	 * aggregate} for it, which is what makes a truncated group recognisable.
+	 *
+	 * @param alias the result column alias holding the documents
+	 * @param count how many documents per group, greater than zero
+	 * @return this builder
+	 */
+	public QueryBuilder representatives(String alias, int count) {
+		representativeSpec(alias, count, 0);
+		return this;
+	}
+
+	/**
+	 * Asks for a window of each group's documents, skipping {@code offset} of them. An offset
+	 * past the end of a group yields an empty cell; the group's row still appears.
+	 *
+	 * @param alias the result column alias holding the documents
+	 * @param count how many documents per group, greater than zero
+	 * @param offset how many to skip within each group
+	 * @return this builder
+	 */
+	public QueryBuilder representatives(String alias, int count, int offset) {
+		representativeSpec(alias, count, offset);
+		return this;
+	}
+
+	/**
+	 * Asks for the top-{@code count} documents of each group in an order of their own — kept
+	 * apart from the order <em>between</em> groups, which stays the envelope's
+	 * {@code orderBy}.
+	 *
+	 * @param alias the result column alias holding the documents
+	 * @param count how many documents per group, greater than zero
+	 * @param direction the within-group sort direction
+	 * @param segments the within-group sort path, root feature first
+	 * @return this builder
+	 */
+	public QueryBuilder representativesOrderedBy(String alias, int count, SortDirection direction,
+			EStructuralFeature... segments) {
+		RepresentativeSpec spec = representativeSpec(alias, count, 0);
+		OrderBy within = factory.createOrderBy();
+		within.setPath(Expressions.propertyPath(segments));
+		within.setDirection(direction == null ? SortDirection.ASC : direction);
+		spec.getOrderBy().add(within);
+		return this;
+	}
+
+	private RepresentativeSpec representativeSpec(String alias, int count, int offset) {
+		RepresentativeSpec spec = factory.createRepresentativeSpec();
+		spec.setAlias(Objects.requireNonNull(alias, "representative alias must not be null"));
+		spec.setCount(Expressions.literal(count));
+		if (offset > 0) {
+			spec.setOffset(Expressions.literal(offset));
+		}
+		groupByStage().setRepresentatives(spec);
+		return spec;
 	}
 
 	/**

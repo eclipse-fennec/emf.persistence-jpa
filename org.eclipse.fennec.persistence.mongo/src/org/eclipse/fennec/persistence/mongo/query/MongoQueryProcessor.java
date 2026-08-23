@@ -75,6 +75,7 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -1178,12 +1179,14 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 		List<String> rowKeys = new ArrayList<>();
 		List<String> rowAliases = new ArrayList<>();
+		List<String> objectValuedRowKeys = new ArrayList<>();
 
 		List<Bson> deferredPaging = new ArrayList<>();
 		if (shape == QueryShape.PROJECTION) {
 			projectionStages(query, pipeline, rowKeys, rowAliases, context);
 		} else {
-			aggregationStages(query, pipeline, rowKeys, rowAliases, deferredPaging, context);
+			aggregationStages(query, pipeline, rowKeys, rowAliases, deferredPaging, objectValuedRowKeys,
+					context);
 		}
 
 		Bson sort = rowSort(query, rowKeys);
@@ -1200,7 +1203,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 			pipeline.add(Aggregates.limit(query.getTop()));
 		}
 		return new MongoQueryPlan(query, shape, filter, sort, Math.max(0, query.getSkip()),
-				Math.max(0, query.getTop()), pipeline, rowKeys, rowAliases);
+				Math.max(0, query.getTop()), pipeline, rowKeys, rowAliases, objectValuedRowKeys);
 	}
 
 	private void projectionStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
@@ -1237,7 +1240,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 	}
 
 	private void aggregationStages(Query query, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
-			List<Bson> deferredPaging, QueryContext context) throws QueryException {
+			List<Bson> deferredPaging, List<String> objectValuedRowKeys, QueryContext context)
+			throws QueryException {
 		boolean groupsSomewhere = query.getApply().getStages().stream()
 				.anyMatch(GroupByStage.class::isInstance);
 		boolean rowSpace = false;
@@ -1245,7 +1249,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 			if (stage instanceof FilterStage filterStage) {
 				pipeline.add(Aggregates.match(filter(filterStage.getPredicate(), context)));
 			} else if (stage instanceof GroupByStage groupBy) {
-				groupStage(groupBy, pipeline, rowKeys, rowAliases, context);
+				groupStage(groupBy, pipeline, rowKeys, rowAliases, objectValuedRowKeys, context);
 				rowSpace = true;
 			} else if (stage instanceof ComputeStage compute) {
 				// computed columns via $set (issue #82); after $group the flatten
@@ -1284,7 +1288,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 	}
 
 	private void groupStage(GroupByStage groupBy, List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
-			QueryContext context) throws QueryException {
+			List<String> objectValuedRowKeys, QueryContext context) throws QueryException {
 		Document id = new Document();
 		for (PropertyPath path : groupBy.getPaths()) {
 			String field = MongoFieldNames.render(path);
@@ -1326,8 +1330,53 @@ public class MongoQueryProcessor implements QueryProcessor {
 				flatten.put(alias, 1);
 			}
 		}
+		RepresentativeSpec representatives = groupBy.getRepresentatives();
+		if (representatives != null) {
+			representativeAccumulator(representatives, pipeline, group, flatten, context);
+			register(representatives.getAlias(), representatives.getAlias(), rowKeys, rowAliases);
+			objectValuedRowKeys.add(representatives.getAlias());
+		}
 		pipeline.add(new Document("$group", group));
 		pipeline.add(Aggregates.project(flatten));
+	}
+
+	/**
+	 * The group's own documents (issue #214) as {@code $push} plus {@code $slice}, ordered by
+	 * a {@code $sort} placed <em>before</em> the grouping — {@code $push} preserves input
+	 * order, so that is what fixes the within-group order. Deliberately not the {@code $topN}
+	 * accumulator, which would be neater but needs MongoDB 5.2: this shape works on every
+	 * flavour the TCK runs against, and the group ordering it disturbs is undefined anyway
+	 * (the envelope's row sort runs after the grouping).
+	 */
+	private void representativeAccumulator(RepresentativeSpec representatives, List<Bson> pipeline,
+			Document group, Document flatten, QueryContext context) throws QueryException {
+		List<Bson> sorts = new ArrayList<>(representatives.getOrderBy().size());
+		for (OrderBy orderBy : representatives.getOrderBy()) {
+			if (orderBy.getPath() == null) {
+				// an expression key would need $addFields first; SORT_EXPRESSION is undeclared
+				continue;
+			}
+			String field = MongoFieldNames.render(orderBy.getPath());
+			sorts.add(orderBy.getDirection() == SortDirection.DESC ? Sorts.descending(field)
+					: Sorts.ascending(field));
+		}
+		if (!sorts.isEmpty()) {
+			pipeline.add(Aggregates.sort(sorts.size() == 1 ? sorts.get(0) : Sorts.orderBy(sorts)));
+		}
+		String alias = representatives.getAlias();
+		group.put(alias, new Document("$push", "$$ROOT"));
+		int offset = windowBound(representatives.getOffset(), 0, context);
+		int count = windowBound(representatives.getCount(), 0, context);
+		flatten.put(alias, new Document("$slice", Arrays.asList("$" + alias, offset, count)));
+	}
+
+	/** A representative window bound — a literal or a bound parameter, per the analyzer. */
+	private int windowBound(Expression bound, int absent, QueryContext context) throws QueryException {
+		if (bound == null) {
+			return absent;
+		}
+		Object resolved = value(bound, null, context);
+		return resolved instanceof Number number ? number.intValue() : absent;
 	}
 
 	/**

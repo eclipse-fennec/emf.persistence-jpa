@@ -14,12 +14,15 @@ package org.eclipse.fennec.model.query.impl;
 
 import java.util.Collection;
 
+import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
 
 import org.eclipse.emf.common.util.EList;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.InternalEObject;
+
+import org.eclipse.emf.ecore.impl.ENotificationImpl;
 
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
@@ -30,6 +33,7 @@ import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.QueryPackage;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 
 /**
  * <!-- begin-user-doc -->
@@ -42,6 +46,7 @@ import org.eclipse.fennec.model.query.QueryPackage;
  *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getPaths <em>Paths</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getKeys <em>Keys</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getAggregates <em>Aggregates</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.GroupByStageImpl#getRepresentatives <em>Representatives</em>}</li>
  * </ul>
  *
  * @generated
@@ -76,6 +81,16 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 	 * @ordered
 	 */
 	protected EList<Aggregate> aggregates;
+
+	/**
+	 * The cached value of the '{@link #getRepresentatives() <em>Representatives</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getRepresentatives()
+	 * @generated
+	 * @ordered
+	 */
+	protected RepresentativeSpec representatives;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -141,6 +156,51 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 	 * @generated
 	 */
 	@Override
+	public RepresentativeSpec getRepresentatives() {
+		return representatives;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NotificationChain basicSetRepresentatives(RepresentativeSpec newRepresentatives, NotificationChain msgs) {
+		RepresentativeSpec oldRepresentatives = representatives;
+		representatives = newRepresentatives;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES, oldRepresentatives, newRepresentatives);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
+		}
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setRepresentatives(RepresentativeSpec newRepresentatives) {
+		if (newRepresentatives != representatives) {
+			NotificationChain msgs = null;
+			if (representatives != null)
+				msgs = ((InternalEObject)representatives).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES, null, msgs);
+			if (newRepresentatives != null)
+				msgs = ((InternalEObject)newRepresentatives).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES, null, msgs);
+			msgs = basicSetRepresentatives(newRepresentatives, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES, newRepresentatives, newRepresentatives));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case QueryPackage.GROUP_BY_STAGE__PATHS:
@@ -149,6 +209,8 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 				return ((InternalEList<?>)getKeys()).basicRemove(otherEnd, msgs);
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				return ((InternalEList<?>)getAggregates()).basicRemove(otherEnd, msgs);
+			case QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES:
+				return basicSetRepresentatives(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -167,6 +229,8 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 				return getKeys();
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				return getAggregates();
+			case QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES:
+				return getRepresentatives();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -192,6 +256,9 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 				getAggregates().clear();
 				getAggregates().addAll((Collection<? extends Aggregate>)newValue);
 				return;
+			case QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES:
+				setRepresentatives((RepresentativeSpec)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -213,6 +280,9 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				getAggregates().clear();
 				return;
+			case QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES:
+				setRepresentatives((RepresentativeSpec)null);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -231,6 +301,8 @@ public class GroupByStageImpl extends StageImpl implements GroupByStage {
 				return keys != null && !keys.isEmpty();
 			case QueryPackage.GROUP_BY_STAGE__AGGREGATES:
 				return aggregates != null && !aggregates.isEmpty();
+			case QueryPackage.GROUP_BY_STAGE__REPRESENTATIVES:
+				return representatives != null;
 		}
 		return super.eIsSet(featureID);
 	}

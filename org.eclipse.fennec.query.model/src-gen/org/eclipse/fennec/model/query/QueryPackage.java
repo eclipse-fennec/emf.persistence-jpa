@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:d81dd280d83df39ba45cafd4131b67e335924c2535580f71ec399bdf5491e060", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:b3a4a8fd5940e13f2a8e73d960c3176b7e854a36cf241a87076d8c6b1ad0e24c", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -527,13 +527,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int GROUP_BY_STAGE__AGGREGATES = STAGE_FEATURE_COUNT + 2;
 
 	/**
+	 * The feature id for the '<em><b>Representatives</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int GROUP_BY_STAGE__REPRESENTATIVES = STAGE_FEATURE_COUNT + 3;
+
+	/**
 	 * The number of structural features of the '<em>Group By Stage</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int GROUP_BY_STAGE_FEATURE_COUNT = STAGE_FEATURE_COUNT + 3;
+	int GROUP_BY_STAGE_FEATURE_COUNT = STAGE_FEATURE_COUNT + 4;
 
 	/**
 	 * The number of operations of the '<em>Group By Stage</em>' class.
@@ -545,6 +554,70 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int GROUP_BY_STAGE_OPERATION_COUNT = STAGE_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.RepresentativeSpecImpl <em>Representative Spec</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.RepresentativeSpecImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getRepresentativeSpec()
+	 * @generated
+	 */
+	int REPRESENTATIVE_SPEC = 8;
+
+	/**
+	 * The feature id for the '<em><b>Alias</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPRESENTATIVE_SPEC__ALIAS = 0;
+
+	/**
+	 * The feature id for the '<em><b>Count</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPRESENTATIVE_SPEC__COUNT = 1;
+
+	/**
+	 * The feature id for the '<em><b>Offset</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPRESENTATIVE_SPEC__OFFSET = 2;
+
+	/**
+	 * The feature id for the '<em><b>Order By</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPRESENTATIVE_SPEC__ORDER_BY = 3;
+
+	/**
+	 * The number of structural features of the '<em>Representative Spec</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPRESENTATIVE_SPEC_FEATURE_COUNT = 4;
+
+	/**
+	 * The number of operations of the '<em>Representative Spec</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int REPRESENTATIVE_SPEC_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.GroupKeyImpl <em>Group Key</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -552,7 +625,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGroupKey()
 	 * @generated
 	 */
-	int GROUP_KEY = 8;
+	int GROUP_KEY = 9;
 
 	/**
 	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
@@ -598,7 +671,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregate()
 	 * @generated
 	 */
-	int AGGREGATE = 9;
+	int AGGREGATE = 10;
 
 	/**
 	 * The feature id for the '<em><b>Path</b></em>' containment reference.
@@ -662,7 +735,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getTopStage()
 	 * @generated
 	 */
-	int TOP_STAGE = 10;
+	int TOP_STAGE = 11;
 
 	/**
 	 * The feature id for the '<em><b>Count</b></em>' attribute.
@@ -699,7 +772,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSkipStage()
 	 * @generated
 	 */
-	int SKIP_STAGE = 11;
+	int SKIP_STAGE = 12;
 
 	/**
 	 * The feature id for the '<em><b>Count</b></em>' attribute.
@@ -736,7 +809,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputeStage()
 	 * @generated
 	 */
-	int COMPUTE_STAGE = 12;
+	int COMPUTE_STAGE = 13;
 
 	/**
 	 * The feature id for the '<em><b>Computations</b></em>' containment reference list.
@@ -773,7 +846,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputation()
 	 * @generated
 	 */
-	int COMPUTATION = 13;
+	int COMPUTATION = 14;
 
 	/**
 	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
@@ -819,7 +892,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSortDirection()
 	 * @generated
 	 */
-	int SORT_DIRECTION = 14;
+	int SORT_DIRECTION = 15;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}' enum.
@@ -829,7 +902,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregateMethod()
 	 * @generated
 	 */
-	int AGGREGATE_METHOD = 15;
+	int AGGREGATE_METHOD = 16;
 
 
 	/**
@@ -1208,6 +1281,71 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getGroupByStage_Aggregates();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.GroupByStage#getRepresentatives <em>Representatives</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Representatives</em>'.
+	 * @see org.eclipse.fennec.model.query.GroupByStage#getRepresentatives()
+	 * @see #getGroupByStage()
+	 * @generated
+	 */
+	EReference getGroupByStage_Representatives();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.RepresentativeSpec <em>Representative Spec</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Representative Spec</em>'.
+	 * @see org.eclipse.fennec.model.query.RepresentativeSpec
+	 * @generated
+	 */
+	EClass getRepresentativeSpec();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.RepresentativeSpec#getAlias <em>Alias</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Alias</em>'.
+	 * @see org.eclipse.fennec.model.query.RepresentativeSpec#getAlias()
+	 * @see #getRepresentativeSpec()
+	 * @generated
+	 */
+	EAttribute getRepresentativeSpec_Alias();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.RepresentativeSpec#getCount <em>Count</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Count</em>'.
+	 * @see org.eclipse.fennec.model.query.RepresentativeSpec#getCount()
+	 * @see #getRepresentativeSpec()
+	 * @generated
+	 */
+	EReference getRepresentativeSpec_Count();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.RepresentativeSpec#getOffset <em>Offset</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Offset</em>'.
+	 * @see org.eclipse.fennec.model.query.RepresentativeSpec#getOffset()
+	 * @see #getRepresentativeSpec()
+	 * @generated
+	 */
+	EReference getRepresentativeSpec_Offset();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.RepresentativeSpec#getOrderBy <em>Order By</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Order By</em>'.
+	 * @see org.eclipse.fennec.model.query.RepresentativeSpec#getOrderBy()
+	 * @see #getRepresentativeSpec()
+	 * @generated
+	 */
+	EReference getRepresentativeSpec_OrderBy();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.GroupKey <em>Group Key</em>}'.
@@ -1728,6 +1866,56 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference GROUP_BY_STAGE__AGGREGATES = eINSTANCE.getGroupByStage_Aggregates();
+
+		/**
+		 * The meta object literal for the '<em><b>Representatives</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference GROUP_BY_STAGE__REPRESENTATIVES = eINSTANCE.getGroupByStage_Representatives();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.RepresentativeSpecImpl <em>Representative Spec</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.RepresentativeSpecImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getRepresentativeSpec()
+		 * @generated
+		 */
+		EClass REPRESENTATIVE_SPEC = eINSTANCE.getRepresentativeSpec();
+
+		/**
+		 * The meta object literal for the '<em><b>Alias</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute REPRESENTATIVE_SPEC__ALIAS = eINSTANCE.getRepresentativeSpec_Alias();
+
+		/**
+		 * The meta object literal for the '<em><b>Count</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference REPRESENTATIVE_SPEC__COUNT = eINSTANCE.getRepresentativeSpec_Count();
+
+		/**
+		 * The meta object literal for the '<em><b>Offset</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference REPRESENTATIVE_SPEC__OFFSET = eINSTANCE.getRepresentativeSpec_Offset();
+
+		/**
+		 * The meta object literal for the '<em><b>Order By</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference REPRESENTATIVE_SPEC__ORDER_BY = eINSTANCE.getRepresentativeSpec_OrderBy();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.GroupKeyImpl <em>Group Key</em>}' class.
