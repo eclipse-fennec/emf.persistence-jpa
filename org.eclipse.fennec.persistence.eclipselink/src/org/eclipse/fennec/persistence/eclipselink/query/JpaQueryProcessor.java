@@ -42,6 +42,8 @@ import org.eclipse.fennec.model.expression.Exists;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -690,7 +692,83 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (expression instanceof TypeCheck typeCheck) {
 				return renderTypeCheck(typeCheck);
 			}
+			if (expression instanceof IntervalMatch interval) {
+				return renderInterval(interval);
+			}
 			throw new QueryException("Unsupported predicate " + expression.eClass().getName());
+		}
+
+		/**
+		 * Interval predicates (issue #215) as the pair of comparisons the concept defines
+		 * (§A.5.1) — correct, and deliberately not index-accelerated: JPQL has no range
+		 * types, so the fast path stays with the backends that do (concept §A.6).
+		 * <p>
+		 * Two things beyond the plain comparisons. The subject's own boundary convention
+		 * decides whether a shared endpoint counts, which differs per relation: for an
+		 * overlap both sides must include the point, for containment it is enough that the
+		 * covering side does. And an empty subject row — bounds inverted, or equal with an
+		 * exclusive end — matches no relation, which the leading guard enforces so that the
+		 * reference engine and this translation agree.
+		 */
+		private String renderInterval(IntervalMatch interval) throws QueryException {
+			IntervalSubject subject = interval.getSubject();
+			String lowerBound = operand(subject.getPathLower(), null);
+			String upperBound = operand(subject.getPathUpper(), null);
+			EStructuralFeature target = targetOf(subject.getPathLower(), null);
+			String queryLower = operand(interval.getLower(), target);
+			String queryUpper = operand(interval.getUpper(), target);
+			boolean subjectLowerIncluded = subject.isLowerIncluded();
+			boolean subjectUpperIncluded = subject.isUpperIncluded();
+			boolean queryLowerIncluded = interval.isLowerIncluded();
+			boolean queryUpperIncluded = interval.isUpperIncluded();
+			boolean unbounded = subject.isNullMeansUnbounded();
+
+			String nonEmpty = lowerBound + (subjectLowerIncluded && subjectUpperIncluded ? " <= " : " < ")
+					+ upperBound;
+			if (unbounded) {
+				nonEmpty = lowerBound + " IS NULL OR " + upperBound + " IS NULL OR " + nonEmpty;
+			}
+
+			String first;
+			String second;
+			switch (interval.getRelation()) {
+			case INTERSECTS -> {
+				first = intervalBound(lowerBound,
+						subjectLowerIncluded && queryUpperIncluded ? "<=" : "<", queryUpper, unbounded, true);
+				second = intervalBound(upperBound,
+						subjectUpperIncluded && queryLowerIncluded ? ">=" : ">", queryLower, unbounded, true);
+			}
+			case WITHIN -> {
+				first = intervalBound(lowerBound,
+						queryLowerIncluded || !subjectLowerIncluded ? ">=" : ">", queryLower, unbounded, false);
+				second = intervalBound(upperBound,
+						queryUpperIncluded || !subjectUpperIncluded ? "<=" : "<", queryUpper, unbounded, false);
+			}
+			default -> {
+				first = intervalBound(lowerBound,
+						subjectLowerIncluded || !queryLowerIncluded ? "<=" : "<", queryLower, unbounded, true);
+				second = intervalBound(upperBound,
+						subjectUpperIncluded || !queryUpperIncluded ? ">=" : ">", queryUpper, unbounded, true);
+			}
+			}
+			return "((" + nonEmpty + ") AND " + first + " AND " + second + ")";
+		}
+
+		/**
+		 * One bound comparison. Without the unbounded declaration a null bound leaves the
+		 * comparison UNKNOWN, which is what the 3VL discipline wants; with it, an absent
+		 * bound is the infinity that either satisfies the comparison vacuously
+		 * ({@code absentSatisfies}) or rules the row out.
+		 */
+		private String intervalBound(String bound, String operator, String limit, boolean unbounded,
+				boolean absentSatisfies) {
+			String comparison = bound + " " + operator + " " + limit;
+			if (!unbounded) {
+				return "(" + comparison + ")";
+			}
+			return absentSatisfies
+					? "(" + bound + " IS NULL OR " + comparison + ")"
+					: "(" + bound + " IS NOT NULL AND " + comparison + ")";
 		}
 
 		/**

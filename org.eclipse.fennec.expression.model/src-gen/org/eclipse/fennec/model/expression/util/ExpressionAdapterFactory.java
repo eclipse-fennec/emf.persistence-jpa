@@ -174,6 +174,14 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createGeoDistanceAdapter();
 			}
 			@Override
+			public Adapter caseIntervalSubject(IntervalSubject object) {
+				return createIntervalSubjectAdapter();
+			}
+			@Override
+			public Adapter caseIntervalMatch(IntervalMatch object) {
+				return createIntervalMatchAdapter();
+			}
+			@Override
 			public Adapter caseScore(Score object) {
 				return createScoreAdapter();
 			}
@@ -242,12 +250,12 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createIndexOfAdapter();
 			}
 			@Override
-			public Adapter caseMapValue(MapValue object) {
-				return createMapValueAdapter();
-			}
-			@Override
 			public Adapter caseCollectionCount(CollectionCount object) {
 				return createCollectionCountAdapter();
+			}
+			@Override
+			public Adapter caseMapValue(MapValue object) {
+				return createMapValueAdapter();
 			}
 			@Override
 			public Adapter caseTypeCheck(TypeCheck object) {
@@ -622,6 +630,34 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.IntervalSubject <em>Interval Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject
+	 * @generated
+	 */
+	public Adapter createIntervalSubjectAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.IntervalMatch <em>Interval Match</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch
+	 * @generated
+	 */
+	public Adapter createIntervalMatchAdapter() {
+		return null;
+	}
+
+	/**
 	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.Score <em>Score</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
@@ -860,20 +896,6 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
-	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.MapValue <em>Map Value</em>}'.
-	 * <!-- begin-user-doc -->
-	 * This default implementation returns null so that we can easily ignore cases;
-	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
-	 * <!-- end-user-doc -->
-	 * @return the new adapter.
-	 * @see org.eclipse.fennec.model.expression.MapValue
-	 * @generated
-	 */
-	public Adapter createMapValueAdapter() {
-		return null;
-	}
-
-	/**
 	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.CollectionCount <em>Collection Count</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
@@ -884,6 +906,20 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createCollectionCountAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.MapValue <em>Map Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.MapValue
+	 * @generated
+	 */
+	public Adapter createMapValueAdapter() {
 		return null;
 	}
 

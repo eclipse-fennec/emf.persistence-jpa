@@ -215,6 +215,24 @@ public interface ExpressionFactory extends EFactory {
 	GeoDistance createGeoDistance();
 
 	/**
+	 * Returns a new object of class '<em>Interval Subject</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Interval Subject</em>'.
+	 * @generated
+	 */
+	IntervalSubject createIntervalSubject();
+
+	/**
+	 * Returns a new object of class '<em>Interval Match</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Interval Match</em>'.
+	 * @generated
+	 */
+	IntervalMatch createIntervalMatch();
+
+	/**
 	 * Returns a new object of class '<em>Score</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -359,15 +377,6 @@ public interface ExpressionFactory extends EFactory {
 	IndexOf createIndexOf();
 
 	/**
-	 * Returns a new object of class '<em>Map Value</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Map Value</em>'.
-	 * @generated
-	 */
-	MapValue createMapValue();
-
-	/**
 	 * Returns a new object of class '<em>Collection Count</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -375,6 +384,15 @@ public interface ExpressionFactory extends EFactory {
 	 * @generated
 	 */
 	CollectionCount createCollectionCount();
+
+	/**
+	 * Returns a new object of class '<em>Map Value</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Map Value</em>'.
+	 * @generated
+	 */
+	MapValue createMapValue();
 
 	/**
 	 * Returns a new object of class '<em>Type Check</em>'.

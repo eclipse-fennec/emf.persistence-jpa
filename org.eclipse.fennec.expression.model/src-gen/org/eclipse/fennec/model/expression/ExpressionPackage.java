@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:b30e5cef5bba05b705bc4de08105cf5930d63a4433dc6dc9ce4f876f64e883a9", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
+@EPackage(uri = ExpressionPackage.eNS_URI, fingerprint = "fp1:68a6dd3cc3ee2fd188a968c562998631bb6564056e9e2f6c67c6c0c3373cb085", genModel = "/model/expression.genmodel", genModelSourceLocations = {"model/expression.genmodel","org.eclipse.fennec.expression.model/model/expression.genmodel"}, ecore = "/model/expression.ecore", ecoreSourceLocations = "/model/expression.ecore")
 public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -894,7 +894,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getLiteral()
 	 * @generated
 	 */
-	int LITERAL = 26;
+	int LITERAL = 28;
 
 	/**
 	 * The number of structural features of the '<em>Literal</em>' class.
@@ -1219,6 +1219,161 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int GEO_DISTANCE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.IntervalSubjectImpl <em>Interval Subject</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.IntervalSubjectImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntervalSubject()
+	 * @generated
+	 */
+	int INTERVAL_SUBJECT = 24;
+
+	/**
+	 * The feature id for the '<em><b>Lower Included</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT__LOWER_INCLUDED = 0;
+
+	/**
+	 * The feature id for the '<em><b>Upper Included</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT__UPPER_INCLUDED = 1;
+
+	/**
+	 * The feature id for the '<em><b>Null Means Unbounded</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT__NULL_MEANS_UNBOUNDED = 2;
+
+	/**
+	 * The feature id for the '<em><b>Path Lower</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT__PATH_LOWER = 3;
+
+	/**
+	 * The feature id for the '<em><b>Path Upper</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT__PATH_UPPER = 4;
+
+	/**
+	 * The number of structural features of the '<em>Interval Subject</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT_FEATURE_COUNT = 5;
+
+	/**
+	 * The number of operations of the '<em>Interval Subject</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_SUBJECT_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.IntervalMatchImpl <em>Interval Match</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.IntervalMatchImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntervalMatch()
+	 * @generated
+	 */
+	int INTERVAL_MATCH = 25;
+
+	/**
+	 * The feature id for the '<em><b>Relation</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH__RELATION = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Lower Included</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH__LOWER_INCLUDED = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Upper Included</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH__UPPER_INCLUDED = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The feature id for the '<em><b>Subject</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH__SUBJECT = EXPRESSION_FEATURE_COUNT + 3;
+
+	/**
+	 * The feature id for the '<em><b>Lower</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH__LOWER = EXPRESSION_FEATURE_COUNT + 4;
+
+	/**
+	 * The feature id for the '<em><b>Upper</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH__UPPER = EXPRESSION_FEATURE_COUNT + 5;
+
+	/**
+	 * The number of structural features of the '<em>Interval Match</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 6;
+
+	/**
+	 * The number of operations of the '<em>Interval Match</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int INTERVAL_MATCH_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.ScoreImpl <em>Score</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1226,7 +1381,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getScore()
 	 * @generated
 	 */
-	int SCORE = 24;
+	int SCORE = 26;
 
 	/**
 	 * The number of structural features of the '<em>Score</em>' class.
@@ -1254,7 +1409,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getParameterRef()
 	 * @generated
 	 */
-	int PARAMETER_REF = 25;
+	int PARAMETER_REF = 27;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1291,7 +1446,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringLiteral()
 	 * @generated
 	 */
-	int STRING_LITERAL = 27;
+	int STRING_LITERAL = 29;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1328,7 +1483,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntegerLiteral()
 	 * @generated
 	 */
-	int INTEGER_LITERAL = 28;
+	int INTEGER_LITERAL = 30;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1365,7 +1520,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getRealLiteral()
 	 * @generated
 	 */
-	int REAL_LITERAL = 29;
+	int REAL_LITERAL = 31;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1402,7 +1557,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getBooleanLiteral()
 	 * @generated
 	 */
-	int BOOLEAN_LITERAL = 30;
+	int BOOLEAN_LITERAL = 32;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1439,7 +1594,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNullLiteral()
 	 * @generated
 	 */
-	int NULL_LITERAL = 31;
+	int NULL_LITERAL = 33;
 
 	/**
 	 * The number of structural features of the '<em>Null Literal</em>' class.
@@ -1467,7 +1622,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getEnumLiteral()
 	 * @generated
 	 */
-	int ENUM_LITERAL = 32;
+	int ENUM_LITERAL = 34;
 
 	/**
 	 * The feature id for the '<em><b>Literal Name</b></em>' attribute.
@@ -1504,7 +1659,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalLiteral()
 	 * @generated
 	 */
-	int TEMPORAL_LITERAL = 33;
+	int TEMPORAL_LITERAL = 35;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1550,7 +1705,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getGuidLiteral()
 	 * @generated
 	 */
-	int GUID_LITERAL = 34;
+	int GUID_LITERAL = 36;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' attribute.
@@ -1587,7 +1742,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getDurationLiteral()
 	 * @generated
 	 */
-	int DURATION_LITERAL = 35;
+	int DURATION_LITERAL = 37;
 
 	/**
 	 * The feature id for the '<em><b>Iso8601</b></em>' attribute.
@@ -1624,7 +1779,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunction()
 	 * @generated
 	 */
-	int STRING_FUNCTION = 36;
+	int STRING_FUNCTION = 38;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -1670,7 +1825,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmetic()
 	 * @generated
 	 */
-	int ARITHMETIC = 37;
+	int ARITHMETIC = 39;
 
 	/**
 	 * The feature id for the '<em><b>Operator</b></em>' attribute.
@@ -1725,7 +1880,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNegate()
 	 * @generated
 	 */
-	int NEGATE = 38;
+	int NEGATE = 40;
 
 	/**
 	 * The feature id for the '<em><b>Operand</b></em>' containment reference.
@@ -1762,7 +1917,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getConcat()
 	 * @generated
 	 */
-	int CONCAT = 39;
+	int CONCAT = 41;
 
 	/**
 	 * The feature id for the '<em><b>Parts</b></em>' containment reference list.
@@ -1799,7 +1954,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIndexOf()
 	 * @generated
 	 */
-	int INDEX_OF = 40;
+	int INDEX_OF = 42;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1838,52 +1993,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int INDEX_OF_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.MapValueImpl <em>Map Value</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.model.expression.impl.MapValueImpl
-	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getMapValue()
-	 * @generated
-	 */
-	int MAP_VALUE = 41;
-
-	/**
-	 * The feature id for the '<em><b>Map</b></em>' containment reference.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MAP_VALUE__MAP = EXPRESSION_FEATURE_COUNT + 0;
-
-	/**
-	 * The feature id for the '<em><b>Key</b></em>' containment reference.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MAP_VALUE__KEY = EXPRESSION_FEATURE_COUNT + 1;
-
-	/**
-	 * The number of structural features of the '<em>Map Value</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MAP_VALUE_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
-
-	/**
-	 * The number of operations of the '<em>Map Value</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MAP_VALUE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
-
-	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.CollectionCountImpl <em>Collection Count</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1891,7 +2000,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getCollectionCount()
 	 * @generated
 	 */
-	int COLLECTION_COUNT = 42;
+	int COLLECTION_COUNT = 43;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1939,6 +2048,52 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	int COLLECTION_COUNT_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.MapValueImpl <em>Map Value</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.impl.MapValueImpl
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getMapValue()
+	 * @generated
+	 */
+	int MAP_VALUE = 44;
+
+	/**
+	 * The feature id for the '<em><b>Map</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE__MAP = EXPRESSION_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Key</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE__KEY = EXPRESSION_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of structural features of the '<em>Map Value</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE_FEATURE_COUNT = EXPRESSION_FEATURE_COUNT + 2;
+
+	/**
+	 * The number of operations of the '<em>Map Value</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int MAP_VALUE_OPERATION_COUNT = EXPRESSION_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.impl.TypeCheckImpl <em>Type Check</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1946,7 +2101,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTypeCheck()
 	 * @generated
 	 */
-	int TYPE_CHECK = 43;
+	int TYPE_CHECK = 45;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -1992,7 +2147,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunction()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION = 44;
+	int NUMERIC_FUNCTION = 46;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -2038,7 +2193,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunction()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION = 45;
+	int TEMPORAL_FUNCTION = 47;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -2084,7 +2239,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getSubstring()
 	 * @generated
 	 */
-	int SUBSTRING = 46;
+	int SUBSTRING = 48;
 
 	/**
 	 * The feature id for the '<em><b>Source</b></em>' containment reference.
@@ -2139,7 +2294,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getComparisonOperator()
 	 * @generated
 	 */
-	int COMPARISON_OPERATOR = 47;
+	int COMPARISON_OPERATOR = 49;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringMatchKind <em>String Match Kind</em>}' enum.
@@ -2149,7 +2304,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringMatchKind()
 	 * @generated
 	 */
-	int STRING_MATCH_KIND = 48;
+	int STRING_MATCH_KIND = 50;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.StringFunctionKind <em>String Function Kind</em>}' enum.
@@ -2159,7 +2314,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getStringFunctionKind()
 	 * @generated
 	 */
-	int STRING_FUNCTION_KIND = 49;
+	int STRING_FUNCTION_KIND = 51;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalFunctionKind <em>Temporal Function Kind</em>}' enum.
@@ -2169,7 +2324,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalFunctionKind()
 	 * @generated
 	 */
-	int TEMPORAL_FUNCTION_KIND = 50;
+	int TEMPORAL_FUNCTION_KIND = 52;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.NumericFunctionKind <em>Numeric Function Kind</em>}' enum.
@@ -2179,7 +2334,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getNumericFunctionKind()
 	 * @generated
 	 */
-	int NUMERIC_FUNCTION_KIND = 51;
+	int NUMERIC_FUNCTION_KIND = 53;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.ArithmeticOperator <em>Arithmetic Operator</em>}' enum.
@@ -2189,7 +2344,7 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getArithmeticOperator()
 	 * @generated
 	 */
-	int ARITHMETIC_OPERATOR = 52;
+	int ARITHMETIC_OPERATOR = 54;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.TemporalKind <em>Temporal Kind</em>}' enum.
@@ -2199,7 +2354,17 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getTemporalKind()
 	 * @generated
 	 */
-	int TEMPORAL_KIND = 53;
+	int TEMPORAL_KIND = 55;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.expression.IntervalRelation <em>Interval Relation</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.expression.IntervalRelation
+	 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntervalRelation()
+	 * @generated
+	 */
+	int INTERVAL_RELATION = 56;
 
 
 	/**
@@ -2894,6 +3059,147 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getGeoDistance_Point();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.IntervalSubject <em>Interval Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Interval Subject</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject
+	 * @generated
+	 */
+	EClass getIntervalSubject();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntervalSubject#isLowerIncluded <em>Lower Included</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Lower Included</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject#isLowerIncluded()
+	 * @see #getIntervalSubject()
+	 * @generated
+	 */
+	EAttribute getIntervalSubject_LowerIncluded();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntervalSubject#isUpperIncluded <em>Upper Included</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Upper Included</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject#isUpperIncluded()
+	 * @see #getIntervalSubject()
+	 * @generated
+	 */
+	EAttribute getIntervalSubject_UpperIncluded();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntervalSubject#isNullMeansUnbounded <em>Null Means Unbounded</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Null Means Unbounded</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject#isNullMeansUnbounded()
+	 * @see #getIntervalSubject()
+	 * @generated
+	 */
+	EAttribute getIntervalSubject_NullMeansUnbounded();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IntervalSubject#getPathLower <em>Path Lower</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Path Lower</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject#getPathLower()
+	 * @see #getIntervalSubject()
+	 * @generated
+	 */
+	EReference getIntervalSubject_PathLower();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IntervalSubject#getPathUpper <em>Path Upper</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Path Upper</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalSubject#getPathUpper()
+	 * @see #getIntervalSubject()
+	 * @generated
+	 */
+	EReference getIntervalSubject_PathUpper();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.IntervalMatch <em>Interval Match</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Interval Match</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch
+	 * @generated
+	 */
+	EClass getIntervalMatch();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntervalMatch#getRelation <em>Relation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Relation</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch#getRelation()
+	 * @see #getIntervalMatch()
+	 * @generated
+	 */
+	EAttribute getIntervalMatch_Relation();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntervalMatch#isLowerIncluded <em>Lower Included</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Lower Included</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch#isLowerIncluded()
+	 * @see #getIntervalMatch()
+	 * @generated
+	 */
+	EAttribute getIntervalMatch_LowerIncluded();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.expression.IntervalMatch#isUpperIncluded <em>Upper Included</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Upper Included</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch#isUpperIncluded()
+	 * @see #getIntervalMatch()
+	 * @generated
+	 */
+	EAttribute getIntervalMatch_UpperIncluded();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IntervalMatch#getSubject <em>Subject</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Subject</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch#getSubject()
+	 * @see #getIntervalMatch()
+	 * @generated
+	 */
+	EReference getIntervalMatch_Subject();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IntervalMatch#getLower <em>Lower</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Lower</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch#getLower()
+	 * @see #getIntervalMatch()
+	 * @generated
+	 */
+	EReference getIntervalMatch_Lower();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.IntervalMatch#getUpper <em>Upper</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Upper</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalMatch#getUpper()
+	 * @see #getIntervalMatch()
+	 * @generated
+	 */
+	EReference getIntervalMatch_Upper();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.Score <em>Score</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -3273,38 +3579,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getIndexOf_Search();
 
 	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.MapValue <em>Map Value</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Map Value</em>'.
-	 * @see org.eclipse.fennec.model.expression.MapValue
-	 * @generated
-	 */
-	EClass getMapValue();
-
-	/**
-	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.MapValue#getMap <em>Map</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the containment reference '<em>Map</em>'.
-	 * @see org.eclipse.fennec.model.expression.MapValue#getMap()
-	 * @see #getMapValue()
-	 * @generated
-	 */
-	EReference getMapValue_Map();
-
-	/**
-	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.MapValue#getKey <em>Key</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the containment reference '<em>Key</em>'.
-	 * @see org.eclipse.fennec.model.expression.MapValue#getKey()
-	 * @see #getMapValue()
-	 * @generated
-	 */
-	EReference getMapValue_Key();
-
-	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.CollectionCount <em>Collection Count</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -3346,6 +3620,38 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getCollectionCount_Predicate();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.MapValue <em>Map Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Map Value</em>'.
+	 * @see org.eclipse.fennec.model.expression.MapValue
+	 * @generated
+	 */
+	EClass getMapValue();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.MapValue#getMap <em>Map</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Map</em>'.
+	 * @see org.eclipse.fennec.model.expression.MapValue#getMap()
+	 * @see #getMapValue()
+	 * @generated
+	 */
+	EReference getMapValue_Map();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.expression.MapValue#getKey <em>Key</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Key</em>'.
+	 * @see org.eclipse.fennec.model.expression.MapValue#getKey()
+	 * @see #getMapValue()
+	 * @generated
+	 */
+	EReference getMapValue_Key();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.expression.TypeCheck <em>Type Check</em>}'.
@@ -3555,6 +3861,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getTemporalKind();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.expression.IntervalRelation <em>Interval Relation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Interval Relation</em>'.
+	 * @see org.eclipse.fennec.model.expression.IntervalRelation
+	 * @generated
+	 */
+	EEnum getIntervalRelation();
 
 	/**
 	 * Returns the factory that creates the instances of the model.
@@ -4148,6 +4464,114 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference GEO_DISTANCE__POINT = eINSTANCE.getGeoDistance_Point();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.IntervalSubjectImpl <em>Interval Subject</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.IntervalSubjectImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntervalSubject()
+		 * @generated
+		 */
+		EClass INTERVAL_SUBJECT = eINSTANCE.getIntervalSubject();
+
+		/**
+		 * The meta object literal for the '<em><b>Lower Included</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTERVAL_SUBJECT__LOWER_INCLUDED = eINSTANCE.getIntervalSubject_LowerIncluded();
+
+		/**
+		 * The meta object literal for the '<em><b>Upper Included</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTERVAL_SUBJECT__UPPER_INCLUDED = eINSTANCE.getIntervalSubject_UpperIncluded();
+
+		/**
+		 * The meta object literal for the '<em><b>Null Means Unbounded</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTERVAL_SUBJECT__NULL_MEANS_UNBOUNDED = eINSTANCE.getIntervalSubject_NullMeansUnbounded();
+
+		/**
+		 * The meta object literal for the '<em><b>Path Lower</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INTERVAL_SUBJECT__PATH_LOWER = eINSTANCE.getIntervalSubject_PathLower();
+
+		/**
+		 * The meta object literal for the '<em><b>Path Upper</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INTERVAL_SUBJECT__PATH_UPPER = eINSTANCE.getIntervalSubject_PathUpper();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.IntervalMatchImpl <em>Interval Match</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.IntervalMatchImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntervalMatch()
+		 * @generated
+		 */
+		EClass INTERVAL_MATCH = eINSTANCE.getIntervalMatch();
+
+		/**
+		 * The meta object literal for the '<em><b>Relation</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTERVAL_MATCH__RELATION = eINSTANCE.getIntervalMatch_Relation();
+
+		/**
+		 * The meta object literal for the '<em><b>Lower Included</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTERVAL_MATCH__LOWER_INCLUDED = eINSTANCE.getIntervalMatch_LowerIncluded();
+
+		/**
+		 * The meta object literal for the '<em><b>Upper Included</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute INTERVAL_MATCH__UPPER_INCLUDED = eINSTANCE.getIntervalMatch_UpperIncluded();
+
+		/**
+		 * The meta object literal for the '<em><b>Subject</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INTERVAL_MATCH__SUBJECT = eINSTANCE.getIntervalMatch_Subject();
+
+		/**
+		 * The meta object literal for the '<em><b>Lower</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INTERVAL_MATCH__LOWER = eINSTANCE.getIntervalMatch_Lower();
+
+		/**
+		 * The meta object literal for the '<em><b>Upper</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference INTERVAL_MATCH__UPPER = eINSTANCE.getIntervalMatch_Upper();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.ScoreImpl <em>Score</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -4470,32 +4894,6 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference INDEX_OF__SEARCH = eINSTANCE.getIndexOf_Search();
 
 		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.MapValueImpl <em>Map Value</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.model.expression.impl.MapValueImpl
-		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getMapValue()
-		 * @generated
-		 */
-		EClass MAP_VALUE = eINSTANCE.getMapValue();
-
-		/**
-		 * The meta object literal for the '<em><b>Map</b></em>' containment reference feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EReference MAP_VALUE__MAP = eINSTANCE.getMapValue_Map();
-
-		/**
-		 * The meta object literal for the '<em><b>Key</b></em>' containment reference feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EReference MAP_VALUE__KEY = eINSTANCE.getMapValue_Key();
-
-		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.CollectionCountImpl <em>Collection Count</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -4528,6 +4926,32 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference COLLECTION_COUNT__PREDICATE = eINSTANCE.getCollectionCount_Predicate();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.MapValueImpl <em>Map Value</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.impl.MapValueImpl
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getMapValue()
+		 * @generated
+		 */
+		EClass MAP_VALUE = eINSTANCE.getMapValue();
+
+		/**
+		 * The meta object literal for the '<em><b>Map</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference MAP_VALUE__MAP = eINSTANCE.getMapValue_Map();
+
+		/**
+		 * The meta object literal for the '<em><b>Key</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference MAP_VALUE__KEY = eINSTANCE.getMapValue_Key();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.impl.TypeCheckImpl <em>Type Check</em>}' class.
@@ -4710,6 +5134,16 @@ public interface ExpressionPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum TEMPORAL_KIND = eINSTANCE.getTemporalKind();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.expression.IntervalRelation <em>Interval Relation</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.expression.IntervalRelation
+		 * @see org.eclipse.fennec.model.expression.impl.ExpressionPackageImpl#getIntervalRelation()
+		 * @generated
+		 */
+		EEnum INTERVAL_RELATION = eINSTANCE.getIntervalRelation();
 
 	}
 

@@ -245,6 +245,19 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.INTERVAL_SUBJECT: {
+				IntervalSubject intervalSubject = (IntervalSubject)theEObject;
+				T result = caseIntervalSubject(intervalSubject);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ExpressionPackage.INTERVAL_MATCH: {
+				IntervalMatch intervalMatch = (IntervalMatch)theEObject;
+				T result = caseIntervalMatch(intervalMatch);
+				if (result == null) result = caseExpression(intervalMatch);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.SCORE: {
 				Score score = (Score)theEObject;
 				T result = caseScore(score);
@@ -373,17 +386,17 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
-			case ExpressionPackage.MAP_VALUE: {
-				MapValue mapValue = (MapValue)theEObject;
-				T result = caseMapValue(mapValue);
-				if (result == null) result = caseExpression(mapValue);
-				if (result == null) result = defaultCase(theEObject);
-				return result;
-			}
 			case ExpressionPackage.COLLECTION_COUNT: {
 				CollectionCount collectionCount = (CollectionCount)theEObject;
 				T result = caseCollectionCount(collectionCount);
 				if (result == null) result = caseExpression(collectionCount);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ExpressionPackage.MAP_VALUE: {
+				MapValue mapValue = (MapValue)theEObject;
+				T result = caseMapValue(mapValue);
+				if (result == null) result = caseExpression(mapValue);
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
@@ -780,6 +793,36 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	}
 
 	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Interval Subject</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Interval Subject</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseIntervalSubject(IntervalSubject object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Interval Match</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Interval Match</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseIntervalMatch(IntervalMatch object) {
+		return null;
+	}
+
+	/**
 	 * Returns the result of interpreting the object as an instance of '<em>Score</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
@@ -1035,21 +1078,6 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Map Value</em>'.
-	 * <!-- begin-user-doc -->
-	 * This implementation returns null;
-	 * returning a non-null result will terminate the switch.
-	 * <!-- end-user-doc -->
-	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Map Value</em>'.
-	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-	 * @generated
-	 */
-	public T caseMapValue(MapValue object) {
-		return null;
-	}
-
-	/**
 	 * Returns the result of interpreting the object as an instance of '<em>Collection Count</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
@@ -1061,6 +1089,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseCollectionCount(CollectionCount object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Map Value</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Map Value</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseMapValue(MapValue object) {
 		return null;
 	}
 

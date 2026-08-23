@@ -78,6 +78,7 @@ public final class JpaFlavorCapabilities {
 					QueryFeature.AGG_AVG, QueryFeature.AGG_MIN, QueryFeature.AGG_MAX, QueryFeature.AGG_SUM,
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
 					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED, QueryFeature.MAP_VALUE,
+					QueryFeature.INTERVAL_MATCH,
 					QueryFeature.EXPAND)
 			.maxFeaturePathDepth(-1)
 			.build();

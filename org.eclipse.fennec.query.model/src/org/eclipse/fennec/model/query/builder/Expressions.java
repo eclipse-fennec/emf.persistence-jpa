@@ -45,6 +45,9 @@ import org.eclipse.fennec.model.expression.GeoPolygon;
 import org.eclipse.fennec.model.expression.GeoShape;
 import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.GeoWithin;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalRelation;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.ForAll;
@@ -322,6 +325,126 @@ public final class Expressions {
 		distance.setSubject(Objects.requireNonNull(subject, "subject must not be null"));
 		distance.setPoint(Objects.requireNonNull(point, "point must not be null"));
 		return new ArithmeticStep(distance);
+	}
+
+	// ==================== intervals (issue #215) ====================
+
+	/**
+	 * The interval binding: the pair of features that together form one interval. Closed on
+	 * both ends, and an unset bound leaves the predicate UNKNOWN — the defaults that fit a
+	 * measurement range. Temporal models usually want
+	 * {@link #intervalSubject(PropertyPath, PropertyPath, boolean, boolean, boolean)}.
+	 *
+	 * @param lowerPath the lower-bound feature path, root first
+	 * @param upperPath the upper-bound feature path, root first
+	 * @return the interval subject
+	 */
+	public static IntervalSubject intervalSubject(PropertyPath lowerPath, PropertyPath upperPath) {
+		IntervalSubject subject = FACTORY.createIntervalSubject();
+		subject.setPathLower(Objects.requireNonNull(lowerPath, "lowerPath must not be null"));
+		subject.setPathUpper(Objects.requireNonNull(upperPath, "upperPath must not be null"));
+		return subject;
+	}
+
+	/**
+	 * The interval binding with the conventions of the stored data spelled out. These
+	 * describe the DATA, not the question: a half-open validity period is
+	 * {@code (…, true, false, true)} — the upper bound is not part of the period, so
+	 * adjacent periods do not overlap, and an unset end means "still valid".
+	 *
+	 * @param lowerPath the lower-bound feature path, root first
+	 * @param upperPath the upper-bound feature path, root first
+	 * @param lowerIncluded whether the stored lower bound belongs to the interval
+	 * @param upperIncluded whether the stored upper bound belongs to the interval
+	 * @param nullMeansUnbounded whether an unset bound is an infinity rather than UNKNOWN
+	 * @return the interval subject
+	 */
+	public static IntervalSubject intervalSubject(PropertyPath lowerPath, PropertyPath upperPath,
+			boolean lowerIncluded, boolean upperIncluded, boolean nullMeansUnbounded) {
+		IntervalSubject subject = intervalSubject(lowerPath, upperPath);
+		subject.setLowerIncluded(lowerIncluded);
+		subject.setUpperIncluded(upperIncluded);
+		subject.setNullMeansUnbounded(nullMeansUnbounded);
+		return subject;
+	}
+
+	/**
+	 * The subject and the given interval overlap at all (capability
+	 * {@code INTERVAL_MATCH}) — the common question, "valid at some point in [lower, upper]".
+	 *
+	 * @param subject the interval binding
+	 * @param lower the query interval's lower bound (value, literal or parameter)
+	 * @param upper the query interval's upper bound
+	 * @return the predicate
+	 */
+	public static IntervalMatch intersects(IntervalSubject subject, Object lower, Object upper) {
+		return intervalMatch(IntervalRelation.INTERSECTS, subject, lower, upper);
+	}
+
+	/**
+	 * The subject lies inside the given interval (capability {@code INTERVAL_MATCH}).
+	 *
+	 * @param subject the interval binding
+	 * @param lower the query interval's lower bound (value, literal or parameter)
+	 * @param upper the query interval's upper bound
+	 * @return the predicate
+	 */
+	public static IntervalMatch intervalWithin(IntervalSubject subject, Object lower, Object upper) {
+		return intervalMatch(IntervalRelation.WITHIN, subject, lower, upper);
+	}
+
+	/**
+	 * The subject covers the given interval (capability {@code INTERVAL_MATCH}).
+	 *
+	 * @param subject the interval binding
+	 * @param lower the query interval's lower bound (value, literal or parameter)
+	 * @param upper the query interval's upper bound
+	 * @return the predicate
+	 */
+	public static IntervalMatch intervalContains(IntervalSubject subject, Object lower, Object upper) {
+		return intervalMatch(IntervalRelation.CONTAINS, subject, lower, upper);
+	}
+
+	/**
+	 * The subject covers a single point — "valid at t", the degenerate form of
+	 * {@link #intervalContains(IntervalSubject, Object, Object)}.
+	 *
+	 * @param subject the interval binding
+	 * @param point the point in time or value (value, literal or parameter)
+	 * @return the predicate
+	 */
+	public static IntervalMatch intervalAt(IntervalSubject subject, Object point) {
+		return intervalMatch(IntervalRelation.CONTAINS, subject, point, point);
+	}
+
+	/**
+	 * The general form, with the boundary convention of the QUESTION — the subject carries
+	 * the convention of the data.
+	 *
+	 * @param relation the relation to test
+	 * @param subject the interval binding
+	 * @param lower the query interval's lower bound (value, literal or parameter)
+	 * @param upper the query interval's upper bound
+	 * @param lowerIncluded whether the query interval includes its lower bound
+	 * @param upperIncluded whether the query interval includes its upper bound
+	 * @return the predicate
+	 */
+	public static IntervalMatch intervalMatch(IntervalRelation relation, IntervalSubject subject,
+			Object lower, Object upper, boolean lowerIncluded, boolean upperIncluded) {
+		IntervalMatch match = intervalMatch(relation, subject, lower, upper);
+		match.setLowerIncluded(lowerIncluded);
+		match.setUpperIncluded(upperIncluded);
+		return match;
+	}
+
+	private static IntervalMatch intervalMatch(IntervalRelation relation, IntervalSubject subject,
+			Object lower, Object upper) {
+		IntervalMatch match = FACTORY.createIntervalMatch();
+		match.setRelation(Objects.requireNonNull(relation, "relation must not be null"));
+		match.setSubject(Objects.requireNonNull(subject, "subject must not be null"));
+		match.setLower(value(lower));
+		match.setUpper(value(upper));
+		return match;
 	}
 
 	// ==================== quantifiers ====================

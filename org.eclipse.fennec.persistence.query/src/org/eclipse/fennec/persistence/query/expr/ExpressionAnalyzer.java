@@ -12,10 +12,17 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.query.expr;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.Temporal;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.AliasRef;
@@ -36,6 +43,8 @@ import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -53,6 +62,7 @@ import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
@@ -190,8 +200,11 @@ public final class ExpressionAnalyzer {
 		String invalidStringMatch = features.contains(QueryFeature.WHERE_STRING_MATCH)
 				? scanStringMatches(query) : null;
 		String invalidMapValue = features.contains(QueryFeature.MAP_VALUE) ? scanMapValues(query) : null;
+		String invalidInterval = features.contains(QueryFeature.INTERVAL_MATCH)
+				? scanIntervalStructure(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
-				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection[0]);
+				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection[0],
+				invalidInterval);
 	}
 
 	/**
@@ -453,6 +466,11 @@ public final class ExpressionAnalyzer {
 		} else if (expression instanceof GeoDistance geoDistance) {
 			features.add(QueryFeature.GEO_DISTANCE);
 			subjectPaths(geoDistance.getSubject(), features, maxDepth);
+		} else if (expression instanceof IntervalMatch intervalMatch) {
+			features.add(QueryFeature.INTERVAL_MATCH);
+			subjectPaths(intervalMatch.getSubject(), features, maxDepth);
+			walk(intervalMatch.getLower(), features, maxDepth, zeroDivision);
+			walk(intervalMatch.getUpper(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof PropertyPath propertyPath) {
 			if (propertyPath.getCastBase() != null) {
 				features.add(QueryFeature.TYPE_CAST);
@@ -475,6 +493,19 @@ public final class ExpressionAnalyzer {
 		}
 		if (subject.getPathPoint() != null) {
 			path(subject.getPathPoint(), features, maxDepth);
+		}
+	}
+
+	/** Registers the subject's two bound paths (issue #215). */
+	private static void subjectPaths(IntervalSubject subject, Set<QueryFeature> features, int[] maxDepth) {
+		if (subject == null) {
+			return;
+		}
+		if (subject.getPathLower() != null) {
+			path(subject.getPathLower(), features, maxDepth);
+		}
+		if (subject.getPathUpper() != null) {
+			path(subject.getPathUpper(), features, maxDepth);
 		}
 	}
 
@@ -514,6 +545,133 @@ public final class ExpressionAnalyzer {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Structural interval validation (issue #215): a subject binds both bound paths, both
+	 * end in an attribute of the same domain, and a query interval given by two literals is
+	 * not inverted. First finding wins.
+	 * <p>
+	 * The inversion check is deliberately static-only. An inverted subject <em>row</em> is
+	 * data, not shape — it is the empty interval and matches no relation (concept §A.5.3),
+	 * which the evaluators enforce, not the analyzer.
+	 */
+	private static String scanIntervalStructure(Query query) {
+		var iterator = query.eAllContents();
+		while (iterator.hasNext()) {
+			Object content = iterator.next();
+			if (content instanceof IntervalSubject subject) {
+				String finding = scanIntervalSubject(subject);
+				if (finding != null) {
+					return finding;
+				}
+			} else if (content instanceof IntervalMatch match
+					&& isInverted(match.getLower(), match.getUpper())) {
+				return "IntervalMatch query interval is inverted — its lower bound is greater "
+						+ "than its upper bound, so it can never match";
+			}
+		}
+		return null;
+	}
+
+	/** The three subject rules of the interval scan. */
+	private static String scanIntervalSubject(IntervalSubject subject) {
+		if (subject.getPathLower() == null || subject.getPathUpper() == null) {
+			return "IntervalSubject must bind both bound paths (pathLower and pathUpper)";
+		}
+		EStructuralFeature lower = lastSegment(subject.getPathLower());
+		EStructuralFeature upper = lastSegment(subject.getPathUpper());
+		if (!(lower instanceof EAttribute lowerAttribute) || !(upper instanceof EAttribute upperAttribute)) {
+			return "IntervalSubject bound paths must end in an attribute — a reference is not an "
+					+ "ordered bound";
+		}
+		String lowerDomain = domainOf(lowerAttribute);
+		String upperDomain = domainOf(upperAttribute);
+		if (lowerDomain != null && upperDomain != null && !lowerDomain.equals(upperDomain)) {
+			return "IntervalSubject bounds are of different domains: " + lowerAttribute.getName() + " is "
+					+ lowerDomain + ", " + upperAttribute.getName() + " is " + upperDomain;
+		}
+		return null;
+	}
+
+	private static EStructuralFeature lastSegment(PropertyPath path) {
+		var segments = path.getSegments();
+		return segments.isEmpty() ? null : segments.get(segments.size() - 1);
+	}
+
+	/**
+	 * The comparable domain of a bound attribute — {@code null} when the instance class is
+	 * unknown (dynamic EDataTypes), in which case the pair is not judged rather than
+	 * refused on a guess.
+	 */
+	private static String domainOf(EAttribute attribute) {
+		Class<?> instanceClass = attribute.getEAttributeType() == null
+				? null
+				: attribute.getEAttributeType().getInstanceClass();
+		if (instanceClass == null) {
+			return null;
+		}
+		if (Number.class.isAssignableFrom(instanceClass) || instanceClass.isPrimitive()) {
+			return instanceClass == boolean.class || instanceClass == char.class ? null : "numeric";
+		}
+		if (Temporal.class.isAssignableFrom(instanceClass) || Date.class.isAssignableFrom(instanceClass)) {
+			return "temporal";
+		}
+		if (CharSequence.class.isAssignableFrom(instanceClass)) {
+			return "textual";
+		}
+		return null;
+	}
+
+	/** Whether two literal bounds are the wrong way round (numeric or same-kind temporal). */
+	private static boolean isInverted(Expression lower, Expression upper) {
+		Double lowerNumber = numberOf(lower);
+		Double upperNumber = numberOf(upper);
+		if (lowerNumber != null && upperNumber != null) {
+			return lowerNumber > upperNumber;
+		}
+		if (lower instanceof TemporalLiteral lowerTemporal && upper instanceof TemporalLiteral upperTemporal
+				&& lowerTemporal.getKind() == upperTemporal.getKind()) {
+			return isInvertedTemporal(lowerTemporal, upperTemporal);
+		}
+		return false;
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static boolean isInvertedTemporal(TemporalLiteral lower, TemporalLiteral upper) {
+		Object lowerValue = temporalOf(lower);
+		Object upperValue = temporalOf(upper);
+		if (lowerValue == null || upperValue == null || !lowerValue.getClass().equals(upperValue.getClass())) {
+			return false;
+		}
+		return ((Comparable) lowerValue).compareTo(upperValue) > 0;
+	}
+
+	private static Double numberOf(Expression expression) {
+		if (expression instanceof IntegerLiteral integer) {
+			return (double) integer.getValue();
+		}
+		if (expression instanceof RealLiteral real) {
+			return real.getValue();
+		}
+		return null;
+	}
+
+	/**
+	 * The parsed temporal value, or {@code null} when the text does not parse — a malformed
+	 * literal is the translation layer's diagnostic, not this one's.
+	 */
+	private static Object temporalOf(TemporalLiteral literal) {
+		try {
+			return switch (literal.getKind()) {
+				case DATE -> LocalDate.parse(literal.getValue());
+				case TIME -> LocalTime.parse(literal.getValue());
+				case DATE_TIME -> LocalDateTime.parse(literal.getValue());
+				case INSTANT -> Instant.parse(literal.getValue());
+			};
+		} catch (RuntimeException e) {
+			return null;
+		}
 	}
 
 	/** Whether the divisor is a literal zero (statically refusable, issue #76). */

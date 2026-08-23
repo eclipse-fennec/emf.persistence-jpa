@@ -698,6 +698,19 @@ public enum QueryFeature implements Enumerator {
 	PARAMETERS(83, "PARAMETERS", "PARAMETERS"),
 
 	/**
+	 * The '<em><b>INTERVAL MATCH</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Interval predicates over a declared pair of bounds — INTERSECTS/WITHIN/CONTAINS (issue #215). One literal for all three relations: a capability splits when a backend exists that can answer the halves differently, and none does — Lucene serves all three natively, PostgreSQL range types serve all three, and the two-comparison fallback serves all three. Declares CORRECTNESS, never index usage: every backend can serve this vocabulary through two scalar comparisons, and whether a plan touched a range index is the subject of issue #199. Value 82 is an unassigned gap in this sequence and stays unused.
+	 * <!-- end-model-doc -->
+	 * @see #INTERVAL_MATCH_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	INTERVAL_MATCH(84, "INTERVAL_MATCH", "INTERVAL_MATCH"),
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1425,6 +1438,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int PARAMETERS_VALUE = 83;
 
 	/**
+	 * The '<em><b>INTERVAL MATCH</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Interval predicates over a declared pair of bounds — INTERSECTS/WITHIN/CONTAINS (issue #215). One literal for all three relations: a capability splits when a backend exists that can answer the halves differently, and none does — Lucene serves all three natively, PostgreSQL range types serve all three, and the two-comparison fallback serves all three. Declares CORRECTNESS, never index usage: every backend can serve this vocabulary through two scalar comparisons, and whether a plan touched a range index is the subject of issue #199. Value 82 is an unassigned gap in this sequence and stays unused.
+	 * <!-- end-model-doc -->
+	 * @see #INTERVAL_MATCH
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int INTERVAL_MATCH_VALUE = 84;
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1497,6 +1524,7 @@ public enum QueryFeature implements Enumerator {
 			FEATUREPATH_NESTED,
 			TYPE_FILTER,
 			PARAMETERS,
+			INTERVAL_MATCH,
 			AS_OF,
 		};
 
@@ -1605,6 +1633,7 @@ public enum QueryFeature implements Enumerator {
 			case FEATUREPATH_NESTED_VALUE: return FEATUREPATH_NESTED;
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;
+			case INTERVAL_MATCH_VALUE: return INTERVAL_MATCH;
 			case AS_OF_VALUE: return AS_OF;
 		}
 		return null;

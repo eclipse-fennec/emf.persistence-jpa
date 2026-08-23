@@ -100,14 +100,14 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//StringMatchKind"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="caseInsensitive" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
         defaultValueLiteral="false"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxEdits" unsettable="true"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="2">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxEdits" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="2" unsettable="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The Damerau-Levenshtein edit budget for kind FUZZY (issue #167): 1 or 2, default 2 (mirroring Lucene). Meaningful only for FUZZY — set on any other kind the validator refuses the query by shape. Unsettable so that &quot;explicitly configured&quot; is distinguishable from the default."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="prefixLength" unsettable="true"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="0">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="prefixLength" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="0" unsettable="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Leading characters that must match exactly for kind FUZZY (issue #167) — the knob that keeps fuzzy matching from exploding on short inputs. Default 0. Meaningful only for FUZZY, like maxEdits."/>
       </eAnnotations>
@@ -239,6 +239,66 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="point" lowerBound="1" eType="#//GeoPointLiteral"
         containment="true"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IntervalSubject">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The interval binding of an IntervalMatch (issue #215) — the pair of features that together form one interval: a validity period, a price band, a measurement range. Deliberately structural, following the GeoSubject precedent (decisions G1/G2): the QUERY names the pair, the mapping layer decides how it is indexed, and a model aspect may later derive the paths. The three convention attributes describe the DATA rather than the question, because an index encodes them at write time — a range-field mapping whose conventions disagree with the subject of an incoming query returns wrong answers silently and has to be refused by name. Not an Expression: an argument, like GeoSubject. A packed binding (one column holding a range value, the PostgreSQL range-type shape) is the analogue of GeoSubject.pathPoint and stays additive until a backend forces it."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lowerIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whether the stored lower bound belongs to the interval — the convention of the DATA. Default closed."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upperIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whether the stored upper bound belongs to the interval — the convention of the DATA. Default closed; set false for the half-open [from, to) shape temporal models use so that adjacent periods do not overlap. Deliberately not expressible from the query side: adjacency is a question about the subject's own upper bound, and no bound on the query interval can answer it."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nullMeansUnbounded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="What an unset bound means. Default false: a null bound makes the predicate UNKNOWN, the 3VL discipline of issues #94/#97 unchanged — excluded positively, excluded under not(...), guarded explicitly in every push-down. True makes a null lower bound minus-infinity and a null upper bound plus-infinity, which is the normal shape of temporal models where an unset validTo means &quot;still valid&quot;. Both readings are real and opposite — a missing measurement bound is missing data — which is why this is declared rather than assumed. An index encodes it at write time (an unbounded end becomes the extremal representable value), so a mapping that disagrees with the query is a silent-wrong-answer defect."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pathLower" lowerBound="1"
+        eType="#//PropertyPath" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pathUpper" lowerBound="1"
+        eType="#//PropertyPath" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IntervalMatch" eSuperTypes="#//Expression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How the subject interval relates to the interval given by lower/upper (issue #215) — the concept a hand-wired pair of comparisons cannot express: nothing validates that the two features belong together, nothing pushes them down as one predicate, and every consumer picks its own boundary convention. Neighbour construct: Between asks whether a POINT lies in an interval, this asks how two INTERVALS relate. &quot;Valid at t&quot; is relation CONTAINS with a degenerate query interval (lower == upper, both bounds included) — deliberately not a fourth relation. An inverted query interval over two literals is a static validation error; an inverted subject row is the empty interval and matches no relation, including WITHIN. Capability INTERVAL_MATCH."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="relation" lowerBound="1"
+        eType="#//IntervalRelation"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lowerIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whether the query interval's lower bound belongs to it — the convention of the QUESTION, mirroring Between. Semantics, not a hint: a backend that cannot render an exclusive bound refuses the query, it never rounds it to the inclusive one."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upperIncluded" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whether the query interval's upper bound belongs to it — the convention of the QUESTION, mirroring Between."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="subject" lowerBound="1"
+        eType="#//IntervalSubject" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="lower" lowerBound="1" eType="#//Expression"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The query interval's lower bound — a literal or a parameter. The same ordered domain (numeric or temporal) as both subject paths; a mixed pair is a validation error, not a runtime surprise."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="upper" lowerBound="1" eType="#//Expression"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The query interval's upper bound — a literal or a parameter. Equal to lower for the degenerate &quot;at t&quot; form."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Score" eSuperTypes="#//Expression">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The relevance score of the row under the query's predicate (issue #100) — a leaf value expression, usable as a sort key (OrderBy.key, issue #84) and as a computation source. Only ranking backends declare the SCORE capability (first consumer: the Lucene backend); there is deliberately no reference semantics — a score without a text-scoring model would be false precision — so conformance is ordinal at best and lives with the declaring backend."/>
@@ -363,14 +423,14 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Value of one map entry, addressed by its key (issue #186). map addresses an EMap feature - in Ecore a containment-many reference to an entry class with key and value features - and key selects the entry. The key must be a Literal or a ParameterRef, never a computed expression: Mongo and Lucene turn a map key into a field name, so it has to be knowable when the query is translated, and an IR construct only one backend could serve would be a capability trap. JPA renders a correlated subselect over the entry table (SELECT e.value ... WHERE e.key = ?); Mongo the field path map.key into the stored sub-document. Refused with a diagnostic when the path does not end in a map or the key is not constant."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="map" lowerBound="1"
-        eType="#//PropertyPath" containment="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="map" lowerBound="1" eType="#//PropertyPath"
+        containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Navigation to the map feature; the last segment must be an EMap."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="key" lowerBound="1"
-        eType="#//Expression" containment="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="key" lowerBound="1" eType="#//Expression"
+        containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The entry key - a Literal or a ParameterRef, so the key is known at translation time."/>
       </eAnnotations>
@@ -474,5 +534,25 @@
     <eLiterals name="TIME" value="1"/>
     <eLiterals name="DATE_TIME" value="2"/>
     <eLiterals name="INSTANT" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="IntervalRelation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The three relations every range implementation answers directly (issue #215) — Lucene's newIntersectsQuery/newWithinQuery/newContainsQuery, PostgreSQL's range operators. Allen's remaining ten interval relations are expressible from the bounds and have no consumer. In the definitions below each comparison is strict where the corresponding bound is excluded by the four inclusion flags."/>
+    </eAnnotations>
+    <eLiterals name="INTERSECTS">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The two intervals overlap at all: subject.lower &lt;= query.upper AND subject.upper >= query.lower. The common case — &quot;valid at some point in [a, b]&quot;."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="WITHIN" value="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The subject lies inside the query interval: subject.lower >= query.lower AND subject.upper &lt;= query.upper."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="CONTAINS" value="2">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The subject covers the query interval: subject.lower &lt;= query.lower AND subject.upper >= query.upper. With a degenerate query interval (lower == upper) this is the &quot;valid at t&quot; question."/>
+      </eAnnotations>
+    </eLiterals>
   </eClassifiers>
 </ecore:EPackage>

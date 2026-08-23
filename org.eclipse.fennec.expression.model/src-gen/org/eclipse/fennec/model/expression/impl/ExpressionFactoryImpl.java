@@ -87,6 +87,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.GEO_POLYGON: return createGeoPolygon();
 			case ExpressionPackage.GEO_WITHIN: return createGeoWithin();
 			case ExpressionPackage.GEO_DISTANCE: return createGeoDistance();
+			case ExpressionPackage.INTERVAL_SUBJECT: return createIntervalSubject();
+			case ExpressionPackage.INTERVAL_MATCH: return createIntervalMatch();
 			case ExpressionPackage.SCORE: return createScore();
 			case ExpressionPackage.PARAMETER_REF: return createParameterRef();
 			case ExpressionPackage.STRING_LITERAL: return createStringLiteral();
@@ -103,8 +105,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.NEGATE: return createNegate();
 			case ExpressionPackage.CONCAT: return createConcat();
 			case ExpressionPackage.INDEX_OF: return createIndexOf();
-			case ExpressionPackage.MAP_VALUE: return createMapValue();
 			case ExpressionPackage.COLLECTION_COUNT: return createCollectionCount();
+			case ExpressionPackage.MAP_VALUE: return createMapValue();
 			case ExpressionPackage.TYPE_CHECK: return createTypeCheck();
 			case ExpressionPackage.NUMERIC_FUNCTION: return createNumericFunction();
 			case ExpressionPackage.TEMPORAL_FUNCTION: return createTemporalFunction();
@@ -136,6 +138,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 				return createArithmeticOperatorFromString(eDataType, initialValue);
 			case ExpressionPackage.TEMPORAL_KIND:
 				return createTemporalKindFromString(eDataType, initialValue);
+			case ExpressionPackage.INTERVAL_RELATION:
+				return createIntervalRelationFromString(eDataType, initialValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -163,6 +167,8 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 				return convertArithmeticOperatorToString(eDataType, instanceValue);
 			case ExpressionPackage.TEMPORAL_KIND:
 				return convertTemporalKindToString(eDataType, instanceValue);
+			case ExpressionPackage.INTERVAL_RELATION:
+				return convertIntervalRelationToString(eDataType, instanceValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -394,6 +400,28 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	@Override
+	public IntervalSubject createIntervalSubject() {
+		IntervalSubjectImpl intervalSubject = new IntervalSubjectImpl();
+		return intervalSubject;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public IntervalMatch createIntervalMatch() {
+		IntervalMatchImpl intervalMatch = new IntervalMatchImpl();
+		return intervalMatch;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Score createScore() {
 		ScoreImpl score = new ScoreImpl();
 		return score;
@@ -570,9 +598,9 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	@Override
-	public MapValue createMapValue() {
-		MapValueImpl mapValue = new MapValueImpl();
-		return mapValue;
+	public CollectionCount createCollectionCount() {
+		CollectionCountImpl collectionCount = new CollectionCountImpl();
+		return collectionCount;
 	}
 
 	/**
@@ -581,9 +609,9 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	@Override
-	public CollectionCount createCollectionCount() {
-		CollectionCountImpl collectionCount = new CollectionCountImpl();
-		return collectionCount;
+	public MapValue createMapValue() {
+		MapValueImpl mapValue = new MapValueImpl();
+		return mapValue;
 	}
 
 	/**
@@ -767,6 +795,26 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	 * @generated
 	 */
 	public String convertTemporalKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public IntervalRelation createIntervalRelationFromString(EDataType eDataType, String initialValue) {
+		IntervalRelation result = IntervalRelation.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertIntervalRelationToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

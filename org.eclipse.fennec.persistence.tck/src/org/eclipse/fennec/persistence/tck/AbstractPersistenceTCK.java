@@ -55,6 +55,8 @@ import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.model.expression.GeoBox;
 import org.eclipse.fennec.model.expression.GeoPointLiteral;
 import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
@@ -2799,6 +2801,156 @@ public abstract class AbstractPersistenceTCK {
 				"Erfurt", "Suva", "Apia");
 	}
 
+	// ------------------------------------------------------ intervals (issue #215)
+
+	/**
+	 * The interval fixture. Five bookings on a small integer axis, plus one with an open end
+	 * and one whose bounds are inverted — the two rows that separate the readings the
+	 * concept had to decide (§A.4, §A.5.3).
+	 */
+	private List<EObject> bookings() {
+		return List.of(
+				booking(1, "early", 1, 5),
+				booking(2, "adjacent", 5, 9),
+				booking(3, "late", 20, 30),
+				booking(4, "open", 40, null),
+				booking(5, "broken", 60, 50));
+	}
+
+	private EObject booking(int id, String label, Integer from, Integer to) {
+		EClass bookingClass = (EClass) tckPackage.getEClassifier("Booking");
+		EObject booking = EcoreUtil.create(bookingClass);
+		booking.eSet(bookingClass.getEStructuralFeature("bid"), idValue(bookingClass, id));
+		booking.eSet(bookingClass.getEStructuralFeature("label"), label);
+		booking.eSet(bookingClass.getEStructuralFeature("validFrom"), from);
+		if (to != null) {
+			booking.eSet(bookingClass.getEStructuralFeature("validTo"), to);
+		}
+		return booking;
+	}
+
+	/**
+	 * The closed-closed reading of the fixture — the default a measurement range wants: both
+	 * stored bounds belong to the interval and an unset one leaves the answer UNKNOWN.
+	 */
+	private IntervalSubject closedSubject() {
+		EClass bookingClass = (EClass) tckPackage.getEClassifier("Booking");
+		return Expressions.intervalSubject(
+				Expressions.propertyPath(bookingClass.getEStructuralFeature("validFrom")),
+				Expressions.propertyPath(bookingClass.getEStructuralFeature("validTo")));
+	}
+
+	/** The temporal reading: half-open {@code [from, to)}, an unset end means "still valid". */
+	private IntervalSubject halfOpenSubject() {
+		EClass bookingClass = (EClass) tckPackage.getEClassifier("Booking");
+		return Expressions.intervalSubject(
+				Expressions.propertyPath(bookingClass.getEStructuralFeature("validFrom")),
+				Expressions.propertyPath(bookingClass.getEStructuralFeature("validTo")),
+				true, false, true);
+	}
+
+	/** The differential contract, as for geo: oracle first, then the backend against it. */
+	private void assertIntervalDifferential(Query query, String... expectedLabels) throws Exception {
+		EClass bookingClass = (EClass) tckPackage.getEClassifier("Booking");
+		EStructuralFeature label = bookingClass.getEStructuralFeature("label");
+		try (QueryResult oracle = MemoryQueries.execute(query, bookings(), null)) {
+			assertThat(oracle.objects().map(found -> found.eGet(label)))
+					.containsExactlyInAnyOrder((Object[]) expectedLabels);
+		}
+		save(createBackendResourceSet(), "Booking", bookings().toArray(EObject[]::new));
+		QueryableResource resource = (QueryableResource) createBackendResourceSet()
+				.createResource(uriFor("Booking"));
+		try (QueryResult result = resource.query(query)) {
+			assertThat(result.objects().map(found -> found.eGet(label)))
+					.containsExactlyInAnyOrder((Object[]) expectedLabels);
+		}
+	}
+
+	private Query intervalQuery(Expression predicate) {
+		return QueryBuilder.from((EClass) tckPackage.getEClassifier("Booking"))
+				.where(predicate).build();
+	}
+
+	@Test
+	@RequiresCapabilities(query = QueryFeature.INTERVAL_MATCH)
+	public void intervalRelationsOverAClosedSubject() throws Exception {
+		// [4, 6] touches "early" (ends at 5) and "adjacent" (starts at 5)
+		assertIntervalDifferential(intervalQuery(Expressions.intersects(closedSubject(), 4, 6)),
+				"early", "adjacent");
+		// only "early" fits completely inside [0, 6]
+		assertIntervalDifferential(intervalQuery(Expressions.intervalWithin(closedSubject(), 0, 6)),
+				"early");
+		// "late" [20, 30] is the only one covering [22, 25]
+		assertIntervalDifferential(intervalQuery(Expressions.intervalContains(closedSubject(), 22, 25)),
+				"late");
+	}
+
+	@Test
+	@RequiresCapabilities(query = QueryFeature.INTERVAL_MATCH)
+	public void intervalAtIsContainmentOfASinglePoint() throws Exception {
+		// the degenerate query interval — "valid at t", and 5 belongs to both neighbours
+		assertIntervalDifferential(intervalQuery(Expressions.intervalAt(closedSubject(), 5)),
+				"early", "adjacent");
+		assertIntervalDifferential(intervalQuery(Expressions.intervalAt(closedSubject(), 25)),
+				"late");
+	}
+
+	/**
+	 * The reason the subject carries its own boundary convention (§A.4): under the half-open
+	 * reading the same point does <em>not</em> belong to two adjacent periods, and no bound
+	 * on the query side can express that.
+	 */
+	@Test
+	@RequiresCapabilities(query = QueryFeature.INTERVAL_MATCH)
+	public void halfOpenSubjectsDoNotOverlapAtTheirSeam() throws Exception {
+		assertIntervalDifferential(intervalQuery(Expressions.intervalAt(halfOpenSubject(), 5)),
+				"adjacent");
+		assertIntervalDifferential(intervalQuery(Expressions.intersects(halfOpenSubject(), 5, 5)),
+				"adjacent");
+	}
+
+	/**
+	 * The other half of §A.4: an unset upper bound is "still valid" only where the subject
+	 * says so. Undeclared, it makes that one bound comparison UNKNOWN — and the conjunction
+	 * then decides under ordinary 3VL, which is the rule the implementation round settled on
+	 * (§A.5.4): UNKNOWN survives only where the missing bound actually matters.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.INTERVAL_MATCH, QueryFeature.LOGICAL_NOT })
+	public void unsetBoundsAreUnboundedOnlyWhenDeclared() throws Exception {
+		// declared unbounded: "open" runs from 40 into the future
+		assertIntervalDifferential(intervalQuery(Expressions.intervalAt(halfOpenSubject(), 500)),
+				"open");
+		// undeclared: the unknown end leaves the answer UNKNOWN, so the row stays out
+		assertIntervalDifferential(intervalQuery(Expressions.intervalAt(closedSubject(), 500)));
+		// and it stays out under negation too, because there the unknown end still decides:
+		// 45 is past the start of "open", so only its missing end could answer
+		assertIntervalDifferential(
+				intervalQuery(Expressions.not(Expressions.intervalAt(closedSubject(), 45))),
+				"early", "adjacent", "late", "broken");
+		// where the known bound already answers, the conjunction is FALSE rather than
+		// UNKNOWN — "open" starts at 40, so it cannot be valid at 25, and its negation holds
+		assertIntervalDifferential(
+				intervalQuery(Expressions.not(Expressions.intervalAt(closedSubject(), 25))),
+				"early", "adjacent", "open", "broken");
+	}
+
+	/**
+	 * An empty subject row matches nothing, {@code WITHIN} included (§A.5.3) — vacuous truth
+	 * is what a naive pair of comparisons would return, and the row "broken" [60, 50] exists
+	 * in the fixture to pin that it does not.
+	 */
+	@Test
+	@RequiresCapabilities(query = QueryFeature.INTERVAL_MATCH)
+	public void invertedSubjectRowsMatchNoRelation() throws Exception {
+		// [45, 65] reaches into "open" and straddles the bounds of "broken" — only one matches
+		assertIntervalDifferential(intervalQuery(Expressions.intersects(halfOpenSubject(), 45, 65)),
+				"open");
+		// WITHIN over everything: the empty row stays out, and so does the unbounded one
+		assertIntervalDifferential(intervalQuery(Expressions.intervalWithin(halfOpenSubject(), 0, 100)),
+				"early", "adjacent", "late");
+	}
+
 	// -------------------------------------------------- command transactions (issue #108)
 
 	/**
@@ -3288,6 +3440,12 @@ public abstract class AbstractPersistenceTCK {
 								Expressions.propertyPath(personAge)),
 						Expressions.geoBox(Expressions.geoPoint(10, 50),
 								Expressions.geoPoint(13, 52))))
+				.build());
+		probes.put(QueryFeature.INTERVAL_MATCH, QueryBuilder.from(personClass)
+				.where(Expressions.intersects(
+						Expressions.intervalSubject(Expressions.propertyPath(personAge),
+								Expressions.propertyPath(personAge)),
+						20, 40))
 				.build());
 		probes.put(QueryFeature.GEO_DISTANCE, QueryBuilder.from(personClass)
 				.where(Expressions.geoDistance(

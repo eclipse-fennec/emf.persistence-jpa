@@ -48,6 +48,9 @@ import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
 import org.eclipse.fennec.model.expression.IntegerLiteral;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalRelation;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.Junction;
 import org.eclipse.fennec.model.expression.Literal;
@@ -257,6 +260,20 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass intervalSubjectEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass intervalMatchEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass scoreEClass = null;
 
 	/**
@@ -376,14 +393,14 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass mapValueEClass = null;
+	private EClass collectionCountEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass collectionCountEClass = null;
+	private EClass mapValueEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -461,6 +478,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EEnum temporalKindEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum intervalRelationEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -1178,6 +1202,136 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EClass getIntervalSubject() {
+		return intervalSubjectEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIntervalSubject_LowerIncluded() {
+		return (EAttribute)intervalSubjectEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIntervalSubject_UpperIncluded() {
+		return (EAttribute)intervalSubjectEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIntervalSubject_NullMeansUnbounded() {
+		return (EAttribute)intervalSubjectEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIntervalSubject_PathLower() {
+		return (EReference)intervalSubjectEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIntervalSubject_PathUpper() {
+		return (EReference)intervalSubjectEClass.getEStructuralFeatures().get(4);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getIntervalMatch() {
+		return intervalMatchEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIntervalMatch_Relation() {
+		return (EAttribute)intervalMatchEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIntervalMatch_LowerIncluded() {
+		return (EAttribute)intervalMatchEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getIntervalMatch_UpperIncluded() {
+		return (EAttribute)intervalMatchEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIntervalMatch_Subject() {
+		return (EReference)intervalMatchEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIntervalMatch_Lower() {
+		return (EReference)intervalMatchEClass.getEStructuralFeatures().get(4);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getIntervalMatch_Upper() {
+		return (EReference)intervalMatchEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getScore() {
 		return scoreEClass;
 	}
@@ -1538,36 +1692,6 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
-	public EClass getMapValue() {
-		return mapValueEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EReference getMapValue_Map() {
-		return (EReference)mapValueEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EReference getMapValue_Key() {
-		return (EReference)mapValueEClass.getEStructuralFeatures().get(1);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
 	public EClass getCollectionCount() {
 		return collectionCountEClass;
 	}
@@ -1600,6 +1724,36 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	@Override
 	public EReference getCollectionCount_Predicate() {
 		return (EReference)collectionCountEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getMapValue() {
+		return mapValueEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getMapValue_Map() {
+		return (EReference)mapValueEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getMapValue_Key() {
+		return (EReference)mapValueEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -1808,6 +1962,16 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	@Override
+	public EEnum getIntervalRelation() {
+		return intervalRelationEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public ExpressionFactory getExpressionFactory() {
 		return (ExpressionFactory)getEFactoryInstance();
 	}
@@ -1920,6 +2084,21 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEReference(geoDistanceEClass, GEO_DISTANCE__SUBJECT);
 		createEReference(geoDistanceEClass, GEO_DISTANCE__POINT);
 
+		intervalSubjectEClass = createEClass(INTERVAL_SUBJECT);
+		createEAttribute(intervalSubjectEClass, INTERVAL_SUBJECT__LOWER_INCLUDED);
+		createEAttribute(intervalSubjectEClass, INTERVAL_SUBJECT__UPPER_INCLUDED);
+		createEAttribute(intervalSubjectEClass, INTERVAL_SUBJECT__NULL_MEANS_UNBOUNDED);
+		createEReference(intervalSubjectEClass, INTERVAL_SUBJECT__PATH_LOWER);
+		createEReference(intervalSubjectEClass, INTERVAL_SUBJECT__PATH_UPPER);
+
+		intervalMatchEClass = createEClass(INTERVAL_MATCH);
+		createEAttribute(intervalMatchEClass, INTERVAL_MATCH__RELATION);
+		createEAttribute(intervalMatchEClass, INTERVAL_MATCH__LOWER_INCLUDED);
+		createEAttribute(intervalMatchEClass, INTERVAL_MATCH__UPPER_INCLUDED);
+		createEReference(intervalMatchEClass, INTERVAL_MATCH__SUBJECT);
+		createEReference(intervalMatchEClass, INTERVAL_MATCH__LOWER);
+		createEReference(intervalMatchEClass, INTERVAL_MATCH__UPPER);
+
 		scoreEClass = createEClass(SCORE);
 
 		parameterRefEClass = createEClass(PARAMETER_REF);
@@ -1973,14 +2152,14 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		createEReference(indexOfEClass, INDEX_OF__SOURCE);
 		createEReference(indexOfEClass, INDEX_OF__SEARCH);
 
-		mapValueEClass = createEClass(MAP_VALUE);
-		createEReference(mapValueEClass, MAP_VALUE__MAP);
-		createEReference(mapValueEClass, MAP_VALUE__KEY);
-
 		collectionCountEClass = createEClass(COLLECTION_COUNT);
 		createEReference(collectionCountEClass, COLLECTION_COUNT__SOURCE);
 		createEReference(collectionCountEClass, COLLECTION_COUNT__VARIABLE);
 		createEReference(collectionCountEClass, COLLECTION_COUNT__PREDICATE);
+
+		mapValueEClass = createEClass(MAP_VALUE);
+		createEReference(mapValueEClass, MAP_VALUE__MAP);
+		createEReference(mapValueEClass, MAP_VALUE__KEY);
 
 		typeCheckEClass = createEClass(TYPE_CHECK);
 		createEReference(typeCheckEClass, TYPE_CHECK__SOURCE);
@@ -2007,6 +2186,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		numericFunctionKindEEnum = createEEnum(NUMERIC_FUNCTION_KIND);
 		arithmeticOperatorEEnum = createEEnum(ARITHMETIC_OPERATOR);
 		temporalKindEEnum = createEEnum(TEMPORAL_KIND);
+		intervalRelationEEnum = createEEnum(INTERVAL_RELATION);
 	}
 
 	/**
@@ -2057,6 +2237,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		geoPolygonEClass.getESuperTypes().add(this.getGeoShape());
 		geoWithinEClass.getESuperTypes().add(this.getExpression());
 		geoDistanceEClass.getESuperTypes().add(this.getExpression());
+		intervalMatchEClass.getESuperTypes().add(this.getExpression());
 		scoreEClass.getESuperTypes().add(this.getExpression());
 		parameterRefEClass.getESuperTypes().add(this.getExpression());
 		literalEClass.getESuperTypes().add(this.getExpression());
@@ -2074,8 +2255,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		negateEClass.getESuperTypes().add(this.getExpression());
 		concatEClass.getESuperTypes().add(this.getExpression());
 		indexOfEClass.getESuperTypes().add(this.getExpression());
-		mapValueEClass.getESuperTypes().add(this.getExpression());
 		collectionCountEClass.getESuperTypes().add(this.getExpression());
+		mapValueEClass.getESuperTypes().add(this.getExpression());
 		typeCheckEClass.getESuperTypes().add(this.getExpression());
 		numericFunctionEClass.getESuperTypes().add(this.getExpression());
 		temporalFunctionEClass.getESuperTypes().add(this.getExpression());
@@ -2171,6 +2352,21 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEReference(getGeoDistance_Subject(), this.getGeoSubject(), null, "subject", null, 1, 1, GeoDistance.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getGeoDistance_Point(), this.getGeoPointLiteral(), null, "point", null, 1, 1, GeoDistance.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(intervalSubjectEClass, IntervalSubject.class, "IntervalSubject", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getIntervalSubject_LowerIncluded(), ecorePackage.getEBoolean(), "lowerIncluded", "true", 0, 1, IntervalSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getIntervalSubject_UpperIncluded(), ecorePackage.getEBoolean(), "upperIncluded", "true", 0, 1, IntervalSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getIntervalSubject_NullMeansUnbounded(), ecorePackage.getEBoolean(), "nullMeansUnbounded", "false", 0, 1, IntervalSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIntervalSubject_PathLower(), this.getPropertyPath(), null, "pathLower", null, 1, 1, IntervalSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIntervalSubject_PathUpper(), this.getPropertyPath(), null, "pathUpper", null, 1, 1, IntervalSubject.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(intervalMatchEClass, IntervalMatch.class, "IntervalMatch", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getIntervalMatch_Relation(), this.getIntervalRelation(), "relation", null, 1, 1, IntervalMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getIntervalMatch_LowerIncluded(), ecorePackage.getEBoolean(), "lowerIncluded", "true", 0, 1, IntervalMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getIntervalMatch_UpperIncluded(), ecorePackage.getEBoolean(), "upperIncluded", "true", 0, 1, IntervalMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIntervalMatch_Subject(), this.getIntervalSubject(), null, "subject", null, 1, 1, IntervalMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIntervalMatch_Lower(), this.getExpression(), null, "lower", null, 1, 1, IntervalMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getIntervalMatch_Upper(), this.getExpression(), null, "upper", null, 1, 1, IntervalMatch.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(scoreEClass, Score.class, "Score", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(parameterRefEClass, ParameterRef.class, "ParameterRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -2224,14 +2420,14 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		initEReference(getIndexOf_Source(), this.getExpression(), null, "source", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getIndexOf_Search(), this.getExpression(), null, "search", null, 1, 1, IndexOf.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(mapValueEClass, MapValue.class, "MapValue", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getMapValue_Map(), this.getPropertyPath(), null, "map", null, 1, 1, MapValue.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getMapValue_Key(), this.getExpression(), null, "key", null, 1, 1, MapValue.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
 		initEClass(collectionCountEClass, CollectionCount.class, "CollectionCount", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getCollectionCount_Source(), this.getPropertyPath(), null, "source", null, 1, 1, CollectionCount.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getCollectionCount_Variable(), this.getVariable(), null, "variable", null, 0, 1, CollectionCount.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getCollectionCount_Predicate(), this.getExpression(), null, "predicate", null, 0, 1, CollectionCount.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(mapValueEClass, MapValue.class, "MapValue", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getMapValue_Map(), this.getPropertyPath(), null, "map", null, 1, 1, MapValue.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getMapValue_Key(), this.getExpression(), null, "key", null, 1, 1, MapValue.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(typeCheckEClass, TypeCheck.class, "TypeCheck", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getTypeCheck_Source(), this.getPropertyPath(), null, "source", null, 0, 1, TypeCheck.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -2297,6 +2493,11 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		addEEnumLiteral(temporalKindEEnum, TemporalKind.TIME);
 		addEEnumLiteral(temporalKindEEnum, TemporalKind.DATE_TIME);
 		addEEnumLiteral(temporalKindEEnum, TemporalKind.INSTANT);
+
+		initEEnum(intervalRelationEEnum, IntervalRelation.class, "IntervalRelation");
+		addEEnumLiteral(intervalRelationEEnum, IntervalRelation.INTERSECTS);
+		addEEnumLiteral(intervalRelationEEnum, IntervalRelation.WITHIN);
+		addEEnumLiteral(intervalRelationEEnum, IntervalRelation.CONTAINS);
 
 		// Create resource
 		createResource(eNS_URI);

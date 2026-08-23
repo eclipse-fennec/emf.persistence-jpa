@@ -54,6 +54,8 @@ import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IndexOf;
+import org.eclipse.fennec.model.expression.IntervalMatch;
+import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.expression.IsNull;
 import org.eclipse.fennec.model.expression.MapValue;
 import org.eclipse.fennec.model.expression.Junction;
@@ -204,6 +206,9 @@ final class MemoryPredicate {
 				return null;
 			}
 			return contains(geoWithin.getShape(), position[0], position[1]);
+		}
+		if (expression instanceof IntervalMatch interval) {
+			return evalInterval(interval, candidate, bindings);
 		}
 		if (expression instanceof Quantifier quantifier) {
 			return evalQuantifier(quantifier, candidate, bindings);
@@ -413,6 +418,126 @@ final class MemoryPredicate {
 					geoDistance.getPoint().getLat(), geoDistance.getPoint().getLon());
 		}
 		return values.get(expression);
+	}
+
+	// -------------------------------------------------------- intervals (issue #215)
+
+	/**
+	 * Reference semantics for interval predicates (issue #215, concept §A.5). An unset bound
+	 * is the infinity the subject declares when {@code nullMeansUnbounded} is set, and
+	 * UNKNOWN otherwise.
+	 * <p>
+	 * UNKNOWN belongs to the single bound comparison, not to the predicate as a whole: the
+	 * conjunction then decides under ordinary 3VL, so a row whose end is unknown still
+	 * answers FALSE where its start already rules the question out. That is what SQL does
+	 * with the same two comparisons, and making it the reference is what keeps the
+	 * translations free of negation surgery — the alternative cannot be expressed in SQL
+	 * without one, because a FALSE conjunct swallows the UNKNOWN.
+	 * <p>
+	 * An empty subject row (bounds inverted, or equal with an exclusive end) matches no
+	 * relation, {@code WITHIN} included: vacuous truth is the answer nobody wants.
+	 */
+	private Boolean evalInterval(IntervalMatch interval, EObject candidate, Map<Variable, Object> bindings) {
+		IntervalSubject subject = interval.getSubject();
+		if (subject == null || subject.getPathLower() == null || subject.getPathUpper() == null) {
+			return null;
+		}
+		Object subjectLower = pathValue(subject.getPathLower(), candidate, bindings);
+		Object subjectUpper = pathValue(subject.getPathUpper(), candidate, bindings);
+		Object queryLower = operand(interval.getLower(), candidate, bindings);
+		Object queryUpper = operand(interval.getUpper(), candidate, bindings);
+		if (queryLower == null || queryUpper == null) {
+			return null;
+		}
+		Boolean empty = isEmptyInterval(subjectLower, subjectUpper, subject);
+		if (empty == null) {
+			return null;
+		}
+		if (empty.booleanValue()) {
+			return Boolean.FALSE;
+		}
+		boolean subjectLowerIncluded = subject.isLowerIncluded();
+		boolean subjectUpperIncluded = subject.isUpperIncluded();
+		boolean queryLowerIncluded = interval.isLowerIncluded();
+		boolean queryUpperIncluded = interval.isUpperIncluded();
+		boolean unbounded = subject.isNullMeansUnbounded();
+		return switch (interval.getRelation()) {
+		// they overlap iff neither ends before the other starts; a shared endpoint counts
+		// only when BOTH sides include it
+		case INTERSECTS -> and3(
+				atOrBefore(subjectLower, queryUpper, subjectLowerIncluded && queryUpperIncluded,
+						unbounded, Boolean.TRUE),
+				atOrAfter(subjectUpper, queryLower, subjectUpperIncluded && queryLowerIncluded,
+						unbounded, Boolean.TRUE));
+		// the subject sits inside: at a shared endpoint it is enough that the query includes
+		// it, or that the subject does not reach it — hence the disjunction
+		case WITHIN -> and3(
+				atOrAfter(subjectLower, queryLower, queryLowerIncluded || !subjectLowerIncluded,
+						unbounded, Boolean.FALSE),
+				atOrBefore(subjectUpper, queryUpper, queryUpperIncluded || !subjectUpperIncluded,
+						unbounded, Boolean.FALSE));
+		// the mirror of WITHIN with the roles swapped
+		case CONTAINS -> and3(
+				atOrBefore(subjectLower, queryLower, subjectLowerIncluded || !queryLowerIncluded,
+						unbounded, Boolean.TRUE),
+				atOrAfter(subjectUpper, queryUpper, subjectUpperIncluded || !queryUpperIncluded,
+						unbounded, Boolean.TRUE));
+		};
+	}
+
+	/**
+	 * Whether the subject row denotes the empty interval — inverted bounds, or coincident
+	 * bounds with at least one of them excluded. An unbounded end is never empty.
+	 */
+	private static Boolean isEmptyInterval(Object lower, Object upper, IntervalSubject subject) {
+		if (lower == null || upper == null) {
+			return Boolean.FALSE;
+		}
+		Integer compared = compareBounds(lower, upper);
+		if (compared == null) {
+			return null;
+		}
+		return compared > 0
+				|| (compared == 0 && !(subject.isLowerIncluded() && subject.isUpperIncluded()));
+	}
+
+	/**
+	 * Whether {@code value} lies before {@code limit}, with coincidence counting as decided
+	 * by the caller — the inclusion rule differs per relation. An absent value is the
+	 * declared infinity ({@code whenAbsent}) where the subject declares one, and UNKNOWN
+	 * otherwise.
+	 */
+	private static Boolean atOrBefore(Object value, Object limit, boolean equalCounts,
+			boolean unbounded, Boolean whenAbsent) {
+		if (value == null) {
+			return unbounded ? whenAbsent : null;
+		}
+		Integer compared = compareBounds(value, limit);
+		return compared == null ? null : compared < 0 || (compared == 0 && equalCounts);
+	}
+
+	/** The mirror of {@link #atOrBefore(Object, Object, boolean, boolean, Boolean)}. */
+	private static Boolean atOrAfter(Object value, Object limit, boolean equalCounts,
+			boolean unbounded, Boolean whenAbsent) {
+		if (value == null) {
+			return unbounded ? whenAbsent : null;
+		}
+		Integer compared = compareBounds(value, limit);
+		return compared == null ? null : compared > 0 || (compared == 0 && equalCounts);
+	}
+
+	/** Signum comparison of two bound values, {@code null} when they are incomparable. */
+	private static Integer compareBounds(Object left, Object right) {
+		Integer compared = tryCompare(left, right);
+		return compared == null ? null : Integer.valueOf(Integer.signum(compared));
+	}
+
+	/** Three-valued conjunction: FALSE wins over UNKNOWN, UNKNOWN over TRUE. */
+	private static Boolean and3(Boolean left, Boolean right) {
+		if (Boolean.FALSE.equals(left) || Boolean.FALSE.equals(right)) {
+			return Boolean.FALSE;
+		}
+		return left == null || right == null ? null : Boolean.TRUE;
 	}
 
 	// ------------------------------------------------------------- geo (issue #101)
