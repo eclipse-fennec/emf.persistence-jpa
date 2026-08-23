@@ -711,6 +711,19 @@ public enum QueryFeature implements Enumerator {
 	INTERVAL_MATCH(84, "INTERVAL_MATCH", "INTERVAL_MATCH"),
 
 	/**
+	 * The '<em><b>GROUP REPRESENTATIVES</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The top-N documents of each group next to its aggregates (issue #214, GroupByStage.representatives) — SQL's windowed ROW_NUMBER() OVER (PARTITION BY ...), Mongo's grouped push plus slice, Lucene's GroupingSearch. One literal: no backend can return representatives but not their group's size, which is an ordinary COUNT aggregate anyway. JPA refuses it for now — JPQL has no window functions and EclipseLink adds none, so the route (native SQL or a two-pass execution) is its own decision.
+	 * <!-- end-model-doc -->
+	 * @see #GROUP_REPRESENTATIVES_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	GROUP_REPRESENTATIVES(85, "GROUP_REPRESENTATIVES", "GROUP_REPRESENTATIVES"),
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1452,6 +1465,20 @@ public enum QueryFeature implements Enumerator {
 	public static final int INTERVAL_MATCH_VALUE = 84;
 
 	/**
+	 * The '<em><b>GROUP REPRESENTATIVES</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The top-N documents of each group next to its aggregates (issue #214, GroupByStage.representatives) — SQL's windowed ROW_NUMBER() OVER (PARTITION BY ...), Mongo's grouped push plus slice, Lucene's GroupingSearch. One literal: no backend can return representatives but not their group's size, which is an ordinary COUNT aggregate anyway. JPA refuses it for now — JPQL has no window functions and EclipseLink adds none, so the route (native SQL or a two-pass execution) is its own decision.
+	 * <!-- end-model-doc -->
+	 * @see #GROUP_REPRESENTATIVES
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int GROUP_REPRESENTATIVES_VALUE = 85;
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1525,6 +1552,7 @@ public enum QueryFeature implements Enumerator {
 			TYPE_FILTER,
 			PARAMETERS,
 			INTERVAL_MATCH,
+			GROUP_REPRESENTATIVES,
 			AS_OF,
 		};
 
@@ -1634,6 +1662,7 @@ public enum QueryFeature implements Enumerator {
 			case TYPE_FILTER_VALUE: return TYPE_FILTER;
 			case PARAMETERS_VALUE: return PARAMETERS;
 			case INTERVAL_MATCH_VALUE: return INTERVAL_MATCH;
+			case GROUP_REPRESENTATIVES_VALUE: return GROUP_REPRESENTATIVES;
 			case AS_OF_VALUE: return AS_OF;
 		}
 		return null;

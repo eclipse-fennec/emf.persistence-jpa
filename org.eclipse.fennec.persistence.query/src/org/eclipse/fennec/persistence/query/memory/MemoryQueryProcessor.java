@@ -62,6 +62,7 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.Stage;
@@ -415,6 +416,25 @@ public class MemoryQueryProcessor implements QueryProcessor {
 							operand(aggregate.getSource(), null, Set.of());
 						}
 						registerKey(aggregate.getAlias(), aggregate.getAlias(), rowKeys, rowAliases);
+					}
+					RepresentativeSpec representatives = groupBy.getRepresentatives();
+					if (representatives != null) {
+						// one more column, holding the group's own documents (issue #214).
+						// The window bounds are operands like any other, so they have to be
+						// resolved here — that is what puts their value in the plan's table
+						operand(representatives.getCount(), null, Set.of());
+						if (representatives.getOffset() != null) {
+							operand(representatives.getOffset(), null, Set.of());
+						}
+						for (OrderBy within : representatives.getOrderBy()) {
+							if (within.getPath() != null) {
+								rootPath(within.getPath());
+							} else if (within.getKey() != null) {
+								operand(within.getKey(), null, Set.of());
+							}
+						}
+						registerKey(representatives.getAlias(), representatives.getAlias(),
+								rowKeys, rowAliases);
 					}
 				} else if (stage instanceof FilterStage filter) {
 					if (rowSpace) {

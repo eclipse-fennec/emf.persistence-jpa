@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.Computation;
@@ -33,6 +34,7 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -309,9 +311,64 @@ public final class MemoryQueryPlan implements QueryPlan {
 			for (Aggregate aggregate : groupBy.getAggregates()) {
 				values.add(aggregateValue(aggregate, group.getValue()));
 			}
+			if (groupBy.getRepresentatives() != null) {
+				values.add(representatives(groupBy.getRepresentatives(), group.getValue()));
+			}
 			// later compute stages extend the row — the aliases beyond this width are theirs
 			return QueryResultRows.of(rowAliases.subList(0, values.size()), values);
 		});
+	}
+
+	/**
+	 * The group's own documents as one cell (issue #214, decision R1): a {@code List<EObject>}
+	 * in the declared within-group order, windowed by offset and count. Never {@code null} —
+	 * an offset past the end of the group yields an empty list, and the group's row with its
+	 * keys and aggregates still appears. The group's full size is not repeated here: that is
+	 * an ordinary COUNT aggregate, which is what makes a truncated group recognisable.
+	 */
+	private List<EObject> representatives(RepresentativeSpec spec, List<ComputedMember> members) {
+		Comparator<EObject> within = withinGroupOrder(spec);
+		Stream<EObject> ordered = members.stream().map(ComputedMember::object);
+		if (within != null) {
+			ordered = ordered.sorted(within);
+		}
+		int offset = windowBound(spec.getOffset(), 0);
+		int count = windowBound(spec.getCount(), 0);
+		return ordered.skip(offset).limit(count).toList();
+	}
+
+	/**
+	 * The order within a group — the spec's own, and nothing else. There is deliberately no
+	 * fallback to the envelope's {@code orderBy}: a query with representatives is grouped, so
+	 * its envelope ordering addresses output columns, not the documents inside a group. An
+	 * undeclared within-group order leaves the window unspecified.
+	 */
+	private Comparator<EObject> withinGroupOrder(RepresentativeSpec spec) {
+		Comparator<EObject> comparator = null;
+		for (OrderBy orderBy : spec.getOrderBy()) {
+			if (orderBy.getPath() == null && orderBy.getKey() == null) {
+				continue;
+			}
+			Comparator<EObject> next = orderBy.getKey() != null
+					? Comparator.comparing(object -> predicate.value(orderBy.getKey(), object),
+							MemoryPredicate.VALUE_ORDER)
+					: Comparator.comparing(object -> predicate.pathValue(orderBy.getPath(), object),
+							MemoryPredicate.VALUE_ORDER);
+			if (orderBy.getDirection() == SortDirection.DESC) {
+				next = next.reversed();
+			}
+			comparator = comparator == null ? next : comparator.thenComparing(next);
+		}
+		return comparator;
+	}
+
+	/** A window bound: a literal, or a bound parameter resolved like any other value. */
+	private int windowBound(Expression bound, int absent) {
+		if (bound == null) {
+			return absent;
+		}
+		Object resolved = predicate.value(bound, null);
+		return resolved instanceof Number number ? number.intValue() : absent;
 	}
 
 	/** Evaluates the pre-group computations per object; later aliases see earlier ones. */

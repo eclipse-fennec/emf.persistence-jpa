@@ -34,6 +34,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getPaths <em>Paths</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getKeys <em>Keys</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getAggregates <em>Aggregates</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.GroupByStage#getRepresentatives <em>Representatives</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.model.query.QueryPackage#getGroupByStage()
@@ -77,5 +78,30 @@ public interface GroupByStage extends Stage {
 	 * @generated
 	 */
 	EList<Aggregate> getAggregates();
+
+	/**
+	 * Returns the value of the '<em><b>Representatives</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The top-N documents of each group next to its aggregates (issue #214) — what SQL spells with a windowed ROW_NUMBER() OVER (PARTITION BY ...) and Lucene serves natively. Set here rather than as its own stage because it is a property of the grouping, and deliberately not the reserved BottomTop slot, which covers OData's topcount family over ROWS (the best groups by an aggregate) and is expressible today. Capability GROUP_REPRESENTATIVES.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Representatives</em>' containment reference.
+	 * @see #setRepresentatives(RepresentativeSpec)
+	 * @see org.eclipse.fennec.model.query.QueryPackage#getGroupByStage_Representatives()
+	 * @model containment="true"
+	 * @generated
+	 */
+	RepresentativeSpec getRepresentatives();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.query.GroupByStage#getRepresentatives <em>Representatives</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Representatives</em>' containment reference.
+	 * @see #getRepresentatives()
+	 * @generated
+	 */
+	void setRepresentatives(RepresentativeSpec value);
 
 } // GroupByStage

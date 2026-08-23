@@ -1,7 +1,8 @@
 # Interval predicates and group representatives — the joint IR round (#215, #214)
 
-**Status:** proposed (concept round 2026-08-23); Part A is **in implementation** (I-P1),
-which corrected one proposed rule — see §A.5.4 and the changelog at the end of Part A.
+**Status:** proposed (concept round 2026-08-23); Part A is implemented (I-P1) and Part B's
+R-P1 is implemented. Each round corrected one proposed rule — see §A.5.4 with the §A.8
+changelog, and §B.4 with the §B.8 changelog.
 Decisions I1–I7 and R1–R7 are open until the maintainer round closes them; the semantic
 rules are proposed as binding.
 No capability literal and no model element is written before that — per the #207 rule
@@ -296,8 +297,11 @@ less, and it works identically on all four engines.
 
 Two orderings, kept apart:
 
-- **within a group**: `RepresentativeSpec.orderBy`. Empty → the envelope `orderBy` applies;
-  empty there too → unspecified.
+- **within a group**: `RepresentativeSpec.orderBy`, and nothing else. The concept round
+  proposed a fallback to the envelope's `orderBy`; implementation dropped it, because a query
+  with representatives is grouped by construction, so its envelope ordering addresses output
+  columns rather than the documents inside a group — the fallback could only ever sort by a
+  path that does not resolve against a group member. Left empty, the window is unspecified.
 - **between groups**: the ordinary post-group row ordering over group keys and aggregate
   aliases. Nothing new.
 
@@ -342,13 +346,24 @@ opposite situation to `INTERVAL_MATCH` in A.6.
 
 | # | Question | Leaning |
 |---|---|---|
-| R1 | Result shape: cell holding objects / nested result / new `QueryShape` | **cell** (B.2) — no SPI change, consistent with D4, keeps #212 in the same row space |
+| R1 | Result shape: cell holding objects / nested result / new `QueryShape` | **cell** (B.2) — no SPI change, consistent with D4, keeps #212 in the same row space; the contract statement it needed lives in `conformance-and-capabilities.md` §9.5 |
 | R2 | Stage shape: `RepresentativeSpec` on `GroupByStage` vs. a `BottomTopStage` vs. a nested pipeline | **`RepresentativeSpec` on the stage**; `BottomTop` stays reserved for the OData row-space family (B.3) |
 | R3 | Per-group total: a dedicated `totalAlias` or an ordinary `COUNT` aggregate | **the `COUNT` aggregate** — the vocabulary already exists and already means this |
 | R4 | Group ordering by "best representative": dedicated syntax or composed | **composed** (`MIN`/`MAX` + `orderBy` on the alias), G3 precedent; native group sort is an optimisation |
 | R5 | Cell content: whole EObjects or a projection per representative | **whole EObjects** in v1; projection additive |
-| R6 | JPA: two-pass, native SQL, or refuse | **refuse in v1**, own issue for the route |
+| R6 | JPA: two-pass, native SQL, or refuse | **refuse in v1**, own issue for the route — implemented as an undeclared capability plus a backstop in the pipeline translation |
 | R7 | Feature id | **85**, after `INTERVAL_MATCH`=84 |
+
+## B.8 Changelog
+
+- **2026-08-23, R-P1 implementation:** §B.4's fallback to the envelope ordering removed (see
+  above). Mongo serves the window as a pre-`$sort` plus `$push` and `$slice` rather than the
+  `$topN` accumulator: `$topN` needs MongoDB 5.2 and this shape works on every flavour the TCK
+  runs, while the group ordering it disturbs is undefined anyway. The representative cell is
+  decoded through the codec in the resource, which is the one place where this feature is more
+  than translation — the plan carries which of its output keys are object-valued. Everything
+  else in Part B went in as proposed: no `totalAlias`, and outside the reserved `BottomTop`
+  slot.
 
 ---
 

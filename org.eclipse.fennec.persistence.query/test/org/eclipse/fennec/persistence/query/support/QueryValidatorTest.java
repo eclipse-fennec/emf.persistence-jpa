@@ -28,6 +28,7 @@ import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Pipeline;
+import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;
@@ -166,6 +167,48 @@ class QueryValidatorTest {
 					assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_STRING_MATCH);
 					assertThat(child.getMessage()).contains("1 or 2");
 				});
+	}
+
+	@Test
+	void nonConstantRepresentativeCountIsRefused() {
+		// issue #214: a backend serving this natively constructs its search with the number
+		// known, so the window bounds must be constants
+		Query query = QueryBuilder.from(person)
+				.groupBy(age).countOf("cnt").representatives("top", 2).build();
+		GroupByStage groupBy = (GroupByStage) query.getApply().getStages().get(0);
+		groupBy.getRepresentatives().setCount(Expressions.path(age).plus(1).toExpression());
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+						QueryFeature.AGG_COUNT, QueryFeature.TYPE_FILTER, QueryFeature.ARITHMETIC));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> {
+					assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_REPRESENTATIVES);
+					assertThat(child.getMessage()).contains("literal or a parameter");
+				});
+	}
+
+	@Test
+	void representativeCountOfZeroIsRefused() {
+		Query query = QueryBuilder.from(person)
+				.groupBy(age).countOf("cnt").representatives("top", 0).build();
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+						QueryFeature.AGG_COUNT, QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getMessage()).contains("asks for no rows"));
+	}
+
+	@Test
+	void undeclaredGroupRepresentativesAreRefused() {
+		Query query = QueryBuilder.from(person)
+				.groupBy(age).countOf("cnt").representatives("top", 2).build();
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.GROUP_BY, QueryFeature.AGG_COUNT, QueryFeature.TYPE_FILTER));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.anySatisfy(child -> assertThat(child.getMessage()).contains("GROUP_REPRESENTATIVES"));
 	}
 
 	@Test

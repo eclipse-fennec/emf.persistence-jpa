@@ -732,6 +732,36 @@ two states are never both observed, and those are the flags that quietly go wron
 box-only backend appears, the split is additive — a new literal, the existing declarers gaining
 it, no consumer breakage — which is precisely why it costs nothing to wait.
 
+### 9.5 A result row's cell may hold objects
+
+Stated once, because it widens what a consumer may find in a row: a `QueryResultRow` cell can
+hold a **`List<EObject>`**, not only a scalar. One feature produces it today — the group
+representatives of issue #214, where the cell named by `RepresentativeSpec.alias` carries the
+group's own documents next to its aggregates.
+
+This is a clarification of the existing contract rather than a change to it. `QueryResultRow`
+cells have always been typed `Object` (`query-api.ecore`, `EJavaObject`), so no SPI moves and no
+`QueryShape` is added — a representative query is `AGGREGATION`, like any other grouped one. What
+needed saying is the part a consumer cannot read off the type: which cells those are, and what
+they guarantee.
+
+**What such a cell guarantees, binding on every backend that declares `GROUP_REPRESENTATIVES`:**
+
+- The cell is a `List`, **never null** — an empty window yields an empty list, so a group whose
+  offset ran past its end still appears with its keys and aggregates.
+- Its elements are EObjects of the query's root type, in the declared within-group order. They
+  follow the ordinary object contract of the backend, exactly like the objects of an `OBJECTS`
+  query.
+- The list is **materialised eagerly**, one window per group while the row stream is walked. A
+  representative query is therefore not a constant-memory query — bounded by window × groups,
+  which the caller's `top` bounds in turn. `SERVER_CURSORS` semantics are unaffected.
+- The group's full size is **not** in this cell. It is an ordinary `COUNT` aggregate on the same
+  stage, which is what makes a truncated group recognisable (`count` greater than the list size)
+  with vocabulary that already exists.
+
+Only the number of documents is windowed, never which fields they carry: a per-representative
+projection is not part of this and is refused. That keeps the cell one shape rather than two.
+
 ### 9.4 Streaming is a capability, with a contract statement about what it hands out
 
 `stream()` and `pushStream` become a declarable capability (`StoreFeature.STREAMING`), not core.

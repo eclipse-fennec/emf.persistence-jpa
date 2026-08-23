@@ -207,6 +207,43 @@ GeoJSON. Malformed geometry (a subject without exactly one binding, out-of-range
 coordinates, a degenerate or antimeridian-crossing polygon) is refused at validation with
 code 6.
 
+## Representatives per group
+
+Grouping tells you how many are in each group. This tells you *which* — the top-N documents
+of every group, next to its aggregates:
+
+```java
+QueryBuilder.from(personClass)
+        .groupBy(personDepartment)
+        .countOf("headcount")
+        .representativesOrderedBy("newest", 3, SortDirection.DESC, personHiredAt)
+        .build();
+```
+
+Each row then carries the group key, the aggregates, and one more cell — `newest` — holding
+**a list of EObjects**, the group's own documents in the declared order. The cell is never
+null: a window past the end of a group yields an empty list, and the group's row still
+appears with its keys and aggregates.
+
+There is deliberately no "total" field. The group's full size is the ordinary `COUNT`
+aggregate you already wrote, so a truncated group is one whose `headcount` exceeds the size
+of its list — that is how "3 of many" stays distinguishable from "3 in all".
+
+Two more points. The order *within* a group is the one you declare on the representatives;
+the order *between* groups stays the query's own `orderBy` over output columns. And to sort
+groups by their best representative you need nothing new — take a `MIN`/`MAX` aggregate over
+the sort key and order by that alias; a backend may recognise the pattern and use its native
+group sort.
+
+`representatives(alias, count, offset)` pages inside each group. The window bounds must be
+literals or bound parameters — a backend serving this natively has to know the number when
+the query is translated — and a count of zero or less is refused at validation with code 11.
+
+MongoDB serves `GROUP_REPRESENTATIVES`; JPA refuses it, because JPQL has no window functions
+and the route (native SQL or a two-pass execution) is a decision of its own. Note that a
+representative query is not a constant-memory query: one window per group is materialised
+while the rows are read.
+
 ## Intervals
 
 A validity period, a price band, a measurement range — two features that together are one
@@ -536,6 +573,7 @@ reports each violation as a `Diagnostic` ERROR before anything runs.
 | Multi-stage pipelines | ⚠️ filter/compute/having, and paging **after** the grouping | ✅ native, in stage order | JPA refuses paging before the grouping and a second grouping |
 | `expand` fetch hints | ✅ `LEFT JOIN FETCH` (depth 1) | ❌ | |
 | Intervals (`intersects`, `intervalWithin`, `intervalContains`) | ✅ paired comparisons | ✅ paired comparisons | correct, not index-accelerated; see [Intervals](#intervals) |
+| Representatives per group | ❌ refused (no JPQL window functions) | ✅ grouped push + slice | see [Representatives per group](#representatives-per-group) |
 | Geo (`geoWithin`, `geoDistance`) | ❌ | ✅ 2dsphere | see [Geo](#geo) |
 | Parameters | ✅ | ✅ | model-level |
 | Relevance scores | ❌ | ❌ | search backends |
@@ -558,6 +596,7 @@ Diagnostic codes, source `org.eclipse.fennec.persistence.query`:
 | 8 | malformed map access (path does not end in a map, or a non-constant key) |
 | 9 | malformed projection (both or neither of path/key, or an expression column without an alias) |
 | 10 | malformed interval (a bound path missing or not an attribute, mixed domains, inverted literal bounds) |
+| 11 | malformed representatives (no alias, or a window bound that is not a positive constant) |
 | 100 | Mongo: cross-document or non-embedded path |
 | 101 | Mongo: distinct without a projection |
 | 102 | Mongo: invalid map key |

@@ -74,6 +74,7 @@ import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
@@ -167,8 +168,9 @@ public final class ExpressionAnalyzer {
 				}
 			}
 		}
+		String[] invalidRepresentatives = { null };
 		boolean aggregating = analyzePipeline(query.getApply(), features, maxDepth, zeroDivision,
-				invalidAggregate);
+				invalidAggregate, invalidRepresentatives);
 		if (!query.getExpand().isEmpty()) {
 			features.add(QueryFeature.EXPAND);
 			query.getExpand().forEach(expand -> path(expand, features, maxDepth));
@@ -204,7 +206,7 @@ public final class ExpressionAnalyzer {
 				? scanIntervalStructure(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
 				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection[0],
-				invalidInterval);
+				invalidInterval, invalidRepresentatives[0]);
 	}
 
 	/**
@@ -290,7 +292,7 @@ public final class ExpressionAnalyzer {
 	}
 
 	private static boolean analyzePipeline(Pipeline pipeline, Set<QueryFeature> features, int[] maxDepth,
-			boolean[] zeroDivision, String[] invalidAggregate) {
+			boolean[] zeroDivision, String[] invalidAggregate, String[] invalidRepresentatives) {
 		if (pipeline == null) {
 			return false;
 		}
@@ -324,6 +326,27 @@ public final class ExpressionAnalyzer {
 						// expression-valued aggregate sources (issue #87)
 						features.add(QueryFeature.GROUP_EXPRESSION);
 						walk(aggregate.getSource(), features, maxDepth, zeroDivision);
+					}
+				}
+				RepresentativeSpec representatives = groupBy.getRepresentatives();
+				if (representatives != null) {
+					// the group's own documents next to its aggregates (issue #214)
+					features.add(QueryFeature.GROUP_REPRESENTATIVES);
+					walk(representatives.getCount(), features, maxDepth, zeroDivision);
+					if (representatives.getOffset() != null) {
+						walk(representatives.getOffset(), features, maxDepth, zeroDivision);
+					}
+					for (OrderBy within : representatives.getOrderBy()) {
+						if (within.getPath() != null) {
+							path(within.getPath(), features, maxDepth);
+						}
+						if (within.getKey() != null) {
+							features.add(QueryFeature.SORT_EXPRESSION);
+							walk(within.getKey(), features, maxDepth, zeroDivision);
+						}
+					}
+					if (invalidRepresentatives[0] == null) {
+						invalidRepresentatives[0] = scanRepresentatives(representatives);
 					}
 				}
 			} else if (stage instanceof FilterStage filter) {
@@ -672,6 +695,40 @@ public final class ExpressionAnalyzer {
 		} catch (RuntimeException e) {
 			return null;
 		}
+	}
+
+	/**
+	 * Structural validation of a representative window (issue #214). The window bounds have
+	 * to be constants — a literal or a bound parameter — because a backend that serves this
+	 * natively constructs its search with the number known (Lucene's grouping search does),
+	 * the same rule {@code MapValue}'s key carries for the same reason. A literal count of
+	 * zero or less asks for nothing and is refused rather than silently answered with an
+	 * empty cell.
+	 */
+	private static String scanRepresentatives(RepresentativeSpec representatives) {
+		if (representatives.getAlias() == null || representatives.getAlias().isBlank()) {
+			return "Representatives need an alias — it names the result cell that holds them";
+		}
+		String countFinding = constantWindowBound(representatives.getCount(), "count", 1);
+		if (countFinding != null) {
+			return countFinding;
+		}
+		return representatives.getOffset() == null ? null
+				: constantWindowBound(representatives.getOffset(), "offset", 0);
+	}
+
+	private static String constantWindowBound(Expression bound, String name, long minimum) {
+		if (bound instanceof ParameterRef) {
+			return null;
+		}
+		if (!(bound instanceof IntegerLiteral literal)) {
+			return "Representative " + name + " must be an integer literal or a parameter, not "
+					+ (bound == null ? "nothing" : bound.eClass().getName())
+					+ " — a backend has to know it when the query is translated";
+		}
+		return literal.getValue() < minimum
+				? "Representative " + name + " is " + literal.getValue() + ", which asks for no rows"
+				: null;
 	}
 
 	/** Whether the divisor is a literal zero (statically refusable, issue #76). */

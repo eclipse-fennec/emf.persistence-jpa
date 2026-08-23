@@ -44,6 +44,7 @@ public final class MongoQueryPlan implements QueryPlan {
 	private final List<Bson> pipeline;
 	private final List<String> rowKeys;
 	private final List<String> rowAliases;
+	private final List<String> objectValuedRowKeys;
 
 	MongoQueryPlan(Query source, QueryShape shape, Bson filter, Bson sort, int skip, int limit) {
 		this(source, shape, filter, sort, skip, limit, null, null, null);
@@ -51,6 +52,12 @@ public final class MongoQueryPlan implements QueryPlan {
 
 	MongoQueryPlan(Query source, QueryShape shape, Bson filter, Bson sort, int skip, int limit,
 			List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases) {
+		this(source, shape, filter, sort, skip, limit, pipeline, rowKeys, rowAliases, null);
+	}
+
+	MongoQueryPlan(Query source, QueryShape shape, Bson filter, Bson sort, int skip, int limit,
+			List<Bson> pipeline, List<String> rowKeys, List<String> rowAliases,
+			List<String> objectValuedRowKeys) {
 		this.source = Objects.requireNonNull(source, "source must not be null");
 		this.shape = Objects.requireNonNull(shape, "shape must not be null");
 		this.filter = filter;
@@ -61,6 +68,19 @@ public final class MongoQueryPlan implements QueryPlan {
 		this.rowKeys = rowKeys == null ? List.of() : List.copyOf(rowKeys);
 		this.rowAliases = rowAliases == null ? List.of()
 				: Collections.unmodifiableList(new ArrayList<>(rowAliases));
+		this.objectValuedRowKeys = objectValuedRowKeys == null ? List.of()
+				: List.copyOf(objectValuedRowKeys);
+	}
+
+	/**
+	 * The output keys whose cell holds documents rather than a scalar — the representative
+	 * columns of issue #214. The resource decodes those through the codec, because a cell of
+	 * EObjects is what decision R1 hands out; every other cell stays a plain BSON value.
+	 *
+	 * @return the object-valued keys, never {@code null}
+	 */
+	public List<String> objectValuedRowKeys() {
+		return objectValuedRowKeys;
 	}
 
 	@Override

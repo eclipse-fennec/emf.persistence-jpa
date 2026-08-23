@@ -35,6 +35,7 @@ import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.QueryPackage;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -103,6 +104,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	private EClass groupByStageEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass representativeSpecEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -579,6 +587,66 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EReference getGroupByStage_Representatives() {
+		return (EReference)groupByStageEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getRepresentativeSpec() {
+		return representativeSpecEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRepresentativeSpec_Alias() {
+		return (EAttribute)representativeSpecEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRepresentativeSpec_Count() {
+		return (EReference)representativeSpecEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRepresentativeSpec_Offset() {
+		return (EReference)representativeSpecEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRepresentativeSpec_OrderBy() {
+		return (EReference)representativeSpecEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getGroupKey() {
 		return groupKeyEClass;
 	}
@@ -834,6 +902,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		createEReference(groupByStageEClass, GROUP_BY_STAGE__PATHS);
 		createEReference(groupByStageEClass, GROUP_BY_STAGE__KEYS);
 		createEReference(groupByStageEClass, GROUP_BY_STAGE__AGGREGATES);
+		createEReference(groupByStageEClass, GROUP_BY_STAGE__REPRESENTATIVES);
+
+		representativeSpecEClass = createEClass(REPRESENTATIVE_SPEC);
+		createEAttribute(representativeSpecEClass, REPRESENTATIVE_SPEC__ALIAS);
+		createEReference(representativeSpecEClass, REPRESENTATIVE_SPEC__COUNT);
+		createEReference(representativeSpecEClass, REPRESENTATIVE_SPEC__OFFSET);
+		createEReference(representativeSpecEClass, REPRESENTATIVE_SPEC__ORDER_BY);
 
 		groupKeyEClass = createEClass(GROUP_KEY);
 		createEReference(groupKeyEClass, GROUP_KEY__EXPRESSION);
@@ -943,6 +1018,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEReference(getGroupByStage_Paths(), theExpressionPackage.getPropertyPath(), null, "paths", null, 0, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getGroupByStage_Keys(), this.getGroupKey(), null, "keys", null, 0, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getGroupByStage_Aggregates(), this.getAggregate(), null, "aggregates", null, 1, -1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getGroupByStage_Representatives(), this.getRepresentativeSpec(), null, "representatives", null, 0, 1, GroupByStage.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(representativeSpecEClass, RepresentativeSpec.class, "RepresentativeSpec", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getRepresentativeSpec_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, RepresentativeSpec.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRepresentativeSpec_Count(), theExpressionPackage.getExpression(), null, "count", null, 1, 1, RepresentativeSpec.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRepresentativeSpec_Offset(), theExpressionPackage.getExpression(), null, "offset", null, 0, 1, RepresentativeSpec.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRepresentativeSpec_OrderBy(), this.getOrderBy(), null, "orderBy", null, 0, -1, RepresentativeSpec.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(groupKeyEClass, GroupKey.class, "GroupKey", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getGroupKey_Expression(), theExpressionPackage.getExpression(), null, "expression", null, 1, 1, GroupKey.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

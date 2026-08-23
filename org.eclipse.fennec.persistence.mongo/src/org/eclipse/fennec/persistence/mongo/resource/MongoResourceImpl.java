@@ -759,7 +759,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			AggregateIterable<BsonDocument> aggregate = collection.aggregate(plan.pipeline());
 			MongoCursor<BsonDocument> cursor = aggregate.iterator();
 			Stream<QueryResultRow> rows = cursorStream(cursor)
-					.map(document -> toRow(document, plan));
+					.map(document -> toRow(document, plan, eClass));
 			return QueryResults.rows(plan.shape(), rows);
 		}
 		FindIterable<BsonDocument> find = collection.find(filter);
@@ -874,12 +874,32 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		return StreamSupport.stream(documents, false).onClose(cursor::close);
 	}
 
-	private QueryResultRow toRow(BsonDocument document, MongoQueryPlan plan) {
+	private QueryResultRow toRow(BsonDocument document, MongoQueryPlan plan, EClass eClass) {
 		List<Object> values = new ArrayList<>(plan.rowKeys().size());
 		for (String key : plan.rowKeys()) {
-			values.add(BsonValues.toJava(document.get(key)));
+			values.add(plan.objectValuedRowKeys().contains(key)
+					? representatives(document.get(key), eClass)
+					: BsonValues.toJava(document.get(key)));
 		}
 		return QueryResultRows.of(plan.rowAliases(), values);
+	}
+
+	/**
+	 * A representative cell (issue #214): the group's own documents, decoded through the
+	 * codec into EObjects. Never {@code null} — an empty window yields an empty list, so a
+	 * group whose offset ran past its end still appears with its keys and aggregates.
+	 */
+	private List<EObject> representatives(BsonValue cell, EClass eClass) {
+		if (cell == null || !cell.isArray()) {
+			return List.of();
+		}
+		List<EObject> objects = new ArrayList<>(cell.asArray().size());
+		for (BsonValue member : cell.asArray()) {
+			if (member.isDocument()) {
+				objects.add(decodeUnchecked(member.asDocument(), eClass));
+			}
+		}
+		return objects;
 	}
 
 	// -------------------------------------------------------------- commands
