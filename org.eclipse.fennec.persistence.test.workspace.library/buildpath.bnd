@@ -1,0 +1,9 @@
+# The test-only surface a backend binding consumes (issue #216). Deliberately listed by hand
+# rather than resolved from a bndrun: the TCK is compile/test API, not a runtime closure, and a
+# resolve would by construction never contain it.
+-buildpath: \
+	org.eclipse.fennec.persistence.tck;version=latest,\
+	org.eclipse.fennec.persistence.query.derived;version=latest,\
+	junit-jupiter-api;version=latest,\
+	org.opentest4j;version=latest,\
+	assertj-core;version=latest

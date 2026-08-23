@@ -87,6 +87,37 @@ daanse `DataSource` factories, and the supporting EMF/OSGi runtime bundles.
 After a repository refresh they can be used on any `-buildpath`/`-runbundles`
 like local artifacts.
 
+### Binding the TCK: `fennecPersistenceTest`
+
+That index is a **runtime** closure, so by construction it carries no test
+artifact — the TCK is not in it. A backend binding that extends
+`AbstractPersistenceTCK` (subclass API since #99) enables the second library
+next to the first (issue #216):
+
+```
+org.eclipse.fennec.persistence:org.eclipse.fennec.persistence.test.workspace.library:<version>
+```
+
+```properties
+-library: fennecPersistence, fennecPersistenceTest
+```
+
+It registers its own repository ("Eclipse Fennec Persistence Test") carrying
+`org.eclipse.fennec.persistence.tck`, `org.eclipse.fennec.persistence.query.derived`
+(which the `derivedReference*` cases need to register) and the JUnit/AssertJ
+API the TCK exposes in its own signatures. The split is deliberate and follows
+the `fennec` / `fennecTest` convention of the bnd libraries: a production
+`-buildpath` never gains a test bundle, and a workspace that binds the TCK
+opts into it by name.
+
+**Do not enable `fennecJPA`.** It is the retired name of `fennecPersistence`
+— the same library before the 2026-07-23 rename — and its stale published
+snapshot declares the *same* bnd plugin key and index file name. A bnd
+property assigned twice keeps one value, so enabling both loads exactly one
+of the two repositories, silently, and the one that wins may be the old index
+with its old group id (`org.eclipse.fennec.persistence.jpa`) and without the
+query stack (issue #217).
+
 ## Quick Start
 
 ### Prerequisites
