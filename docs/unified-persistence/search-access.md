@@ -6,7 +6,8 @@ in §7 is the proposed issue set for `eclipse-fennec/emf.search` — to be turne
 issues there, refined per issue. Companions: `query-ir-redesign.md` (Expression IR,
 capability discipline), `query-processor-spi.md` (per-backend translation),
 `timeseries-access.md` (stream store — the v2 index feed), `geo-vocabulary.md`
-(issue #101, concept round pending). Prerequisites landed here: #99 (TCK as consumable
+(issue #101, concept round pending), `interval-and-representatives.md` (the #215/#214
+round for S15 and S19). Prerequisites landed here: #99 (TCK as consumable
 API), #100 (SCORE vocabulary).
 
 ## 1. Mission
