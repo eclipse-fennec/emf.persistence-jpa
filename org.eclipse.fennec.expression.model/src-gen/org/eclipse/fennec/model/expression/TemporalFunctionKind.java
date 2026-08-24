@@ -27,6 +27,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
  * The extractable parts — UTC-normative, SECOND integral.
+ * 
+ * YEAR..SECOND yield an integer component. DATE and TIME (issue #240) are different in kind: they yield a VALUE of the corresponding TemporalKind — the date part and the time-of-day part of a date-time ([OData-URL] 5.1.1.6) — which is why they exist at all rather than being composed from the components. date(x) eq 2026-08-24 is one predicate where year/month/day equality is three, and $orderby date(x) cannot be composed from components at all.
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.model.expression.ExpressionPackage#getTemporalFunctionKind()
  * @model
@@ -92,7 +94,27 @@ public enum TemporalFunctionKind implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	SECOND(5, "SECOND", "SECOND");
+	SECOND(5, "SECOND", "SECOND"),
+
+	/**
+	 * The '<em><b>DATE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #DATE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	DATE(6, "DATE", "DATE"),
+
+	/**
+	 * The '<em><b>TIME</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #TIME_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	TIME(7, "TIME", "TIME");
 
 	/**
 	 * The '<em><b>YEAR</b></em>' literal value.
@@ -161,6 +183,28 @@ public enum TemporalFunctionKind implements Enumerator {
 	public static final int SECOND_VALUE = 5;
 
 	/**
+	 * The '<em><b>DATE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #DATE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int DATE_VALUE = 6;
+
+	/**
+	 * The '<em><b>TIME</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #TIME
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int TIME_VALUE = 7;
+
+	/**
 	 * An array of all the '<em><b>Temporal Function Kind</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -174,6 +218,8 @@ public enum TemporalFunctionKind implements Enumerator {
 			HOUR,
 			MINUTE,
 			SECOND,
+			DATE,
+			TIME,
 		};
 
 	/**
@@ -236,6 +282,8 @@ public enum TemporalFunctionKind implements Enumerator {
 			case HOUR_VALUE: return HOUR;
 			case MINUTE_VALUE: return MINUTE;
 			case SECOND_VALUE: return SECOND;
+			case DATE_VALUE: return DATE;
+			case TIME_VALUE: return TIME;
 		}
 		return null;
 	}

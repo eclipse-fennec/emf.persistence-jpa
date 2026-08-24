@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -1491,6 +1492,43 @@ public abstract class AbstractPersistenceTCK {
 		try (QueryResult result = queryable(createBackendResourceSet()).query(ceiling)) {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.containsExactly("Alice");
+		}
+	}
+
+	/**
+	 * {@code date()} and {@code time()} extract a value, not a component (issue #240).
+	 * <p>
+	 * The point of having them at all: {@code date(x) eq <date>} is one predicate where
+	 * year/month/day equality is three, and {@code $orderby date(x)} cannot be composed from
+	 * components. Asserted through query results rather than through the extracted
+	 * representation, deliberately — BSON has no time type, so mongo compares milliseconds since
+	 * midnight while JPA casts to a SQL TIME. What has to agree is which objects come back.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.WHERE_COMPARISON })
+	public void queryDateAndTimeExtraction() throws Exception {
+		saveQueryFixture();
+		// Alice 1996-03-15T10:30:45Z, Bob 1986-07-01T23:59:59Z, Carol 1976-12-31T00:00:05Z
+
+		// the whole day, as one predicate
+		Query onAlicesBirthday = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).date()
+						.eq(LocalDate.of(1996, 3, 15)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(onAlicesBirthday)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("the date part ignores the time of day")
+					.containsExactly("Alice");
+		}
+
+		// a time-of-day range: Bob is just before midnight, Carol just after
+		Query lateInTheDay = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).hour().ge(23))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(lateInTheDay)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("the hour component still works next to the new value kinds")
+					.containsExactly("Bob");
 		}
 	}
 

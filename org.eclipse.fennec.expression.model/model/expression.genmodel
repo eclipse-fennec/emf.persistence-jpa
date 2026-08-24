@@ -36,6 +36,8 @@
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/HOUR"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/MINUTE"/>
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/SECOND"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/DATE"/>
+      <genEnumLiterals ecoreEnumLiteral="expression.ecore#//TemporalFunctionKind/TIME"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="expression.ecore#//NumericFunctionKind">
       <genEnumLiterals ecoreEnumLiteral="expression.ecore#//NumericFunctionKind/ROUND"/>

@@ -331,11 +331,13 @@ public final class OclToExpr {
 				}
 				return check;
 			}
-			case "year", "month", "day", "hour", "minute", "second" -> {
+			case "year", "month", "day", "hour", "minute", "second", "date", "time" -> {
 				TemporalFunction function = EXPR.createTemporalFunction();
 				function.setKind(switch (name) {
 				case "year" -> TemporalFunctionKind.YEAR;
 				case "month" -> TemporalFunctionKind.MONTH;
+				case "date" -> TemporalFunctionKind.DATE;
+				case "time" -> TemporalFunctionKind.TIME;
 				case "day" -> TemporalFunctionKind.DAY;
 				case "hour" -> TemporalFunctionKind.HOUR;
 				case "minute" -> TemporalFunctionKind.MINUTE;

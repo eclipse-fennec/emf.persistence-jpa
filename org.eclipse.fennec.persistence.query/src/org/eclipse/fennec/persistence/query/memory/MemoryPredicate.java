@@ -402,6 +402,11 @@ final class MemoryPredicate {
 			case HOUR -> value.getHour();
 			case MINUTE -> value.getMinute();
 			case SECOND -> value.getSecond();
+			// DATE and TIME yield a VALUE rather than a component (issue #240). The reference
+			// representation is the java.time one; each backend stores what it can compare and
+			// sort, which is why the TCK asserts on query results and not on representations.
+			case DATE -> value.toLocalDate();
+			case TIME -> value.toLocalTime();
 			};
 		}
 		if (expression instanceof NumericFunction function) {
