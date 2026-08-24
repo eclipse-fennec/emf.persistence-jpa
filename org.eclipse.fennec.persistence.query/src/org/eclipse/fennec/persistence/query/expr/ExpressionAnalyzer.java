@@ -54,6 +54,7 @@ import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.RootReference;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.Score;
@@ -524,6 +525,12 @@ public final class ExpressionAnalyzer {
 			subjectPaths(intervalMatch.getSubject(), features, maxDepth);
 			walk(intervalMatch.getLower(), features, maxDepth, zeroDivision);
 			walk(intervalMatch.getUpper(), features, maxDepth, zeroDivision);
+		} else if (expression instanceof RootReference rootReference) {
+			features.add(QueryFeature.ROOT_REFERENCE);
+			// the key is walked for its features but NOT for paths: those address the
+			// referenced type, not the query's own root, so they must not widen the
+			// path-depth budget or the root's feature set with a foreign traversal
+			walk(rootReference.getKey(), features, maxDepth, zeroDivision);
 		} else if (expression instanceof PropertyPath propertyPath) {
 			if (propertyPath.getCastBase() != null) {
 				features.add(QueryFeature.TYPE_CAST);

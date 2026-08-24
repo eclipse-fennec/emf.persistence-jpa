@@ -951,7 +951,16 @@ public class JpaQueryProcessor implements QueryProcessor {
 				}
 				return "SUBSTRING(" + source + ", " + position + ")";
 			}
-			return bind(ExpressionValues.resolve(expression, target, context.parameters(), context.converter()));
+			Object value = ExpressionValues.resolve(expression, target, context.parameters(),
+					context.converter());
+			if (value == null) {
+				// the JPQL literal, not a bound parameter: a null parameter carries no SQL type,
+				// and EclipseLink then types it as varchar — h2 and MariaDB compare it anyway,
+				// PostgreSQL refuses with "operator does not exist: integer > character varying"
+				// (issue #241, measured; same shape as the UNSET literal of #228)
+				return "NULL";
+			}
+			return bind(value);
 		}
 
 		private String alias(Variable variable) throws QueryException {

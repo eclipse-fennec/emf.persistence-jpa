@@ -64,6 +64,9 @@ public final class MongoFlavorCapabilities {
 					QueryFeature.STRING_FUNCTIONS, QueryFeature.STRING_FUNCTIONS_EXTENDED,
 					QueryFeature.ARITHMETIC, QueryFeature.NUMERIC_FUNCTIONS,
 					QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.COLLECTION_COUNT,
+					// $root is a keyed read plus an inlined literal (issue #241), not a join —
+					// which is what makes it declarable on a store with no cross-collection match
+					QueryFeature.ROOT_REFERENCE,
 					QueryFeature.COLLECTION_COUNT_FILTERED,
 					QueryFeature.PIPELINE_COMPUTE, QueryFeature.GROUP_EXPRESSION,
 					QueryFeature.TYPE_CAST, QueryFeature.TYPE_CHECK,

@@ -79,6 +79,9 @@ public final class JpaFlavorCapabilities {
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
 					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED, QueryFeature.MAP_VALUE,
 					QueryFeature.INTERVAL_MATCH,
+					// $root resolves to a value before translation (issue #241) — one keyed
+					// read, so this is a capability of the resource rather than of JPQL
+					QueryFeature.ROOT_REFERENCE,
 					QueryFeature.EXPAND)
 			.maxFeaturePathDepth(-1)
 			.build();

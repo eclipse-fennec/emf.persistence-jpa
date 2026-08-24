@@ -65,6 +65,7 @@ import org.eclipse.fennec.model.expression.NumericFunctionKind;
 import org.eclipse.fennec.model.expression.Or;
 import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.RootReference;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
 import org.eclipse.fennec.model.expression.StringFunction;
@@ -233,6 +234,30 @@ public final class Expressions {
 	 * @param lat the latitude in degrees
 	 * @return a WGS84 point literal
 	 */
+	/**
+	 * A value read from ONE fixed object of another entity set (issue #241) — OData's
+	 * {@code $root}. A value expression: it composes with comparisons like any other.
+	 * <p>
+	 * The key must select exactly one object. No match yields {@code null}, and the enclosing
+	 * comparison then goes UNKNOWN under the 3VL rules (#94) — the same thing SQL does with an
+	 * empty scalar subquery. More than one match is a query error, never a first-row pick.
+	 * <p>
+	 * Backends resolve this <em>before</em> translating and inline the value, which is what
+	 * makes it servable on a store that has no cross-collection join at all.
+	 *
+	 * @param from the referenced entity set's type
+	 * @param key the key predicate selecting exactly one object of that type
+	 * @param path the feature to read from it
+	 * @return the value expression
+	 */
+	public static RootReference rootReference(EClass from, Expression key, PropertyPath path) {
+		RootReference reference = FACTORY.createRootReference();
+		reference.setFrom(Objects.requireNonNull(from, "from must not be null"));
+		reference.setKey(Objects.requireNonNull(key, "key must not be null"));
+		reference.setPath(Objects.requireNonNull(path, "path must not be null"));
+		return reference;
+	}
+
 	public static GeoPointLiteral geoPoint(double lon, double lat) {
 		GeoPointLiteral point = FACTORY.createGeoPointLiteral();
 		point.setLon(lon);
