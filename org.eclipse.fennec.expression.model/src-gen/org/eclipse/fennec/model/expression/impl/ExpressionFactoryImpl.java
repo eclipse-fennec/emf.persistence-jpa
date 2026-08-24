@@ -81,6 +81,7 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 			case ExpressionPackage.VARIABLE: return createVariable();
 			case ExpressionPackage.VARIABLE_REF: return createVariableRef();
 			case ExpressionPackage.ALIAS_REF: return createAliasRef();
+			case ExpressionPackage.ROOT_REFERENCE: return createRootReference();
 			case ExpressionPackage.GEO_POINT_LITERAL: return createGeoPointLiteral();
 			case ExpressionPackage.GEO_SUBJECT: return createGeoSubject();
 			case ExpressionPackage.GEO_BOX: return createGeoBox();
@@ -326,6 +327,17 @@ public class ExpressionFactoryImpl extends EFactoryImpl implements ExpressionFac
 	public AliasRef createAliasRef() {
 		AliasRefImpl aliasRef = new AliasRefImpl();
 		return aliasRef;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public RootReference createRootReference() {
+		RootReferenceImpl rootReference = new RootReferenceImpl();
+		return rootReference;
 	}
 
 	/**

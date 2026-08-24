@@ -110,8 +110,13 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			// SCORE stays undeclared by design (issue #100): a relevance score without a
 			// text-scoring model has no reference semantics — the first feature the
 			// reference engine deliberately does not implement
+			// ROOT_REFERENCE is the third (issue #241), and for a structural reason rather
+			// than a missing implementation: reading one fixed object of ANOTHER entity set
+			// needs a store to read it from, and this engine is handed one collection of
+			// objects. The capability belongs to whoever can perform that read — the
+			// resource — not to the expression evaluator.
 			.support(EnumSet.complementOf(
-					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SCORE))
+					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SCORE, QueryFeature.ROOT_REFERENCE))
 					.toArray(QueryFeature[]::new))
 			.maxFeaturePathDepth(-1)
 			.build();

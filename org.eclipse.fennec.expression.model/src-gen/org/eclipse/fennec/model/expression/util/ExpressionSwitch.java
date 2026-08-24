@@ -197,6 +197,13 @@ public class ExpressionSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ExpressionPackage.ROOT_REFERENCE: {
+				RootReference rootReference = (RootReference)theEObject;
+				T result = caseRootReference(rootReference);
+				if (result == null) result = caseExpression(rootReference);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ExpressionPackage.GEO_POINT_LITERAL: {
 				GeoPointLiteral geoPointLiteral = (GeoPointLiteral)theEObject;
 				T result = caseGeoPointLiteral(geoPointLiteral);
@@ -684,6 +691,21 @@ public class ExpressionSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseAliasRef(AliasRef object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Root Reference</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Root Reference</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseRootReference(RootReference object) {
 		return null;
 	}
 

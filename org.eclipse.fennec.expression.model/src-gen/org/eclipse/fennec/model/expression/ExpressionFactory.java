@@ -161,6 +161,15 @@ public interface ExpressionFactory extends EFactory {
 	AliasRef createAliasRef();
 
 	/**
+	 * Returns a new object of class '<em>Root Reference</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Root Reference</em>'.
+	 * @generated
+	 */
+	RootReference createRootReference();
+
+	/**
 	 * Returns a new object of class '<em>Geo Point Literal</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

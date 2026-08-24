@@ -724,6 +724,21 @@ public enum QueryFeature implements Enumerator {
 	GROUP_REPRESENTATIVES(85, "GROUP_REPRESENTATIVES", "GROUP_REPRESENTATIVES"),
 
 	/**
+	 * The '<em><b>ROOT REFERENCE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * A value read from one fixed object of another entity set (issue #241) — OData's $root. Declared by a backend that can resolve the referenced object and inline its value BEFORE translating, which is all OData's syntax needs: $root takes a literal key predicate, so the key is constant and one keyed read answers it. That is far cheaper than a general cross-root subquery and covers every request the protocol can express.
+	 * 
+	 * One literal, not two: a backend that can do the keyed read can inline the value, and a backend that cannot has nothing to offer for the non-constant case either. A non-constant key is refused by every backend and is not part of this capability.
+	 * <!-- end-model-doc -->
+	 * @see #ROOT_REFERENCE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	ROOT_REFERENCE(86, "ROOT_REFERENCE", "ROOT_REFERENCE"),
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1479,6 +1494,22 @@ public enum QueryFeature implements Enumerator {
 	public static final int GROUP_REPRESENTATIVES_VALUE = 85;
 
 	/**
+	 * The '<em><b>ROOT REFERENCE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * A value read from one fixed object of another entity set (issue #241) — OData's $root. Declared by a backend that can resolve the referenced object and inline its value BEFORE translating, which is all OData's syntax needs: $root takes a literal key predicate, so the key is constant and one keyed read answers it. That is far cheaper than a general cross-root subquery and covers every request the protocol can express.
+	 * 
+	 * One literal, not two: a backend that can do the keyed read can inline the value, and a backend that cannot has nothing to offer for the non-constant case either. A non-constant key is refused by every backend and is not part of this capability.
+	 * <!-- end-model-doc -->
+	 * @see #ROOT_REFERENCE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int ROOT_REFERENCE_VALUE = 86;
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1553,6 +1584,7 @@ public enum QueryFeature implements Enumerator {
 			PARAMETERS,
 			INTERVAL_MATCH,
 			GROUP_REPRESENTATIVES,
+			ROOT_REFERENCE,
 			AS_OF,
 		};
 
@@ -1663,6 +1695,7 @@ public enum QueryFeature implements Enumerator {
 			case PARAMETERS_VALUE: return PARAMETERS;
 			case INTERVAL_MATCH_VALUE: return INTERVAL_MATCH;
 			case GROUP_REPRESENTATIVES_VALUE: return GROUP_REPRESENTATIVES;
+			case ROOT_REFERENCE_VALUE: return ROOT_REFERENCE;
 			case AS_OF_VALUE: return AS_OF;
 		}
 		return null;
