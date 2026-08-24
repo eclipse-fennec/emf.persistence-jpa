@@ -259,6 +259,11 @@ consistent with R6 (rules are context). Consequences kept honest:
 - series queries (§5) address virtual subjects the same way — the subject declaration
   resolves via the aspect, not via `EClass.getEStructuralFeature`.
 
+What this section leaves open is where a virtual feature's value comes from when **no ingest
+mapping is running** — RecordingCapture and any SnapshotCapture over an already-mapped domain
+model never pass through one. `changeset-mapping.md` is that round: the same ladder, declared
+on the tracking side, plus what it costs the comparator.
+
 ### 6.3 Enrichment from secondary sources
 
 Payloads are chronically incomplete: static asset data (lat/lon, install position,
@@ -367,7 +372,7 @@ backend-suffix conventions):
 | `org.eclipse.fennec.persistence.stream` | `StreamStore` SPI (append/replay/asOf/truncate), `StorageProfile`/`ReplayFilter`/`RetentionRule`/`TimeAxis`, the shared housekeeping service (O3: stores expose primitives only) **plus the in-memory reference implementation** — P1's "smallest end-to-end slice" is one API bundle + one backend | P1 |
 | `org.eclipse.fennec.persistence.stream.jpa` | narrow-table store over the exported `eclipselink.spi` (JPAUnit/lease is API since #65/#90), **including the series-query pushdown** (`date_trunc`); TimescaleDB rides inside as dialect detection — §4.2: not a backend, hence not a project | P1/P2/P5 |
 | `org.eclipse.fennec.persistence.stream.mongo` | TS-collection store + `$dateTrunc` pushdown, docking onto the `MongoDatabase` whiteboard (#90) | P4 |
-| `org.eclipse.fennec.tracking.model` | `fennec-tracking.ecore` (today only under `docs/…/model/`) — TrackingConfig, virtual features (fingerprint-relevant) | P3 |
+| `org.eclipse.fennec.tracking.model` | `fennec-tracking.ecore` (today only under `docs/…/model/`) — TrackingConfig, virtual features (fingerprint-relevant); the tracked-slot sources and selector of `changeset-mapping.md` land here too, split across phases per its C7 | P3 → P1 (§13.1) |
 | `org.eclipse.fennec.stream.ingest.model` | ingest-mapping metamodel (ladder, foreach, guards, constants, lookups) — deliberately separate from the tracking model, mirroring the two-aspects-one-registry doctrine (§6) | P3 |
 | `org.eclipse.fennec.persistence.stream.ingest` | capture pipeline: codec → payload → mapping → ChangeRules → `StreamStore`; OCL evaluation via `expression.ocl` + the memory engine (§6.1), converter whiteboard (rung 4), enrichment lookups with TTL cache | P3 |
 | `org.eclipse.fennec.persistence.stream.cdc.*` | CDC sources — own concept round first (§7); name reservation only | P7 |

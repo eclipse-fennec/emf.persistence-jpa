@@ -750,6 +750,11 @@ entirely. What remains is a **keyed snapshot diff**: load last known state (cach
 *only the tracked features*, flat, typed — O(#tracked features), no tree matching. Emit the
 deltas as one ChangeSet.
 
+This rests on the tracked set being a flat list of `eGet`-able features. Once a tracked slot
+may be derived (a path, a constant, an OCL expression, a named function), the read set and
+the tracked set diverge and the diff needs a dependency closure — see `changeset-mapping.md`
+§4, which is the round that widens §8's declaration and states the consequences here.
+
 One caveat, dissolved by the identity contract (§4.1): for **containment children** the keyed
 diff needs the child's identity. Single-valued/`SLOT` is trivial (the slot correlates);
 multi-valued requires `NATURAL` matchKeys — without them capture degrades to replace-all
@@ -812,6 +817,12 @@ TrackingConfig (per feature)
   arrayMode     : ATOMIC | ELEMENT_WISE  // ARRAY only (§5.4i)
   danglingRefs  : KEEP | UNSET | CASCADE // cross-aggregate references (§5.4g)
 ```
+
+The value side of this declaration is a single real `EStructuralFeature` per entry. The
+round that widens it to the §6.1 extraction ladder of `timeseries-access.md` (paths,
+constants, OCL, named functions), adds bulk include/exclude selection per class, and adds
+predicate ChangeRules is `changeset-mapping.md` — proposed, not settled; its M1–M8 are
+written to compose with R1–R8 below rather than replace them.
 
 Concrete examples from the discussion: feature A keeps the last 100 values
 (`DeletionRule.maxCount=100`); feature B keeps 3 days, feature C 5 days
