@@ -82,6 +82,59 @@ public interface Options {
 	String OPTION_CACHE_NEW_OBJECTS = "fennec.jpa.cache-new-objects";
 
 	/**
+	 * Chunk size for command-path writes (issue #227). A {@code DELETE}/{@code UPDATE} by
+	 * selector streams its matches and flushes every {@code n} objects instead of holding all
+	 * of them, so a selector matching millions of rows does not exhaust the heap before it
+	 * commits.
+	 * <p>
+	 * Unlike {@link #OPTION_PAGE_SIZE}, this has an <b>active default</b>
+	 * ({@value #DEFAULT_WRITE_CHUNK_SIZE}): the failure it prevents is an OOM, and a protection
+	 * that has to be switched on protects nobody who did not already know. Set a positive
+	 * {@link Integer} to tune it — smaller for wide rows or large blobs, larger for narrow ones.
+	 * A value of {@code 0} or less disables chunking and restores the previous
+	 * load-everything behaviour.
+	 *
+	 * <pre>{@code
+	 * resourceSet.getSaveOptions().put(Options.OPTION_WRITE_CHUNK_SIZE, 5000);
+	 * }</pre>
+	 *
+	 * Value type: {@link Integer}
+	 */
+	String OPTION_WRITE_CHUNK_SIZE = "fennec.write-chunk-size";
+
+	/** The chunk size used when {@link #OPTION_WRITE_CHUNK_SIZE} is unset. */
+	int DEFAULT_WRITE_CHUNK_SIZE = 1000;
+
+	/**
+	 * Returns the command-path write chunk size: the configured value, or
+	 * {@link #DEFAULT_WRITE_CHUNK_SIZE} when unset — never {@code 0} by accident. An explicit
+	 * value of {@code 0} or less means "no chunking" and is returned as
+	 * {@link Integer#MAX_VALUE}, so callers can treat the result as a plain chunk size.
+	 */
+	static int getWriteChunkSize(Map<?, ?> options) {
+		if (isNull(options) || !options.containsKey(OPTION_WRITE_CHUNK_SIZE)) {
+			return DEFAULT_WRITE_CHUNK_SIZE;
+		}
+		Object value = options.get(OPTION_WRITE_CHUNK_SIZE);
+		Integer configured = null;
+		if (value instanceof Integer i) {
+			configured = i;
+		} else if (value instanceof Number n) {
+			configured = n.intValue();
+		} else if (value instanceof String str) {
+			try {
+				configured = Integer.valueOf(str.trim());
+			} catch (NumberFormatException e) {
+				return DEFAULT_WRITE_CHUNK_SIZE;
+			}
+		}
+		if (isNull(configured)) {
+			return DEFAULT_WRITE_CHUNK_SIZE;
+		}
+		return configured > 0 ? configured : Integer.MAX_VALUE;
+	}
+
+	/**
 	 * Returns the cache-new-objects setting from the options, or {@code null} if unset.
 	 */
 	static Boolean getCacheNewObjects(Map<?, ?> options) {

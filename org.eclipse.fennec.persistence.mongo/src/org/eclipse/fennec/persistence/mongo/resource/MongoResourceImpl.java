@@ -551,7 +551,9 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				if (nonNull(referrer)) {
 					String message = "Cannot delete " + eObject.eClass().getName() + " '"
 							+ EcoreUtil.getID(eObject) + "': " + referrer + " still references it";
-					getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+					getErrors().add(PersistenceDiagnostic.error(
+							PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
+							message, getURI(), null));
 					throw new IOException(message);
 				}
 			}
@@ -923,11 +925,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		if (command instanceof DeleteCommand delete) {
 			ensureCommandSupported(CommandFeature.DELETE_BY_SELECTOR, delete.getSelector().getFrom());
-			return executeDelete(delete, parameters);
+			return executeDelete(delete, parameters, options);
 		}
 		if (command instanceof UpdateCommand update) {
 			ensureCommandSupported(CommandFeature.UPDATE_BY_SELECTOR, update.getSelector().getFrom());
-			return executeUpdate(update, parameters);
+			return executeUpdate(update, parameters, options);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
@@ -1151,7 +1153,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	/** Delete = selector-scoped deleteMany (concept §14: Delete = query selector). */
-	private long executeDelete(DeleteCommand delete, Map<String, Object> parameters) throws IOException {
+	private long executeDelete(DeleteCommand delete, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		String collectionName = getCollectionName(null);
 		if (isNull(collectionName)) {
 			throw new IOException("Resource URI has no collection segment — cannot delete: " + getURI());
@@ -1201,21 +1204,28 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			if (matchedIds.isEmpty()) {
 				return 0;
 			}
-			refuseWhenStillReferenced(eClass, matchedIds, collectionName);
+			int chunkSize = Options.getWriteChunkSize(options);
+			refuseWhenStillReferenced(eClass, matchedIds, collectionName, chunkSize);
 
 			// Deleting by the resolved ids rather than by the selector again: what was checked
 			// is what is removed, and a document arriving between the two is not swept up
-			// unchecked.
-			Bson byId = Filters.in(MongoPersistenceConstants.ID_FIELD, matchedIds);
-			long deleted = (nonNull(session)
-					? collection.deleteMany(session, byId)
-					: collection.deleteMany(byId)).getDeletedCount();
+			// unchecked. Chunked, because an $in carrying every matched id is a command
+			// document, and a command document has a 16 MB ceiling (issue #227).
+			long deleted = 0;
+			for (List<BsonValue> batch : chunked(matchedIds, chunkSize)) {
+				Bson byId = Filters.in(MongoPersistenceConstants.ID_FIELD, batch);
+				deleted += (nonNull(session)
+						? collection.deleteMany(session, byId)
+						: collection.deleteMany(byId)).getDeletedCount();
+			}
 			// Owned children go after their roots, for the reason delete(Map) states: a crash
 			// then leaves a recoverable orphan rather than a root pointing at documents that
 			// no longer exist.
 			deleteOwned(owned);
 			removeOwnershipRecords(owned);
-			removeOwnershipOf(matchedIds, collectionName);
+			for (List<BsonValue> batch : chunked(matchedIds, chunkSize)) {
+				removeOwnershipOf(batch, collectionName);
+			}
 			return deleted;
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
@@ -1245,7 +1255,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * @throws IOException with a Diagnostic naming the referring reference, when one exists
 	 */
 	private void refuseWhenStillReferenced(EClass eClass, List<BsonValue> matchedIds,
-			String collectionName) throws IOException {
+			String collectionName, int chunkSize) throws IOException {
 		if (isNull(eClass) || isNull(eClass.getEPackage())) {
 			return;
 		}
@@ -1270,12 +1280,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 						|| !reference.getEReferenceType().isSuperTypeOf(eClass)) {
 					continue;
 				}
-				if (anyReferenceExists(candidate.getName(), reference.getName(), ids, collectionName)) {
+				if (anyReferenceExists(candidate.getName(), reference.getName(), ids, collectionName,
+						chunkSize)) {
 					String message = "Cannot delete from '" + collectionName + "': "
 							+ candidate.getName() + "." + reference.getName()
 							+ " still references at least one of the " + ids.size()
 							+ " matched objects";
-					getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+					getErrors().add(PersistenceDiagnostic.error(
+							PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
+							message, getURI(), null));
 					throw new IOException(message);
 				}
 			}
@@ -1289,16 +1302,54 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * one query.
 	 */
 	private boolean anyReferenceExists(String collectionName, String fieldName, List<String> refIds,
-			String ownCollection) {
+			String ownCollection, int chunkSize) {
 		String field = fieldName + "." + refKey();
-		List<BsonString> bare = refIds.stream().map(BsonString::new).toList();
-		List<BsonString> qualified = refIds.stream()
-				.map(id -> new BsonString("/" + ownCollection + "#" + id)).toList();
-		Bson filter = Filters.or(Filters.in(field, bare), Filters.in(field, qualified));
-		try (MongoCursor<BsonDocument> cursor = getCollection(collectionName)
-				.find(filter).limit(1).iterator()) {
-			return cursor.hasNext();
+		for (List<String> batch : chunked(refIds, chunkSize)) {
+			List<BsonString> bare = batch.stream().map(BsonString::new).toList();
+			List<BsonString> qualified = batch.stream()
+					.map(id -> new BsonString("/" + ownCollection + "#" + id)).toList();
+			Bson filter = Filters.or(Filters.in(field, bare), Filters.in(field, qualified));
+			try (MongoCursor<BsonDocument> cursor = getCollection(collectionName)
+					.find(filter).limit(1).iterator()) {
+				if (cursor.hasNext()) {
+					return true;
+				}
+			}
 		}
+		return false;
+	}
+
+	/** Issues the accumulated writes and empties the batch; a no-op when there is nothing pending. */
+	private void writeBatch(MongoCollection<BsonDocument> collection, ClientSession session,
+			List<WriteModel<BsonDocument>> batch) {
+		if (batch.isEmpty()) {
+			return;
+		}
+		if (nonNull(session)) {
+			collection.bulkWrite(session, batch);
+		} else {
+			collection.bulkWrite(batch);
+		}
+		batch.clear();
+	}
+
+	/**
+	 * Splits {@code values} into batches of at most {@code chunkSize} (issue #227).
+	 * <p>
+	 * Not a memory measure — the caller already holds the whole list — but a protocol one: an
+	 * {@code $in} carrying every id travels inside a command document, and a command document
+	 * may not exceed 16 MB. Without this a large enough selector fails outright rather than
+	 * slowly.
+	 */
+	private static <T> List<List<T>> chunked(List<T> values, int chunkSize) {
+		if (values.size() <= chunkSize) {
+			return List.of(values);
+		}
+		List<List<T>> batches = new ArrayList<>();
+		for (int start = 0; start < values.size(); start += chunkSize) {
+			batches.add(values.subList(start, Math.min(start + chunkSize, values.size())));
+		}
+		return batches;
 	}
 
 	/**
@@ -1324,7 +1375,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * Update = selector + ChangeSet template per match (concept §14, patch-apply engine
 	 * §18.1): decode each matched document, patch it, replace it under its {@code _id}.
 	 */
-	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters) throws IOException {
+	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		String collectionName = getCollectionName(null);
 		if (isNull(collectionName)) {
 			throw new IOException("Resource URI has no collection segment — cannot update: " + getURI());
@@ -1344,7 +1396,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
 			ClientSession session = activeSession();
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			int chunkSize = Options.getWriteChunkSize(options);
 			long applied = 0;
+			// One bulkWrite per chunk instead of a replaceOne per match (issues #225, #227):
+			// the cursor already streams, so nothing but the current batch is held, and the
+			// round trips drop from one per document to one per chunk.
+			List<WriteModel<BsonDocument>> batch = new ArrayList<>();
 			try (MongoCursor<BsonDocument> cursor = (nonNull(session)
 					? collection.find(session, filter)
 					: collection.find(filter)).iterator()) {
@@ -1358,14 +1415,14 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					BsonValue id = document.get(MongoPersistenceConstants.ID_FIELD);
 					BsonDocument replacement = encode(eObject);
 					replacement.put(MongoPersistenceConstants.ID_FIELD, id);
-					if (nonNull(session)) {
-						collection.replaceOne(session, eq(MongoPersistenceConstants.ID_FIELD, id), replacement);
-					} else {
-						collection.replaceOne(eq(MongoPersistenceConstants.ID_FIELD, id), replacement);
-					}
+					batch.add(new ReplaceOneModel<>(eq(MongoPersistenceConstants.ID_FIELD, id), replacement));
 					applied++;
+					if (batch.size() >= chunkSize) {
+						writeBatch(collection, session, batch);
+					}
 				}
 			}
+			writeBatch(collection, session, batch);
 			return applied;
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
