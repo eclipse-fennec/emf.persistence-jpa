@@ -35,7 +35,12 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
+import org.eclipse.fennec.model.command.CommandFactory;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -369,5 +374,46 @@ class MongoDeleteWalkCostTest {
 		assertThat(finds)
 				.as("keyed attempt first, then the fallback load that alone can see embedded children")
 				.containsExactly("Library filter={\"_id\": \"s1\"}", "Library UNFILTERED");
+	}
+
+	/**
+	 * What the command-path delete of issue #223 costs: <b>one</b> resolve for the whole
+	 * selector, however many documents it matches and however many children they own.
+	 * <p>
+	 * The fix had to add a read — the ownership bookkeeping and the #219 refusal both need to
+	 * know which documents the filter hits before anything is removed. This case pins the budget
+	 * that made that acceptable: the resolve is a single {@code find}, and collecting the owned
+	 * children costs nothing on top, because a leaf child type is answered from the proxy URI
+	 * without ever being read. A regression to one query per match, or to a decode of every
+	 * matched document, shows up here as extra entries rather than as a slow build.
+	 */
+	@Test
+	void aCommandDeleteResolvesOnceForTheWholeSelector() throws Exception {
+		saveFixture(MANY, MANY);
+		synchronized (wireFinds) {
+			wireFinds.clear();
+		}
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(libraryClass)
+				.where(Expressions.path((EAttribute) libraryClass.getEStructuralFeature("lid")).eq("l1"))
+				.build());
+		Resource resource = resourceSet().createResource(uriFor("Library"));
+		long affected = ((CommandResource) resource).execute(delete);
+
+		List<String> finds;
+		synchronized (wireFinds) {
+			finds = new ArrayList<>(wireFinds);
+		}
+		System.out.printf("### command-delete(%d sections, %d archives): affected=%d finds=%s%n",
+				MANY, MANY, affected, finds);
+
+		assertThat(affected).isEqualTo(1);
+		assertThat(finds)
+				.as("one resolve for the selector — not one per match, and not one per owned child")
+				.hasSize(1);
+		assertThat(finds.get(0)).startsWith("Library filter=");
+		assertThat(database.getCollection("Archive", BsonDocument.class).countDocuments())
+				.as("and the owned children went with the root").isZero();
 	}
 }
