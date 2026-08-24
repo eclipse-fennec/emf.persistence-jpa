@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
@@ -40,6 +41,11 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.stream.ChangeEntry;
+import org.eclipse.fennec.model.stream.ChangeSet;
+import org.eclipse.fennec.model.stream.DeltaKind;
+import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
@@ -570,5 +576,61 @@ class MongoDeleteWalkCostTest {
 			System.out.printf("### guard-cost(%d roots): finds=%s%n", roots, wireFinds);
 			return wireFinds.size();
 		}
+	}
+
+	/**
+	 * A set-based update reads nothing at all (issue #228).
+	 * <p>
+	 * The TCK cases assert that such a template stores the right thing; they would pass just as
+	 * well if the discriminator never qualified and the load path did the work. This is the case
+	 * that shows the statement was actually used: <b>zero</b> finds, because nothing is decoded,
+	 * and one {@code update} command for however many documents match.
+	 */
+	@Test
+	void aSetBasedUpdateReadsNothing() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		Resource libraryResource = writeSet.createResource(uriFor("Library"));
+		for (int i = 0; i < 5; i++) {
+			libraryResource.getContents().add(create(libraryClass, "lid", "l" + i, "name", "Lib " + i));
+		}
+		libraryResource.save(null);
+		synchronized (wireFinds) {
+			wireFinds.clear();
+		}
+		synchronized (wireWrites) {
+			wireWrites.clear();
+		}
+
+		ChangeEntry rename = StreamFactory.eINSTANCE.createChangeEntry();
+		rename.setKind(DeltaKind.SET);
+		rename.setFeatureId(libraryClass.getFeatureID(libraryClass.getEStructuralFeature("name")));
+		rename.setValueNew("Renamed");
+		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
+		update.setSelector(QueryBuilder.from(libraryClass).build());
+		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+		template.getEntries().add(rename);
+		update.setTemplate(template);
+
+		Resource resource = resourceSet().createResource(uriFor("Library"));
+		long affected = ((CommandResource) resource).execute(update);
+
+		List<String> finds;
+		List<String> writes;
+		synchronized (wireFinds) {
+			finds = new ArrayList<>(wireFinds);
+		}
+		synchronized (wireWrites) {
+			writes = new ArrayList<>(wireWrites);
+		}
+		System.out.printf("### set-based-update(5 docs): affected=%d finds=%s writes=%s%n",
+				affected, finds, writes);
+
+		assertThat(affected).isEqualTo(5);
+		assertThat(finds).as("nothing is decoded, so nothing is read").isEmpty();
+		assertThat(writes).as("one update command for all five documents")
+				.containsExactly("update Library");
+		assertThat(database.getCollection("Library", BsonDocument.class)
+				.countDocuments(new BsonDocument("name", new BsonString("Renamed"))))
+				.isEqualTo(5);
 	}
 }

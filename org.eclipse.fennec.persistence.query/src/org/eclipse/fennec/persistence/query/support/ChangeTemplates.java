@@ -16,6 +16,7 @@ import static java.util.Objects.requireNonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.eclipse.emf.ecore.EAttribute;
@@ -246,6 +247,53 @@ public final class ChangeTemplates {
 	 * Validates a single entry against the type and resolves its feature. Returns the
 	 * resolved feature (never {@code null}).
 	 */
+	/**
+	 * The plain attribute assignments a template consists of — or {@code null} when it needs the
+	 * load-and-patch path (issue #228).
+	 * <p>
+	 * A backend that can express {@code UPDATE … SET} may run a qualifying template as one
+	 * statement instead of decoding every match, patching it and writing it back. This decides
+	 * once, here, what qualifies, so the two backends cannot drift into different answers:
+	 * <ul>
+	 * <li>every entry is a {@code SET} or {@code UNSET} — the collection kinds address a
+	 *     position or a member, which a single assignment cannot express;</li>
+	 * <li>every feature is a single-valued, changeable {@link EAttribute} — a reference entry
+	 *     carries a target id that has to be resolved, which is the very thing the load path
+	 *     exists for;</li>
+	 * <li>no feature is the type's id — a store may refuse to move a row's identity, and no
+	 *     template needs to.</li>
+	 * </ul>
+	 * Entries are validated exactly as {@link #apply(ChangeSet, EObject)} validates them, and
+	 * values are decoded with the same decoder, so a qualifying template produces the same
+	 * result on either path. That equality is the whole promise; if it cannot be kept for a
+	 * template, the template must not qualify.
+	 *
+	 * @param template the update template
+	 * @param type the type being updated
+	 * @return the assignments in template order, {@code null} values meaning {@code UNSET}; or
+	 *         {@code null} when the template does not qualify
+	 * @throws QueryException if the template is invalid, or a literal cannot be decoded
+	 */
+	public static Map<EAttribute, Object> setBasedAssignments(ChangeSet template, EClass type)
+			throws QueryException {
+		if (template == null || template.getEntries().isEmpty()) {
+			return null;
+		}
+		Map<EAttribute, Object> assignments = new LinkedHashMap<>();
+		for (ChangeEntry entry : template.getEntries()) {
+			if (entry.getKind() != DeltaKind.SET && entry.getKind() != DeltaKind.UNSET) {
+				return null;
+			}
+			EStructuralFeature feature = checkEntry(entry, type);
+			if (!(feature instanceof EAttribute attribute) || attribute.isID()) {
+				return null;
+			}
+			assignments.put(attribute,
+					entry.getKind() == DeltaKind.UNSET ? null : decode(attribute, entry.getValueNew()));
+		}
+		return assignments;
+	}
+
 	private static EStructuralFeature checkEntry(ChangeEntry entry, EClass type) throws QueryException {
 		DeltaKind kind = entry.getKind();
 		switch (kind) {

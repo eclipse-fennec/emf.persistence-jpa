@@ -122,6 +122,7 @@ import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
 
@@ -1376,6 +1377,31 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		return false;
 	}
 
+	/**
+	 * The set-based update of issue #228: one {@code updateMany} for the whole selector.
+	 * <p>
+	 * Field names come from the same mapping the filter was translated with, and values through
+	 * {@link BsonValues#toDocumentValue}, which is what the codec writes — the two update paths
+	 * must store the identical document for a qualifying template, and sharing both mappings is
+	 * how that is kept true rather than asserted.
+	 * <p>
+	 * Returns the <em>matched</em> count, not the modified one: the load path reports how many
+	 * objects the template was applied to, and a template that assigns a value a document
+	 * already has still applied. Reporting modified counts here would make the two paths
+	 * disagree on a no-op update.
+	 */
+	private long updateBySet(MongoCollection<BsonDocument> collection, ClientSession session,
+			Bson filter, Map<EAttribute, Object> assignments) {
+		List<Bson> operations = new ArrayList<>();
+		assignments.forEach((attribute, value) -> operations.add(isNull(value)
+				? Updates.unset(attribute.getName())
+				: Updates.set(attribute.getName(), BsonValues.toDocumentValue(value))));
+		Bson update = Updates.combine(operations);
+		return (nonNull(session)
+				? collection.updateMany(session, filter, update)
+				: collection.updateMany(filter, update)).getMatchedCount();
+	}
+
 	/** Issues the accumulated writes and empties the batch; a no-op when there is nothing pending. */
 	private void writeBatch(MongoCollection<BsonDocument> collection, ClientSession session,
 			List<WriteModel<BsonDocument>> batch) {
@@ -1453,6 +1479,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
 			ClientSession session = activeSession();
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			// A template that only assigns literals to plain attributes is one updateMany —
+			// no decode, no patch, no write-back, and nothing to chunk (issue #228). What does
+			// not qualify keeps the load-and-patch path below, which is the only one that can
+			// resolve a reference target.
+			Map<EAttribute, Object> assignments =
+					ChangeTemplates.setBasedAssignments(update.getTemplate(), eClass);
+			if (nonNull(assignments) && !assignments.isEmpty()) {
+				return updateBySet(collection, session, filter, assignments);
+			}
 			int chunkSize = Options.getWriteChunkSize(options);
 			long applied = 0;
 			// One bulkWrite per chunk instead of a replaceOne per match (issues #225, #227):

@@ -31,6 +31,8 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -1363,6 +1365,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private long updateCore(UpdateCommand update, JpaQueryPlan plan, EntityManager em,
 			Consumer<Class<?>> referencePatched, int chunkSize, boolean mayClear) throws QueryException {
+		// A template that only assigns literals to plain attributes is one UPDATE statement —
+		// no load, no patch, no write-back, and nothing to chunk (issue #228). Anything that
+		// needs a reference resolved keeps the load-and-patch path below.
+		Map<EAttribute, Object> assignments =
+				ChangeTemplates.setBasedAssignments(update.getTemplate(), update.getSelector().getFrom());
+		if (nonNull(assignments) && !assignments.isEmpty()) {
+			Long applied = updateBySet(em, plan, assignments, referencePatched);
+			if (nonNull(applied)) {
+				return applied;
+			}
+			// the plan did not have the shape the statement builder needs; fall through
+		}
 		ReferenceResolver resolver = referenceResolver(em);
 		// the first match's concrete class, kept for the identity-map drop below — the stream
 		// no longer has a list to index into (issue #227)
@@ -1377,6 +1391,76 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			referencePatched.accept(firstType[0]);
 		}
 		return applied;
+	}
+
+	/** {@code SELECT <alias> FROM <Entity> <alias>[ WHERE …]} — what a plain command selector renders to. */
+	private static final Pattern PLAIN_SELECT = Pattern.compile(
+			"\\s*SELECT\\s+(\\w+)\\s+FROM\\s+(\\w+)\\s+(\\w+)\\s*(WHERE\\s+.*)?",
+			Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+	/**
+	 * Runs a qualifying template as one {@code UPDATE} statement (issue #228), or returns
+	 * {@code null} when the plan does not have the shape this can rewrite.
+	 * <p>
+	 * Two statements rather than one, deliberately. {@code executeUpdate} returns what the
+	 * driver calls affected rows, and the flavors disagree about it — MariaDB reports rows
+	 * <em>changed</em> unless told otherwise, so assigning a value a row already holds would
+	 * count differently there than on H2 or PostgreSQL. The load path counts matches, so this
+	 * counts matches too, and pays a {@code COUNT} for an answer that means the same thing
+	 * everywhere.
+	 * <p>
+	 * The statement bypasses the persistence context and the shared cache by definition, which
+	 * is why the type is reported for the identity-map drop exactly as a reference patch is
+	 * (issue #107): objects already read would otherwise keep their old values indefinitely.
+	 * <p>
+	 * Falls back rather than guessing: if the generated JPQL is not the plain
+	 * {@code SELECT … FROM … [WHERE …]} the command guard permits, this returns {@code null}
+	 * and the caller loads and patches as before.
+	 */
+	private Long updateBySet(EntityManager em, JpaQueryPlan plan, Map<EAttribute, Object> assignments,
+			Consumer<Class<?>> referencePatched) {
+		Matcher matcher = PLAIN_SELECT.matcher(plan.jpql());
+		if (!matcher.matches()) {
+			return null;
+		}
+		String entity = matcher.group(2);
+		String alias = matcher.group(3);
+		String where = isNull(matcher.group(4)) ? "" : " " + matcher.group(4);
+
+		jakarta.persistence.Query count = em.createQuery(
+				"SELECT COUNT(" + alias + ") FROM " + entity + " " + alias + where);
+		plan.parameters().forEach(count::setParameter);
+		long matched = ((Number) count.getSingleResult()).longValue();
+		if (matched == 0) {
+			return 0L;
+		}
+
+		StringBuilder sets = new StringBuilder();
+		Map<String, Object> values = new LinkedHashMap<>();
+		int index = 0;
+		for (Map.Entry<EAttribute, Object> assignment : assignments.entrySet()) {
+			String parameter = "fennecSet" + index++;
+			if (sets.length() > 0) {
+				sets.append(", ");
+			}
+			sets.append(alias).append('.').append(assignment.getKey().getName())
+					.append(" = :").append(parameter);
+			values.put(parameter, assignment.getValue());
+		}
+		jakarta.persistence.Query statement = em.createQuery(
+				"UPDATE " + entity + " " + alias + " SET " + sets + where);
+		plan.parameters().forEach(statement::setParameter);
+		values.forEach(statement::setParameter);
+		statement.executeUpdate();
+
+		Server server = getServer();
+		if (nonNull(server)) {
+			ClassDescriptor descriptor = server.getDescriptorForAlias(entity);
+			if (nonNull(descriptor)) {
+				referencePatched.accept(descriptor.getJavaClass());
+			}
+		}
+		return matched;
 	}
 
 	/**
