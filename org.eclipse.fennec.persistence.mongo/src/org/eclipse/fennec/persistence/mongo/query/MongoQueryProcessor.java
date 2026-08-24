@@ -161,6 +161,20 @@ public class MongoQueryProcessor implements QueryProcessor {
 	 */
 	public static final int CODE_MAP_QUANTIFIER = 103;
 
+	/**
+	 * Whether a comparison asks for equality against a {@link GeoDistance} (issue #237).
+	 * <p>
+	 * Either operand may carry the distance — {@code distance(...) eq 500} and
+	 * {@code 500 eq distance(...)} are the same question — so both sides are checked.
+	 */
+	private static boolean geoDistanceEquality(Comparison comparison) {
+		if (comparison.getOperator() != ComparisonOperator.EQ
+				&& comparison.getOperator() != ComparisonOperator.NE) {
+			return false;
+		}
+		return comparison.getLeft() instanceof GeoDistance || comparison.getRight() instanceof GeoDistance;
+	}
+
 	private final MongoFlavor flavor;
 	private final QueryCapabilities capabilities;
 
@@ -226,6 +240,16 @@ public class MongoQueryProcessor implements QueryProcessor {
 						"Quantifier source '" + MongoFieldNames.render(quantifier.getSource())
 								+ "' is not an embedded (containment) collection — $elemMatch cannot apply",
 						new Object[] { quantifier }));
+			}
+			if (content instanceof Comparison comparison && geoDistanceEquality(comparison)) {
+				// §6b of geo-vocabulary.md, enforced where it is decided (issue #237): the
+				// translator refuses this too, but a refusal only reachable through query() is
+				// one a consumer cannot classify — it arrives as a plain IOException.
+				result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
+						QueryValidator.CODE_UNSUPPORTED_FEATURE,
+						"GeoDistance supports range comparisons only (LT/LE/GT/GE) on this backend"
+								+ " — equality against a continuous distance is not translatable",
+						new Object[] { comparison }));
 			}
 			if (content instanceof MapValue mapValue) {
 				String key = mapKeyOrNull(mapValue, null);

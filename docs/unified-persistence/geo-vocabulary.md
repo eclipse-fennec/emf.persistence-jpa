@@ -123,6 +123,16 @@ Mongo's second limit belongs next to it: `GeoDistance` translates only inside a 
 comparison (`LT/LE/GT/GE`). Equality against a continuous distance is refused by name, which is
 right — floating-point equality on a haversine result is not a question anyone means to ask.
 
+That rule is **reported by `validate()`** since issue #237, not only thrown by the translator.
+It was written here before it was checked anywhere a consumer could see it: a refusal reachable
+only through `query()` arrives as a plain `IOException` with no code, and the #161 doctrine has
+consumers ask `validate()` and route on the code. The diagnostic carries
+`CODE_UNSUPPORTED_FEATURE` rather than a new mongo-local code, deliberately — the query is
+structurally valid (memory evaluates it, a PostGIS-backed JPA could), so what the consumer is
+told is "this backend cannot", which is what that code already means. A backend-local code would
+have landed in the consumer's structural bucket and produced a 400 where 501 is right. The
+translation-time throw stays as the backstop it was always meant to be.
+
 ## 6a. The OCL form (settled 2026-08-24, issue #232)
 
 `GeoWithin`/`GeoDistance` were the third documented totality exception of the OCL bridge: OCL

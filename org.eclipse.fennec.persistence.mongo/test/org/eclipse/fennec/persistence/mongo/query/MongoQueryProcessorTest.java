@@ -52,11 +52,13 @@ import org.eclipse.fennec.codec.constants.CodecOptions;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
+import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.persistence.query.support.QueryValidator;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -82,6 +84,8 @@ class MongoQueryProcessorTest {
 	private EAttribute id;
 	private EAttribute name;
 	private EAttribute age;
+	private EAttribute lat;
+	private EAttribute lon;
 	private EReference addresses;
 	private EReference friend;
 	private EAttribute street;
@@ -102,9 +106,17 @@ class MongoQueryProcessorTest {
 		age = ecore.createEAttribute();
 		age.setName("age");
 		age.setEType(EcorePackage.Literals.EINT);
+		lat = ecore.createEAttribute();
+		lat.setName("lat");
+		lat.setEType(EcorePackage.Literals.EDOUBLE);
+		lon = ecore.createEAttribute();
+		lon.setName("lon");
+		lon.setEType(EcorePackage.Literals.EDOUBLE);
 		person.getEStructuralFeatures().add(id);
 		person.getEStructuralFeatures().add(name);
 		person.getEStructuralFeatures().add(age);
+		person.getEStructuralFeatures().add(lat);
+		person.getEStructuralFeatures().add(lon);
 
 		EClass address = ecore.createEClass();
 		address.setName("Address");
@@ -682,6 +694,76 @@ class MongoQueryProcessorTest {
 				.where(any(propertyPath(friend), a -> a.path(name).eq("x")))
 				.build();
 		assertThat(processor.validate(nonEmbeddedQuantifier, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+	}
+
+	/**
+	 * The range-only limit on {@code GeoDistance} is reported by {@code validate()}, not only by
+	 * the translator (issue #237).
+	 * <p>
+	 * The restriction itself is right — floating-point equality against a haversine result is not
+	 * a question anyone means to ask — but it was enforced only inside {@code query()}. A
+	 * consumer following the #161 doctrine asks {@code validate()} and maps the answer onto a
+	 * status code; a refusal that only {@code query()} produces arrives as a plain
+	 * {@code IOException} with no code and cannot be classified. Same shape as the referential
+	 * refusal before #229, one layer up.
+	 * <p>
+	 * The code is {@code CODE_UNSUPPORTED_FEATURE} rather than a new mongo-local one, and that is
+	 * deliberate: the query is structurally valid — the memory engine evaluates it, and a
+	 * PostGIS-backed JPA could — so what the consumer is being told is "this backend cannot",
+	 * which is exactly what that code already means to it. A new code would have landed in the
+	 * consumer's "structural, therefore 400" bucket, and 400 would be wrong.
+	 */
+	@Test
+	void geoDistanceEqualityIsRefusedByValidate() {
+		GeoSubject subject = Expressions.geoSubjectLatLon(propertyPath(lat), propertyPath(lon));
+		Query equality = QueryBuilder.from(person)
+				.where(Expressions.geoDistance(subject, Expressions.geoPoint(9.99, 53.55)).eq(500))
+				.build();
+
+		Diagnostic diagnostic = processor.validate(equality, person);
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.as("the refusal carries the code a consumer routes on, not just prose")
+				.anySatisfy(child -> assertThat(child.getCode())
+						.isEqualTo(QueryValidator.CODE_UNSUPPORTED_FEATURE));
+
+		// the translator keeps refusing it too — validate() is the reporting path, not a
+		// replacement for the backstop
+		assertThatThrownBy(() -> translate(equality)).isInstanceOf(QueryException.class);
+	}
+
+	/** Inequality is the same question, and either operand may carry the distance (issue #237). */
+	@Test
+	void geoDistanceInequalityAndReversedOperandsAreRefusedToo() {
+		GeoSubject subject = Expressions.geoSubjectLatLon(propertyPath(lat), propertyPath(lon));
+		Query inequality = QueryBuilder.from(person)
+				.where(Expressions.geoDistance(subject, Expressions.geoPoint(9.99, 53.55)).ne(500))
+				.build();
+		assertThat(processor.validate(inequality, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+
+		Comparison reversed = ExpressionFactory.eINSTANCE.createComparison();
+		reversed.setOperator(ComparisonOperator.EQ);
+		reversed.setLeft(Expressions.literal(500));
+		reversed.setRight(Expressions.geoDistance(
+				Expressions.geoSubjectLatLon(propertyPath(lat), propertyPath(lon)),
+				Expressions.geoPoint(9.99, 53.55)).toExpression());
+		Query reversedQuery = QueryBuilder.from(person).where(reversed).build();
+		assertThat(processor.validate(reversedQuery, person).getSeverity())
+				.as("500 eq distance(...) is the same question as distance(...) eq 500")
+				.isEqualTo(Diagnostic.ERROR);
+	}
+
+	/** What the limit does NOT cover: a range comparison stays servable (issue #237). */
+	@Test
+	void geoDistanceRangeComparisonsStayValid() {
+		GeoSubject subject = Expressions.geoSubjectLatLon(propertyPath(lat), propertyPath(lon));
+		Query range = QueryBuilder.from(person)
+				.where(Expressions.geoDistance(subject, Expressions.geoPoint(9.99, 53.55)).le(500))
+				.build();
+
+		assertThat(processor.validate(range, person).getSeverity())
+				.as("LE is what the backend serves — the check must not over-reach")
+				.isEqualTo(Diagnostic.OK);
 	}
 
 	@Test
