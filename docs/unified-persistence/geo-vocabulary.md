@@ -97,6 +97,32 @@ the differential corpus (memory vs. Mongo) applies, and the TCK pins the numbers
 | G4 | Feature numbering: 76/77 next to SCORE=75 vs. an own 9x band for geo | 76/77 — the band idea (#76 note) never materialized, contiguous is the de-facto convention |
 | G5 | Epsilon band for the TCK differential (rule 1) | relative 1e-3 on distances > 1 m, absolute 1 mm below — generous enough for model differences, tight enough to catch degree/radian bugs |
 
+## 6b. Nearest-first ordering needs two capabilities, not one
+
+Raised by the OCL-side consumer while reviewing #232, and worth writing down because §5 and the
+`GeoDistance` documentation both advertise the "sort seam" of issue #84 (k-NN = sort + limit)
+without saying who can serve it.
+
+`GEO_DISTANCE` says the backend understands the distance as an expression. It does **not** say
+the backend can order by an expression — that is `SORT_EXPRESSION`, a separate feature. The two
+combine, and the combination is what nearest-first actually requires:
+
+| | `GEO_DISTANCE` | `SORT_EXPRESSION` | nearest-first `$orderby` |
+|---|---|---|---|
+| memory | yes | yes | **yes** |
+| mongo | yes (range comparisons only) | **no** | no — refused in validation |
+| jpa | no (until PostGIS) | yes | no |
+
+So the honest statement is: **k-NN ordering is memory-only today**, and on mongo it would need
+`$geoNear`, which is a pipeline stage rather than a sort key. That is a gap in coverage, not a
+defect — mongo declares what it can do and refuses the rest by name, which is the contract
+working. Per the #207 rule the missing piece lands when a consumer asks for it; the OCL-side
+consumer explicitly is not asking yet.
+
+Mongo's second limit belongs next to it: `GeoDistance` translates only inside a **range**
+comparison (`LT/LE/GT/GE`). Equality against a continuous distance is refused by name, which is
+right — floating-point equality on a haversine result is not a question anyone means to ask.
+
 ## 6a. The OCL form (settled 2026-08-24, issue #232)
 
 `GeoWithin`/`GeoDistance` were the third documented totality exception of the OCL bridge: OCL
@@ -126,8 +152,11 @@ Three properties, each chosen against an alternative:
   always the last argument — so one name covers both forms of decision G1 and nothing has to
   stay in sync.
 - **Longitude comes first, everywhere** — in the subject arguments and inside every shape. This
-  deliberately differs from the `Expressions.geoSubject(latPath, lonPath)` builder signature,
-  which follows the order the model declares its features in. One rule for the whole vocabulary
+  deliberately differs from the latitude-first split builder, which follows the order the model
+  declares its features in. Because both paths take the same type, a swapped pair compiles and
+  round-trips; the builder therefore now spells the axis order in its **name**
+  (`geoSubjectLatLon` / `geoSubjectLonLat`) rather than leaving it to an argument position, so a
+  consumer using both routes reads the order instead of remembering it. One rule for the whole vocabulary
   is worth more than agreeing with that: `geoPoint(lon, lat)` and therefore every shape is
   longitude-first already, and a single OCL call that mixed both orders would be a trap. A test
   reads the rendered call and asserts which path landed where, because a round-trip test alone

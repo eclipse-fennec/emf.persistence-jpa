@@ -373,7 +373,7 @@ class ExpressionOclBridgeTest {
 	@Test
 	void geoWithinRoundTripsWithABox() throws QueryException {
 		Expression within = Expressions.geoWithin(
-				Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 				Expressions.geoBox(Expressions.geoPoint(10.5, 50.25), Expressions.geoPoint(13.75, 52.5)));
 
 		assertThat(EcoreUtil.equals(roundTrip(within), within))
@@ -404,7 +404,7 @@ class ExpressionOclBridgeTest {
 	@Test
 	void geoDistanceRoundTripsComposedWithAComparison() throws QueryException {
 		Expression predicate = Expressions.geoDistance(
-				Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 				Expressions.geoPoint(9.99, 53.55))
 				.le(500);
 
@@ -414,16 +414,43 @@ class ExpressionOclBridgeTest {
 	}
 
 	/**
+	 * The bare value form round-trips too — the case that matters for nearest-first ordering
+	 * (issue #232 follow-up).
+	 * <p>
+	 * The comparison case above embeds the distance in a predicate, which is a different path
+	 * through the bridge than a value standing on its own. Decision G3 designed {@code
+	 * GeoDistance} to be exactly that: composable with a comparison <em>and</em> usable as the
+	 * sort key of issue #84 (k-NN = sort + limit). Only the first half was covered.
+	 * <p>
+	 * Whether a backend can then <em>execute</em> such a sort is a separate question and already
+	 * answered by the capability set: nearest-first needs {@code GEO_DISTANCE} and
+	 * {@code SORT_EXPRESSION} together. Mongo declares the former and not the latter, so it
+	 * refuses the sort in validation rather than mistranslating it; the memory engine declares
+	 * both. The bridge's job is only to carry the expression, which is what this pins.
+	 */
+	@Test
+	void geoDistanceRoundTripsAsABareValue() throws QueryException {
+		Expression distance = Expressions.geoDistance(
+				Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoPoint(9.99, 53.55))
+				.toExpression();
+
+		assertThat(EcoreUtil.equals(roundTrip(distance), distance))
+				.as("a distance that is not inside a comparison survives the round trip")
+				.isTrue();
+	}
+
+	/**
 	 * Longitude comes first everywhere in the dialect form — and this is the case that catches
 	 * it, because the builder spells the pair the other way round
-	 * ({@code geoSubject(latPath, lonPath)}) while {@code geoPoint(lon, lat)} and every shape are
+	 * ({@code geoSubjectLatLon(latPath, lonPath)}) while {@code geoPoint(lon, lat)} and every shape are
 	 * longitude-first. A round-trip test alone would pass even if both directions swapped the
 	 * pair consistently; this one reads the rendered call and checks which path landed where.
 	 */
 	@Test
 	void theDialectFormPutsLongitudeFirst() throws QueryException {
 		Expression within = Expressions.geoWithin(
-				Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 				Expressions.geoBox(Expressions.geoPoint(10.0, 50.0), Expressions.geoPoint(11.0, 51.0)));
 
 		OperationCallExp call = (OperationCallExp) ExprToOcl.toOcl(within);

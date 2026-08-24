@@ -478,7 +478,7 @@ class MemoryQueryProcessorTest {
 		// — UNKNOWN excludes her (issue #101, 3VL per issue #94)
 		Query box = QueryBuilder.from(personClass)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 						Expressions.geoBox(Expressions.geoPoint(10.0, 50.0), Expressions.geoPoint(13.0, 51.5))))
 				.build();
 		try (QueryResult result = MemoryQueries.execute(box, persons, null)) {
@@ -488,7 +488,7 @@ class MemoryQueryProcessorTest {
 		// triangle around Jena only
 		Query polygon = QueryBuilder.from(personClass)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 						Expressions.geoPolygon(
 								Expressions.geoPoint(11.0, 50.5),
 								Expressions.geoPoint(12.0, 50.5),
@@ -501,7 +501,7 @@ class MemoryQueryProcessorTest {
 		// the antimeridian wrap-around box (west > east) contains Fiji-ish, not Jena
 		Query wrap = QueryBuilder.from(personClass)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 						Expressions.geoBox(Expressions.geoPoint(170.0, -30.0), Expressions.geoPoint(-170.0, 0.0))))
 				.build();
 		try (QueryResult result = MemoryQueries.execute(wrap, persons, null)) {
@@ -511,7 +511,7 @@ class MemoryQueryProcessorTest {
 		// 3VL: not(within) must not flip Carol's UNKNOWN into a match
 		Query notWithin = QueryBuilder.from(personClass)
 				.where(Expressions.not(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 						Expressions.geoPolygon(
 								Expressions.geoPoint(11.0, 50.5),
 								Expressions.geoPoint(12.0, 50.5),
@@ -527,7 +527,7 @@ class MemoryQueryProcessorTest {
 		// Jena↔Gera is ~35 km — 10 km around Jena keeps only Alice
 		Query near = QueryBuilder.from(personClass)
 				.where(Expressions.geoDistance(
-						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 						Expressions.geoPoint(11.586, 50.927)).le(10_000))
 				.build();
 		try (QueryResult result = MemoryQueries.execute(near, persons, null)) {
@@ -537,7 +537,7 @@ class MemoryQueryProcessorTest {
 		// nearest first via the issue-#84 sort seam (Carol's null coords sort last)
 		Query nearest = QueryBuilder.from(personClass)
 				.orderByAsc(Expressions.geoDistance(
-						Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
 						Expressions.geoPoint(12.083, 50.880)).toExpression())
 				.build();
 		try (QueryResult result = MemoryQueries.execute(nearest, persons, null)) {

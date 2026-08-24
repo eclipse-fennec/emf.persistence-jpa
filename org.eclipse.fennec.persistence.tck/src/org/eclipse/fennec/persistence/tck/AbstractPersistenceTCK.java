@@ -2983,7 +2983,7 @@ public abstract class AbstractPersistenceTCK {
 
 	private GeoSubject splitSubject() {
 		EClass placeClass = (EClass) tckPackage.getEClassifier("Place");
-		return Expressions.geoSubject(
+		return Expressions.geoSubjectLatLon(
 				Expressions.propertyPath(placeClass.getEStructuralFeature("lat")),
 				Expressions.propertyPath(placeClass.getEStructuralFeature("lon")));
 	}
@@ -3823,7 +3823,7 @@ public abstract class AbstractPersistenceTCK {
 		probes.put(QueryFeature.SCORE, QueryBuilder.from(personClass).withScores().build());
 		probes.put(QueryFeature.GEO_WITHIN, QueryBuilder.from(personClass)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(personAge),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(personAge),
 								Expressions.propertyPath(personAge)),
 						Expressions.geoBox(Expressions.geoPoint(10, 50),
 								Expressions.geoPoint(13, 52))))
@@ -3838,7 +3838,7 @@ public abstract class AbstractPersistenceTCK {
 				.build());
 		probes.put(QueryFeature.GEO_DISTANCE, QueryBuilder.from(personClass)
 				.where(Expressions.geoDistance(
-						Expressions.geoSubject(Expressions.propertyPath(personAge),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(personAge),
 								Expressions.propertyPath(personAge)),
 						Expressions.geoPoint(11.5, 50.9)).le(1000))
 				.build());
