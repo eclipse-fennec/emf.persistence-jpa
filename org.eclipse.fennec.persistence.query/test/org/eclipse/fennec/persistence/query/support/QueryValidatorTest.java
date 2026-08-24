@@ -369,6 +369,61 @@ class QueryValidatorTest {
 		assertThat(count.getSeverity()).isEqualTo(Diagnostic.OK);
 	}
 
+	/**
+	 * A second {@code GroupByStage} is expressible and served by nobody, so validation says so
+	 * (issue #239).
+	 * <p>
+	 * Before this, the three backends disagreed on the same well-formed query: JPA threw while
+	 * translating, the memory engine silently dropped the second grouping, and mongo appended a
+	 * {@code $group} whose columns nothing had registered. Two plausible wrong answers, which §5
+	 * forbids more strongly than a refusal.
+	 * <p>
+	 * The code is {@code CODE_UNSUPPORTED_FEATURE}, not one of the {@code INVALID_*} ones: the
+	 * query is well-formed and simply cannot be executed anywhere, so a consumer routing on the
+	 * code should answer "this service cannot" rather than "your request is malformed".
+	 */
+	@Test
+	void aSecondGroupByStageIsReportedAsUnsupported() {
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(person);
+		Pipeline pipeline = QueryFactory.eINSTANCE.createPipeline();
+		pipeline.getStages().add(countingGroup("perName"));
+		pipeline.getStages().add(countingGroup("overall"));
+		query.setApply(pipeline);
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person, capabilities(QueryFeature.GROUP_BY, QueryFeature.AGG_COUNT));
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren())
+				.as("a well-formed query nobody can serve is unsupported, not invalid")
+				.anySatisfy(child -> {
+					assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_UNSUPPORTED_FEATURE);
+					assertThat(child.getMessage()).contains("groups 2 times");
+				});
+	}
+
+	/** One grouping stays valid — the check must not refuse the shape every pipeline has. */
+	@Test
+	void aSingleGroupByStageStaysValid() {
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(person);
+		Pipeline pipeline = QueryFactory.eINSTANCE.createPipeline();
+		pipeline.getStages().add(countingGroup("perName"));
+		query.setApply(pipeline);
+
+		assertThat(QueryValidator.validate(query, person, capabilities(QueryFeature.GROUP_BY, QueryFeature.AGG_COUNT)).getSeverity())
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	private GroupByStage countingGroup(String alias) {
+		GroupByStage group = QueryFactory.eINSTANCE.createGroupByStage();
+		group.getPaths().add(Expressions.propertyPath(name));
+		Aggregate count = QueryFactory.eINSTANCE.createAggregate();
+		count.setMethod(AggregateMethod.COUNT);
+		count.setAlias(alias);
+		group.getAggregates().add(count);
+		return group;
+	}
+
 	private Query groupQuery(Aggregate aggregate) {
 		Query query = QueryFactory.eINSTANCE.createQuery();
 		query.setFrom(person);
