@@ -35,7 +35,12 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
+import org.eclipse.fennec.model.command.CommandFactory;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -489,5 +494,64 @@ class MongoCascadeDeleteTest {
 
 		assertThat(documentCount("Archive")).as("the owned child is untouched").isEqualTo(1);
 		assertThat(documentCount("Library")).isEqualTo(1);
+	}
+
+	// ------------------------------------------------- the command path (issues #219, #223)
+
+	/**
+	 * A command-path delete takes the owned cross-document children with it (issue #223).
+	 * <p>
+	 * {@code delete(Map)} brackets the removal with the #138/#139 bookkeeping — collect what the
+	 * roots own before anything is removed, delete the children after their roots, drop the
+	 * ownership records. {@code executeDelete} did none of it and went straight to
+	 * {@code deleteMany}, so every command delete left the exact state the #140 sweep exists to
+	 * repair as an exception.
+	 */
+	@Test
+	void commandDeleteTakesTheOwnedChildrenWithIt() throws Exception {
+		saveNestedFixture();
+		assertThat(documentCount("Archive")).as("the owned child is there to begin with").isEqualTo(1);
+		assertThat(documentCount("_fennec_ownership")).as("and so is its record").isEqualTo(1);
+
+		Resource resource = resourceSet().createResource(uriFor("Library"));
+		long affected = ((CommandResource) resource).execute(deleteLibrary());
+
+		assertThat(affected).isEqualTo(1);
+		assertThat(documentCount("Library")).isZero();
+		assertThat(documentCount("Archive"))
+				.as("the owned child goes with its root — without a sweep").isZero();
+		assertThat(documentCount("_fennec_ownership"))
+				.as("and its bookkeeping goes with it").isZero();
+	}
+
+	/**
+	 * The positive form of the same statement (issue #223): after a command delete the sweep has
+	 * nothing to reclaim.
+	 * <p>
+	 * Asserting only that the documents are gone would also pass if the path leaned on the
+	 * backstop. This asserts that it did not: the #140 sweep is a convergence net for interrupted
+	 * operations, not the mechanism by which a successful delete cleans up.
+	 */
+	@Test
+	void commandDeleteLeavesNothingForTheSweep() throws Exception {
+		saveNestedFixture();
+
+		ResourceSet set = resourceSet();
+		Resource resource = set.createResource(uriFor("Library"));
+		((CommandResource) resource).execute(deleteLibrary());
+
+		Resource sweeper = set.createResource(uriFor("Library"));
+		assertThat(((OwnershipMaintenance) sweeper).sweepOwnership())
+				.as("the delete cleaned up after itself, so the backstop finds nothing")
+				.isZero();
+	}
+
+	/** {@code DELETE FROM Library WHERE lid = 'l1'} — the fixture's single root. */
+	private DeleteCommand deleteLibrary() {
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(libraryClass)
+				.where(Expressions.path((EAttribute) libraryClass.getEStructuralFeature("lid")).eq("l1"))
+				.build());
+		return delete;
 	}
 }

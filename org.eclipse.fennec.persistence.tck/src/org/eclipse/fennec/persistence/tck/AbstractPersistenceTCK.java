@@ -2378,6 +2378,69 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
+	 * The §4c refusal holds on the command path too (issue #219).
+	 * <p>
+	 * {@link #deletingAReferencedObjectIsRefused()} pins the same contract for
+	 * {@code Resource.delete()}. It passed on both backends while this one would have failed on
+	 * mongo, and that gap is the whole point of the case: JPA arrives at the refusal through its
+	 * foreign key no matter which path removes the row, while an application-level guard only
+	 * holds on the path it sits on. A consumer that writes exclusively through commands — as
+	 * {@code emf.odata} does — met the contract on one backend and not on the other.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
+	public void commandDeleteOfAReferencedObjectIsRefused() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBestFriend, alice);
+		save(createBackendResourceSet(), "Person", alice, bob);
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).lt(40))
+				.build());
+
+		CommandResource resource = commands(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.execute(delete))
+				.as("a selector must not delete what the resource path refuses to delete")
+				.isInstanceOf(IOException.class);
+		assertThat(((Resource) resource).getErrors())
+				.as("the refusal has to say why, on this path as well").isNotEmpty();
+
+		Resource reloaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(reloaded.getContents()).as("the refused delete changed nothing").hasSize(2);
+		EObject reloadedBob = findById(reloaded, "2");
+		assertThat(reloadedBob.eGet(personBestFriend, false))
+				.as("the reference still points at something that exists").isNotNull();
+	}
+
+	/**
+	 * A command selector that matches nothing referenced still deletes (issue #219).
+	 * <p>
+	 * The companion to the case above, and the one that keeps the guard from being satisfied by
+	 * refusing everything: Bob points at Alice, so deleting <em>Bob</em> is nobody's problem.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
+	public void commandDeleteOfAnUnreferencedObjectStillWorks() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBestFriend, alice);
+		save(createBackendResourceSet(), "Person", alice, bob);
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(40))
+				.build());
+
+		assertThat(commands(createBackendResourceSet()).execute(delete))
+				.as("the referring object itself may go").isEqualTo(1);
+		assertThat(loadAll(createBackendResourceSet(), "Person").getContents()).hasSize(1);
+	}
+
+	/**
 	 * A command selector can use parameters, and the values come with the call (issue #202).
 	 * <p>
 	 * Until now {@code execute(Command)} took no bindings, so a selector using

@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -119,6 +120,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
@@ -1167,13 +1169,155 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
 			ClientSession session = activeSession();
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
-			return (nonNull(session)
-					? collection.deleteMany(session, filter)
-					: collection.deleteMany(filter)).getDeletedCount();
+			EClass eClass = resolveEClass(collectionName, null);
+			// The type answers statically whether a decode is needed at all: a root that cannot
+			// own containment owns no cross-document children, so its resolve stays an id scan.
+			boolean walkOwned = nonNull(eClass) && ownsContainment(eClass);
+
+			List<BsonValue> matchedIds = new ArrayList<>();
+			Map<String, Set<BsonValue>> owned = new LinkedHashMap<>();
+			FindIterable<BsonDocument> matches = nonNull(session)
+					? collection.find(session, filter)
+					: collection.find(filter);
+			if (!walkOwned) {
+				matches = matches.projection(Projections.include(MongoPersistenceConstants.ID_FIELD));
+			}
+			try (MongoCursor<BsonDocument> cursor = matches.iterator()) {
+				while (cursor.hasNext()) {
+					BsonDocument document = cursor.next();
+					BsonValue id = document.get(MongoPersistenceConstants.ID_FIELD);
+					if (isNull(id)) {
+						continue;
+					}
+					matchedIds.add(id);
+					if (walkOwned) {
+						EObject root = decode(document, eClass);
+						if (nonNull(root)) {
+							collectOwnedDocuments(root, owned);
+						}
+					}
+				}
+			}
+			if (matchedIds.isEmpty()) {
+				return 0;
+			}
+			refuseWhenStillReferenced(eClass, matchedIds, collectionName);
+
+			// Deleting by the resolved ids rather than by the selector again: what was checked
+			// is what is removed, and a document arriving between the two is not swept up
+			// unchecked.
+			Bson byId = Filters.in(MongoPersistenceConstants.ID_FIELD, matchedIds);
+			long deleted = (nonNull(session)
+					? collection.deleteMany(session, byId)
+					: collection.deleteMany(byId)).getDeletedCount();
+			// Owned children go after their roots, for the reason delete(Map) states: a crash
+			// then leaves a recoverable orphan rather than a root pointing at documents that
+			// no longer exist.
+			deleteOwned(owned);
+			removeOwnershipRecords(owned);
+			removeOwnershipOf(matchedIds, collectionName);
+			return deleted;
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete failed on collection '" + collectionName + "'", e);
 		}
+	}
+
+	/**
+	 * The issue-#195 refusal on the command path (issue #219): nothing may be deleted while
+	 * something still points at it.
+	 * <p>
+	 * Same scope and the same reason as {@link #findInboundReference(EObject)} — the search
+	 * covers the EPackage of the deleted type, because finding a referrer from another
+	 * package's model would mean scanning every collection on every delete. What differs is the
+	 * grain: a selector matches many documents, so this asks <b>one query per candidate
+	 * reference</b> with an {@code $in} over all matched ids, never one per reference per match.
+	 * <p>
+	 * Limit, stated because it is inherited rather than introduced: a referrer that is itself
+	 * among the matched documents still counts. Deleting a closed set of mutually referencing
+	 * objects in one command is therefore refused, exactly as the resource path refuses it for
+	 * the same set in one {@code delete()}. Keeping the two paths identical is the point of this
+	 * fix; loosening the contract is a separate decision.
+	 *
+	 * @param eClass the type of the collection being deleted from
+	 * @param matchedIds the ids the selector resolved to, before anything was removed
+	 * @param collectionName the collection they live in
+	 * @throws IOException with a Diagnostic naming the referring reference, when one exists
+	 */
+	private void refuseWhenStillReferenced(EClass eClass, List<BsonValue> matchedIds,
+			String collectionName) throws IOException {
+		if (isNull(eClass) || isNull(eClass.getEPackage())) {
+			return;
+		}
+		// A reference is stored as the target's URI fragment, i.e. always a string, while _id
+		// carries the id attribute's own type (issue #110's toTypedBson). So the stored id has
+		// to be converted back to the fragment form findInboundReference gets from
+		// EcoreUtil.getID — filtering for string ids instead would silently skip the check on
+		// every model with an integer key.
+		List<String> ids = matchedIds.stream()
+				.map(MongoResourceImpl::idFragment)
+				.filter(Objects::nonNull)
+				.toList();
+		if (ids.isEmpty()) {
+			return;
+		}
+		for (EClassifier classifier : eClass.getEPackage().getEClassifiers()) {
+			if (!(classifier instanceof EClass candidate) || candidate.isAbstract()) {
+				continue;
+			}
+			for (EReference reference : candidate.getEAllReferences()) {
+				if (reference.isContainment() || reference.isDerived() || reference.isTransient()
+						|| !reference.getEReferenceType().isSuperTypeOf(eClass)) {
+					continue;
+				}
+				if (anyReferenceExists(candidate.getName(), reference.getName(), ids, collectionName)) {
+					String message = "Cannot delete from '" + collectionName + "': "
+							+ candidate.getName() + "." + reference.getName()
+							+ " still references at least one of the " + ids.size()
+							+ " matched objects";
+					getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+					throw new IOException(message);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Whether any document of {@code collectionName} holds one of {@code refIds} in
+	 * {@code fieldName} — the set counterpart of
+	 * {@link #referenceExists(String, String, String, String)}, checking both stored forms in
+	 * one query.
+	 */
+	private boolean anyReferenceExists(String collectionName, String fieldName, List<String> refIds,
+			String ownCollection) {
+		String field = fieldName + "." + refKey();
+		List<BsonString> bare = refIds.stream().map(BsonString::new).toList();
+		List<BsonString> qualified = refIds.stream()
+				.map(id -> new BsonString("/" + ownCollection + "#" + id)).toList();
+		Bson filter = Filters.or(Filters.in(field, bare), Filters.in(field, qualified));
+		try (MongoCursor<BsonDocument> cursor = getCollection(collectionName)
+				.find(filter).limit(1).iterator()) {
+			return cursor.hasNext();
+		}
+	}
+
+	/**
+	 * The URI fragment form of a stored {@code _id} — the inverse of
+	 * {@link #toTypedBson(EAttribute, String)}, and what a reference field holds.
+	 *
+	 * @return the fragment, or {@code null} for an id that has none: a compound {@code _id}
+	 *         addresses its object through the {@code k=v,k=v} contract of issue #110, not
+	 *         through a single value, and {@code EcoreUtil.getID} returns nothing for it
+	 *         either — so the resource-path check skips those in exactly the same way.
+	 */
+	private static String idFragment(BsonValue id) {
+		return switch (id.getBsonType()) {
+			case STRING -> id.asString().getValue();
+			case INT32 -> String.valueOf(id.asInt32().getValue());
+			case INT64 -> String.valueOf(id.asInt64().getValue());
+			case OBJECT_ID -> id.asObjectId().getValue().toHexString();
+			default -> null;
+		};
 	}
 
 	/**
