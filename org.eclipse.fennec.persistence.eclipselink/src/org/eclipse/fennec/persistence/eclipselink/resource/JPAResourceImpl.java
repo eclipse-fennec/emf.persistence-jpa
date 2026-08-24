@@ -361,10 +361,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			em.getTransaction().begin();
 			applyCacheNewObjectsOption(em, options);
 			try {
+				Map<String, EObject> existingRows = loadExistingRows(em, server);
 				List<EObject[]> managedPairs = new ArrayList<>();
 				for (EObject eo : getContents()) {
 					EObject source = nonNull(server) ? toManagedEntity(eo, server, entityFactory) : eo;
-					upsert(em, source, eo, server);
+					upsert(em, source, eo, server, existingRows);
 					if (source != eo) {
 						managedPairs.add(new EObject[] { eo, source });
 					}
@@ -383,6 +384,78 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
+	 * Loads the rows that already exist for the objects about to be saved, one query per entity
+	 * type instead of one per object (issue #226).
+	 * <p>
+	 * {@code upsert} probes existence with {@code em.find} per root, and the containment
+	 * adoption of issue #130 does the same per child — so saving a hundred objects cost a
+	 * hundred selects before the first write. Nothing about that logic changes here: the query
+	 * below registers the existing rows in the persistence context, and the {@code em.find}
+	 * calls then answer from it without going to the database. The batching is therefore
+	 * invisible to the code that consumes it, which is why it cannot change its outcome.
+	 * <p>
+	 * Best-effort by construction: anything it cannot express — a composite key, a type with no
+	 * id attribute, an id that is still the type default, a descriptor that does not resolve —
+	 * is simply left out and keeps the per-object path. A failure of the warm-up query is logged
+	 * and swallowed for the same reason; it is an optimisation, and a save must not fail because
+	 * one did not apply.
+	 */
+	private Map<String, EObject> loadExistingRows(EntityManager em, Server server) {
+		Map<String, EObject> existing = new LinkedHashMap<>();
+		if (isNull(server) || getContents().isEmpty()) {
+			return existing;
+		}
+		Map<String, List<Object>> idsByAlias = new LinkedHashMap<>();
+		Map<String, String> idAttributeByAlias = new LinkedHashMap<>();
+		for (EObject root : getContents()) {
+			collectWarmableIds(root, server, idsByAlias, idAttributeByAlias);
+		}
+		idsByAlias.forEach((alias, ids) -> {
+			if (ids.size() < 2) {
+				// a single id is what em.find does well already
+				return;
+			}
+			try {
+				for (Object row : em.createQuery("SELECT e FROM " + alias + " e WHERE e."
+						+ idAttributeByAlias.get(alias) + " IN :ids")
+						.setParameter("ids", ids)
+						.getResultList()) {
+					if (row instanceof EObject entity) {
+						existing.put(rowKey(alias, findKey(entity)), entity);
+					}
+				}
+			} catch (RuntimeException e) {
+				LOG.log(Level.FINE, e,
+						() -> "Could not preload existing rows for '" + alias + "'; falling back to per-object lookup");
+			}
+		});
+		return existing;
+	}
+
+	/** The lookup key of a preloaded row: its entity alias plus its primary key. */
+	private static String rowKey(String alias, Object id) {
+		return alias + '#' + id;
+	}
+
+	/** Collects the id of {@code object} and of its containment tree, grouped by entity alias. */
+	private void collectWarmableIds(EObject object, Server server,
+			Map<String, List<Object>> idsByAlias, Map<String, String> idAttributeByAlias) {
+		EClass eClass = object.eClass();
+		EAttribute idAttribute = eClass.getEIDAttribute();
+		if (nonNull(idAttribute) && !CompositeIds.isComposite(eClass)
+				&& nonNull(server.getDescriptorForAlias(eClass.getName()))) {
+			Object id = object.eGet(idAttribute);
+			if (nonNull(id) && !isDefaultIdValue(id)) {
+				idsByAlias.computeIfAbsent(eClass.getName(), key -> new ArrayList<>()).add(id);
+				idAttributeByAlias.put(eClass.getName(), idAttribute.getName());
+			}
+		}
+		for (EObject child : object.eContents()) {
+			collectWarmableIds(child, server, idsByAlias, idAttributeByAlias);
+		}
+	}
+
+	/**
 	 * INSERT or UPDATE — chosen explicitly instead of relying on {@code em.merge} which
 	 * does not cope well with detached graphs that contain our AP-46 lazy-proxies: merge
 	 * cascades into the proxies and tries to INSERT them as new entities.
@@ -393,7 +466,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * value is still an {@link EObject#eIsProxy() unresolved proxy} are left alone —
 	 * the existing row's FK already points where the proxy points.
 	 */
-	private void upsert(EntityManager em, EObject source, EObject original, Server server) {
+	private void upsert(EntityManager em, EObject source, EObject original, Server server,
+			Map<String, EObject> existingRows) {
 		ClassDescriptor descriptor = nonNull(server)
 				? server.getDescriptorForAlias(source.eClass().getName())
 				: null;
@@ -408,7 +482,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			em.persist(source);
 			return;
 		}
-		Object existing = em.find(descriptor.getJavaClass(), id);
+		// the batched preload of issue #226 answers this for the common case; em.find remains
+		// the fallback for everything it could not express (composite keys, single objects,
+		// types it could not resolve) — and it must stay, because a row can also be created
+		// between the preload and here
+		Object existing = existingRows.get(rowKey(source.eClass().getName(), id));
+		if (isNull(existing)) {
+			existing = em.find(descriptor.getJavaClass(), id);
+		}
 		if (existing instanceof EObject existingEO) {
 			copyStateInto(source, existingEO, server, em);
 		} else {
@@ -1144,7 +1225,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				Function<EObject, EObject> entityFactory = entityFactory(server);
 				for (EObject copy : copies) {
 					EObject source = nonNull(server) ? toManagedEntity(copy, server, entityFactory) : copy;
-					upsert(em, source, copy, server);
+					// no preload here: a bracketed insert carries the payload it was handed,
+					// and Map.of() keeps upsert on its em.find path unchanged
+					upsert(em, source, copy, server, Map.of());
 				}
 				return copies.size();
 			} catch (QueryException | RuntimeException e) {

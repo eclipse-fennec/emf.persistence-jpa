@@ -171,6 +171,14 @@ class MongoDeleteWalkCostTest {
 		addString(libraryClass, "name");
 		librarySections = reference("sections", sectionClass, -1);
 		libraryClass.getEStructuralFeatures().add(librarySections);
+		// a plain reference into the same type, so the #195 guard has something to probe for
+		// (issue #225): without one, a delete asks no reference question at all
+		EReference neighbour = EcoreFactory.eINSTANCE.createEReference();
+		neighbour.setName("neighbour");
+		neighbour.setEType(libraryClass);
+		neighbour.setContainment(false);
+		neighbour.setUpperBound(1);
+		libraryClass.getEStructuralFeatures().add(neighbour);
 
 		cascadePackage = ecore.createEPackage();
 		cascadePackage.setName("walkcost");
@@ -428,9 +436,12 @@ class MongoDeleteWalkCostTest {
 
 		assertThat(affected).isEqualTo(1);
 		assertThat(finds)
-				.as("one resolve for the selector — not one per match, and not one per owned child")
-				.hasSize(1);
-		assertThat(finds.get(0)).startsWith("Library filter=");
+				.as("one resolve for the selector plus one probe for the one candidate reference"
+						+ " — neither scales with the matches or with the owned children")
+				.hasSize(2);
+		assertThat(finds.get(0)).as("the resolve, keyed by the selector").startsWith("Library filter=");
+		assertThat(finds.get(1)).as("the #195 probe, one $in over the matched ids")
+				.contains("neighbour.$ref").contains("$in");
 		assertThat(database.getCollection("Archive", BsonDocument.class).countDocuments())
 				.as("and the owned children went with the root").isZero();
 	}
@@ -475,5 +486,89 @@ class MongoDeleteWalkCostTest {
 		assertThat(writes).as("the ownership bookkeeping is chunked by the same boundary")
 				.filteredOn("delete _fennec_ownership"::equals).hasSize(3);
 		assertThat(database.getCollection("Library", BsonDocument.class).countDocuments()).isZero();
+	}
+
+	/**
+	 * The resource-path delete costs one command for the roots, not one per root (issue #225).
+	 * <p>
+	 * The loop used to issue a {@code deleteOne} per object while already accumulating the very
+	 * id list a {@code deleteMany} needs — the ownership bookkeeping below it consumes that list.
+	 * The children had the batched treatment from the start ("one deleteMany per collection,
+	 * never one per child"); the roots did not.
+	 */
+	@Test
+	void aResourceDeleteCostsOneCommandForItsRoots() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		Resource libraryResource = writeSet.createResource(uriFor("Library"));
+		for (int i = 0; i < 6; i++) {
+			libraryResource.getContents().add(create(libraryClass, "lid", "l" + i, "name", "Lib " + i));
+		}
+		libraryResource.save(null);
+
+		ResourceSet readSet = resourceSet();
+		Resource holder = readSet.createResource(uriFor("Library"));
+		holder.load(null);
+		assertThat(holder.getContents()).hasSize(6);
+		synchronized (wireWrites) {
+			wireWrites.clear();
+		}
+		synchronized (wireFinds) {
+			wireFinds.clear();
+		}
+
+		holder.delete(null);
+
+		List<String> writes;
+		List<String> finds;
+		synchronized (wireWrites) {
+			writes = new ArrayList<>(wireWrites);
+		}
+		synchronized (wireFinds) {
+			finds = new ArrayList<>(wireFinds);
+		}
+		System.out.printf("### resource-delete(6 roots): writes=%s finds=%d%n", writes, finds.size());
+
+		assertThat(writes).as("one deleteMany for six roots, not six deleteOne")
+				.filteredOn("delete Library"::equals).hasSize(1);
+		assertThat(database.getCollection("Library", BsonDocument.class).countDocuments()).isZero();
+	}
+
+	/**
+	 * The inbound-reference guard asks about the whole set, not about each object (issue #225).
+	 * <p>
+	 * The cost used to be {@code objects × candidate references}: {@code Library.neighbour} is a
+	 * plain reference into the very type being deleted, so the old code probed it once per root.
+	 * The question it actually has to answer — "does anything point at any of these" — is one
+	 * query per candidate reference however many objects are going, so the count must be flat in
+	 * the number of roots and not merely sublinear.
+	 */
+	@Test
+	void theInboundGuardDoesNotScaleWithTheNumberOfRoots() throws Exception {
+		int three = findsForResourceDeleteOf(3);
+		int six = findsForResourceDeleteOf(6);
+		assertThat(three).as("the load plus one probe for the one candidate reference").isEqualTo(2);
+		assertThat(six).as("twice the roots, same number of queries").isEqualTo(three);
+	}
+
+	/** Deletes {@code roots} freshly written Library documents and returns the find count. */
+	private int findsForResourceDeleteOf(int roots) throws Exception {
+		database.getCollection("Library", BsonDocument.class).drop();
+		ResourceSet writeSet = resourceSet();
+		Resource libraryResource = writeSet.createResource(uriFor("Library"));
+		for (int i = 0; i < roots; i++) {
+			libraryResource.getContents().add(create(libraryClass, "lid", "l" + i, "name", "Lib " + i));
+		}
+		libraryResource.save(null);
+
+		Resource holder = resourceSet().createResource(uriFor("Library"));
+		holder.load(null);
+		synchronized (wireFinds) {
+			wireFinds.clear();
+		}
+		holder.delete(null);
+		synchronized (wireFinds) {
+			System.out.printf("### guard-cost(%d roots): finds=%s%n", roots, wireFinds);
+			return wireFinds.size();
+		}
 	}
 }

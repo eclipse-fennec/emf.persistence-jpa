@@ -495,6 +495,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			List<EObject> roots = List.copyOf(getContents());
 			List<WriteModel<BsonDocument>> writes = writeModels(roots);
 			if (!writes.isEmpty()) {
+				// Ordered (the driver default), deliberately: the batch is ReplaceOneModels keyed by
+				// distinct _id, so unordered would be semantically safe and would let the server
+				// parallelise — but it also gives up fail-fast on the first error, and nothing here has
+				// asked for the throughput. Revisit with a measurement, not on principle (issue #225).
 				collection.bulkWrite(writes);
 			}
 			// After the roots are written: whatever they no longer own is deleted, and the
@@ -542,36 +546,44 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			for (EObject eObject : getContents()) {
 				collectOwnedDocuments(eObject, owned);
 			}
+			int chunkSize = Options.getWriteChunkSize(options);
 			// Nothing may be deleted while something still points at it (issue #195). A
 			// relational store gets this from its foreign keys; here it has to be asked for,
-			// once per object and before the first removal — a half-done delete would be
-			// worse than a refused one.
-			for (EObject eObject : getContents()) {
-				String referrer = findInboundReference(eObject);
-				if (nonNull(referrer)) {
-					String message = "Cannot delete " + eObject.eClass().getName() + " '"
-							+ EcoreUtil.getID(eObject) + "': " + referrer + " still references it";
-					getErrors().add(PersistenceDiagnostic.error(
-							PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
-							message, getURI(), null));
-					throw new IOException(message);
-				}
+			// before the first removal — a half-done delete would be worse than a refused one.
+			// Asked for the whole set at once (issue #225): one query per candidate reference,
+			// not one per reference per object.
+			List<String> fragmentIds = getContents().stream()
+					.map(EcoreUtil::getID)
+					.filter(Objects::nonNull)
+					.toList();
+			String referrer = findInboundReference(commonType(getContents()), fragmentIds,
+					collectionName, chunkSize);
+			if (nonNull(referrer)) {
+				// something points into the set; only now is it worth asking which object, and
+				// that costs the per-object probe this path used to pay unconditionally
+				throw refuseReferenced(referrer);
 			}
 			List<BsonValue> deletedIds = new ArrayList<>();
 			for (EObject eObject : getContents()) {
 				BsonValue id = extractId(eObject);
 				if (nonNull(id)) {
 					deletedIds.add(id);
-					collection.deleteOne(eq(MongoPersistenceConstants.ID_FIELD, id));
 				}
+			}
+			// One deleteMany per chunk rather than a deleteOne per root (issue #225) — the id
+			// list is collected either way, since the ownership bookkeeping below needs it.
+			for (List<BsonValue> batch : chunked(deletedIds, chunkSize)) {
+				collection.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, batch));
 			}
 			// Owned children go after their roots: a crash then leaves a recoverable orphan
 			// rather than a root pointing at documents that no longer exist. One deleteMany
 			// per collection, never one per child.
-			deleteOwned(owned);
+			deleteOwned(owned, chunkSize);
 			// the roots are gone, so their ownership bookkeeping goes too (issue #139)
-			removeOwnershipRecords(owned);
-			removeOwnershipOf(deletedIds, collectionName);
+			removeOwnershipRecords(owned, chunkSize);
+			for (List<BsonValue> batch : chunked(deletedIds, chunkSize)) {
+				removeOwnershipOf(batch, collectionName);
+			}
 			getContents().clear();
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
@@ -598,20 +610,96 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 */
 	private String findInboundReference(EObject target) {
 		String id = EcoreUtil.getID(target);
-		if (isNull(id) || isNull(target.eClass().getEPackage())) {
+		if (isNull(id)) {
 			return null;
 		}
-		String ownCollection = getCollectionName(null);
-		for (EClassifier classifier : target.eClass().getEPackage().getEClassifiers()) {
+		return findInboundReference(target.eClass(), List.of(id), getCollectionName(null),
+				Integer.MAX_VALUE);
+	}
+
+	/**
+	 * Names the individual object a referrer points at, for the refusal message (issue #225).
+	 * <p>
+	 * Only reached once the set probe has said that something does point into the set, so the
+	 * per-object queries this used to cost on every delete are now paid only when the delete is
+	 * refused anyway. Falls back to the set-level wording if the second pass finds nothing —
+	 * possible if the referrer disappeared in between, and not worth a second refusal shape.
+	 */
+	private IOException refuseReferenced(String setLevelReferrer) {
+		String message = null;
+		for (EObject eObject : getContents()) {
+			String referrer = findInboundReference(eObject);
+			if (nonNull(referrer)) {
+				message = "Cannot delete " + eObject.eClass().getName() + " '"
+						+ EcoreUtil.getID(eObject) + "': " + referrer + " still references it";
+				break;
+			}
+		}
+		if (isNull(message)) {
+			message = "Cannot delete: " + setLevelReferrer + " still references one of these objects";
+		}
+		getErrors().add(PersistenceDiagnostic.error(
+				PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
+				message, getURI(), null));
+		return new IOException(message);
+	}
+
+	/**
+	 * The type to scope the inbound-reference search to: the contents' common type, or
+	 * {@code null} when the resource holds nothing.
+	 * <p>
+	 * A resource addresses one collection, so its roots share a type in every shape the store
+	 * writes. Where a subtype appears, the search widens to the closest shared supertype rather
+	 * than narrowing — a wider scope can only find more referrers, never fewer, so the refusal
+	 * stays conservative.
+	 */
+	private static EClass commonType(List<EObject> contents) {
+		EClass common = null;
+		for (EObject eObject : contents) {
+			if (isNull(common)) {
+				common = eObject.eClass();
+			} else if (!common.isSuperTypeOf(eObject.eClass())) {
+				common = common.getEAllSuperTypes().stream()
+						.filter(candidate -> candidate.isSuperTypeOf(eObject.eClass()))
+						.findFirst()
+						.orElse(common);
+			}
+		}
+		return common;
+	}
+
+	/**
+	 * The first reference in the type's EPackage that points at <em>any</em> of {@code ids}, or
+	 * {@code null} when nothing does (issue #225).
+	 * <p>
+	 * The set form is the one that matters for cost: asking per object made the probe
+	 * {@code objects × candidate references} queries, while the answer "does anything point at
+	 * this set" needs one query per candidate reference regardless of how many objects are
+	 * being deleted. Callers that must name the individual object re-ask for it, which only
+	 * happens on the refusal path.
+	 *
+	 * @param targetType the type being deleted — bounds the search to its EPackage (§4c)
+	 * @param ids the URI-fragment ids of the objects about to go
+	 * @param ownCollection the collection they live in, for the qualified reference form
+	 * @param chunkSize how many ids may travel in one {@code $in} (issue #227)
+	 * @return {@code Type.reference} of the first referrer found, or {@code null}
+	 */
+	private String findInboundReference(EClass targetType, List<String> ids, String ownCollection,
+			int chunkSize) {
+		if (isNull(targetType) || isNull(targetType.getEPackage()) || ids.isEmpty()) {
+			return null;
+		}
+		for (EClassifier classifier : targetType.getEPackage().getEClassifiers()) {
 			if (!(classifier instanceof EClass candidate) || candidate.isAbstract()) {
 				continue;
 			}
 			for (EReference reference : candidate.getEAllReferences()) {
 				if (reference.isContainment() || reference.isDerived() || reference.isTransient()
-						|| !reference.getEReferenceType().isSuperTypeOf(target.eClass())) {
+						|| !reference.getEReferenceType().isSuperTypeOf(targetType)) {
 					continue;
 				}
-				if (referenceExists(candidate.getName(), reference.getName(), id, ownCollection)) {
+				if (anyReferenceExists(candidate.getName(), reference.getName(), ids, ownCollection,
+						chunkSize)) {
 					return candidate.getName() + "." + reference.getName();
 				}
 			}
@@ -627,23 +715,6 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		return configured instanceof String key && !key.isBlank()
 				? key
 				: (String) ConfigProperty.REF_KEY.getDefaultValue();
-	}
-
-	/**
-	 * Whether any document of {@code collectionName} holds {@code refId} in {@code fieldName}.
-	 * Both stored forms are checked: a bare id within the same collection, and the
-	 * {@code /Collection#id} form a cross-collection reference carries.
-	 */
-	private boolean referenceExists(String collectionName, String fieldName, String refId,
-			String ownCollection) {
-		String field = fieldName + "." + refKey();
-		Bson filter = Filters.or(
-				eq(field, new BsonString(refId)),
-				eq(field, new BsonString("/" + ownCollection + "#" + refId)));
-		try (MongoCursor<BsonDocument> cursor = getCollection(collectionName)
-				.find(filter).limit(1).iterator()) {
-			return cursor.hasNext();
-		}
 	}
 
 	@Override
@@ -1221,8 +1292,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			// Owned children go after their roots, for the reason delete(Map) states: a crash
 			// then leaves a recoverable orphan rather than a root pointing at documents that
 			// no longer exist.
-			deleteOwned(owned);
-			removeOwnershipRecords(owned);
+			deleteOwned(owned, chunkSize);
+			removeOwnershipRecords(owned, chunkSize);
 			for (List<BsonValue> batch : chunked(matchedIds, chunkSize)) {
 				removeOwnershipOf(batch, collectionName);
 			}
@@ -1271,35 +1342,21 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		if (ids.isEmpty()) {
 			return;
 		}
-		for (EClassifier classifier : eClass.getEPackage().getEClassifiers()) {
-			if (!(classifier instanceof EClass candidate) || candidate.isAbstract()) {
-				continue;
-			}
-			for (EReference reference : candidate.getEAllReferences()) {
-				if (reference.isContainment() || reference.isDerived() || reference.isTransient()
-						|| !reference.getEReferenceType().isSuperTypeOf(eClass)) {
-					continue;
-				}
-				if (anyReferenceExists(candidate.getName(), reference.getName(), ids, collectionName,
-						chunkSize)) {
-					String message = "Cannot delete from '" + collectionName + "': "
-							+ candidate.getName() + "." + reference.getName()
-							+ " still references at least one of the " + ids.size()
-							+ " matched objects";
-					getErrors().add(PersistenceDiagnostic.error(
-							PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
-							message, getURI(), null));
-					throw new IOException(message);
-				}
-			}
+		String referrer = findInboundReference(eClass, ids, collectionName, chunkSize);
+		if (nonNull(referrer)) {
+			String message = "Cannot delete from '" + collectionName + "': " + referrer
+					+ " still references at least one of the " + ids.size() + " matched objects";
+			getErrors().add(PersistenceDiagnostic.error(
+					PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
+					message, getURI(), null));
+			throw new IOException(message);
 		}
 	}
 
 	/**
 	 * Whether any document of {@code collectionName} holds one of {@code refIds} in
-	 * {@code fieldName} — the set counterpart of
-	 * {@link #referenceExists(String, String, String, String)}, checking both stored forms in
-	 * one query.
+	 * {@code fieldName}. Both stored forms are checked in one query: a bare id within the same
+	 * collection, and the {@code /Collection#id} form a cross-collection reference carries.
 	 */
 	private boolean anyReferenceExists(String collectionName, String fieldName, List<String> refIds,
 			String ownCollection, int chunkSize) {
@@ -1638,13 +1695,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * Deletes the collected owned documents, one {@code deleteMany} with an {@code $in} per
 	 * collection — never one delete per child.
 	 */
-	private void deleteOwned(Map<String, Set<BsonValue>> owned) {
+	private void deleteOwned(Map<String, Set<BsonValue>> owned, int chunkSize) {
 		for (Map.Entry<String, Set<BsonValue>> entry : owned.entrySet()) {
 			if (entry.getValue().isEmpty()) {
 				continue;
 			}
-			getCollection(entry.getKey())
-					.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, entry.getValue()));
+			for (List<BsonValue> batch : chunked(List.copyOf(entry.getValue()), chunkSize)) {
+				getCollection(entry.getKey())
+						.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, batch));
+			}
 		}
 	}
 
@@ -1742,21 +1801,23 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				}
 			});
 		}
-		deleteOwned(orphans);
-		removeOwnershipRecords(orphans);
+		deleteOwned(orphans, Options.DEFAULT_WRITE_CHUNK_SIZE);
+		removeOwnershipRecords(orphans, Options.DEFAULT_WRITE_CHUNK_SIZE);
 		if (!recordWrites.isEmpty()) {
 			records.bulkWrite(recordWrites);
 		}
 	}
 
 	/** Drops the ownership records of the given child documents. */
-	private void removeOwnershipRecords(Map<String, Set<BsonValue>> children) {
+	private void removeOwnershipRecords(Map<String, Set<BsonValue>> children, int chunkSize) {
 		List<BsonDocument> keys = new ArrayList<>();
 		children.forEach((childCollection, ids) -> ids.forEach(id -> keys.add(
 				new BsonDocument("c", new BsonString(childCollection)).append("id", id))));
-		if (!keys.isEmpty()) {
-			getCollection(OWNERSHIP_COLLECTION)
-					.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, keys));
+		for (List<BsonDocument> batch : chunked(keys, chunkSize)) {
+			if (!batch.isEmpty()) {
+				getCollection(OWNERSHIP_COLLECTION)
+						.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, batch));
+			}
 		}
 	}
 
@@ -1840,8 +1901,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				}
 			}
 			long reclaimed = orphans.values().stream().mapToLong(Set::size).sum();
-			deleteOwned(orphans);
-			removeOwnershipRecords(orphans);
+			deleteOwned(orphans, Options.DEFAULT_WRITE_CHUNK_SIZE);
+			removeOwnershipRecords(orphans, Options.DEFAULT_WRITE_CHUNK_SIZE);
 			return reclaimed;
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
