@@ -241,17 +241,38 @@ public final class Expressions {
 	}
 
 	/**
-	 * The split coordinate binding (decision G1): a latitude and a longitude feature.
+	 * The split coordinate binding (decision G1), latitude first.
+	 * <p>
+	 * The axis order is in the <b>name</b> rather than only in the parameter list, because both
+	 * parameters have the same type: a swapped pair compiles, round-trips and produces wrong
+	 * answers silently. The vocabulary is otherwise longitude-first — {@link #geoPoint(double,
+	 * double)}, every shape, and the OCL dialect form of issue #232 — so this is the one place
+	 * where the two orders meet, and it is spelled out on both sides instead of being implied by
+	 * an argument position.
 	 *
 	 * @param latPath the latitude feature path, root first
 	 * @param lonPath the longitude feature path, root first
 	 * @return the geo subject
+	 * @see #geoSubjectLonLat(PropertyPath, PropertyPath)
 	 */
-	public static GeoSubject geoSubject(PropertyPath latPath, PropertyPath lonPath) {
+	public static GeoSubject geoSubjectLatLon(PropertyPath latPath, PropertyPath lonPath) {
 		GeoSubject subject = FACTORY.createGeoSubject();
 		subject.setPathLat(Objects.requireNonNull(latPath, "latPath must not be null"));
 		subject.setPathLon(Objects.requireNonNull(lonPath, "lonPath must not be null"));
 		return subject;
+	}
+
+	/**
+	 * The split coordinate binding (decision G1), longitude first — the order the rest of the
+	 * geo vocabulary uses, and the order of the OCL dialect form (issue #232).
+	 *
+	 * @param lonPath the longitude feature path, root first
+	 * @param latPath the latitude feature path, root first
+	 * @return the geo subject
+	 * @see #geoSubjectLatLon(PropertyPath, PropertyPath)
+	 */
+	public static GeoSubject geoSubjectLonLat(PropertyPath lonPath, PropertyPath latPath) {
+		return geoSubjectLatLon(latPath, lonPath);
 	}
 
 	/**

@@ -649,7 +649,7 @@ class ExpressionAnalyzerTest {
 		// issue #101: GeoWithin/GeoDistance register their capabilities and paths
 		QueryAnalysis within = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(age), Expressions.propertyPath(age)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(age), Expressions.propertyPath(age)),
 						Expressions.geoBox(Expressions.geoPoint(10, 50), Expressions.geoPoint(13, 52))))
 				.build());
 		assertThat(within.features()).contains(QueryFeature.GEO_WITHIN);
@@ -657,7 +657,7 @@ class ExpressionAnalyzerTest {
 
 		QueryAnalysis distance = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
 				.where(Expressions.geoDistance(
-						Expressions.geoSubject(Expressions.propertyPath(age), Expressions.propertyPath(age)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(age), Expressions.propertyPath(age)),
 						Expressions.geoPoint(11.5, 50.9)).le(500))
 				.build());
 		assertThat(distance.features()).contains(QueryFeature.GEO_DISTANCE);
@@ -665,14 +665,14 @@ class ExpressionAnalyzerTest {
 		// structural findings: out-of-range coordinate, degenerate polygon
 		QueryAnalysis outOfRange = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(age), Expressions.propertyPath(age)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(age), Expressions.propertyPath(age)),
 						Expressions.geoBox(Expressions.geoPoint(10, 95), Expressions.geoPoint(13, 96))))
 				.build());
 		assertThat(outOfRange.invalidGeo()).contains("out of range");
 
 		QueryAnalysis degenerate = ExpressionAnalyzer.analyze(QueryBuilder.from(person)
 				.where(Expressions.geoWithin(
-						Expressions.geoSubject(Expressions.propertyPath(age), Expressions.propertyPath(age)),
+						Expressions.geoSubjectLatLon(Expressions.propertyPath(age), Expressions.propertyPath(age)),
 						Expressions.geoPolygon(Expressions.geoPoint(10, 50), Expressions.geoPoint(10, 50),
 								Expressions.geoPoint(10, 50))))
 				.build());
