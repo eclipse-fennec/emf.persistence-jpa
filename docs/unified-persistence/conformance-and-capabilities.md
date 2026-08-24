@@ -628,6 +628,43 @@ declared, and refused with a diagnostic when it is not — which is the same obl
 cases. Whether *our* two backends should close their gaps is a roadmap question, tracked as
 ordinary issues, not a conformance question.
 
+### 9.1a A pipeline shape nobody serves is refused, not declared (issue #239)
+
+The pipeline is a list of `Stage`, so two `GroupByStage`s in sequence are expressible today —
+OData's `$apply` composes them for the ordinary two-level question ("average supplier revenue per
+category"). What the three backends did with it:
+
+| | behaviour before #239 |
+|---|---|
+| JPA | threw while translating — "Multiple GroupBy stages are not supported" |
+| memory | **silently dropped the second grouping**; `rowStages` handles filter/compute/paging and no grouping at all |
+| mongo | appended a second `$group` whose output columns nothing had registered |
+
+Two of three answered plausibly and wrongly, and the query passed validation everywhere. That is
+the §5 failure mode, not a missing feature.
+
+**Settled: refused uniformly, in `validate()`, as an unsupported feature.** The check lives in
+`ExpressionAnalyzer` (it already walks the stages) and is reported by `QueryValidator` with
+`CODE_UNSUPPORTED_FEATURE` — not one of the `INVALID_*` codes, because the query is *well-formed*
+and simply cannot be executed anywhere. A consumer routing on the code should answer "this service
+cannot" rather than "your request is malformed"; the same reasoning as the mongo geo limit of
+#237.
+
+**Deliberately no capability literal.** A `PIPELINE_MULTI_GROUP` that no backend declares would be
+a literal on stock, which #207 forbids. When a backend learns to serve this — mongo's `$group`
+twice looks close, JPA needs the first grouping as a subquery — the literal arrives with that
+implementation and the check becomes conditional on it. Until then the honest answer is one
+refusal instead of three different answers.
+
+**The question that decides whether it ever lands** is not the translation but the addressing:
+the second grouping aggregates the first one's *output columns*, which is the `AliasRef` situation
+of #82 one level deeper. Allowing it means `ExpressionAnalyzer` has to say which aliases are
+visible in the second stage, and that has to be settled before anything translates it — otherwise
+it becomes expressible, translatable and quietly wrong about which column it read.
+
+Recorded as out of scope in the same breath, because the consumer asked: `rollup` grouping sets,
+`aggregate … from`, custom aggregation methods, and the recursive-hierarchy family stay refused.
+
 ### 9.2 `EMap` is core; feature maps are out of contract
 
 This one was decided twice on the same day. The first decision put both out of contract on the

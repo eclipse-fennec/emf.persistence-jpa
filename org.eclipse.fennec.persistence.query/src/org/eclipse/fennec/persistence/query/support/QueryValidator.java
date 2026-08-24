@@ -192,6 +192,15 @@ public final class QueryValidator {
 					analysis.invalidRepresentatives() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
+		if (analysis.unsupportedPipeline() != null) {
+			// UNSUPPORTED rather than INVALID (issue #239): the query is well-formed, it just
+			// cannot be executed anywhere. A consumer routing on the code should answer "this
+			// service cannot" (501), not "your request is malformed" (400).
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE,
+					CODE_UNSUPPORTED_FEATURE,
+					analysis.unsupportedPipeline() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
 
 		int maxDepth = capabilities.maxFeaturePathDepth();
 		if (maxDepth != -1 && analysis.maxFeaturePathDepth() > maxDepth) {

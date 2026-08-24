@@ -206,7 +206,7 @@ public final class ExpressionAnalyzer {
 				? scanIntervalStructure(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
 				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection[0],
-				invalidInterval, invalidRepresentatives[0]);
+				invalidInterval, invalidRepresentatives[0], scanPipelineShape(query.getApply()));
 	}
 
 	/**
@@ -289,6 +289,36 @@ public final class ExpressionAnalyzer {
 			return QueryShape.PROJECTION;
 		}
 		return QueryShape.OBJECTS;
+	}
+
+	/**
+	 * Pipeline shapes that are expressible but that no backend serves (issue #239).
+	 * <p>
+	 * A second {@code GroupByStage} is the case that forced this: the model is a list of stages,
+	 * so two groupings in sequence parse and validate, and the three backends then disagree —
+	 * JPA throws while translating, the memory engine silently drops the second grouping (its
+	 * row-stage loop handles filter/compute/paging and no grouping at all), and mongo appends a
+	 * second {@code $group} whose output columns nothing has registered. Two of those three
+	 * answer <em>plausibly and wrongly</em>, which §5 forbids more strongly than a refusal.
+	 * <p>
+	 * Reported as unsupported rather than invalid, and without a capability literal: the query
+	 * is well-formed, and per the #207 rule a literal appears when an implementation declares
+	 * it. When a backend learns to serve this — mongo's {@code $group} twice, JPA's grouping
+	 * subquery — the literal arrives with that work and this check becomes conditional.
+	 *
+	 * @param pipeline the pipeline to inspect; may be {@code null}
+	 * @return the finding, or {@code null} when the shape is servable
+	 */
+	private static String scanPipelineShape(Pipeline pipeline) {
+		if (pipeline == null) {
+			return null;
+		}
+		long groupings = pipeline.getStages().stream().filter(GroupByStage.class::isInstance).count();
+		if (groupings > 1) {
+			return "The pipeline groups " + groupings + " times; no backend serves more than one"
+					+ " GroupBy stage — the second grouping would aggregate the first one's output";
+		}
+		return null;
 	}
 
 	private static boolean analyzePipeline(Pipeline pipeline, Set<QueryFeature> features, int[] maxDepth,

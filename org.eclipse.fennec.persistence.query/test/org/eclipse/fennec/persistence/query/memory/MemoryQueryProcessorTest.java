@@ -42,6 +42,10 @@ import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.AggregateMethod;
+import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.TopStage;
@@ -1299,5 +1303,37 @@ class MemoryQueryProcessorTest {
 			assertThat(rows.stream().map(row -> row.get("name")))
 					.containsExactlyInAnyOrder("Alice", "Bob", "Carol");
 		}
+	}
+
+	/**
+	 * The memory engine refuses a second grouping instead of dropping it (issue #239).
+	 * <p>
+	 * This was the worst of the three answers: {@code rowStages} handles filter, compute and
+	 * paging and no grouping at all, so a second {@code GroupByStage} was silently ignored and
+	 * the caller got the first grouping's numbers as if they were the answer to the question
+	 * asked. A refusal is the contract; a plausible wrong answer is what §5 forbids.
+	 */
+	@Test
+	void aSecondGroupByStageIsRefusedRatherThanIgnored() {
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(personClass);
+		Pipeline pipeline = QueryFactory.eINSTANCE.createPipeline();
+		pipeline.getStages().add(countingGroupBy("perName"));
+		pipeline.getStages().add(countingGroupBy("overall"));
+		query.setApply(pipeline);
+
+		assertThatThrownBy(() -> MemoryQueries.execute(query, persons, null))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("groups 2 times");
+	}
+
+	private GroupByStage countingGroupBy(String alias) {
+		GroupByStage group = QueryFactory.eINSTANCE.createGroupByStage();
+		group.getPaths().add(Expressions.propertyPath(personName));
+		Aggregate count = QueryFactory.eINSTANCE.createAggregate();
+		count.setMethod(AggregateMethod.COUNT);
+		count.setAlias(alias);
+		group.getAggregates().add(count);
+		return group;
 	}
 }

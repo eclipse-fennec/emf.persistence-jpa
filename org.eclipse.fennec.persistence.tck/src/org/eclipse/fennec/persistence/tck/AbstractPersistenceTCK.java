@@ -57,7 +57,10 @@ import org.eclipse.fennec.model.expression.GeoPointLiteral;
 import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.IntervalSubject;
+import org.eclipse.fennec.model.query.Aggregate;
+import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.QueryFactory;
@@ -2751,6 +2754,47 @@ public abstract class AbstractPersistenceTCK {
 				.filteredOn(person -> "Alice".equals(person.eGet(personName)))
 				.as("the non-matches keep their names")
 				.hasSize(1);
+	}
+
+	/**
+	 * Two groupings in one pipeline are refused by every backend, the same way (issue #239).
+	 * <p>
+	 * The model is a list of stages, so this parses and validates structurally — and the three
+	 * backends used to disagree about it: JPA threw while translating, the memory engine
+	 * silently dropped the second grouping, and mongo appended a {@code $group} whose output
+	 * columns nothing had registered. Two of those answered plausibly and wrongly, which §5
+	 * forbids more strongly than a refusal.
+	 * <p>
+	 * What this pins is the uniformity, not the refusal itself: if a backend later learns to
+	 * serve it, the capability literal arrives with that work and this case moves to asserting
+	 * the result rather than the rejection.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_COUNT })
+	public void aSecondGroupByStageIsRefusedEverywhere() throws Exception {
+		saveQueryFixture();
+		Query query = QueryFactory.eINSTANCE.createQuery();
+		query.setFrom(personClass);
+		Pipeline pipeline = QueryFactory.eINSTANCE.createPipeline();
+		pipeline.getStages().add(countingGroupBy("perName"));
+		pipeline.getStages().add(countingGroupBy("overall"));
+		query.setApply(pipeline);
+
+		QueryableResource resource = queryable(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.query(query))
+				.as("a shape no backend serves must be refused, not answered plausibly")
+				.isInstanceOf(IOException.class);
+	}
+
+	/** A grouping stage counting per name — two of these make the unsupported pipeline. */
+	private GroupByStage countingGroupBy(String alias) {
+		GroupByStage group = QueryFactory.eINSTANCE.createGroupByStage();
+		group.getPaths().add(Expressions.propertyPath(personName));
+		Aggregate count = QueryFactory.eINSTANCE.createAggregate();
+		count.setMethod(AggregateMethod.COUNT);
+		count.setAlias(alias);
+		group.getAggregates().add(count);
+		return group;
 	}
 
 	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {

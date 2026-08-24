@@ -41,6 +41,7 @@ public final class QueryAnalysis {
 	private final String invalidProjection;
 	private final String invalidInterval;
 	private final String invalidRepresentatives;
+	private final String unsupportedPipeline;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -194,7 +195,8 @@ public final class QueryAnalysis {
 			String invalidStringMatch, String invalidMapValue, String invalidProjection,
 			String invalidInterval) {
 		this(features, maxFeaturePathDepth, shape, divisionByLiteralZero, invalidAggregate, invalidSort,
-				invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection, invalidInterval, null);
+				invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection, invalidInterval, null,
+				null);
 	}
 
 	/**
@@ -213,11 +215,15 @@ public final class QueryAnalysis {
 	 * @param invalidInterval the malformed-interval finding (issue #215), or {@code null}
 	 * @param invalidRepresentatives the malformed-representatives finding (issue #214), or
 	 *        {@code null}
+	 * @param unsupportedPipeline a pipeline shape no backend serves (issue #239), or
+	 *        {@code null}. Unlike the {@code invalid*} findings this is not malformed — the
+	 *        query is well-formed and simply cannot be executed anywhere, so it is reported as
+	 *        an unsupported feature rather than as a structural error.
 	 */
 	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
 			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort, String invalidGeo,
 			String invalidStringMatch, String invalidMapValue, String invalidProjection,
-			String invalidInterval, String invalidRepresentatives) {
+			String invalidInterval, String invalidRepresentatives, String unsupportedPipeline) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
@@ -232,6 +238,7 @@ public final class QueryAnalysis {
 		this.invalidProjection = invalidProjection;
 		this.invalidInterval = invalidInterval;
 		this.invalidRepresentatives = invalidRepresentatives;
+		this.unsupportedPipeline = unsupportedPipeline;
 	}
 
 	/**
@@ -342,6 +349,15 @@ public final class QueryAnalysis {
 	 */
 	public String invalidRepresentatives() {
 		return invalidRepresentatives;
+	}
+
+	/**
+	 * A pipeline shape that is expressible but that no backend serves (issue #239).
+	 *
+	 * @return the finding, or {@code null} when the pipeline shape is servable
+	 */
+	public String unsupportedPipeline() {
+		return unsupportedPipeline;
 	}
 
 	@Override
