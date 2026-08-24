@@ -13,6 +13,7 @@
 package org.eclipse.fennec.expression.ocl;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -38,7 +39,12 @@ import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.BooleanLiteral;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.CollectionCount;
+import org.eclipse.fennec.model.expression.GeoBox;
 import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoPolygon;
+import org.eclipse.fennec.model.expression.GeoShape;
+import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.Comparison;
@@ -290,10 +296,11 @@ public final class ExprToOcl {
 			if (expression instanceof IntervalMatch interval) {
 				return interval(interval);
 			}
-			if (expression instanceof GeoWithin || expression instanceof GeoDistance) {
-				// the third totality exception (issue #101): OCL has no geo vocabulary
-				throw new QueryException(expression.eClass().getName()
-						+ " has no OCL form — the geo vocabulary (issue #101) is not part of the bridge subset");
+			if (expression instanceof GeoWithin within) {
+				return geoWithin(within);
+			}
+			if (expression instanceof GeoDistance distance) {
+				return geoDistance(distance);
 			}
 			if (expression instanceof CollectionCount count) {
 				// plain: path->size(); filtered: path->select(v | pred)->size() (issue #81)
@@ -465,6 +472,92 @@ public final class ExprToOcl {
 		 * engine down to the empty-subject guard and the unbounded disjunctions, which is what
 		 * makes the OclEvaluator usable as a third opinion on these predicates.
 		 */
+		/**
+		 * {@code geoWithin(lonPath, [latPath,] shape)} — the dialect form of the geo vocabulary
+		 * (issue #232, lifting the third totality exception of issue #101).
+		 * <p>
+		 * OCL defines no geo operators, but the bridge has never been limited to operators OCL
+		 * defines: {@code toLower}/{@code toUpper} are read as an evaluator dialect for named
+		 * functions, and {@code IntervalMatch} (issue #215) got a form because it decomposes
+		 * into things OCL can spell. Geo is the same case — the arguments are property paths and
+		 * numbers, all of which OCL has. What it is <em>not</em> is the case of {@code AliasRef}
+		 * (#82) and {@code Score} (#100): those have no model-expression meaning at all, while a
+		 * geo predicate is an ordinary predicate over stored coordinates.
+		 * <p>
+		 * The binding is told apart by arity rather than by a second function name: a split
+		 * subject contributes two path arguments, a packed one contributes a single path.
+		 * <p>
+		 * <b>Coordinate order is longitude first, everywhere</b> — in the subject arguments and
+		 * inside every shape — matching {@code GeoPointLiteral}'s GeoJSON order. One rule for
+		 * the whole vocabulary is worth more than agreeing with the order the model happens to
+		 * declare its features in.
+		 */
+		private OclExpression geoWithin(GeoWithin within) throws QueryException {
+			List<OclExpression> arguments = new ArrayList<>();
+			OclExpression source = geoSubject(within.getSubject(), arguments);
+			arguments.add(geoShape(within.getShape()));
+			return call("geoWithin", source, arguments.toArray(OclExpression[]::new));
+		}
+
+		/** {@code geoDistance(lonPath, [latPath,] geoPoint(lon, lat))} — the value form (issue #232). */
+		private OclExpression geoDistance(GeoDistance distance) throws QueryException {
+			List<OclExpression> arguments = new ArrayList<>();
+			OclExpression source = geoSubject(distance.getSubject(), arguments);
+			arguments.add(geoPoint(distance.getPoint()));
+			return call("geoDistance", source, arguments.toArray(OclExpression[]::new));
+		}
+
+		/**
+		 * Renders the coordinate binding, returning the call source and appending any further
+		 * path argument: longitude then latitude for the split pair, one path for the packed
+		 * form (decision G1).
+		 */
+		private OclExpression geoSubject(GeoSubject subject, List<OclExpression> arguments)
+				throws QueryException {
+			if (subject.getPathPoint() != null) {
+				return propertyChain(subject.getPathPoint());
+			}
+			if (subject.getPathLon() == null || subject.getPathLat() == null) {
+				throw new QueryException("GeoSubject has neither a packed point path nor a"
+						+ " complete lat/lon pair — exactly one binding must be present");
+			}
+			OclExpression longitude = propertyChain(subject.getPathLon());
+			arguments.add(propertyChain(subject.getPathLat()));
+			return longitude;
+		}
+
+		/** {@code geoBox(swLon, swLat, neLon, neLat)} / {@code geoPolygon(lon, lat, lon, lat, …)}. */
+		private OclExpression geoShape(GeoShape shape) throws QueryException {
+			if (shape instanceof GeoBox box) {
+				return call("geoBox", real(box.getSouthWest().getLon()),
+						real(box.getSouthWest().getLat()),
+						real(box.getNorthEast().getLon()),
+						real(box.getNorthEast().getLat()));
+			}
+			if (shape instanceof GeoPolygon polygon) {
+				List<OclExpression> coordinates = new ArrayList<>();
+				for (GeoPointLiteral point : polygon.getPoints()) {
+					coordinates.add(real(point.getLon()));
+					coordinates.add(real(point.getLat()));
+				}
+				return call("geoPolygon", coordinates.get(0),
+						coordinates.subList(1, coordinates.size()).toArray(OclExpression[]::new));
+			}
+			throw new QueryException("Unsupported geo shape " + shape.eClass().getName());
+		}
+
+		/** {@code geoPoint(lon, lat)} — the point argument of a distance. */
+		private OclExpression geoPoint(GeoPointLiteral point) {
+			return call("geoPoint", real(point.getLon()), real(point.getLat()));
+		}
+
+		/** A coordinate as an OCL real literal; degrees are never integers by convention. */
+		private OclExpression real(double value) {
+			RealLiteralExp exp = OCL.createRealLiteralExp();
+			exp.setRealSymbol(value);
+			return exp;
+		}
+
 		private OclExpression interval(IntervalMatch interval) throws QueryException {
 			IntervalSubject subject = interval.getSubject();
 			EStructuralFeature target = targetOf(subject.getPathLower(), null);

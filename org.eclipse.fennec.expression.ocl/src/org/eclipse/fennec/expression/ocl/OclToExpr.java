@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.expression.ocl;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -47,6 +49,13 @@ import org.eclipse.fennec.model.expression.Negate;
 import org.eclipse.fennec.model.expression.Not;
 import org.eclipse.fennec.model.expression.NumericFunction;
 import org.eclipse.fennec.model.expression.NumericFunctionKind;
+import org.eclipse.fennec.model.expression.GeoBox;
+import org.eclipse.fennec.model.expression.GeoDistance;
+import org.eclipse.fennec.model.expression.GeoPointLiteral;
+import org.eclipse.fennec.model.expression.GeoPolygon;
+import org.eclipse.fennec.model.expression.GeoShape;
+import org.eclipse.fennec.model.expression.GeoSubject;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
@@ -247,6 +256,23 @@ public final class OclToExpr {
 				match.setPattern(map(pattern));
 				return match;
 			}
+			case "geoWithin" -> {
+				// the dialect form of issue #232: the last argument is the shape, everything
+				// before it is the coordinate binding
+				GeoWithin within = EXPR.createGeoWithin();
+				within.setSubject(geoSubject(call, call.getOwnedArguments().size() - 1));
+				within.setShape(geoShape(argument(call, call.getOwnedArguments().size() - 1)));
+				return within;
+			}
+			case "geoDistance" -> {
+				GeoDistance distance = EXPR.createGeoDistance();
+				distance.setSubject(geoSubject(call, call.getOwnedArguments().size() - 1));
+				distance.setPoint(geoPointOf(argument(call, call.getOwnedArguments().size() - 1)));
+				return distance;
+			}
+			case "geoBox", "geoPolygon", "geoPoint" -> throw new QueryException("'" + name
+					+ "' is a shape argument, not an expression — it is only meaningful inside"
+					+ " geoWithin/geoDistance");
 			case "toLowerCase", "toLower", "toUpperCase", "toUpper", "trim" -> {
 				// toLower/toUpper are the OData evaluator dialect for the same
 				// operations (issue #92)
@@ -395,6 +421,115 @@ public final class OclToExpr {
 			quantifier.setPredicate(map(iterator.getOwnedBody()));
 			variables.remove(iterator.getOwnedIterators().get(0));
 			return quantifier;
+		}
+
+		/**
+		 * Reads the coordinate binding of a geo call (issue #232): the call source plus the
+		 * arguments before {@code shapeIndex}. One path is the packed binding, two are the split
+		 * pair in longitude-then-latitude order — the same order the shapes use, and the order
+		 * {@code GeoPointLiteral} declares.
+		 */
+		private GeoSubject geoSubject(OperationCallExp call, int shapeIndex) throws QueryException {
+			GeoSubject subject = EXPR.createGeoSubject();
+			PropertyPath first = geoPath(call.getOwnedSource());
+			if (shapeIndex == 0) {
+				subject.setPathPoint(first);
+				return subject;
+			}
+			if (shapeIndex == 1) {
+				subject.setPathLon(first);
+				subject.setPathLat(geoPath(argument(call, 0)));
+				return subject;
+			}
+			throw new QueryException("A geo call takes either one packed point path or a"
+					+ " longitude/latitude pair before its shape, but had " + (shapeIndex + 1)
+					+ " path arguments");
+		}
+
+		/** A geo argument that has to be a property path — a coordinate is never computed here. */
+		private PropertyPath geoPath(OclExpression expression) throws QueryException {
+			if (expression instanceof PropertyCallExp property
+					&& path(property) instanceof PropertyPath propertyPath) {
+				return propertyPath;
+			}
+			throw new QueryException("A geo coordinate binding must be a property path, was "
+					+ (expression == null ? "nothing" : expression.eClass().getName()));
+		}
+
+		/** {@code geoBox(swLon, swLat, neLon, neLat)} or {@code geoPolygon(lon, lat, …)}. */
+		private GeoShape geoShape(OclExpression expression) throws QueryException {
+			if (!(expression instanceof OperationCallExp shape)) {
+				throw new QueryException("A geo shape must be a geoBox or geoPolygon call, was "
+						+ (expression == null ? "nothing" : expression.eClass().getName()));
+			}
+			List<Double> coordinates = coordinates(shape);
+			if ("geoBox".equals(shape.getName())) {
+				if (coordinates.size() != 4) {
+					throw new QueryException("geoBox takes exactly four coordinates"
+							+ " (swLon, swLat, neLon, neLat), had " + coordinates.size());
+				}
+				GeoBox box = EXPR.createGeoBox();
+				box.setSouthWest(point(coordinates.get(0), coordinates.get(1)));
+				box.setNorthEast(point(coordinates.get(2), coordinates.get(3)));
+				return box;
+			}
+			if ("geoPolygon".equals(shape.getName())) {
+				if (coordinates.size() < 6 || coordinates.size() % 2 != 0) {
+					throw new QueryException("geoPolygon takes lon/lat pairs for at least three"
+							+ " points, had " + coordinates.size() + " coordinates");
+				}
+				GeoPolygon polygon = EXPR.createGeoPolygon();
+				for (int i = 0; i < coordinates.size(); i += 2) {
+					polygon.getPoints().add(point(coordinates.get(i), coordinates.get(i + 1)));
+				}
+				return polygon;
+			}
+			throw new QueryException("Unknown geo shape '" + shape.getName()
+					+ "' — expected geoBox or geoPolygon");
+		}
+
+		/** {@code geoPoint(lon, lat)} — the point argument of a distance. */
+		private GeoPointLiteral geoPointOf(OclExpression expression) throws QueryException {
+			if (!(expression instanceof OperationCallExp call)
+					|| !"geoPoint".equals(call.getName())) {
+				throw new QueryException("A geo distance needs a geoPoint(lon, lat) argument, was "
+						+ (expression == null ? "nothing" : expression.eClass().getName()));
+			}
+			List<Double> coordinates = coordinates(call);
+			if (coordinates.size() != 2) {
+				throw new QueryException("geoPoint takes exactly two coordinates (lon, lat), had "
+						+ coordinates.size());
+			}
+			return point(coordinates.get(0), coordinates.get(1));
+		}
+
+		/** The source and arguments of a shape call, all of which must be numeric literals. */
+		private List<Double> coordinates(OperationCallExp call) throws QueryException {
+			List<Double> values = new ArrayList<>();
+			values.add(coordinate(call.getOwnedSource(), call.getName()));
+			for (OclExpression argument : call.getOwnedArguments()) {
+				values.add(coordinate(argument, call.getName()));
+			}
+			return values;
+		}
+
+		private double coordinate(OclExpression expression, String function) throws QueryException {
+			if (expression instanceof RealLiteralExp real) {
+				return real.getRealSymbol();
+			}
+			if (expression instanceof IntegerLiteralExp integer) {
+				// a whole degree is a legal coordinate and may arrive as an integer literal
+				return integer.getIntegerSymbol();
+			}
+			throw new QueryException("'" + function + "' takes numeric coordinates, was "
+					+ (expression == null ? "nothing" : expression.eClass().getName()));
+		}
+
+		private GeoPointLiteral point(double lon, double lat) {
+			GeoPointLiteral point = EXPR.createGeoPointLiteral();
+			point.setLon(lon);
+			point.setLat(lat);
+			return point;
 		}
 
 		private Expression path(PropertyCallExp property) throws QueryException {

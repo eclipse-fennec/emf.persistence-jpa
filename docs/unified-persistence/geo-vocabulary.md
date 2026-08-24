@@ -97,6 +97,58 @@ the differential corpus (memory vs. Mongo) applies, and the TCK pins the numbers
 | G4 | Feature numbering: 76/77 next to SCORE=75 vs. an own 9x band for geo | 76/77 — the band idea (#76 note) never materialized, contiguous is the de-facto convention |
 | G5 | Epsilon band for the TCK differential (rule 1) | relative 1e-3 on distances > 1 m, absolute 1 mm below — generous enough for model differences, tight enough to catch degree/radian bugs |
 
+## 6a. The OCL form (settled 2026-08-24, issue #232)
+
+`GeoWithin`/`GeoDistance` were the third documented totality exception of the OCL bridge: OCL
+defines no geo operators, so `ExprToOcl` refused them and `OclToExpr` had no geo at all. That
+made the whole vocabulary unreachable for a consumer living on the OCL side — `emf.odata`
+translates `$filter` to OCL and crosses into the IR through `OclToExpr`, so the backends could
+serve geo and nothing could ask.
+
+**Settled: the vocabulary gets a dialect form, and the exception is lifted.** It was never the
+same kind of exception as the other two. `AliasRef` (#82) is a stage-local name and `Score`
+(#100) is an execution-time value — neither has a model-expression meaning. A geo predicate is
+an ordinary predicate over stored coordinates, and every argument it takes is something OCL can
+already spell: property paths and numbers. The bridge had also already shown twice that it is
+not limited to operators OCL defines — it reads `toLower`/`toUpper` as an evaluator dialect, and
+`IntervalMatch` (#215) got a form because it decomposes into comparisons.
+
+```
+geoWithin(lonPath, latPath, geoBox(swLon, swLat, neLon, neLat))
+geoWithin(pointPath, geoPolygon(lon, lat, lon, lat, lon, lat, …))
+geoDistance(lonPath, latPath, geoPoint(lon, lat))   -- composes with a comparison (G3)
+```
+
+Three properties, each chosen against an alternative:
+
+- **The binding is told apart by arity, not by a second function name.** A split subject
+  contributes two path arguments and a packed one contributes a single path, and the shape is
+  always the last argument — so one name covers both forms of decision G1 and nothing has to
+  stay in sync.
+- **Longitude comes first, everywhere** — in the subject arguments and inside every shape. This
+  deliberately differs from the `Expressions.geoSubject(latPath, lonPath)` builder signature,
+  which follows the order the model declares its features in. One rule for the whole vocabulary
+  is worth more than agreeing with that: `geoPoint(lon, lat)` and therefore every shape is
+  longitude-first already, and a single OCL call that mixed both orders would be a trap. A test
+  reads the rendered call and asserts which path landed where, because a round-trip test alone
+  would pass even if both directions swapped the pair consistently.
+- **Shapes are calls, not bare argument lists.** `geoBox`/`geoPolygon`/`geoPoint` are refused as
+  expressions in their own right — they are arguments, and a shape that appears alone is an
+  error rather than a predicate that is always true. Malformed shapes are refused by name (a
+  polygon with fewer than three points, a box without four coordinates) instead of silently
+  producing a different shape.
+
+What this does **not** change: the vocabulary itself. The three expressions a consumer grammar
+asks for beyond §3 — path-to-path distance, line length, shape-in-shape — stay unserved, and
+issue #233 was closed with that reasoning. This round is only about the route to what already
+exists.
+
+Side effect worth naming: the ingest ladder of `timeseries-access.md` §6.1 defines its rung
+boundary as "whatever `OclToExpr` refuses is rung 4 by definition". Geo predicates are therefore
+now expressible at rung 2/3. That is intended rather than incidental — an ingest guard over a
+bounding box is a reasonable thing to declare — but it is a widening of that boundary and is
+recorded here so it is not discovered later.
+
 ## 7. Phasing
 
 1. **G-P1** — IR nodes + capabilities + memory reference + validation rules (§5.3–5.5),
