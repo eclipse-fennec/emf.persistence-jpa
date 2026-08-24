@@ -58,7 +58,10 @@ import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
@@ -95,6 +98,7 @@ import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
+import org.eclipse.fennec.persistence.query.support.RootReferences;
 import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
@@ -1698,8 +1702,19 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			throw new IOException("No EClass known for entity '" + entityName + "' in " + getURI());
 		}
 		JpaQueryPlan plan;
+		Query effective;
 		try {
-			plan = JpaQueries.translate(queryProcessor, query, eClass, converters, parameters, options);
+			// $root resolves to a value before translation (issue #241): the referenced object
+			// is read once and inlined, so the translator never sees a cross-root construct
+			effective = RootReferences.inline(query, this::readRootReference);
+		} catch (QueryException e) {
+			lease.close();
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Query rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Query rejected for entity '" + entityName + "': " + e.getMessage(), e);
+		}
+		try {
+			plan = JpaQueries.translate(queryProcessor, effective, eClass, converters, parameters, options);
 		} catch (QueryException e) {
 			lease.close();
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
@@ -1709,6 +1724,56 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return executeCount(plan, lease, entityName);
 		}
 		return executeCursor(plan, lease, entityName);
+	}
+
+	/**
+	 * Reads the value one {@code $root} reference names (issue #241) — the resource half of
+	 * {@link RootReferences}.
+	 * <p>
+	 * An ordinary keyed read against another entity, expressed as a query so the key predicate
+	 * goes through the same translator as everything else rather than through a second,
+	 * hand-written path. Two rows are fetched on purpose: the second one is what distinguishes
+	 * "the key selects one object" from "the key selects several", and the latter is a query
+	 * error rather than a first-row pick.
+	 */
+	private Object readRootReference(EClass from, Expression key, PropertyPath path) throws QueryException {
+		Query lookup = QueryFactory.eINSTANCE.createQuery();
+		lookup.setFrom(from);
+		lookup.setPredicate(EcoreUtil.copy(key));
+		lookup.setTop(2);
+		JpaQueryPlan plan = JpaQueries.translate(queryProcessor, lookup, from, converters, null, null);
+		try (Lease lookupLease = leaseChecked(); EntityManager em = lookupLease.createEntityManager()) {
+			TypedQuery<Object> select = em.createQuery(plan.jpql(), Object.class);
+			plan.parameters().forEach(select::setParameter);
+			select.setMaxResults(2);
+			List<Object> matches = select.getResultList();
+			if (matches.isEmpty()) {
+				return null;
+			}
+			if (matches.size() > 1) {
+				throw new QueryException("The $root key selects more than one " + from.getName()
+						+ " — a root reference must name exactly one object");
+			}
+			if (!(matches.get(0) instanceof EObject referenced)) {
+				return null;
+			}
+			return valueOf(referenced, path);
+		} catch (IOException | RuntimeException e) {
+			throw new QueryException("Cannot read the $root reference on '" + from.getName()
+					+ "': " + e.getMessage(), e);
+		}
+	}
+
+	/** Walks a property path over the referenced object; a null on the way yields null. */
+	private static Object valueOf(EObject object, PropertyPath path) {
+		Object current = object;
+		for (EStructuralFeature segment : path.getSegments()) {
+			if (!(current instanceof EObject step)) {
+				return null;
+			}
+			current = step.eGet(segment);
+		}
+		return current == object ? null : current;
 	}
 
 	// ------------------------------------------------------- persisted queries

@@ -2797,6 +2797,81 @@ public abstract class AbstractPersistenceTCK {
 		return group;
 	}
 
+	/**
+	 * A comparison against one fixed object of another entity set (issue #241) — OData's
+	 * {@code $root}.
+	 * <p>
+	 * Resolved before translation and inlined as a literal, which is what makes it servable on a
+	 * store with no cross-collection join. The fixture asks the question the protocol asks:
+	 * "everyone older than this particular person".
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.ROOT_REFERENCE, QueryFeature.WHERE_COMPARISON,
+			QueryFeature.WHERE_EQ })
+	public void queryComparesAgainstARootReference() throws Exception {
+		saveQueryFixture();
+		// Alice 30, Bob 40, Carol 50 — older than Bob is Carol alone
+		Query olderThanBob = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).gt(Expressions.rootReference(personClass,
+						Expressions.path(personName).eq("Bob"),
+						Expressions.propertyPath(personAge))))
+				.build();
+
+		try (QueryResult result = queryable(createBackendResourceSet()).query(olderThanBob)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("the referenced object's value decides the comparison")
+					.containsExactly("Carol");
+		}
+	}
+
+	/**
+	 * A root reference that matches nothing yields null, and the comparison goes UNKNOWN
+	 * (issue #241) — what SQL does with an empty scalar subquery.
+	 * <p>
+	 * The alternative would have been an error, and it would have made the construct
+	 * uncomposable: every query using it would need a second failure path for "the referenced
+	 * object happens not to exist", which is an ordinary state and not a fault.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.ROOT_REFERENCE, QueryFeature.WHERE_COMPARISON,
+			QueryFeature.WHERE_EQ })
+	public void aRootReferenceWithoutAMatchYieldsUnknown() throws Exception {
+		saveQueryFixture();
+		Query olderThanNobody = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).gt(Expressions.rootReference(personClass,
+						Expressions.path(personName).eq("Nobody"),
+						Expressions.propertyPath(personAge))))
+				.build();
+
+		try (QueryResult result = queryable(createBackendResourceSet()).query(olderThanNobody)) {
+			assertThat(result.objects())
+					.as("a comparison against null is UNKNOWN, so nothing matches — and nothing fails")
+					.isEmpty();
+		}
+	}
+
+	/**
+	 * A key that selects several objects is a query error, not a first-row pick (issue #241).
+	 * <p>
+	 * The one place where being permissive would be actively harmful: picking arbitrarily would
+	 * make the same query answer differently depending on storage order.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.ROOT_REFERENCE, QueryFeature.WHERE_COMPARISON })
+	public void anAmbiguousRootReferenceKeyIsRefused() throws Exception {
+		saveQueryFixture();
+		Query ambiguous = QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).gt(Expressions.rootReference(personClass,
+						Expressions.path(personAge).ge(30),
+						Expressions.propertyPath(personAge))))
+				.build();
+
+		QueryableResource resource = queryable(createBackendResourceSet());
+		assertThatThrownBy(() -> resource.query(ambiguous))
+				.as("more than one match must fail rather than pick one")
+				.isInstanceOf(IOException.class);
+	}
+
 	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {
 		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
 		entry.setKind(kind);

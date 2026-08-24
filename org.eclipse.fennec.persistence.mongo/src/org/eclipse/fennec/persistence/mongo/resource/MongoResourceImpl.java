@@ -54,6 +54,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -76,6 +77,9 @@ import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.expression.PropertyPath;
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.api.ConverterService;
@@ -106,6 +110,7 @@ import org.eclipse.fennec.persistence.query.support.CommandTransaction;
 import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.eclipse.fennec.persistence.query.support.PersistedQueries;
 import org.eclipse.fennec.persistence.query.support.QueryResultRows;
+import org.eclipse.fennec.persistence.query.support.RootReferences;
 import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.query.support.ReferenceResolver;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -709,6 +714,52 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	/**
+	 * Reads the value one {@code $root} reference names (issue #241) — the resource half of
+	 * {@link RootReferences}.
+	 * <p>
+	 * The referenced type lives in its own collection, which is precisely why mongo cannot
+	 * express this as a predicate: {@code $match} does not join. As a keyed read it is ordinary.
+	 * Two documents are fetched on purpose — the second distinguishes "the key names one object"
+	 * from "the key names several", and the latter is a query error rather than a first-row pick.
+	 */
+	private Object readRootReference(EClass from, Expression key, PropertyPath path) throws QueryException {
+		Query lookup = QueryFactory.eINSTANCE.createQuery();
+		lookup.setFrom(from);
+		lookup.setPredicate(EcoreUtil.copy(key));
+		MongoQueryPlan plan = MongoQueries.translate(queryProcessor, lookup, from, converters, null,
+				queryOptions(null));
+		Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
+		try (MongoCursor<BsonDocument> cursor = getCollection(from.getName())
+				.find(filter).limit(2).iterator()) {
+			if (!cursor.hasNext()) {
+				return null;
+			}
+			BsonDocument document = cursor.next();
+			if (cursor.hasNext()) {
+				throw new QueryException("The $root key selects more than one " + from.getName()
+						+ " — a root reference must name exactly one object");
+			}
+			EObject referenced = decode(document, from);
+			return isNull(referenced) ? null : rootValue(referenced, path);
+		} catch (IOException | RuntimeException e) {
+			throw new QueryException("Cannot read the $root reference on '" + from.getName()
+					+ "': " + e.getMessage(), e);
+		}
+	}
+
+	/** Walks a property path over the referenced object; a null on the way yields null. */
+	private static Object rootValue(EObject object, PropertyPath path) {
+		Object current = object;
+		for (EStructuralFeature segment : path.getSegments()) {
+			if (!(current instanceof EObject step)) {
+				return null;
+			}
+			current = step.eGet(segment);
+		}
+		return current == object ? null : current;
+	}
+
+	/**
 	 * The configured reference key, {@code $ref} unless the model configures otherwise.
 	 */
 	private String refKey() {
@@ -810,6 +861,17 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		EClass eClass = resolveEClass(collectionName, options);
 		MongoQueryPlan plan;
+		try {
+			// $root resolves to a value before translation (issue #241): mongo has no
+			// cross-collection subquery in $match, and it does not need one — the referenced
+			// object is read once and its value inlined as a literal
+			query = RootReferences.inline(query, this::readRootReference);
+		} catch (QueryException e) {
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Query rejected: " + e.getMessage(), getURI(), e));
+			throw new IOException("Query rejected for collection '" + collectionName + "': "
+					+ e.getMessage(), e);
+		}
 		try {
 			plan = MongoQueries.translate(queryProcessor, query, eClass, converters, parameters,
 					queryOptions(options));
