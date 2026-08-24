@@ -30,6 +30,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -780,7 +781,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
-				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
+				getErrors().add(PersistenceDiagnostic.error(refusalCode(e), DIAGNOSTIC_SOURCE,
 						"Failed to delete resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to delete resource: " + getURI(), e);
 			}
@@ -988,11 +989,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		if (command instanceof DeleteCommand delete) {
 			ensureCommandSupported(CommandFeature.DELETE_BY_SELECTOR, delete.getSelector().getFrom());
-			return executeDelete(delete, parameters);
+			return executeDelete(delete, parameters, options);
 		}
 		if (command instanceof UpdateCommand update) {
 			ensureCommandSupported(CommandFeature.UPDATE_BY_SELECTOR, update.getSelector().getFrom());
-			return executeUpdate(update, parameters);
+			return executeUpdate(update, parameters, options);
 		}
 		throw new IOException("Unsupported command " + command.eClass().getName());
 	}
@@ -1167,7 +1168,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/** Delete = selector-scoped bulk DELETE (concept §14: Delete = query selector). */
-	private long executeDelete(DeleteCommand delete, Map<String, Object> parameters) throws IOException {
+	private long executeDelete(DeleteCommand delete, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		JpaQueryPlan plan;
 		try {
 			guardPlainSelector(delete.getSelector());
@@ -1177,49 +1179,51 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete selector rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
 		}
+		int chunkSize = Options.getWriteChunkSize(options);
 		if (nonNull(activeTransaction)) {
 			try {
-				return deleteCore(plan, activeTransaction.em);
-			} catch (RuntimeException e) {
-				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
+				// inside a bracket the EntityManager is the caller's; flush, never clear
+				return deleteCore(plan, activeTransaction.em, chunkSize, false);
+			} catch (QueryException | RuntimeException e) {
+				getErrors().add(PersistenceDiagnostic.error(refusalCode(e), DIAGNOSTIC_SOURCE,
+						"Delete failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
 			}
 		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
-				long deleted = deleteCore(plan, em);
+				long deleted = deleteCore(plan, em, chunkSize, true);
 				em.getTransaction().commit();
 				return deleted;
-			} catch (RuntimeException e) {
+			} catch (QueryException | RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
 				}
-				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Delete failed: " + e.getMessage(), getURI(), e));
+				getErrors().add(PersistenceDiagnostic.error(refusalCode(e), DIAGNOSTIC_SOURCE,
+						"Delete failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Delete failed for selector on '" + plan.jpql() + "'", e);
 			}
 		}
 	}
 
 	/**
-	 * Loads the matches and removes children-first: a JPQL bulk DELETE bypasses cascade
+	 * Streams the matches and removes children-first: a JPQL bulk DELETE bypasses cascade
 	 * semantics and trips containment FK constraints — the entities are EObjects, so the
 	 * containment tree is generically walkable.
+	 * <p>
+	 * Streamed rather than loaded in one list since issue #227: the previous
+	 * {@code getResultList()} materialised every match, so a selector over a large table ran
+	 * out of heap before it could commit.
 	 */
-	private long deleteCore(JpaQueryPlan plan, EntityManager em) {
-		jakarta.persistence.Query select = em.createQuery(plan.jpql());
-		plan.parameters().forEach(select::setParameter);
-		List<?> matches = select.getResultList();
-		for (Object match : matches) {
-			if (match instanceof EObject eObject) {
-				removeChildrenFirst(em, eObject);
-			}
-		}
-		return matches.size();
+	private long deleteCore(JpaQueryPlan plan, EntityManager em, int chunkSize, boolean mayClear)
+			throws QueryException {
+		return forEachMatch(plan, em, chunkSize, mayClear, eObject -> removeChildrenFirst(em, eObject));
 	}
 
 	/** Update = selector + ChangeSet template per match (concept §14, patch-apply engine §18.1). */
-	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters) throws IOException {
+	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters, Map<?, ?> options)
+			throws IOException {
 		JpaQueryPlan plan;
 		try {
 			guardPlainSelector(update.getSelector());
@@ -1230,11 +1234,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Update rejected: " + e.getMessage(), e);
 		}
+		int chunkSize = Options.getWriteChunkSize(options);
 		if (nonNull(activeTransaction)) {
 			try {
 				// the identity-map drop belongs to the bracket's COMMIT (issue #108)
 				return updateCore(update, plan, activeTransaction.em,
-						activeTransaction.referencePatchedTypes::add);
+						activeTransaction.referencePatchedTypes::add, chunkSize, false);
 			} catch (QueryException | RuntimeException e) {
 				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Update failed for selector on '" + plan.jpql() + "': "
@@ -1245,7 +1250,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			em.getTransaction().begin();
 			try {
 				Set<Class<?>> patchedTypes = new HashSet<>();
-				long applied = updateCore(update, plan, em, patchedTypes::add);
+				long applied = updateCore(update, plan, em, patchedTypes::add, chunkSize, true);
 				em.getTransaction().commit();
 				for (Class<?> type : patchedTypes) {
 					// the accessor's collection writes accumulate by design (AP-47 proxy
@@ -1274,22 +1279,85 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * drop (issue #107).
 	 */
 	private long updateCore(UpdateCommand update, JpaQueryPlan plan, EntityManager em,
-			java.util.function.Consumer<Class<?>> referencePatched) throws QueryException {
-		jakarta.persistence.Query select = em.createQuery(plan.jpql());
-		plan.parameters().forEach(select::setParameter);
-		List<?> matches = select.getResultList();
+			Consumer<Class<?>> referencePatched, int chunkSize, boolean mayClear) throws QueryException {
 		ReferenceResolver resolver = referenceResolver(em);
-		long applied = 0;
-		for (Object match : matches) {
-			if (match instanceof EObject eObject) {
-				ChangeTemplates.apply(update.getTemplate(), eObject, resolver);
-				applied++;
+		// the first match's concrete class, kept for the identity-map drop below — the stream
+		// no longer has a list to index into (issue #227)
+		Class<?>[] firstType = new Class<?>[1];
+		long applied = forEachMatch(plan, em, chunkSize, mayClear, eObject -> {
+			if (isNull(firstType[0])) {
+				firstType[0] = eObject.getClass();
 			}
-		}
+			ChangeTemplates.apply(update.getTemplate(), eObject, resolver);
+		});
 		if (applied > 0 && hasReferenceEntries(update.getTemplate(), update.getSelector().getFrom())) {
-			referencePatched.accept(matches.get(0).getClass());
+			referencePatched.accept(firstType[0]);
 		}
 		return applied;
+	}
+
+	/**
+	 * Streams the matches of a command selector, handing each to {@code action} and flushing
+	 * every {@code chunkSize} objects (issue #227).
+	 * <p>
+	 * A scrollable cursor rather than paging, because paging over a set the statement is
+	 * changing is wrong in both directions: a delete makes its own matches disappear, so an
+	 * offset skips rows, while an update may or may not, depending on whether the template
+	 * touches the selector's predicate — and nothing here knows which. A cursor yields every
+	 * row exactly once either way, which is the same reason {@code executeCursor} uses one.
+	 * <p>
+	 * {@code clear()} happens only outside a command bracket. Inside one the EntityManager
+	 * belongs to the caller's transaction (issue #108), and detaching their objects behind
+	 * their back would cost more than the memory it saves; the flush still bounds the pending
+	 * statement backlog there.
+	 *
+	 * @param mayClear whether the persistence context may be cleared between chunks
+	 * @return how many matches were handed to {@code action}
+	 */
+	@FunctionalInterface
+	private interface MatchAction {
+		void accept(EObject match) throws QueryException;
+	}
+
+	private long forEachMatch(JpaQueryPlan plan, EntityManager em, int chunkSize, boolean mayClear,
+			MatchAction action) throws QueryException {
+		TypedQuery<Object> select = em.createQuery(plan.jpql(), Object.class);
+		plan.parameters().forEach(select::setParameter);
+		DatabaseQuery databaseQuery = select.unwrap(JpaQuery.class).getDatabaseQuery();
+		if (!databaseQuery.isReadAllQuery() && !databaseQuery.isDataReadQuery()) {
+			// not cursorable; the plain-filter guard makes this the defensive branch rather
+			// than an expected one, so it keeps the old load-everything behaviour
+			long processed = 0;
+			for (Object match : select.getResultList()) {
+				if (match instanceof EObject eObject) {
+					action.accept(eObject);
+					processed++;
+				}
+			}
+			return processed;
+		}
+		select.setHint(QueryHints.SCROLLABLE_CURSOR, HintValues.TRUE);
+		ScrollableCursor cursor = (ScrollableCursor) select.unwrap(JpaQuery.class).getResultCursor();
+		long processed = 0;
+		try {
+			while (cursor.hasNext()) {
+				Object match = cursor.next();
+				if (!(match instanceof EObject eObject)) {
+					continue;
+				}
+				action.accept(eObject);
+				processed++;
+				if (processed % chunkSize == 0) {
+					em.flush();
+					if (mayClear) {
+						em.clear();
+					}
+				}
+			}
+		} finally {
+			cursor.close();
+		}
+		return processed;
 	}
 
 	/** The per-EClass entity factory of the save pipeline, reused by bracketed inserts. */
@@ -1343,6 +1411,35 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			Object found = em.find(descriptor.getJavaClass(), convertId(id, descriptor));
 			return found instanceof EObject eObject ? eObject : null;
 		};
+	}
+
+	/**
+	 * Classifies a failed delete: {@link PersistenceDiagnostic#CODE_REFERENTIAL_INTEGRITY} when
+	 * the database refused it because something still points at the row, {@code CODE_NONE}
+	 * otherwise (issue #229).
+	 * <p>
+	 * On JPA the refusal arrives as a foreign-key violation rather than as an application-level
+	 * check, so unlike mongo there is no message worth improving — the constraint name is
+	 * buried in a nested {@link SQLException} and the top-level text can only say the delete
+	 * failed. The code is therefore the <em>only</em> way for a consumer to tell this apart from
+	 * a connection loss on the same call.
+	 * <p>
+	 * Recognised by SQLState class {@code 23} (integrity constraint violation), which is
+	 * portable across H2, PostgreSQL and MariaDB, rather than by vendor error numbers.
+	 */
+	private static int refusalCode(Throwable failure) {
+		for (Throwable current = failure; nonNull(current); current = current.getCause()) {
+			if (current instanceof SQLException sql) {
+				String state = sql.getSQLState();
+				if (nonNull(state) && state.startsWith("23")) {
+					return PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY;
+				}
+			}
+			if (current.getCause() == current) {
+				break;
+			}
+		}
+		return PersistenceDiagnostic.CODE_NONE;
 	}
 
 	private void removeChildrenFirst(EntityManager em, EObject object) {

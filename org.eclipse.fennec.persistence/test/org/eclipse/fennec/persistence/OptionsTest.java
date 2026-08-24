@@ -105,4 +105,49 @@ class OptionsTest {
 		opts.put(Options.OPTION_CACHE_NEW_OBJECTS, "false");
 		assertThat(Options.getCacheNewObjects(opts)).isFalse();
 	}
+
+	// ---------------------------------------------- write chunk size (issue #227)
+
+	@Test
+	void getWriteChunkSize_unsetIsTheActiveDefault() {
+		assertThat(Options.getWriteChunkSize(null)).isEqualTo(Options.DEFAULT_WRITE_CHUNK_SIZE);
+		assertThat(Options.getWriteChunkSize(new HashMap<>()))
+				.as("unlike page size, an absent value must not mean 'no chunking' — the failure "
+						+ "this prevents is an OOM")
+				.isEqualTo(Options.DEFAULT_WRITE_CHUNK_SIZE);
+	}
+
+	@Test
+	void getWriteChunkSize_positiveValueWins() {
+		Map<Object, Object> opts = new HashMap<>();
+		opts.put(Options.OPTION_WRITE_CHUNK_SIZE, 250);
+		assertThat(Options.getWriteChunkSize(opts)).isEqualTo(250);
+	}
+
+	@Test
+	void getWriteChunkSize_zeroDisablesChunking() {
+		Map<Object, Object> opts = new HashMap<>();
+		opts.put(Options.OPTION_WRITE_CHUNK_SIZE, 0);
+		assertThat(Options.getWriteChunkSize(opts))
+				.as("an explicit 0 is 'load everything', expressed as a chunk nothing reaches")
+				.isEqualTo(Integer.MAX_VALUE);
+		opts.put(Options.OPTION_WRITE_CHUNK_SIZE, -5);
+		assertThat(Options.getWriteChunkSize(opts)).isEqualTo(Integer.MAX_VALUE);
+	}
+
+	@Test
+	void getWriteChunkSize_stringIsParsed() {
+		Map<Object, Object> opts = new HashMap<>();
+		opts.put(Options.OPTION_WRITE_CHUNK_SIZE, " 64 ");
+		assertThat(Options.getWriteChunkSize(opts)).isEqualTo(64);
+	}
+
+	@Test
+	void getWriteChunkSize_garbageFallsBackToTheDefault() {
+		Map<Object, Object> opts = new HashMap<>();
+		opts.put(Options.OPTION_WRITE_CHUNK_SIZE, "not a number");
+		assertThat(Options.getWriteChunkSize(opts))
+				.as("a typo must not silently turn the protection off")
+				.isEqualTo(Options.DEFAULT_WRITE_CHUNK_SIZE);
+	}
 }

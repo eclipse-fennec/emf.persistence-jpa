@@ -68,6 +68,8 @@ import org.eclipse.fennec.model.stream.ChangeSet;
 import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
+import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
@@ -604,6 +606,7 @@ public abstract class AbstractPersistenceTCK {
 				.as("an object something still references must not be deleted silently")
 				.isInstanceOf(IOException.class);
 		assertThat(holder.getErrors()).as("the refusal has to say why").isNotEmpty();
+		assertRefusalIsClassified(holder);
 
 		Resource reloaded = loadAll(createBackendResourceSet(), "Person");
 		assertThat(reloaded.getContents()).as("the refused delete changed nothing").hasSize(2);
@@ -2407,6 +2410,7 @@ public abstract class AbstractPersistenceTCK {
 				.isInstanceOf(IOException.class);
 		assertThat(((Resource) resource).getErrors())
 				.as("the refusal has to say why, on this path as well").isNotEmpty();
+		assertRefusalIsClassified((Resource) resource);
 
 		Resource reloaded = loadAll(createBackendResourceSet(), "Person");
 		assertThat(reloaded.getContents()).as("the refused delete changed nothing").hasSize(2);
@@ -2489,6 +2493,97 @@ public abstract class AbstractPersistenceTCK {
 				.isInstanceOf(IOException.class);
 		assertThat(loadAll(createBackendResourceSet(), "Person").getContents())
 				.as("and nothing may have been deleted").hasSize(3);
+	}
+
+	/**
+	 * A command DELETE keeps its count and its completeness across chunk boundaries
+	 * (issue #227).
+	 * <p>
+	 * The chunk size is set below the match count on purpose, so the flush/clear boundary is
+	 * crossed several times. What this guards is not the memory — that needs volumes no suite
+	 * should carry — but everything the chunking could break while saving it: a lost match, a
+	 * count that reports the last chunk instead of the sum, or work discarded by the clear.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
+	public void commandDeleteChunksWithoutLosingMatches() throws Exception {
+		EObject[] people = new EObject[5];
+		for (int i = 0; i < people.length; i++) {
+			people[i] = newPerson(i + 1, "P" + i, 20 + i);
+		}
+		save(createBackendResourceSet(), "Person", people);
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(personClass)
+				.where(Expressions.path(personAge).ge(20))
+				.build());
+
+		long affected = commands(createBackendResourceSet())
+				.execute(delete, null, Map.of(Options.OPTION_WRITE_CHUNK_SIZE, 2));
+
+		assertThat(affected).as("the count sums across chunks rather than reporting the last one")
+				.isEqualTo(5);
+		assertThat(loadAll(createBackendResourceSet(), "Person").getContents())
+				.as("every chunk was actually written").isEmpty();
+	}
+
+	/**
+	 * A command UPDATE whose template moves the matches <em>out of</em> the selector still
+	 * patches each of them exactly once (issue #227).
+	 * <p>
+	 * This is the case that decides how chunking may be implemented at all. Offset paging is
+	 * wrong here — after the first chunk is patched those rows no longer match, everything
+	 * shifts up, and an offset skips the same number of rows it just wrote. Re-running "the
+	 * first n" would be wrong for the opposite template, the one that leaves its matches
+	 * matching: that never terminates. Only a cursor is right for both, and this case fails
+	 * loudly if someone replaces it with paging.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
+	public void commandUpdateChunksEvenWhenThePatchLeavesTheSelector() throws Exception {
+		EObject[] people = new EObject[5];
+		for (int i = 0; i < people.length; i++) {
+			people[i] = newPerson(i + 1, "P" + i, 20 + i);
+		}
+		save(createBackendResourceSet(), "Person", people);
+
+		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
+		setAge.setValueNew("99");
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personAge).lt(50))
+						.build(),
+				setAge);
+
+		long affected = commands(createBackendResourceSet())
+				.execute(update, null, Map.of(Options.OPTION_WRITE_CHUNK_SIZE, 2));
+
+		assertThat(affected).as("every match is patched exactly once").isEqualTo(5);
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents()).hasSize(5);
+		assertThat(loaded.getContents())
+				.as("no match was skipped by the chunk boundary")
+				.allSatisfy(person -> assertThat(((Number) person.eGet(personAge)).intValue()).isEqualTo(99));
+	}
+
+	/**
+	 * The refusal carries the machine-readable code, not just prose (issue #229).
+	 * <p>
+	 * One contract, three wordings: JPA can only say the delete failed and leaves the constraint
+	 * in a nested SQLException, while the two mongo paths phrase it per object and per selector.
+	 * A consumer mapping this onto a protocol — {@code emf.odata} onto 409 rather than 500 —
+	 * must not have to match message text, and a fourth wording must not break it.
+	 */
+	private void assertRefusalIsClassified(Resource resource) {
+		assertThat(resource.getErrors())
+				.as("a referential refusal is classified, on every backend and every path")
+				.anySatisfy(diagnostic -> assertThat(diagnostic)
+						.asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories
+								.type(PersistenceDiagnostic.class))
+						.extracting(PersistenceDiagnostic::code)
+						.isEqualTo(PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY));
 	}
 
 	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {

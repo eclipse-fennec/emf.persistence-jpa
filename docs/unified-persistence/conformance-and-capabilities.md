@@ -269,6 +269,22 @@ Two limits, stated because they are limits rather than oversights:
   conservative reading, and it is the one portable across a backend that has no mapping
   model at all.
 
+**The command path holds it too** (issue #219, fixed in #224). The guard originally sat only
+on `Resource.delete()`, which JPA did not notice — its foreign key holds whichever way the row
+goes — while mongo's application-level check did not run for `execute(DeleteCommand)`. A
+consumer writing exclusively through commands, as `emf.odata` does, therefore met the contract
+on one backend and not on the other. The command path now resolves the matched documents
+first, refuses on the same terms, and only then deletes.
+
+**The refusal carries a code, not only a message** (issue #229). The same contract is worded
+three ways — JPA can say no more than that the delete failed and leaves the constraint in a
+nested `SQLException`, while the two mongo paths phrase it per object and per selector. The
+diagnostic on `getErrors()` therefore carries
+`PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY`, and **that** is the part consumers may
+route on: it is a client-visible conflict (HTTP 409 for `emf.odata`, not 500), it is uniform
+across backends and paths, and the wording stays free to change. Matching message text is not
+a supported way to recognise this refusal.
+
 ### 4d. `resolveProxies="false"` is enforced by EMF, not by the store
 
 Decided 2026-08-21 (issue #195), after trying to enforce it and finding there was nothing to

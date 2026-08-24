@@ -39,19 +39,71 @@ import org.eclipse.emf.ecore.resource.Resource;
  */
 public final class PersistenceDiagnostic implements Resource.Diagnostic {
 
+	/**
+	 * No machine-readable classification — the diagnostic says what happened in its message
+	 * only. The default for everything that nothing has had to route on yet.
+	 */
+	public static final int CODE_NONE = 0;
+
+	/**
+	 * The refusal to delete an object something still references (issue #195, §4c of
+	 * {@code conformance-and-capabilities.md}), reported by every backend on every path
+	 * (issue #229).
+	 * <p>
+	 * This is a <b>client-visible conflict</b>, not a server fault: the caller can delete the
+	 * referrer or re-point it and try again. Consumers mapping onto a protocol — {@code emf.odata}
+	 * onto HTTP 409 rather than 500 — switch on this instead of matching message text, which is
+	 * the point: JPA and the two mongo paths word the same refusal three different ways, and a
+	 * fourth wording must not break a consumer.
+	 */
+	public static final int CODE_REFERENTIAL_INTEGRITY = 1;
+
 	private final int severity;
+	private final int code;
 	private final String source;
 	private final String message;
 	private final String location;
 	private final Throwable cause;
 
-	private PersistenceDiagnostic(int severity, String source, String message, URI location,
-			Throwable cause) {
+	private PersistenceDiagnostic(int severity, int code, String source, String message,
+			URI location, Throwable cause) {
 		this.severity = severity;
+		this.code = code;
 		this.source = requireNonNull(source, "source must not be null");
 		this.message = requireNonNull(message, "message must not be null");
 		this.location = isNull(location) ? null : location.toString();
 		this.cause = cause;
+	}
+
+	/**
+	 * The machine-readable classification of this diagnostic, or {@link #CODE_NONE} when it
+	 * carries none (issue #229).
+	 * <p>
+	 * {@link Resource.Diagnostic} has no {@code getCode()}, so this sits next to the interface
+	 * members and consumers reach it after an {@code instanceof PersistenceDiagnostic}. The
+	 * message stays human-readable and may be reworded at any time; the code is the part that
+	 * is a contract.
+	 *
+	 * @return the code, or {@link #CODE_NONE}
+	 */
+	public int code() {
+		return code;
+	}
+
+	/**
+	 * Creates a classified error diagnostic (issue #229) — same as
+	 * {@link #error(String, String, URI, Throwable)} plus a code consumers can route on.
+	 *
+	 * @param code one of the {@code CODE_*} constants
+	 * @param source the reporting bundle's namespace
+	 * @param message the problem description
+	 * @param location the resource URI; may be {@code null}
+	 * @param cause the originating exception; may be {@code null}
+	 * @return the diagnostic
+	 */
+	public static PersistenceDiagnostic error(int code, String source, String message, URI location,
+			Throwable cause) {
+		return new PersistenceDiagnostic(Diagnostic.ERROR, code, source, message, location, cause);
 	}
 
 	/**
@@ -63,7 +115,7 @@ public final class PersistenceDiagnostic implements Resource.Diagnostic {
 	 * @return the diagnostic
 	 */
 	public static PersistenceDiagnostic error(String source, String message, URI location) {
-		return new PersistenceDiagnostic(Diagnostic.ERROR, source, message, location, null);
+		return new PersistenceDiagnostic(Diagnostic.ERROR, CODE_NONE, source, message, location, null);
 	}
 
 	/**
@@ -77,7 +129,7 @@ public final class PersistenceDiagnostic implements Resource.Diagnostic {
 	 */
 	public static PersistenceDiagnostic error(String source, String message, URI location,
 			Throwable cause) {
-		return new PersistenceDiagnostic(Diagnostic.ERROR, source, message, location, cause);
+		return new PersistenceDiagnostic(Diagnostic.ERROR, CODE_NONE, source, message, location, cause);
 	}
 
 	/**
@@ -89,7 +141,7 @@ public final class PersistenceDiagnostic implements Resource.Diagnostic {
 	 * @return the diagnostic
 	 */
 	public static PersistenceDiagnostic warning(String source, String message, URI location) {
-		return new PersistenceDiagnostic(Diagnostic.WARNING, source, message, location, null);
+		return new PersistenceDiagnostic(Diagnostic.WARNING, CODE_NONE, source, message, location, null);
 	}
 
 	/**
@@ -103,7 +155,7 @@ public final class PersistenceDiagnostic implements Resource.Diagnostic {
 	 */
 	public static PersistenceDiagnostic warning(String source, String message, URI location,
 			Throwable cause) {
-		return new PersistenceDiagnostic(Diagnostic.WARNING, source, message, location, cause);
+		return new PersistenceDiagnostic(Diagnostic.WARNING, CODE_NONE, source, message, location, cause);
 	}
 
 	/**

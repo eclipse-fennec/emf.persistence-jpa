@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.bson.BsonDocument;
@@ -39,6 +40,7 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.junit.jupiter.api.AfterEach;
@@ -94,6 +96,8 @@ class MongoDeleteWalkCostTest {
 	private String databaseName;
 	/** One entry per {@code find} that went over the wire: collection and filter shape. */
 	private final List<String> wireFinds = new ArrayList<>();
+	/** One entry per write command that went over the wire, by name — {@code delete}, {@code update}, … */
+	private final List<String> wireWrites = new ArrayList<>();
 
 	@BeforeEach
 	void setUp() {
@@ -108,6 +112,20 @@ class MongoDeleteWalkCostTest {
 					@Override
 					public void commandStarted(CommandStartedEvent event) {
 						if (!"find".equals(event.getCommandName())) {
+							switch (event.getCommandName()) {
+								case "delete", "update", "insert" -> {
+									// with the target collection: one command per chunk per
+									// collection, and the ownership bookkeeping writes too
+									String target = event.getCommand()
+											.getString(event.getCommandName(), null) == null
+													? "?"
+													: event.getCommand().getString(event.getCommandName()).getValue();
+									synchronized (wireWrites) {
+										wireWrites.add(event.getCommandName() + " " + target);
+									}
+								}
+								default -> { /* not a write we measure */ }
+							}
 							return;
 						}
 						BsonDocument command = event.getCommand();
@@ -415,5 +433,47 @@ class MongoDeleteWalkCostTest {
 		assertThat(finds.get(0)).startsWith("Library filter=");
 		assertThat(database.getCollection("Archive", BsonDocument.class).countDocuments())
 				.as("and the owned children went with the root").isZero();
+	}
+
+	/**
+	 * The chunk size actually reaches the wire (issue #227): five matches at a chunk size of
+	 * two are three {@code delete} commands, not one.
+	 * <p>
+	 * The TCK cases assert that chunking loses nothing; they would pass just as well if the
+	 * option were ignored, since five objects fit in one default chunk. This is the case that
+	 * shows the boundary exists. It matters beyond tuning: the delete now names its ids in an
+	 * {@code $in}, and a command document may not exceed 16 MB, so an unchunked id list is a
+	 * hard failure at scale rather than a slow one.
+	 */
+	@Test
+	void theWriteChunkSizeReachesTheWire() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		Resource libraryResource = writeSet.createResource(uriFor("Library"));
+		for (int i = 0; i < 5; i++) {
+			libraryResource.getContents().add(create(libraryClass, "lid", "l" + i, "name", "Lib " + i));
+		}
+		libraryResource.save(null);
+		synchronized (wireWrites) {
+			wireWrites.clear();
+		}
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(libraryClass).build());
+		Resource resource = resourceSet().createResource(uriFor("Library"));
+		long affected = ((CommandResource) resource)
+				.execute(delete, null, Map.of(Options.OPTION_WRITE_CHUNK_SIZE, 2));
+
+		List<String> writes;
+		synchronized (wireWrites) {
+			writes = new ArrayList<>(wireWrites);
+		}
+		System.out.printf("### chunked-delete(5 roots, chunk=2): affected=%d writes=%s%n", affected, writes);
+
+		assertThat(affected).isEqualTo(5);
+		assertThat(writes).as("ceil(5/2) delete commands on the roots — the chunk boundary is real")
+				.filteredOn("delete Library"::equals).hasSize(3);
+		assertThat(writes).as("the ownership bookkeeping is chunked by the same boundary")
+				.filteredOn("delete _fennec_ownership"::equals).hasSize(3);
+		assertThat(database.getCollection("Library", BsonDocument.class).countDocuments()).isZero();
 	}
 }

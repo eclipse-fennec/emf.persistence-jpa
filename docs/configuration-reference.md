@@ -195,6 +195,7 @@ Pass these through the `Map<?, ?> options` argument of
 | Constant | Key | Value type | Applies to | Purpose |
 |----------|-----|------------|------------|---------|
 | `OPTION_PAGE_SIZE` | `fennec.jpa.page-size` | Integer | `load` | Stream the result set in pages. A positive value enables `setFirstResult`/`setMaxResults` iteration; `0` / absent loads everything in one query |
+| `OPTION_WRITE_CHUNK_SIZE` | `fennec.write-chunk-size` | Integer | `execute` | Chunk size for command `DELETE`/`UPDATE` by selector (issue #227). **Defaults to 1000** — unlike page size this is on unless switched off, because the failure it prevents is an OOM. An explicit `0` or less restores the unchunked behaviour |
 | `OPTION_CACHE_NEW_OBJECTS` | `fennec.jpa.cache-new-objects` | Boolean | `save` | Passed to EclipseLink's UnitOfWork as `setShouldNewObjectsBeCached(value)`. Use `FALSE` to avoid populating the shared cache with freshly persisted objects during bulk inserts |
 | `OPTION_TABLE_NAME` | `TABLE_NAME` | String or EClass | `load` / `save` | Override the target table name for a single call (useful when multiple tables share a schema) |
 | `READ_FILTER_ECLASS` | `FILTER_ECLASS` | EClass | `load` | Restrict results to instances of the given EClass (and its subclasses) when loading from a polymorphic alias |
