@@ -47,6 +47,7 @@ import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
 import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.GeoWithin;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +63,9 @@ class ExpressionOclBridgeTest {
 
 	private EAttribute name;
 	private EAttribute age;
+	private EAttribute lat;
+	private EAttribute lon;
+	private EAttribute position;
 	private EReference addresses;
 	private EAttribute street;
 
@@ -76,8 +80,20 @@ class ExpressionOclBridgeTest {
 		age = ecore.createEAttribute();
 		age.setName("age");
 		age.setEType(EcorePackage.Literals.EINT);
+		lat = ecore.createEAttribute();
+		lat.setName("lat");
+		lat.setEType(EcorePackage.Literals.EDOUBLE);
+		lon = ecore.createEAttribute();
+		lon.setName("lon");
+		lon.setEType(EcorePackage.Literals.EDOUBLE);
+		position = ecore.createEAttribute();
+		position.setName("position");
+		position.setEType(EcorePackage.Literals.ESTRING);
 		person.getEStructuralFeatures().add(name);
 		person.getEStructuralFeatures().add(age);
+		person.getEStructuralFeatures().add(lat);
+		person.getEStructuralFeatures().add(lon);
+		person.getEStructuralFeatures().add(position);
 
 		EClass address = ecore.createEClass();
 		address.setName("Address");
@@ -344,14 +360,120 @@ class ExpressionOclBridgeTest {
 				.hasMessageContaining("Score");
 	}
 
+	/**
+	 * The geo vocabulary round-trips through the dialect form (issue #232, lifting the third
+	 * totality exception of issue #101).
+	 * <p>
+	 * It was an exception because OCL defines no geo operators — but the bridge already reads
+	 * named functions as vocabulary ({@code toLower}) and already gave a form to a construct
+	 * without an operator ({@code IntervalMatch}, #215). Unlike {@code AliasRef} and
+	 * {@code Score}, which have no model-expression meaning at all, a geo predicate is an
+	 * ordinary predicate over stored coordinates.
+	 */
 	@Test
-	void geoVocabularyHasNoOclForm() {
-		// documented totality exception (issue #101), like AliasRef and Score
-		assertThatThrownBy(() -> ExprToOcl.toOcl(Expressions.geoWithin(
-				Expressions.geoSubject(Expressions.propertyPath(age), Expressions.propertyPath(age)),
-				Expressions.geoBox(Expressions.geoPoint(10, 50), Expressions.geoPoint(13, 52)))))
+	void geoWithinRoundTripsWithABox() throws QueryException {
+		Expression within = Expressions.geoWithin(
+				Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoBox(Expressions.geoPoint(10.5, 50.25), Expressions.geoPoint(13.75, 52.5)));
+
+		assertThat(EcoreUtil.equals(roundTrip(within), within))
+				.as("a box predicate survives the round trip unchanged")
+				.isTrue();
+	}
+
+	/** A polygon with more points than a box, and the packed single-path binding (decision G1). */
+	@Test
+	void geoWithinRoundTripsWithAPolygonAndAPackedSubject() throws QueryException {
+		Expression within = Expressions.geoWithin(
+				Expressions.geoSubject(Expressions.propertyPath(position)),
+				Expressions.geoPolygon(
+						Expressions.geoPoint(10.0, 50.0),
+						Expressions.geoPoint(11.0, 50.0),
+						Expressions.geoPoint(11.0, 51.0),
+						Expressions.geoPoint(10.0, 51.0)));
+
+		assertThat(EcoreUtil.equals(roundTrip(within), within))
+				.as("four vertices and a packed binding survive the round trip")
+				.isTrue();
+	}
+
+	/**
+	 * The case the consumer actually asks for (issue #232): a distance composed with a
+	 * comparison, which is what decision G3 designed the value form for.
+	 */
+	@Test
+	void geoDistanceRoundTripsComposedWithAComparison() throws QueryException {
+		Expression predicate = Expressions.geoDistance(
+				Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoPoint(9.99, 53.55))
+				.le(500);
+
+		assertThat(EcoreUtil.equals(roundTrip(predicate), predicate))
+				.as("geo.distance(...) le 500 survives the round trip")
+				.isTrue();
+	}
+
+	/**
+	 * Longitude comes first everywhere in the dialect form — and this is the case that catches
+	 * it, because the builder spells the pair the other way round
+	 * ({@code geoSubject(latPath, lonPath)}) while {@code geoPoint(lon, lat)} and every shape are
+	 * longitude-first. A round-trip test alone would pass even if both directions swapped the
+	 * pair consistently; this one reads the rendered call and checks which path landed where.
+	 */
+	@Test
+	void theDialectFormPutsLongitudeFirst() throws QueryException {
+		Expression within = Expressions.geoWithin(
+				Expressions.geoSubject(Expressions.propertyPath(lat), Expressions.propertyPath(lon)),
+				Expressions.geoBox(Expressions.geoPoint(10.0, 50.0), Expressions.geoPoint(11.0, 51.0)));
+
+		OperationCallExp call = (OperationCallExp) ExprToOcl.toOcl(within);
+		assertThat(call.getName()).isEqualTo("geoWithin");
+		assertThat(((PropertyCallExp) call.getOwnedSource()).getReferredProperty())
+				.as("the call source is the LONGITUDE path")
+				.isSameAs(lon);
+		assertThat(((PropertyCallExp) call.getOwnedArguments().get(0)).getReferredProperty())
+				.as("the first argument is the latitude path")
+				.isSameAs(lat);
+
+		GeoWithin readBack = (GeoWithin) OclToExpr.toExpr(call);
+		assertThat(readBack.getSubject().getPathLon().getSegments()).containsExactly(lon);
+		assertThat(readBack.getSubject().getPathLat().getSegments()).containsExactly(lat);
+	}
+
+	/** A shape function is an argument, not a predicate — asking for it alone must be refused. */
+	@Test
+	void aShapeCallOnItsOwnIsNotAnExpression() {
+		OperationCallExp box = OclFactory.eINSTANCE.createOperationCallExp();
+		box.setName("geoBox");
+		assertThatThrownBy(() -> OclToExpr.toExpr(box))
 				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("GeoWithin");
+				.hasMessageContaining("shape argument");
+	}
+
+	/** A malformed shape is refused by name rather than silently producing a wrong polygon. */
+	@Test
+	void aPolygonWithTooFewPointsIsRefused() {
+		OperationCallExp within = OclFactory.eINSTANCE.createOperationCallExp();
+		within.setName("geoWithin");
+		within.setOwnedSource(property(lon));
+		within.getOwnedArguments().add(property(lat));
+		OperationCallExp polygon = OclFactory.eINSTANCE.createOperationCallExp();
+		polygon.setName("geoPolygon");
+		polygon.setOwnedSource(real(10.0));
+		polygon.getOwnedArguments().add(real(50.0));
+		polygon.getOwnedArguments().add(real(11.0));
+		polygon.getOwnedArguments().add(real(51.0));
+		within.getOwnedArguments().add(polygon);
+
+		assertThatThrownBy(() -> OclToExpr.toExpr(within))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("at least three");
+	}
+
+	private static OclExpression real(double value) {
+		var literal = OclFactory.eINSTANCE.createRealLiteralExp();
+		literal.setRealSymbol(value);
+		return literal;
 	}
 
 	@Test
