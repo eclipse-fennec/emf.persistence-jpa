@@ -975,6 +975,19 @@ public class MongoQueryProcessor implements QueryProcessor {
 			case HOUR -> new Document("$hour", inner);
 			case MINUTE -> new Document("$minute", inner);
 			case SECOND -> new Document("$second", inner);
+			// DATE is midnight UTC of the same day, rebuilt from the component operators
+			// rather than taken from $dateTrunc: that operator exists on MongoDB 5.0+ but
+			// FerretDB and DocumentDB answer it with an empty result rather than an error —
+			// a plausible wrong answer, which §5 forbids more strongly than a refusal
+			// (issue #240, measured on both flavors).
+			case DATE -> new Document("$dateFromParts", new Document("year", new Document("$year", inner))
+					.append("month", new Document("$month", inner))
+					.append("day", new Document("$dayOfMonth", inner)));
+			case TIME -> new Document("$add", List.of(
+					new Document("$multiply", List.of(new Document("$hour", inner), 3_600_000)),
+					new Document("$multiply", List.of(new Document("$minute", inner), 60_000)),
+					new Document("$multiply", List.of(new Document("$second", inner), 1_000)),
+					new Document("$millisecond", inner)));
 			};
 		}
 		if (expression instanceof Concat concatenation) {

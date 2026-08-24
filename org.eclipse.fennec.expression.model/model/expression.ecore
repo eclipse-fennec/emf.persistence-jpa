@@ -502,7 +502,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="TemporalFunctionKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="The extractable parts — UTC-normative, SECOND integral."/>
+      <details key="documentation" value="The extractable parts — UTC-normative, SECOND integral.&#xA;&#xA;YEAR..SECOND yield an integer component. DATE and TIME (issue #240) are different in kind: they yield a VALUE of the corresponding TemporalKind — the date part and the time-of-day part of a date-time ([OData-URL] 5.1.1.6) — which is why they exist at all rather than being composed from the components. date(x) eq 2026-08-24 is one predicate where year/month/day equality is three, and $orderby date(x) cannot be composed from components at all."/>
     </eAnnotations>
     <eLiterals name="YEAR"/>
     <eLiterals name="MONTH" value="1"/>
@@ -510,6 +510,8 @@
     <eLiterals name="HOUR" value="3"/>
     <eLiterals name="MINUTE" value="4"/>
     <eLiterals name="SECOND" value="5"/>
+    <eLiterals name="DATE" value="6"/>
+    <eLiterals name="TIME" value="7"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="NumericFunctionKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

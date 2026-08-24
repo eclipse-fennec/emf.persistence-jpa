@@ -2475,6 +2475,8 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.HOUR);
 		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.MINUTE);
 		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.SECOND);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.DATE);
+		addEEnumLiteral(temporalFunctionKindEEnum, TemporalFunctionKind.TIME);
 
 		initEEnum(numericFunctionKindEEnum, NumericFunctionKind.class, "NumericFunctionKind");
 		addEEnumLiteral(numericFunctionKindEEnum, NumericFunctionKind.ROUND);

@@ -250,6 +250,10 @@ public final class ExprToOcl {
 				case HOUR -> "hour";
 				case MINUTE -> "minute";
 				case SECOND -> "second";
+				// OData spells these exactly so, and the bridge already reads named functions
+				// as vocabulary (issue #240)
+				case DATE -> "date";
+				case TIME -> "time";
 				};
 				return call(operation, map(temporalFunction.getSource(), null));
 			}

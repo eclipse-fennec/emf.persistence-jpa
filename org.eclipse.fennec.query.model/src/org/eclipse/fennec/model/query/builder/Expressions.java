@@ -1068,6 +1068,30 @@ public final class Expressions {
 			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.SECOND, path));
 		}
 
+		/**
+		 * The date part of a temporal value, as a value rather than a component (issue #240,
+		 * [OData-URL] 5.1.1.6). {@code date(x) eq <date>} is one predicate where year/month/day
+		 * equality is three, and it is the form tooling emits.
+		 *
+		 * @return a comparable step over the UTC date part
+		 */
+		public ArithmeticStep date() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.DATE, path));
+		}
+
+		/**
+		 * The time-of-day part of a temporal value (issue #240, [OData-URL] 5.1.1.6).
+		 * <p>
+		 * Comparable and sortable on every backend; the stored representation differs (BSON has
+		 * no time type, so mongo compares milliseconds since midnight) which is invisible to a
+		 * query but not to a projection of the value.
+		 *
+		 * @return a comparable step over the UTC time-of-day part
+		 */
+		public ArithmeticStep time() {
+			return new ArithmeticStep(temporalFunction(TemporalFunctionKind.TIME, path));
+		}
+
 		// --- null / range / membership ---
 
 		/** @return the IS NULL check */

@@ -913,6 +913,10 @@ public class JpaQueryProcessor implements QueryProcessor {
 				// EXTRACT(SECOND) is fractional (EclipseLink types it Double) — the
 				// contract is the integral second
 				case SECOND -> "FLOOR(EXTRACT(SECOND FROM " + inner + "))";
+				// the date and time PARTS as values (issue #240) — CAST is the one spelling
+				// h2, PostgreSQL and MariaDB all accept, and EclipseLink renders it through
+				case DATE -> "CAST(" + inner + " AS DATE)";
+				case TIME -> "CAST(" + inner + " AS TIME)";
 				};
 			}
 			if (expression instanceof Concat concatenation) {

@@ -87,6 +87,36 @@ Shape is a sketch, not a signature contract — whether this is its own service 
 into `CommandResource`/`QueryableResource` is open question O1 (§10). What is NOT open is
 the boundary schema (`stream.ecore`) and idempotency on `ChangeSet.id`.
 
+### 4.4 Three properties a change-feed consumer needs (issue #242)
+
+Recorded here rather than in the consumer's tracker, because they are cheap to honour while
+this is still a design and expensive to retrofit. `emf.odata` serves OData's `$delta`
+([OData-Protocol] 11.3) from a service-layer journal today, which works and has one hole nothing
+on its side can close: **writes that bypass the service are invisible to it** — another process,
+a second instance, a migration script, someone with `psql`. A client then holds a state that
+never converges, and cannot be told.
+
+A store-produced feed closes that, if it has three properties:
+
+1. **Deletions are records, not absences.** A tombstone carrying the key, kept at least as long
+   as the retention window. This falls out of `DeltaKind.DELETE` already being in the wire model
+   — what matters is that `truncate` must not be able to remove the tombstone while the window
+   it belongs to is still readable.
+2. **A position that survives a restart, and can be compared.** `$deltatoken` is opaque to the
+   client but the service has to recognise when a token has fallen out of the window and answer
+   **410 Gone**. That is exactly the retention boundary of §10, so the requirement is that the
+   boundary is *observable*, not merely enforced: a caller replaying from a truncated position
+   must get a distinguishable answer rather than a short stream.
+3. **The key is enough.** The consumer re-queries current state through the read path anyway, so
+   the feed only has to say which entity changed and whether it is gone. Nothing here asks for
+   the payload, and keeping it out avoids a second serialisation format.
+
+Explicitly **not** required: ordering across entity types, exactly-once delivery, or change
+payloads. A per-stream monotonic position with tombstones is enough for a correct `$delta`, and
+all three are properties #209 wants for its own reasons (`asOf` needs positions, retention needs
+a boundary). If they land, the consumer's journal becomes a fallback for stores without a feed
+rather than the only mechanism.
+
 ### 4.1 Backend mapping — MongoDB time-series collections
 
 - One TS collection per aggregate root (or per package — O4): `timeField` = `timestamp`,
