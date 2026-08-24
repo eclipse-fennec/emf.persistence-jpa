@@ -27,6 +27,14 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.model.command.CommandFactory;
+import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.model.stream.ChangeEntry;
+import org.eclipse.fennec.model.stream.ChangeSet;
+import org.eclipse.fennec.model.stream.DeltaKind;
+import org.eclipse.fennec.model.stream.StreamFactory;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.sessions.SessionEvent;
 import org.eclipse.persistence.sessions.SessionEventAdapter;
@@ -137,5 +145,66 @@ class NonOsgiSaveProbeCostTest extends NonOsgiPersistenceTestBase {
 		synchronized (reads) {
 			return reads.size();
 		}
+	}
+
+	/**
+	 * A set-based update loads nothing (issue #228).
+	 * <p>
+	 * The TCK asserts that such a template stores the right values; it would do so whether the
+	 * statement or the load path produced them. Here the read counter says which: a template of
+	 * plain attribute assignments must load <b>no</b> object at all. What does show up is one
+	 * {@code ReportQuery} — the {@code COUNT} the statement pays so the match count means the
+	 * same thing on every flavor (MariaDB reports rows changed, not rows matched). It is counted
+	 * here because EclipseLink's ReportQuery extends ReadAllQuery, and it is named rather than
+	 * filtered out silently: it is the one read this path is allowed to make, and if a second
+	 * one ever appears the case should fail.
+	 */
+	@Test
+	void aSetBasedUpdateLoadsNothing() throws Exception {
+		ResourceSet writeSet = newJpaResourceSet();
+		Resource resource = writeSet.createResource(
+				URI.createURI("jpa://" + persistenceUnitName + "/Person"));
+		for (int i = 0; i < 6; i++) {
+			EObject person = EcoreUtil.create(personEClass);
+			person.eSet(idFeature, "upd-" + i);
+			person.eSet(nameFeature, "P" + i);
+			resource.getContents().add(person);
+		}
+		resource.save(null);
+
+		ChangeEntry rename = StreamFactory.eINSTANCE.createChangeEntry();
+		rename.setKind(DeltaKind.SET);
+		rename.setFeatureId(personEClass.getFeatureID(nameFeature));
+		rename.setValueNew("Renamed");
+		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+		template.getEntries().add(rename);
+		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
+		update.setSelector(QueryBuilder.from(personEClass).build());
+		update.setTemplate(template);
+
+		CommandResource commands = (CommandResource) newJpaResourceSet()
+				.createResource(URI.createURI("jpa://" + persistenceUnitName + "/Person"));
+		synchronized (reads) {
+			reads.clear();
+		}
+		armed.incrementAndGet();
+		long affected;
+		try {
+			affected = commands.execute(update);
+		} finally {
+			armed.decrementAndGet();
+		}
+
+		List<String> observed;
+		synchronized (reads) {
+			observed = new ArrayList<>(reads);
+		}
+		System.out.printf("### set-based-update: affected=%d reads=%s%n", affected, observed);
+		assertThat(affected).as("every row matched").isEqualTo(6);
+		assertThat(observed)
+				.as("the COUNT for a flavor-independent match count, and nothing else")
+				.singleElement().asString().startsWith("ReportQuery/");
+		assertThat(observed).as("no object is loaded to be patched")
+				.noneMatch(read -> read.startsWith("ReadObjectQuery"));
 	}
 }

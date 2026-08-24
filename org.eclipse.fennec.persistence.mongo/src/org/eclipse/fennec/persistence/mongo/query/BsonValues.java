@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.bson.BsonArray;
 import org.bson.BsonValue;
+import org.eclipse.emf.common.util.Enumerator;
 import org.bson.types.Decimal128;
 
 /**
@@ -36,6 +37,24 @@ public final class BsonValues {
 	 * @param value the BSON value; may be {@code null}
 	 * @return the corresponding Java value ({@code null} for BSON null/undefined)
 	 */
+	/**
+	 * Normalises an EMF-typed value to its document encoding — the form the driver's codec
+	 * writes and the form a filter compares against.
+	 * <p>
+	 * Shared by the query translator and by the set-based update of issue #228, deliberately:
+	 * a value written by {@code $set} must land exactly as the same value written through the
+	 * object codec, or the two update paths would disagree about what they stored.
+	 *
+	 * @param value the EMF value; may be {@code null}
+	 * @return the value in its document form
+	 */
+	public static Object toDocumentValue(Object value) {
+		if (value instanceof Enumerator enumerator) {
+			return enumerator.getName();
+		}
+		return value;
+	}
+
 	public static Object toJava(BsonValue value) {
 		if (value == null) {
 			return null;

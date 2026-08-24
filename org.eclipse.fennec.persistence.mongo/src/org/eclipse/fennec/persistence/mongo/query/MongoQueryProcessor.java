@@ -14,7 +14,6 @@ package org.eclipse.fennec.persistence.mongo.query;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,6 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
-import org.eclipse.emf.common.util.Enumerator;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -1116,15 +1114,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 		return mongoValue(ExpressionValues.resolve(expression, target, context.parameters(), context.converter()));
 	}
 
-	/** Normalises EMF-typed values to their document encoding. */
+	/** Normalises EMF-typed values to their document encoding — see {@link BsonValues#toDocumentValue}. */
 	private static Object mongoValue(Object value) {
-		if (value instanceof Enumerator enumerator) {
-			return enumerator.getName();
-		}
-		if (value instanceof Date date) {
-			return date;
-		}
-		return value;
+		return BsonValues.toDocumentValue(value);
 	}
 
 	/** Translates a SQL-like pattern ({@code %}, {@code _}) to an anchored regex. */

@@ -198,6 +198,23 @@ were never in a `ResourceSet`, so no notifications fire, no `eOpposite` is maint
 derived feature recomputes. A consumer expecting opposite consistency after a bulk update
 will not get it anywhere.
 
+*Settled 2026-08-24 (issue #228): this looseness stays, and the implementation uses it.* Until
+then both backends paid for change semantics the contract does not promise — loading every
+match, patching it as an EObject and writing it back — which made a large update an OOM risk
+(#227) and would have made the statement the only conforming shape for every future backend.
+Tightening the contract to match was the alternative and was rejected: a backend that cannot
+update a row at all (ClickHouse, §11) could then not declare `UPDATE_BY_SELECTOR` even for the
+templates it *can* serve, and the whole point of the sentence above is to let backends differ.
+
+So a template that consists only of `SET`/`UNSET` on single-valued, non-id attributes runs as
+one statement (`UPDATE … SET`, `updateMany` with `$set`). Anything else — a reference entry
+whose target must be resolved, a collection kind addressing a position or a member — keeps the
+load-and-patch path, which is the only one that can do it. The discriminator lives in
+`ChangeTemplates.setBasedAssignments` so the backends cannot drift apart on what qualifies, and
+both paths share the value decoding, because the promise is that a caller cannot tell which one
+ran: same stored values, and the same count, which is **matches** and not changed rows — the
+one place the flavors would otherwise disagree, since MariaDB reports rows changed.
+
 **Cascade-delete converges everywhere; the transient window does not.** See §4a — the
 guarantee is about the state after an operation completes, not about every instant during it.
 

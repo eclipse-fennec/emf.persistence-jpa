@@ -2586,6 +2586,95 @@ public abstract class AbstractPersistenceTCK {
 						.isEqualTo(PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY));
 	}
 
+	/**
+	 * A template of plain attribute assignments produces the same result as the load path
+	 * (issue #228).
+	 * <p>
+	 * Such a template now runs as one statement — {@code UPDATE … SET} / {@code updateMany} —
+	 * instead of decoding every match, patching it and writing it back. The promise is that the
+	 * caller cannot tell: same values, same count, same everything a caller may rely on. §191 is
+	 * what makes the change legitimate (update-by-selector never carried EMF change semantics),
+	 * but the stored result must be identical either way.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
+	public void aSetBasedTemplateStoresWhatTheLoadPathWouldStore() throws Exception {
+		saveQueryFixture();
+		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
+		setName.setValueNew("Renamed");
+		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
+		setAge.setValueNew("77");
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personAge).ge(40))
+						.build(),
+				setName, setAge);
+
+		long affected = commands(createBackendResourceSet()).execute(update);
+
+		assertThat(affected).as("the count is the number of matches").isEqualTo(2);
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents()).hasSize(3);
+		assertThat(loaded.getContents())
+				.filteredOn(person -> "Renamed".equals(person.eGet(personName)))
+				.as("both matches carry both assignments")
+				.hasSize(2)
+				.allSatisfy(person -> assertThat(((Number) person.eGet(personAge)).intValue()).isEqualTo(77));
+		assertThat(loaded.getContents())
+				.filteredOn(person -> "Alice".equals(person.eGet(personName)))
+				.as("and the non-match is untouched")
+				.singleElement()
+				.satisfies(person -> assertThat(((Number) person.eGet(personAge)).intValue()).isEqualTo(30));
+	}
+
+	/**
+	 * The count is matches, not changed rows (issue #228).
+	 * <p>
+	 * The one place a set-based statement could quietly disagree with the load path, and with
+	 * itself across flavors: assigning a value a row already holds changes nothing, and MariaDB
+	 * reports rows <em>changed</em> where H2 and PostgreSQL report rows matched. The load path
+	 * counts what it applied the template to, so this must too — on every binding.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
+	public void aSetBasedUpdateCountsMatchesEvenWhenNothingChanges() throws Exception {
+		saveQueryFixture();
+		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
+		setName.setValueNew("Alice");
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personName).eq("Alice"))
+						.build(),
+				setName);
+
+		assertThat(commands(createBackendResourceSet()).execute(update))
+				.as("a no-op assignment still matched one object")
+				.isEqualTo(1);
+	}
+
+	/**
+	 * {@code UNSET} qualifies for the set-based path too, and clears the attribute (issue #228).
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
+	public void aSetBasedUnsetClearsTheAttribute() throws Exception {
+		saveQueryFixture();
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personName).eq("Alice"))
+						.build(),
+				changeEntry(DeltaKind.UNSET, personAge));
+
+		assertThat(commands(createBackendResourceSet()).execute(update)).isEqualTo(1);
+
+		EObject alice = findById(loadAll(createBackendResourceSet(), "Person"), "1");
+		Object age = alice.eGet(personAge);
+		assertThat(age == null || ((Number) age).intValue() == 0)
+				.as("the attribute is back to unset, i.e. null or the type default, not 30")
+				.isTrue();
+	}
+
 	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {
 		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
 		entry.setKind(kind);
