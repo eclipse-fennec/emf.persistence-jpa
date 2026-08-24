@@ -2654,11 +2654,18 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
-	 * {@code UNSET} qualifies for the set-based path too, and clears the attribute (issue #228).
+	 * {@code UNSET} on a primitively typed attribute leaves the type default, exactly as
+	 * {@code eUnset} does (issue #228).
+	 * <p>
+	 * Pinned as an equality, not as "null or zero": {@code age} is an {@code EInt}, so the load
+	 * path leaves {@code 0} there and the statement must leave the same thing. Writing SQL
+	 * {@code NULL} instead was the first implementation, it passed on h2, and PostgreSQL
+	 * rejected it — the strict database catching a divergence the lenient one hid, which is what
+	 * the flavor matrix exists for.
 	 */
 	@Test
 	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
-	public void aSetBasedUnsetClearsTheAttribute() throws Exception {
+	public void aSetBasedUnsetLeavesThePrimitiveDefault() throws Exception {
 		saveQueryFixture();
 		UpdateCommand update = updateCommand(
 				QueryBuilder.from(personClass)
@@ -2669,10 +2676,43 @@ public abstract class AbstractPersistenceTCK {
 		assertThat(commands(createBackendResourceSet()).execute(update)).isEqualTo(1);
 
 		EObject alice = findById(loadAll(createBackendResourceSet(), "Person"), "1");
-		Object age = alice.eGet(personAge);
-		assertThat(age == null || ((Number) age).intValue() == 0)
-				.as("the attribute is back to unset, i.e. null or the type default, not 30")
-				.isTrue();
+		assertThat(((Number) alice.eGet(personAge)).intValue())
+				.as("the EInt default, which is what eUnset leaves — not 30, and not null")
+				.isZero();
+	}
+
+	/**
+	 * {@code UNSET} on a reference-typed attribute really does store nothing (issue #228).
+	 * <p>
+	 * The companion of the case above, and the one that exercises the other branch: {@code name}
+	 * is an {@code EString}, whose default is {@code null}, so here the statement genuinely has
+	 * to write nothing at all. On JPA that is the JPQL literal {@code NULL} rather than a bound
+	 * parameter, because a null parameter carries no SQL type for PostgreSQL to use.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR,
+			query = QueryFeature.WHERE_COMPARISON)
+	public void aSetBasedUnsetClearsANullableAttribute() throws Exception {
+		saveQueryFixture();
+		UpdateCommand update = updateCommand(
+				QueryBuilder.from(personClass)
+						.where(Expressions.path(personAge).ge(50))
+						.build(),
+				changeEntry(DeltaKind.UNSET, personName));
+
+		assertThat(commands(createBackendResourceSet()).execute(update)).isEqualTo(1);
+
+		Resource loaded = loadAll(createBackendResourceSet(), "Person");
+		assertThat(loaded.getContents())
+				.filteredOn(person -> ((Number) person.eGet(personAge)).intValue() == 50)
+				.singleElement()
+				.satisfies(person -> assertThat(person.eGet(personName))
+						.as("an EString default is null, so the attribute is empty")
+						.isNull());
+		assertThat(loaded.getContents())
+				.filteredOn(person -> "Alice".equals(person.eGet(personName)))
+				.as("the non-matches keep their names")
+				.hasSize(1);
 	}
 
 	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {

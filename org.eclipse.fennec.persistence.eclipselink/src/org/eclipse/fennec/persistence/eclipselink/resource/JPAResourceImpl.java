@@ -1439,12 +1439,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		Map<String, Object> values = new LinkedHashMap<>();
 		int index = 0;
 		for (Map.Entry<EAttribute, Object> assignment : assignments.entrySet()) {
-			String parameter = "fennecSet" + index++;
 			if (sets.length() > 0) {
 				sets.append(", ");
 			}
-			sets.append(alias).append('.').append(assignment.getKey().getName())
-					.append(" = :").append(parameter);
+			sets.append(alias).append('.').append(assignment.getKey().getName()).append(" = ");
+			if (isNull(assignment.getValue())) {
+				// the JPQL literal, not a parameter: a null parameter carries no SQL type and
+				// PostgreSQL refuses to guess one (measured — h2 accepts it)
+				sets.append("NULL");
+				continue;
+			}
+			String parameter = "fennecSet" + index++;
+			sets.append(':').append(parameter);
 			values.put(parameter, assignment.getValue());
 		}
 		jakarta.persistence.Query statement = em.createQuery(

@@ -261,8 +261,15 @@ public final class ChangeTemplates {
 	 *     carries a target id that has to be resolved, which is the very thing the load path
 	 *     exists for;</li>
 	 * <li>no feature is the type's id — a store may refuse to move a row's identity, and no
-	 *     template needs to.</li>
+	 *     template needs to;</li>
+	 * <li>no feature is {@link EStructuralFeature#isUnsettable() unsettable} — there the
+	 *     difference between "unset" and "holds the default" is observable through
+	 *     {@code eIsSet}, and an assignment cannot express it.</li>
 	 * </ul>
+	 * An {@code UNSET} yields the feature's <b>default value</b>, not {@code null}: that is what
+	 * {@code eUnset} leaves behind, and for a primitive type the default is {@code 0}/{@code false}
+	 * rather than {@code null}. Mapping it to {@code null} would have stored something the load
+	 * path never stores — and on a strict database it does not even round-trip.
 	 * Entries are validated exactly as {@link #apply(ChangeSet, EObject)} validates them, and
 	 * values are decoded with the same decoder, so a qualifying template produces the same
 	 * result on either path. That equality is the whole promise; if it cannot be kept for a
@@ -285,11 +292,12 @@ public final class ChangeTemplates {
 				return null;
 			}
 			EStructuralFeature feature = checkEntry(entry, type);
-			if (!(feature instanceof EAttribute attribute) || attribute.isID()) {
+			if (!(feature instanceof EAttribute attribute) || attribute.isID() || attribute.isUnsettable()) {
 				return null;
 			}
-			assignments.put(attribute,
-					entry.getKind() == DeltaKind.UNSET ? null : decode(attribute, entry.getValueNew()));
+			assignments.put(attribute, entry.getKind() == DeltaKind.UNSET
+					? attribute.getDefaultValue()
+					: decode(attribute, entry.getValueNew()));
 		}
 		return assignments;
 	}
