@@ -120,6 +120,11 @@
     <genClasses ecoreClass="expression.ecore#//AliasRef">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//AliasRef/alias"/>
     </genClasses>
+    <genClasses ecoreClass="expression.ecore#//RootReference">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference expression.ecore#//RootReference/from"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//RootReference/key"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference expression.ecore#//RootReference/path"/>
+    </genClasses>
     <genClasses ecoreClass="expression.ecore#//GeoPointLiteral">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//GeoPointLiteral/lon"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute expression.ecore#//GeoPointLiteral/lat"/>

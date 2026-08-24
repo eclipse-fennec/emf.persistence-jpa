@@ -146,6 +146,10 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 				return createAliasRefAdapter();
 			}
 			@Override
+			public Adapter caseRootReference(RootReference object) {
+				return createRootReferenceAdapter();
+			}
+			@Override
 			public Adapter caseGeoPointLiteral(GeoPointLiteral object) {
 				return createGeoPointLiteralAdapter();
 			}
@@ -528,6 +532,20 @@ public class ExpressionAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createAliasRefAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.expression.RootReference <em>Root Reference</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.expression.RootReference
+	 * @generated
+	 */
+	public Adapter createRootReferenceAdapter() {
 		return null;
 	}
 

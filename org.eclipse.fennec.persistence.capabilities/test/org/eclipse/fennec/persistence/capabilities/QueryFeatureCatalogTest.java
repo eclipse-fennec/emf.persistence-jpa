@@ -74,8 +74,11 @@ class QueryFeatureCatalogTest {
 		assertThat(QueryFeature.values())
 				.as("adding a QueryFeature? MemoryQueryProcessor claims it automatically "
 						+ "(complementOf) — implement it there or exclude it, then fix this count")
-				// 54 since INTERVAL_MATCH (#215) and GROUP_REPRESENTATIVES (#214) — the
-				// reference engine implements both
-				.hasSize(54);
+				// 55 since ROOT_REFERENCE (#241). That one is EXCLUDED from the memory
+				// engine rather than implemented there: it needs a store to read the
+				// referenced object from, and the engine is handed one collection — the
+				// capability belongs to the resource, not to the evaluator. The guard did
+				// its job; the literal got a decision instead of a silent claim.
+				.hasSize(55);
 	}
 }

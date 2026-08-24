@@ -65,6 +65,7 @@ import org.eclipse.fennec.model.expression.ParameterRef;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.RealLiteral;
+import org.eclipse.fennec.model.expression.RootReference;
 import org.eclipse.fennec.model.expression.Score;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
@@ -205,6 +206,13 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	 * @generated
 	 */
 	private EClass aliasRefEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass rootReferenceEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1004,6 +1012,46 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 	@Override
 	public EAttribute getAliasRef_Alias() {
 		return (EAttribute)aliasRefEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getRootReference() {
+		return rootReferenceEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRootReference_From() {
+		return (EReference)rootReferenceEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRootReference_Key() {
+		return (EReference)rootReferenceEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRootReference_Path() {
+		return (EReference)rootReferenceEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -2058,6 +2106,11 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		aliasRefEClass = createEClass(ALIAS_REF);
 		createEAttribute(aliasRefEClass, ALIAS_REF__ALIAS);
 
+		rootReferenceEClass = createEClass(ROOT_REFERENCE);
+		createEReference(rootReferenceEClass, ROOT_REFERENCE__FROM);
+		createEReference(rootReferenceEClass, ROOT_REFERENCE__KEY);
+		createEReference(rootReferenceEClass, ROOT_REFERENCE__PATH);
+
 		geoPointLiteralEClass = createEClass(GEO_POINT_LITERAL);
 		createEAttribute(geoPointLiteralEClass, GEO_POINT_LITERAL__LON);
 		createEAttribute(geoPointLiteralEClass, GEO_POINT_LITERAL__LAT);
@@ -2232,6 +2285,7 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 		propertyPathEClass.getESuperTypes().add(this.getExpression());
 		variableRefEClass.getESuperTypes().add(this.getExpression());
 		aliasRefEClass.getESuperTypes().add(this.getExpression());
+		rootReferenceEClass.getESuperTypes().add(this.getExpression());
 		geoPointLiteralEClass.getESuperTypes().add(this.getLiteral());
 		geoBoxEClass.getESuperTypes().add(this.getGeoShape());
 		geoPolygonEClass.getESuperTypes().add(this.getGeoShape());
@@ -2325,6 +2379,11 @@ public class ExpressionPackageImpl extends EPackageImpl implements ExpressionPac
 
 		initEClass(aliasRefEClass, AliasRef.class, "AliasRef", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getAliasRef_Alias(), ecorePackage.getEString(), "alias", null, 1, 1, AliasRef.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(rootReferenceEClass, RootReference.class, "RootReference", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getRootReference_From(), ecorePackage.getEClass(), null, "from", null, 1, 1, RootReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRootReference_Key(), this.getExpression(), null, "key", null, 1, 1, RootReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRootReference_Path(), this.getPropertyPath(), null, "path", null, 1, 1, RootReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(geoPointLiteralEClass, GeoPointLiteral.class, "GeoPointLiteral", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getGeoPointLiteral_Lon(), ecorePackage.getEDouble(), "lon", null, 1, 1, GeoPointLiteral.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);

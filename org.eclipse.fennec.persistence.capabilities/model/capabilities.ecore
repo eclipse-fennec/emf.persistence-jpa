@@ -282,6 +282,11 @@
         <details key="documentation" value="The top-N documents of each group next to its aggregates (issue #214, GroupByStage.representatives) — SQL's windowed ROW_NUMBER() OVER (PARTITION BY ...), Mongo's grouped push plus slice, Lucene's GroupingSearch. One literal: no backend can return representatives but not their group's size, which is an ordinary COUNT aggregate anyway. JPA refuses it for now — JPQL has no window functions and EclipseLink adds none, so the route (native SQL or a two-pass execution) is its own decision."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="ROOT_REFERENCE" value="86">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="A value read from one fixed object of another entity set (issue #241) — OData's $root. Declared by a backend that can resolve the referenced object and inline its value BEFORE translating, which is all OData's syntax needs: $root takes a literal key predicate, so the key is constant and one keyed read answers it. That is far cheaper than a general cross-root subquery and covers every request the protocol can express.&#xA;&#xA;One literal, not two: a backend that can do the keyed read can inline the value, and a backend that cannot has nothing to offer for the non-constant case either. A non-constant key is refused by every backend and is not part of this capability."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="AS_OF" value="100">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Point-in-time reads of the CURRENT STATE: reconstruct an object as of a sequence or timestamp via the latest keyframe plus replay (concept §10, §14). A CHANGELOG-profile operation and deliberately orthogonal to series access (issue #207) — a series query never needs it, because every sample is an absolute value. Keeping them apart is what lets a store declare one without the other. Value 101 is retired and stays unused (SERIES_RANGE, issue #207)."/>
