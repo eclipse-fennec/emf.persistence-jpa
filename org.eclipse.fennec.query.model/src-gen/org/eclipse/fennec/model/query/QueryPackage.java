@@ -35,7 +35,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * The v2 query envelope around the Fennec Expression Model: root type, predicate, ordering, projection, aggregation pipeline, fetch hints, paging and declared parameters. Read-only by design — CUD lives in the command model (concept.md §14). See docs/unified-persistence/query-ir-redesign.md §4.
+ * The v2 query envelope around the Fennec Expression Model: root type, predicate, ordering, projection, aggregation pipeline, fetch hints, paging and declared parameters. Read-only by design — CUD lives in the command model (docs/unified-persistence/concept.md §14). See docs/unified-persistence/query-ir-redesign.md §4.
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.model.query.QueryFactory
  * @model kind="package"

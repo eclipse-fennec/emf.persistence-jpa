@@ -28,7 +28,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Optional capability of a PersistenceResource: execute write commands (concept.md §14 — Insert with payload, Delete = query selector, Update = selector + ChangeSet template). Insert and Delete execute in v1; Update is refused with a diagnostic until the patch-apply engine exists. Selectors must be plain filters — projection, aggregation, ordering and paging on a command selector are refused.
+ * Optional capability of a PersistenceResource: execute write commands (docs/unified-persistence/concept.md §14 — Insert with payload, Delete = query selector, Update = selector + ChangeSet template). Insert and Delete execute in v1; Update is refused with a diagnostic until the patch-apply engine exists. Selectors must be plain filters — projection, aggregation, ordering and paging on a command selector are refused.
  * <!-- end-model-doc -->
  *
  *
