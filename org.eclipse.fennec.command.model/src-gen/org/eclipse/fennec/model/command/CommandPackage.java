@@ -34,7 +34,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (concept.md §14): Delete is a query selector, Update is a selector plus a ChangeSet template from the stream model, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding).
+ * Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus a ChangeSet template from the stream model, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding).
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.model.command.CommandFactory
  * @model kind="package"
