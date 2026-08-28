@@ -34,5 +34,10 @@ This project uses the following key dependencies:
 - EclipseLink 4.x (Jakarta Persistence provider)
 - Eclipse EMF (Modeling framework)
 - H2 Database (test only)
+- Mongo Driver
+- MariaDB (test only)
+- PostgreSQL (test only)
+- FerretdB (test only)
+- DocumentDB (test only)
 
 Dependency vulnerability scanning is recommended via CycloneDX SBOM (see `build.gradle`).
