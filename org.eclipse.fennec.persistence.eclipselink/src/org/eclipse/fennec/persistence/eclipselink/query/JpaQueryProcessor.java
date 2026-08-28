@@ -935,6 +935,17 @@ public class JpaQueryProcessor implements QueryProcessor {
 						+ operand(indexOf.getSource(), target) + ") - 1)";
 			}
 			if (expression instanceof Substring substring) {
+				// A null offset makes the whole substring null, as the in-memory reference
+				// does (MemoryPredicate#substring returns null unless both operands are
+				// numbers). Rendering it here rather than inside the CASE below is what
+				// keeps the two agreeing: a bound null would fall through to ELSE 1 and
+				// silently substring from the front — and, being an untyped parameter,
+				// would fail on PostgreSQL first (the shape of #228/#240/#241).
+				if (resolvesToNull(substring.getStart(), target)
+						|| (substring.getLength() != null
+								&& resolvesToNull(substring.getLength(), target))) {
+					return "NULL";
+				}
 				String source = operand(substring.getSource(), target);
 				String start = integerOperand(substring.getStart(), target);
 				// [OData-URL] 5.1.1.7: 0-based; a negative start counts from the end of
@@ -1117,6 +1128,29 @@ public class JpaQueryProcessor implements QueryProcessor {
 		 * @return the rendered operand, with any bound integral value narrowed to {@code Integer}
 		 * @throws QueryException if the expression cannot be rendered
 		 */
+		/**
+		 * Whether an operand is a statically null value — a {@code NullLiteral}, or a parameter
+		 * bound to {@code null}. A column or a function over one never is, so those short-circuit
+		 * without resolving.
+		 * <p>
+		 * Callers use this to render an enclosing expression as the {@code NULL} literal instead
+		 * of binding the null: an untyped null parameter has no SQL type, and PostgreSQL refuses
+		 * it where h2 and MariaDB accept it (issues #228, #240, #241).
+		 *
+		 * @param expression the operand
+		 * @param target the feature the surrounding expression targets, for value conversion
+		 * @return {@code true} if the operand resolves to {@code null}
+		 * @throws QueryException if the operand is neither a value nor a renderable column
+		 */
+		private boolean resolvesToNull(Expression expression, EStructuralFeature target)
+				throws QueryException {
+			if (expression instanceof PropertyPath || expression instanceof StringFunction) {
+				return false;
+			}
+			return ExpressionValues.resolve(expression, target, context.parameters(),
+					context.converter()) == null;
+		}
+
 		private String integerOperand(Expression expression, EStructuralFeature target)
 				throws QueryException {
 			if (expression instanceof PropertyPath || expression instanceof StringFunction) {

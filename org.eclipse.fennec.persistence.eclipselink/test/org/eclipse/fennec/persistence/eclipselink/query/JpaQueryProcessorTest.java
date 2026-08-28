@@ -24,6 +24,7 @@ import static org.eclipse.fennec.model.query.builder.Expressions.param;
 import static org.eclipse.fennec.model.query.builder.Expressions.path;
 import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
@@ -412,6 +413,42 @@ class JpaQueryProcessorTest {
 		assertThat(plan.parameters().values()).as("no offset may travel as a long")
 				.noneMatch(Long.class::isInstance);
 		assertThat(plan.parameters().values()).contains(1, 3);
+	}
+
+	/**
+	 * A substring offset bound to {@code null} renders as the {@code NULL} literal for the whole
+	 * expression, never as a bound parameter. Two things break otherwise: the parameter carries no
+	 * SQL type, so PostgreSQL refuses what h2 and MariaDB accept (the shape of #228, #240 and
+	 * #241); and the {@code CASE} would fall through to {@code ELSE 1} and substring from the
+	 * front, where the in-memory reference yields null.
+	 */
+	@Test
+	void aNullSubstringOffsetRendersAsTheNullLiteral() throws QueryException {
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.path(name).substring(param("from")).eq("lic"))
+				.build();
+
+		JpaQueryPlan plan = translate(query,
+				QueryContexts.of(person, null, Collections.singletonMap("from", null), null));
+
+		assertThat(plan.jpql()).as("the whole substring collapses to NULL")
+				.doesNotContain("SUBSTRING(").contains("NULL");
+		assertThat(plan.parameters().values()).as("no untyped null may be bound")
+				.doesNotContainNull();
+	}
+
+	/** The same for the length operand, which is optional and rendered separately. */
+	@Test
+	void aNullSubstringLengthRendersAsTheNullLiteral() throws QueryException {
+		Query query = QueryBuilder.from(person)
+				.where(Expressions.path(name).substring(1, param("len")).eq("lic"))
+				.build();
+
+		JpaQueryPlan plan = translate(query,
+				QueryContexts.of(person, null, Collections.singletonMap("len", null), null));
+
+		assertThat(plan.jpql()).doesNotContain("SUBSTRING(").contains("NULL");
+		assertThat(plan.parameters().values()).doesNotContainNull();
 	}
 
 	/**
