@@ -69,6 +69,7 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 		switch (eClass.getClassifierID()) {
 			case QueryPackage.QUERY: return createQuery();
 			case QueryPackage.ORDER_BY: return createOrderBy();
+			case QueryPackage.EXPAND: return createExpand();
 			case QueryPackage.SELECTION: return createSelection();
 			case QueryPackage.PARAMETER_DECL: return createParameterDecl();
 			case QueryPackage.PIPELINE: return createPipeline();
@@ -140,6 +141,17 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 	public OrderBy createOrderBy() {
 		OrderByImpl orderBy = new OrderByImpl();
 		return orderBy;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Expand createExpand() {
+		ExpandImpl expand = new ExpandImpl();
+		return expand;
 	}
 
 	/**

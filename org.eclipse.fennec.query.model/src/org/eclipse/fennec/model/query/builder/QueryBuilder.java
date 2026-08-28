@@ -23,6 +23,7 @@ import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
@@ -193,13 +194,29 @@ public final class QueryBuilder {
 	}
 
 	/**
-	 * Adds an eager-fetch hint.
+	 * Adds a plain expansion: the proxies of this reference path are resolved eagerly and
+	 * batched with the result, instead of one at a time on navigation.
 	 *
-	 * @param segments the reference path to materialise, root feature first
+	 * @param segments the reference path to expand, root feature first
 	 * @return this builder
 	 */
 	public QueryBuilder expand(EStructuralFeature... segments) {
-		query.getExpand().add(Expressions.propertyPath(segments));
+		query.getExpand().add(Expands.of(segments).build());
+		return this;
+	}
+
+	/**
+	 * Adds an expansion narrowed by query options (issue #238), built through
+	 * {@link Expands#of(EStructuralFeature...)}.
+	 * <p>
+	 * The options select <em>which</em> proxies of the reference get resolved — the feature
+	 * keeps every child the store has, so the object never misreports it.
+	 *
+	 * @param expand the expansion
+	 * @return this builder
+	 */
+	public QueryBuilder expand(Expand expand) {
+		query.getExpand().add(Objects.requireNonNull(expand, "expand must not be null"));
 		return this;
 	}
 

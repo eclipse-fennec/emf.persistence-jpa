@@ -53,6 +53,15 @@ public interface QueryFactory extends EFactory {
 	OrderBy createOrderBy();
 
 	/**
+	 * Returns a new object of class '<em>Expand</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Expand</em>'.
+	 * @generated
+	 */
+	Expand createExpand();
+
+	/**
 	 * Returns a new object of class '<em>Selection</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

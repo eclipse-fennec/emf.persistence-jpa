@@ -31,6 +31,7 @@ import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;
+import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
@@ -50,6 +51,7 @@ class QueryValidatorTest {
 	private EAttribute name;
 	private EAttribute age;
 	private EReference address;
+	private EReference resident;
 	private EAttribute street;
 
 	@BeforeEach
@@ -77,6 +79,12 @@ class QueryValidatorTest {
 		address.setName("address");
 		address.setEType(addressClass);
 		person.getEStructuralFeatures().add(address);
+
+		// back-reference, so a nested expansion has somewhere to go (issue #238)
+		resident = ecore.createEReference();
+		resident.setName("resident");
+		resident.setEType(person);
+		addressClass.getEStructuralFeatures().add(resident);
 	}
 
 	private Query eqQuery(Object value, EStructuralFeature... segments) {
@@ -461,5 +469,118 @@ class QueryValidatorTest {
 				.isThrownBy(() -> QueryValidator.validate((QueryAnalysis) null, person, none));
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> QueryValidator.validate(eqQuery(42, name), person, null));
+	}
+
+	// ==================== expand query options (issue #238) ====================
+
+	/**
+	 * A plain expansion is the fetch hint it always was and needs only {@code EXPAND}: adding
+	 * the option capabilities must not become a precondition for what already worked.
+	 */
+	@Test
+	void aPlainExpansionStillNeedsOnlyExpand() {
+		Query query = QueryBuilder.from(person).expand(address).build();
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER, QueryFeature.EXPAND));
+
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	/** A filtered expansion is refused by a backend that does not declare EXPAND_FILTER. */
+	@Test
+	void anUndeclaredExpandFilterIsRefused() {
+		Query query = QueryBuilder.from(person)
+				.expand(Expands.of(address).filter(Expressions.path(street).eq("Main")).build())
+				.build();
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER, QueryFeature.EXPAND, QueryFeature.WHERE_EQ));
+
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren()).anySatisfy(child -> {
+			assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_UNSUPPORTED_FEATURE);
+			assertThat(child.getMessage()).contains("EXPAND_FILTER");
+		});
+	}
+
+	/** Per-parent paging is refused by a backend that does not declare EXPAND_PAGE. */
+	@Test
+	void anUndeclaredExpandPageIsRefused() {
+		Query query = QueryBuilder.from(person)
+				.expand(Expands.of(address).top(5).build())
+				.build();
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER, QueryFeature.EXPAND));
+
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren()).anySatisfy(child -> {
+			assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_UNSUPPORTED_FEATURE);
+			assertThat(child.getMessage()).contains("EXPAND_PAGE");
+		});
+	}
+
+	/**
+	 * Declaring the two capabilities is enough — the shape itself carries no further
+	 * precondition. Guards against the options being refused for a second, hidden reason.
+	 */
+	@Test
+	void aDeclaredBackendAcceptsFilterAndPaging() {
+		Query query = QueryBuilder.from(person)
+				.expand(Expands.of(address)
+						.filter(Expressions.path(street).eq("Main"))
+						.orderByAsc(street)
+						.top(5)
+						.build())
+				.build();
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER, QueryFeature.EXPAND, QueryFeature.WHERE_EQ,
+						QueryFeature.EXPAND_FILTER, QueryFeature.EXPAND_PAGE));
+
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	/**
+	 * D3: an {@code orderBy} without {@code top}/{@code skip} is refused as INVALID rather than
+	 * unsupported, and no capability lets a backend out of it. An expansion selects which
+	 * children are resolved and never reorders the feature — the list order belongs to the
+	 * store — so a standing-alone ordering could only promise something nobody delivers.
+	 */
+	@Test
+	void anOrderByWithoutPagingIsStructurallyInvalid() {
+		Query query = QueryBuilder.from(person)
+				.expand(Expands.of(address).orderByAsc(street).build())
+				.build();
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER, QueryFeature.EXPAND, QueryFeature.EXPAND_FILTER,
+						QueryFeature.EXPAND_PAGE));
+
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren()).anySatisfy(child -> {
+			assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_INVALID_EXPAND);
+			assertThat(child.getMessage()).contains("address").contains("orderBy");
+		});
+	}
+
+	/** The options of a NESTED expansion are gated exactly like a top-level one. */
+	@Test
+	void nestedExpansionOptionsAreGatedToo() {
+		Query query = QueryBuilder.from(person)
+				.expand(Expands.of(address)
+						.expand(Expands.of(resident).top(3).build())
+						.build())
+				.build();
+
+		Diagnostic diagnostic = QueryValidator.validate(query, person,
+				capabilities(QueryFeature.TYPE_FILTER, QueryFeature.EXPAND));
+
+		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThat(diagnostic.getChildren()).anySatisfy(child -> {
+			assertThat(child.getCode()).isEqualTo(QueryValidator.CODE_UNSUPPORTED_FEATURE);
+			assertThat(child.getMessage()).contains("EXPAND_PAGE");
+		});
 	}
 }

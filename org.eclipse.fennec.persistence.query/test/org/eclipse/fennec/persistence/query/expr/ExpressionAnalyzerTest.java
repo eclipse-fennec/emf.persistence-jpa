@@ -52,6 +52,7 @@ import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.TopStage;
+import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
@@ -279,7 +280,7 @@ class ExpressionAnalyzerTest {
 		query.setTop(10);
 		query.setSkip(5);
 		query.setDistinct(true);
-		query.getExpand().add(path(addresses));
+		query.getExpand().add(Expands.of(addresses).build());
 
 		QueryAnalysis analysis = ExpressionAnalyzer.analyze(query);
 		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.LIMIT, QueryFeature.SKIP,

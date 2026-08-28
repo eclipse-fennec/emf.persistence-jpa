@@ -325,7 +325,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Eager-fetch hints (v2 envelope expand).
+	 * Plain expansions (v2 envelope expand): resolve the proxies of a non-containment reference path eagerly and batched, instead of one at a time on navigation. The unadorned path form — narrowing an expansion needs EXPAND_FILTER or EXPAND_PAGE (issue #238).
 	 * <!-- end-model-doc -->
 	 * @see #EXPAND_VALUE
 	 * @generated
@@ -739,6 +739,38 @@ public enum QueryFeature implements Enumerator {
 	ROOT_REFERENCE(86, "ROOT_REFERENCE", "ROOT_REFERENCE"),
 
 	/**
+	 * The '<em><b>EXPAND FILTER</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Narrow an expansion by a filter over the expanded type (issue #238) — OData's $filter inside $expand. Selects WHICH proxies of the reference get resolved; the feature keeps every child the store has, so the object never misreports it (D1). On JPA one batched second query per expanded reference, WHERE parentKey IN (:keys) plus the filter.
+	 * 
+	 * Separate from EXPAND_PAGE because the costs differ sharply: filtering is a predicate on a query that already runs, per-parent paging needs a window function. A backend that declares this one but not EXPAND_PAGE is a reasonable and useful state.
+	 * <!-- end-model-doc -->
+	 * @see #EXPAND_FILTER_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	EXPAND_FILTER(87, "EXPAND_FILTER", "EXPAND_FILTER"),
+
+	/**
+	 * The '<em><b>EXPAND PAGE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Per-parent top/skip inside an expansion, and with it orderBy as the selector that makes them meaningful (issue #238) — OData's $top/$skip/$orderby inside $expand. On JPA ROW_NUMBER() OVER (PARTITION BY parentKey ORDER BY …), the window mechanic issue #214 introduced for group representatives.
+	 * 
+	 * orderBy rides on this literal rather than its own because under D1 it cannot be delivered as an order — the list order belongs to the store — and is served only as the selector for top/skip (D3). Standing alone it is refused whatever a backend declares.
+	 * 
+	 * There is deliberately no EXPAND_COUNT: $count inside $expand is not served at all (D2), and issue #207 forbids a stock of unserved literals.
+	 * <!-- end-model-doc -->
+	 * @see #EXPAND_PAGE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	EXPAND_PAGE(88, "EXPAND_PAGE", "EXPAND_PAGE"),
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1064,7 +1096,7 @@ public enum QueryFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Eager-fetch hints (v2 envelope expand).
+	 * Plain expansions (v2 envelope expand): resolve the proxies of a non-containment reference path eagerly and batched, instead of one at a time on navigation. The unadorned path form — narrowing an expansion needs EXPAND_FILTER or EXPAND_PAGE (issue #238).
 	 * <!-- end-model-doc -->
 	 * @see #EXPAND
 	 * @model
@@ -1510,6 +1542,40 @@ public enum QueryFeature implements Enumerator {
 	public static final int ROOT_REFERENCE_VALUE = 86;
 
 	/**
+	 * The '<em><b>EXPAND FILTER</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Narrow an expansion by a filter over the expanded type (issue #238) — OData's $filter inside $expand. Selects WHICH proxies of the reference get resolved; the feature keeps every child the store has, so the object never misreports it (D1). On JPA one batched second query per expanded reference, WHERE parentKey IN (:keys) plus the filter.
+	 * 
+	 * Separate from EXPAND_PAGE because the costs differ sharply: filtering is a predicate on a query that already runs, per-parent paging needs a window function. A backend that declares this one but not EXPAND_PAGE is a reasonable and useful state.
+	 * <!-- end-model-doc -->
+	 * @see #EXPAND_FILTER
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int EXPAND_FILTER_VALUE = 87;
+
+	/**
+	 * The '<em><b>EXPAND PAGE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Per-parent top/skip inside an expansion, and with it orderBy as the selector that makes them meaningful (issue #238) — OData's $top/$skip/$orderby inside $expand. On JPA ROW_NUMBER() OVER (PARTITION BY parentKey ORDER BY …), the window mechanic issue #214 introduced for group representatives.
+	 * 
+	 * orderBy rides on this literal rather than its own because under D1 it cannot be delivered as an order — the list order belongs to the store — and is served only as the selector for top/skip (D3). Standing alone it is refused whatever a backend declares.
+	 * 
+	 * There is deliberately no EXPAND_COUNT: $count inside $expand is not served at all (D2), and issue #207 forbids a stock of unserved literals.
+	 * <!-- end-model-doc -->
+	 * @see #EXPAND_PAGE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int EXPAND_PAGE_VALUE = 88;
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1585,6 +1651,8 @@ public enum QueryFeature implements Enumerator {
 			INTERVAL_MATCH,
 			GROUP_REPRESENTATIVES,
 			ROOT_REFERENCE,
+			EXPAND_FILTER,
+			EXPAND_PAGE,
 			AS_OF,
 		};
 
@@ -1696,6 +1764,8 @@ public enum QueryFeature implements Enumerator {
 			case INTERVAL_MATCH_VALUE: return INTERVAL_MATCH;
 			case GROUP_REPRESENTATIVES_VALUE: return GROUP_REPRESENTATIVES;
 			case ROOT_REFERENCE_VALUE: return ROOT_REFERENCE;
+			case EXPAND_FILTER_VALUE: return EXPAND_FILTER;
+			case EXPAND_PAGE_VALUE: return EXPAND_PAGE;
 			case AS_OF_VALUE: return AS_OF;
 		}
 		return null;

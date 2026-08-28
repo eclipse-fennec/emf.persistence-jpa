@@ -60,6 +60,7 @@ import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.RepresentativeSpec;
@@ -115,8 +116,16 @@ public class MemoryQueryProcessor implements QueryProcessor {
 			// needs a store to read it from, and this engine is handed one collection of
 			// objects. The capability belongs to whoever can perform that read — the
 			// resource — not to the expression evaluator.
+			// EXPAND_FILTER and EXPAND_PAGE are the fourth and fifth (issue #238), again
+			// structural. An expansion selects which PROXIES of a reference get resolved, and
+			// what it delivers is exactly that set — eIsProxy() is the discriminator. This
+			// engine is handed objects that are all already resolved, so it has nothing to
+			// select and no way to mark a selection without shaping the collection, which the
+			// design forbids. Plain EXPAND stays declared: "these are resolved for you" is
+			// trivially true in memory.
 			.support(EnumSet.complementOf(
-					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SCORE, QueryFeature.ROOT_REFERENCE))
+					EnumSet.of(QueryFeature.AS_OF, QueryFeature.SCORE, QueryFeature.ROOT_REFERENCE,
+							QueryFeature.EXPAND_FILTER, QueryFeature.EXPAND_PAGE))
 					.toArray(QueryFeature[]::new))
 			.maxFeaturePathDepth(-1)
 			.build();
@@ -167,8 +176,11 @@ public class MemoryQueryProcessor implements QueryProcessor {
 		if (query.getApply() != null) {
 			resolution.walkPipeline(query, rowKeys, rowAliases);
 		}
-		for (PropertyPath expand : query.getExpand()) {
-			resolution.rootPath(expand); // objects are in memory — expand is a no-op
+		for (Expand expand : query.getExpand()) {
+			// objects are in memory — there is no proxy to resolve, so an expansion is a no-op
+			// here whatever options it carries; the paths are still resolved so a malformed one
+			// is reported (issue #238)
+			resolution.rootPath(expand.getPath());
 		}
 		for (OrderBy orderBy : query.getOrderBy()) {
 			if (orderBy.getKey() != null) {

@@ -60,6 +60,7 @@ import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
@@ -303,12 +304,23 @@ public class JpaQueryProcessor implements QueryProcessor {
 	private List<String> appendFetchJoins(StringBuilder jpql, Query query) throws QueryException {
 		Map<String, String> aliases = new LinkedHashMap<>();
 		Set<String> batchPaths = new LinkedHashSet<>();
-		for (PropertyPath expand : query.getExpand()) {
-			if (expand.getSegments().isEmpty()) {
+		for (Expand expansion : query.getExpand()) {
+			PropertyPath expand = expansion.getPath();
+			if (expand == null || expand.getSegments().isEmpty()) {
 				throw new QueryException("expand requires at least one reference segment");
 			}
 			if (expand.getCastBase() != null) {
 				throw new QueryException("expand does not support cast paths (castBase)");
+			}
+			if (expansion.getFilter() != null || !expansion.getOrderBy().isEmpty()
+					|| expansion.getTop() > 0 || expansion.getSkip() > 0
+					|| !expansion.getExpand().isEmpty()) {
+				// slice 1 of #238 carries the shape only: validate() refuses these against
+				// EXPAND_FILTER/EXPAND_PAGE, which this backend does not declare yet. Guarded
+				// here too so a caller bypassing validate() gets a refusal rather than a plan
+				// that silently drops the options.
+				throw new QueryException("expand query options are not served by the jpa backend yet"
+						+ " (issue #238)");
 			}
 			String parentAlias = ALIAS;
 			StringBuilder dotted = new StringBuilder(ALIAS);

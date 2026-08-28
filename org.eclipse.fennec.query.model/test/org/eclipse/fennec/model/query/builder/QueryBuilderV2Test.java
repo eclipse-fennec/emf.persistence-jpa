@@ -54,6 +54,7 @@ import org.eclipse.fennec.model.expression.TemporalKind;
 import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.SortDirection;
 import org.junit.jupiter.api.BeforeEach;
@@ -236,5 +237,48 @@ class QueryBuilderV2Test {
 		assertThatIllegalArgumentException().isThrownBy(() -> and(path(age).eq(1)));
 		assertThatIllegalArgumentException().isThrownBy(() -> path(age).in());
 		assertThatIllegalArgumentException().isThrownBy(Expressions::propertyPath);
+	}
+
+	// ==================== expand query options (issue #238) ====================
+
+	/**
+	 * The varargs form still produces the plain fetch hint it always did — an Expand carrying
+	 * a path and no options. The type changed with #238; the behaviour did not.
+	 */
+	@Test
+	void plainExpandCarriesOnlyThePath() {
+		Query query = QueryBuilder.from(person).expand(addresses).build();
+
+		assertThat(query.getExpand()).hasSize(1);
+		Expand expand = query.getExpand().get(0);
+		assertThat(expand.getPath().getSegments()).containsExactly(addresses);
+		assertThat(expand.getFilter()).isNull();
+		assertThat(expand.getOrderBy()).isEmpty();
+		assertThat(expand.getTop()).isZero();
+		assertThat(expand.getSkip()).isZero();
+		assertThat(expand.getExpand()).isEmpty();
+	}
+
+	/** The fluent form carries the options through, nesting included. */
+	@Test
+	void expandsBuildsTheOptions() {
+		Expand nested = Expands.of(addresses).top(2).build();
+		Query query = QueryBuilder.from(person)
+				.expand(Expands.of(addresses)
+						.filter(Expressions.path(street).eq("Main"))
+						.orderByDesc(street)
+						.top(5)
+						.skip(1)
+						.expand(nested)
+						.build())
+				.build();
+
+		Expand expand = query.getExpand().get(0);
+		assertThat(expand.getFilter()).isNotNull();
+		assertThat(expand.getOrderBy()).hasSize(1);
+		assertThat(expand.getOrderBy().get(0).getDirection()).isEqualTo(SortDirection.DESC);
+		assertThat(expand.getTop()).isEqualTo(5);
+		assertThat(expand.getSkip()).isEqualTo(1);
+		assertThat(expand.getExpand()).containsExactly(nested);
 	}
 }

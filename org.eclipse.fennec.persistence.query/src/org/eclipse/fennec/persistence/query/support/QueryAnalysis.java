@@ -42,6 +42,7 @@ public final class QueryAnalysis {
 	private final String invalidInterval;
 	private final String invalidRepresentatives;
 	private final String unsupportedPipeline;
+	private final String invalidExpand;
 
 	/**
 	 * Creates an analysis result — used by the analyzers ({@code QueryAnalyzer} for the
@@ -224,6 +225,34 @@ public final class QueryAnalysis {
 			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort, String invalidGeo,
 			String invalidStringMatch, String invalidMapValue, String invalidProjection,
 			String invalidInterval, String invalidRepresentatives, String unsupportedPipeline) {
+		this(features, maxFeaturePathDepth, shape, divisionByLiteralZero, invalidAggregate, invalidSort,
+				invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection, invalidInterval,
+				invalidRepresentatives, unsupportedPipeline, null);
+	}
+
+	/**
+	 * Creates an analysis result including the malformed-expansion verdict (issue #238).
+	 *
+	 * @param features the used features
+	 * @param maxFeaturePathDepth the maximum navigation depth
+	 * @param shape the result shape
+	 * @param divisionByLiteralZero whether a division by a literal zero was found
+	 * @param invalidAggregate the malformed-aggregate finding (issue #87), or {@code null}
+	 * @param invalidSort the malformed-sort finding (issue #102), or {@code null}
+	 * @param invalidGeo the malformed-geo finding, or {@code null}
+	 * @param invalidStringMatch the malformed-string-match finding, or {@code null}
+	 * @param invalidMapValue the malformed-map-access finding, or {@code null}
+	 * @param invalidProjection the malformed-projection finding (issue #189), or {@code null}
+	 * @param invalidInterval the malformed-interval finding, or {@code null}
+	 * @param invalidRepresentatives the malformed-representatives finding, or {@code null}
+	 * @param unsupportedPipeline the unservable-pipeline finding (issue #239), or {@code null}
+	 * @param invalidExpand the malformed-expansion finding (issue #238), or {@code null}
+	 */
+	public QueryAnalysis(Set<QueryFeature> features, int maxFeaturePathDepth, QueryShape shape,
+			boolean divisionByLiteralZero, String invalidAggregate, String invalidSort, String invalidGeo,
+			String invalidStringMatch, String invalidMapValue, String invalidProjection,
+			String invalidInterval, String invalidRepresentatives, String unsupportedPipeline,
+			String invalidExpand) {
 		this.features = Collections.unmodifiableSet(features.isEmpty()
 				? EnumSet.noneOf(QueryFeature.class)
 				: EnumSet.copyOf(features));
@@ -239,6 +268,7 @@ public final class QueryAnalysis {
 		this.invalidInterval = invalidInterval;
 		this.invalidRepresentatives = invalidRepresentatives;
 		this.unsupportedPipeline = unsupportedPipeline;
+		this.invalidExpand = invalidExpand;
 	}
 
 	/**
@@ -349,6 +379,17 @@ public final class QueryAnalysis {
 	 */
 	public String invalidRepresentatives() {
 		return invalidRepresentatives;
+	}
+
+	/**
+	 * The malformed-expansion finding (issue #238) — an expansion whose options do not form a
+	 * meaningful request, such as an {@code orderBy} without {@code top}/{@code skip}, which
+	 * under the resolution semantics could only promise an order that is never delivered.
+	 *
+	 * @return the finding, or {@code null} if every expansion is well-formed
+	 */
+	public String invalidExpand() {
+		return invalidExpand;
 	}
 
 	/**

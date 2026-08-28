@@ -74,11 +74,15 @@ class QueryFeatureCatalogTest {
 		assertThat(QueryFeature.values())
 				.as("adding a QueryFeature? MemoryQueryProcessor claims it automatically "
 						+ "(complementOf) — implement it there or exclude it, then fix this count")
-				// 55 since ROOT_REFERENCE (#241). That one is EXCLUDED from the memory
-				// engine rather than implemented there: it needs a store to read the
-				// referenced object from, and the engine is handed one collection — the
-				// capability belongs to the resource, not to the evaluator. The guard did
-				// its job; the literal got a decision instead of a silent claim.
-				.hasSize(55);
+				// 57 since EXPAND_FILTER and EXPAND_PAGE (#238). Both EXCLUDED from the
+				// memory engine, and for the same structural reason as ROOT_REFERENCE (#241)
+				// before them: an expansion selects which PROXIES get resolved and delivers
+				// exactly that set, discriminated by eIsProxy(). The reference engine is
+				// handed objects that are already resolved — nothing to select, and no way to
+				// mark a selection without shaping the collection, which the design forbids.
+				// Plain EXPAND stays claimed: in memory "these are resolved for you" is
+				// trivially true. The guard did its job twice now; each literal got a decision
+				// instead of a silent claim.
+				.hasSize(57);
 	}
 }

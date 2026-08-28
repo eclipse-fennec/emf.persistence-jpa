@@ -18,7 +18,6 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 
 import org.eclipse.fennec.model.expression.Expression;
-import org.eclipse.fennec.model.expression.PropertyPath;
 
 import org.osgi.annotation.versioning.ProviderType;
 
@@ -161,18 +160,18 @@ public interface Query extends EObject {
 
 	/**
 	 * Returns the value of the '<em><b>Expand</b></em>' containment reference list.
-	 * The list contents are of type {@link org.eclipse.fennec.model.expression.PropertyPath}.
+	 * The list contents are of type {@link org.eclipse.fennec.model.query.Expand}.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Fetch hints: reference paths to materialise eagerly with the result (decision D5 — envelope-level).
+	 * Expansions: which non-containment references to resolve eagerly and batched with the result (decision D5 — envelope-level). An Expand carrying only a path is the plain fetch hint this feature held before issue #238.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Expand</em>' containment reference list.
 	 * @see org.eclipse.fennec.model.query.QueryPackage#getQuery_Expand()
 	 * @model containment="true"
 	 * @generated
 	 */
-	EList<PropertyPath> getExpand();
+	EList<Expand> getExpand();
 
 	/**
 	 * Returns the value of the '<em><b>Top</b></em>' attribute.

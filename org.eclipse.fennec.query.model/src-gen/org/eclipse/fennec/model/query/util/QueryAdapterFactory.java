@@ -86,6 +86,10 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 				return createOrderByAdapter();
 			}
 			@Override
+			public Adapter caseExpand(Expand object) {
+				return createExpandAdapter();
+			}
+			@Override
 			public Adapter caseSelection(Selection object) {
 				return createSelectionAdapter();
 			}
@@ -182,6 +186,20 @@ public class QueryAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createOrderByAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.query.Expand <em>Expand</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.query.Expand
+	 * @generated
+	 */
+	public Adapter createExpandAdapter() {
 		return null;
 	}
 
