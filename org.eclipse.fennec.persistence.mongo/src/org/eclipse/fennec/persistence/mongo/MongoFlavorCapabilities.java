@@ -80,7 +80,11 @@ public final class MongoFlavorCapabilities {
 					QueryFeature.AGG_COUNT, QueryFeature.AGG_COUNT_DISTINCT, QueryFeature.TYPE_FILTER,
 					QueryFeature.PARAMETERS, QueryFeature.FEATUREPATH_NESTED,
 					QueryFeature.GEO_WITHIN, QueryFeature.GEO_DISTANCE, QueryFeature.MAP_VALUE,
-					QueryFeature.INTERVAL_MATCH, QueryFeature.GROUP_REPRESENTATIVES)
+					QueryFeature.INTERVAL_MATCH, QueryFeature.GROUP_REPRESENTATIVES,
+					// batched proxy resolution, one $in per collection per level (issue #254).
+					// The options of #238 are NOT declared: EXPAND_FILTER and EXPAND_PAGE stay
+					// undeclared until a slice serves them.
+					QueryFeature.EXPAND)
 			.maxFeaturePathDepth(-1)
 			.build();
 

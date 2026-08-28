@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
@@ -80,6 +81,7 @@ import org.eclipse.fennec.model.command.UpdateCommand;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.api.ConverterService;
@@ -183,6 +185,9 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 
 	/** Diagnostic source of this resource layer (issue #19): the bundle namespace. */
 	static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.mongo";
+
+	/** Roots per batched expand read when no page size was configured (issue #254). */
+	private static final int DEFAULT_EXPAND_CHUNK = 256;
 
 	private final MongoDatabase database;
 	private final CodecValueRegistry valueRegistry;
@@ -918,7 +923,69 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		Stream<EObject> objects = cursorStream(cursor)
 				.map(document -> decodeUnchecked(document, eClass))
 				.filter(java.util.Objects::nonNull);
+		objects = expanding(objects, plan.source().getExpand(), pageSize);
 		return QueryResults.objects(objects);
+	}
+
+	/**
+	 * Wraps the object stream so each chunk has its expansions resolved before the chunk is
+	 * emitted (issue #254) — the batched proxy resolution {@code expand} promises.
+	 * <p>
+	 * Chunked rather than up front: a query over a million documents must not materialise a
+	 * million roots to expand them, and the caller's stream has to stay lazy. The chunk is the
+	 * cursor's batch size where one was asked for, so the batched read follows the same rhythm
+	 * as the cursor it rides on.
+	 *
+	 * @param objects the decoded roots
+	 * @param expansions the expansions of the envelope
+	 * @param pageSize the configured batch size, or 0
+	 * @return the stream, expanded chunk by chunk; the original if there is nothing to expand
+	 */
+	private Stream<EObject> expanding(Stream<EObject> objects, List<Expand> expansions, int pageSize) {
+		if (expansions.isEmpty() || !MongoExpansions.hasWork(expansions)) {
+			return objects;
+		}
+		ResourceSet resourceSet = getResourceSet();
+		if (isNull(resourceSet)) {
+			// no resource set, no proxy resolution to batch — navigation would fail anyway,
+			// and it is not this query's place to say so
+			return objects;
+		}
+		int chunkSize = pageSize > 0 ? pageSize : DEFAULT_EXPAND_CHUNK;
+		Iterator<EObject> source = objects.iterator();
+		Iterator<EObject> expanded = new Iterator<>() {
+
+			private final List<EObject> chunk = new ArrayList<>();
+			private int position;
+
+			@Override
+			public boolean hasNext() {
+				if (position < chunk.size()) {
+					return true;
+				}
+				chunk.clear();
+				position = 0;
+				while (chunk.size() < chunkSize && source.hasNext()) {
+					chunk.add(source.next());
+				}
+				if (chunk.isEmpty()) {
+					return false;
+				}
+				MongoExpansions.resolve(chunk, expansions, resourceSet);
+				return true;
+			}
+
+			@Override
+			public EObject next() {
+				if (!hasNext()) {
+					throw new NoSuchElementException();
+				}
+				return chunk.get(position++);
+			}
+		};
+		return StreamSupport
+				.stream(Spliterators.spliteratorUnknownSize(expanded, Spliterator.ORDERED), false)
+				.onClose(objects::close);
 	}
 
 	// ------------------------------------------------------- persisted queries
@@ -2117,6 +2184,75 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * and without touching {@link #getContents()} — so a fragment resolution never triggers
 	 * the deferred population (issue #146).
 	 */
+	/**
+	 * Reads the given id fragments in <strong>one</strong> query and attaches what it finds to
+	 * this resource's raw contents — the batched half of {@code expand} (issue #254).
+	 * <p>
+	 * Nothing about proxy resolution changes: {@link #getEObject(String)} consults
+	 * {@link #findInRawContents(String)} before it queries, so a proxy navigated afterwards is
+	 * satisfied from memory, with identity preserved, and never reaches the database. Ids
+	 * already materialised are skipped, so calling this twice costs nothing and can never
+	 * attach a twin beside an existing object (issue #116).
+	 * <p>
+	 * Raw contents, like the keyed find: preloading a level must not drag in the whole
+	 * collection (issue #146). A fragment with no document of its own is left alone — it is
+	 * very likely an embedded containment child, which the keyed path handles.
+	 *
+	 * @param fragments the id fragments to read
+	 */
+	void preloadByFragments(Set<String> fragments) {
+		if (isNull(fragments) || fragments.isEmpty()) {
+			return;
+		}
+		String collectionName = getCollectionName(null);
+		if (isNull(collectionName)) {
+			return;
+		}
+		EClass eClass = resolveEClass(collectionName, null);
+		if (isNull(eClass)) {
+			return;
+		}
+		List<BsonValue> missing = new ArrayList<>();
+		for (String fragment : fragments) {
+			String idValue = idValueOf(fragment);
+			if (isNull(idValue) || nonNull(findInRawContents(idValue))) {
+				continue;
+			}
+			missing.add(toBsonId(idValue, eClass));
+		}
+		if (missing.isEmpty()) {
+			return;
+		}
+		try {
+			for (BsonDocument document : getCollection(collectionName)
+					.find(Filters.in(MongoPersistenceConstants.ID_FIELD, missing))) {
+				EObject decoded = decode(document, eClass);
+				if (nonNull(decoded) && isNull(decoded.eResource())
+						&& !super.getContents().contains(decoded)) {
+					super.getContents().add(decoded);
+				}
+			}
+		} catch (RuntimeException | IOException e) {
+			// a failed preload costs performance, not correctness: every proxy is still
+			// resolvable one by one through the keyed path
+			getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE,
+					"Batched expand read failed on '" + collectionName + "': " + e.getMessage(),
+					getURI(), e));
+		}
+	}
+
+	/** The id value of a proxy fragment, which is either bare or {@code //ref/idAttr/id}. */
+	private static String idValueOf(String fragment) {
+		if (isNull(fragment) || fragment.isEmpty()) {
+			return null;
+		}
+		if (!fragment.startsWith("//")) {
+			return fragment;
+		}
+		String[] parts = fragment.substring(2).split("/");
+		return parts.length < 3 ? null : parts[2];
+	}
+
 	private EObject findInRawContents(String idValue) {
 		for (EObject root : super.getContents()) {
 			if (idValue.equals(CompositeIds.fragment(root))) {

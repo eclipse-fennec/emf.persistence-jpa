@@ -27,6 +27,8 @@ import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.codec.config.ConfigurationResolver;
 import org.eclipse.fennec.model.expression.AliasRef;
@@ -70,6 +72,7 @@ import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
@@ -219,7 +222,8 @@ public class MongoQueryProcessor implements QueryProcessor {
 			base.getChildren().forEach(result::add);
 		}
 		query.eAllContents().forEachRemaining(content -> {
-			if (content instanceof PropertyPath path && !MongoFieldNames.isEmbeddedPath(path)) {
+			if (content instanceof PropertyPath path && !isExpansionPath(path)
+					&& !MongoFieldNames.isEmbeddedPath(path)) {
 				result.add(new BasicDiagnostic(Diagnostic.ERROR, QueryValidator.DIAGNOSTIC_SOURCE,
 						CODE_NON_EMBEDDED_PATH,
 						"Path '" + MongoFieldNames.render(path)
@@ -278,9 +282,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 		if (query.getApply() != null && !query.getSelect().isEmpty()) {
 			throw new QueryException("select and apply are mutually exclusive — aggregation defines its own columns");
 		}
-		if (!query.getExpand().isEmpty()) {
-			throw new QueryException("expand is not supported by the mongo backend");
-		}
+		validateExpansions(query.getExpand());
 		Bson filter = query.getPredicate() == null ? null : filter(query.getPredicate(), context);
 		if (shape == QueryShape.PROJECTION || shape == QueryShape.AGGREGATION) {
 			return pipelinePlan(query, shape, filter, context);
@@ -288,6 +290,66 @@ public class MongoQueryProcessor implements QueryProcessor {
 		Bson sort = objectSort(query);
 		return new MongoQueryPlan(query, shape, filter, sort, Math.max(0, query.getSkip()),
 				Math.max(0, query.getTop()));
+	}
+
+	/**
+	 * Whether a path belongs to an expansion rather than to the query proper (issue #254).
+	 * <p>
+	 * The non-embedded-path guard above is right for everything Mongo has to express in
+	 * {@code $match}, {@code $sort} or a projection: it cannot join across documents there. An
+	 * expand path is not one of those. It never reaches the plan — the expansion is resolved
+	 * after the find, by reading each level's targets with one {@code $in} per collection — and
+	 * traversing a non-containment reference is precisely what it is for. Applying the join
+	 * guard to it would refuse every expansion that is worth anything.
+	 *
+	 * @param path the path found in the envelope
+	 * @return {@code true} if it is contained in an {@link Expand}
+	 */
+	private static boolean isExpansionPath(PropertyPath path) {
+		for (EObject container = path.eContainer(); container != null; container = container
+				.eContainer()) {
+			if (container instanceof Expand) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Checks the expansions this backend serves (issue #254): reference paths only, and no
+	 * query options yet.
+	 * <p>
+	 * An expansion is resolved after the find, by reading each level's targets with one
+	 * {@code $in} per collection and attaching them to their own resource — see
+	 * {@code MongoExpansions}. Nothing about it reaches the plan, so there is nothing to
+	 * translate here; what there is to do is refuse what the resolution cannot honour.
+	 * <p>
+	 * The options are refused for the same reason as on JPA: {@code validate()} already turns
+	 * them away against the undeclared EXPAND_FILTER/EXPAND_PAGE, and a caller bypassing it must
+	 * get an error rather than a result that silently ignored them (issue #238).
+	 */
+	private void validateExpansions(List<Expand> expansions) throws QueryException {
+		for (Expand expansion : expansions) {
+			PropertyPath path = expansion.getPath();
+			if (path == null || path.getSegments().isEmpty()) {
+				throw new QueryException("expand requires at least one reference segment");
+			}
+			if (path.getCastBase() != null) {
+				throw new QueryException("expand does not support cast paths (castBase)");
+			}
+			for (EStructuralFeature segment : path.getSegments()) {
+				if (!(segment instanceof EReference)) {
+					throw new QueryException("expand path segment '" + segment.getName()
+							+ "' is not a reference — only references can be prefetched");
+				}
+			}
+			if (expansion.getFilter() != null || !expansion.getOrderBy().isEmpty()
+					|| expansion.getTop() > 0 || expansion.getSkip() > 0
+					|| !expansion.getExpand().isEmpty()) {
+				throw new QueryException("expand query options are not served by the mongo backend"
+						+ " yet (issue #238)");
+			}
+		}
 	}
 
 	// -------------------------------------------------- find filter

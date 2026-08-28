@@ -57,6 +57,7 @@ import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
+import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.persistence.query.support.QueryValidator;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
@@ -767,16 +768,51 @@ class MongoQueryProcessorTest {
 	}
 
 	@Test
-	void distinctWithoutProjectionAndExpandAreRefused() {
+	void distinctWithoutProjectionIsRefused() {
 		Query distinct = QueryBuilder.from(person).where(path(age).eq(1)).distinct().build();
 		Diagnostic diagnostic = processor.validate(distinct, person);
 		assertThat(diagnostic.getChildren()).anySatisfy(child -> assertThat(child.getCode())
 				.isEqualTo(MongoQueryProcessor.CODE_DISTINCT_WITHOUT_PROJECTION));
+	}
 
+	/**
+	 * Issue #254: a plain expansion is served now. Nothing about it reaches the plan — it is
+	 * resolved after the find, by reading each level with one {@code $in} per collection — so
+	 * the translation is simply expected to accept it.
+	 */
+	@Test
+	void aPlainExpansionIsAcceptedAndDoesNotTouchThePlan() throws QueryException {
 		Query expand = QueryBuilder.from(person).expand(addresses).build();
-		// EXPAND is not declared — validate refuses it via the capability mechanism
-		assertThat(processor.validate(expand, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
-		assertThatThrownBy(() -> translate(expand)).isInstanceOf(QueryException.class);
+
+		assertThat(processor.validate(expand, person).getSeverity()).isEqualTo(Diagnostic.OK);
+		assertThat(translate(expand).filter()).isNull();
+	}
+
+	/** Only references can be expanded — an attribute segment is refused by the translator. */
+	@Test
+	void anAttributeSegmentIsNotExpandable() {
+		Query expand = QueryBuilder.from(person).expand(name).build();
+
+		assertThatThrownBy(() -> translate(expand))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("is not a reference");
+	}
+
+	/**
+	 * The query options of #238 stay unserved here: undeclared, so {@code validate()} refuses
+	 * them, and refused by the translator too so a caller bypassing validation cannot get a
+	 * result that silently ignored them.
+	 */
+	@Test
+	void expandQueryOptionsAreStillRefused() {
+		Query filtered = QueryBuilder.from(person)
+				.expand(Expands.of(addresses).filter(path(street).eq("Main")).build())
+				.build();
+
+		assertThat(processor.validate(filtered, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThatThrownBy(() -> translate(filtered))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("expand query options");
 	}
 
 	@Test
