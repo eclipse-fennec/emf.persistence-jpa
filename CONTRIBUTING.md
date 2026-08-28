@@ -5,7 +5,7 @@ project hosted by the [Eclipse Foundation](https://www.eclipse.org) and
 operated under the [Eclipse Development Process](https://www.eclipse.org/projects/dev_process/).
 Contributions are welcome from the whole community.
 
-* Project home: https://projects.eclipse.org/projects/technology.fennec
+* Project home: https://projects.eclipse.org/projects/modeling.fennec
 * This repository: https://github.com/eclipse-fennec/emf.persistence-jpa
 * Issue tracker: https://github.com/eclipse-fennec/emf.persistence-jpa/issues
 * Developer mailing list: https://accounts.eclipse.org/mailing-list/fennec-dev
@@ -162,7 +162,7 @@ migration history.
 ## Project leads & committers
 
 Current committers are listed on the
-[Eclipse Fennec project page](https://projects.eclipse.org/projects/technology.fennec/who).
+[Eclipse Fennec project page](https://projects.eclipse.org/projects/modeling.fennec/who).
 Becoming a committer follows the standard Eclipse process — sustained,
 high-quality contributions over time, followed by a committer election.
 
