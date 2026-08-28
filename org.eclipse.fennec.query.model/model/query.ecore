@@ -41,10 +41,9 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="expand" upperBound="-1"
-        eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
-        containment="true">
+        eType="#//Expand" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Fetch hints: reference paths to materialise eagerly with the result (decision D5 — envelope-level)."/>
+        <details key="documentation" value="Expansions: which non-containment references to resolve eagerly and batched with the result (decision D5 — envelope-level). An Expand carrying only a path is the plain fetch hint this feature held before issue #238."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="top" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
@@ -92,6 +91,45 @@
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" lowerBound="1"
         eType="#//SortDirection" defaultValueLiteral="ASC"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Expand">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One expansion: a non-containment reference path to resolve eagerly and batched, optionally narrowed by query options (issue #238, docs/unified-persistence/expand-query-options.md).&#xA;&#xA;Both backends already deliver non-containment references as EMF proxies, so an expansion resolves proxies rather than shaping a result. The options therefore select WHICH proxies get resolved, never which entries the feature holds (D1): the collection keeps everything the store has, so the object cannot misreport it and writing it back loses nothing. What is delivered is exactly the selected set (D1b) — eIsProxy() discriminates the expansion from the untouched remainder.&#xA;&#xA;An Expand carrying only a path is the plain fetch hint of issue #95, unchanged."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="path" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//PropertyPath"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The reference path to expand; every segment must be an EReference."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="filter" eType="ecore:EClass ../../org.eclipse.fennec.expression.model/model/expression.ecore#//Expression"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Narrows which children are resolved; addresses the expanded type, not the root. Requires the EXPAND_FILTER capability."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="orderBy" upperBound="-1"
+        eType="#//OrderBy" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Selector input for top/skip — 'the five newest' is orderBy plus top. It is NOT a delivered order: under D1 the list order belongs to the store, and an expansion cannot reorder a feature it does not own. Therefore served only together with top or skip, and refused standing alone (D3). Requires EXPAND_PAGE."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="top" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Resolve at most this many children per expanded parent; 0 = all. Requires EXPAND_PAGE."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="skip" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Skip this many children per expanded parent before resolving. Requires EXPAND_PAGE."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="expand" upperBound="-1"
+        eType="#//Expand" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Nested expansions, relative to the expanded type. OData allows arbitrary depth."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Selection">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

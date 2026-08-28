@@ -129,7 +129,7 @@
     </eLiterals>
     <eLiterals name="EXPAND" value="27">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Eager-fetch hints (v2 envelope expand)."/>
+        <details key="documentation" value="Plain expansions (v2 envelope expand): resolve the proxies of a non-containment reference path eagerly and batched, instead of one at a time on navigation. The unadorned path form — narrowing an expansion needs EXPAND_FILTER or EXPAND_PAGE (issue #238)."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="PIPELINE" value="28">
@@ -285,6 +285,16 @@
     <eLiterals name="ROOT_REFERENCE" value="86">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="A value read from one fixed object of another entity set (issue #241) — OData's $root. Declared by a backend that can resolve the referenced object and inline its value BEFORE translating, which is all OData's syntax needs: $root takes a literal key predicate, so the key is constant and one keyed read answers it. That is far cheaper than a general cross-root subquery and covers every request the protocol can express.&#xA;&#xA;One literal, not two: a backend that can do the keyed read can inline the value, and a backend that cannot has nothing to offer for the non-constant case either. A non-constant key is refused by every backend and is not part of this capability."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="EXPAND_FILTER" value="87">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Narrow an expansion by a filter over the expanded type (issue #238) — OData's $filter inside $expand. Selects WHICH proxies of the reference get resolved; the feature keeps every child the store has, so the object never misreports it (D1). On JPA one batched second query per expanded reference, WHERE parentKey IN (:keys) plus the filter.&#xA;&#xA;Separate from EXPAND_PAGE because the costs differ sharply: filtering is a predicate on a query that already runs, per-parent paging needs a window function. A backend that declares this one but not EXPAND_PAGE is a reasonable and useful state."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="EXPAND_PAGE" value="88">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-parent top/skip inside an expansion, and with it orderBy as the selector that makes them meaningful (issue #238) — OData's $top/$skip/$orderby inside $expand. On JPA ROW_NUMBER() OVER (PARTITION BY parentKey ORDER BY …), the window mechanic issue #214 introduced for group representatives.&#xA;&#xA;orderBy rides on this literal rather than its own because under D1 it cannot be delivered as an order — the list order belongs to the store — and is served only as the selector for top/skip (D3). Standing alone it is refused whatever a backend declares.&#xA;&#xA;There is deliberately no EXPAND_COUNT: $count inside $expand is not served at all (D2), and issue #207 forbids a stock of unserved literals."/>
       </eAnnotations>
     </eLiterals>
     <eLiterals name="AS_OF" value="100">
