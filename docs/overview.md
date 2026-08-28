@@ -23,7 +23,7 @@ MongoDB shares the same EMF resource contract.
   BigInteger, arrays, …) through a pluggable `ConverterService`
 - **OSGi-native lifecycle**: persistence units, data sources and Mongo clients are
   configured via Configurator/ConfigAdmin and appear as services — including
-  [connection liveness](concept-connection-liveness.md): a connection service is only
+  connection liveness: a connection service is only
   registered while the database is actually reachable
 - **Reverse engineering** of Ecore models from existing database schemas via JDBC
   metadata
@@ -79,7 +79,7 @@ through the Fennec codec framework — see the
 | Look up a configuration property | [Configuration Reference](configuration-reference.md) |
 | Understand persistence units, `JPAUnit` and the whiteboard | [JPA & OSGi Architecture](osgi-architecture.md) |
 | Understand the Mongo backend internals | [MongoDB Backend Architecture](mongo-architecture.md) |
-| Understand liveness-gated connection services | [Connection Liveness](concept-connection-liveness.md) |
+| Understand liveness-gated connection services | Connection Liveness |
 
 ## Releases
 

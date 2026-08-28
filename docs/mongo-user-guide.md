@@ -177,7 +177,7 @@ service is registered through a liveness gate: it appears only after a
 `ping` probe verifies the connection, and it disappears again (together with
 all dependent `MongoDatabase` services) when the connection breaks. Presence
 of the service means *the connection works* — see
-[Connection Liveness](concept-connection-liveness.md) for the full concept.
+Connection Liveness for the full concept.
 
 Consequences for you as a user:
 
@@ -886,4 +886,4 @@ interchangeable.
 
 - [Getting Started](getting-started.md) — the JPA paths and general Resource usage
 - [Configuration Reference](configuration-reference.md) — full property catalogue, liveness keys, load/save options
-- [Connection Liveness](concept-connection-liveness.md) — the "registered means working" concept
+- Connection Liveness — the "registered means working" concept
