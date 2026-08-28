@@ -42,7 +42,8 @@ import org.eclipse.emf.ecore.EReference;
  * targets are resolved.
  *
  * @param path the reference path this expansion addresses, root feature first
- * @param jpql the keyed query; binds {@value #KEY_PARAMETER} to the root keys
+ * @param jpql the keyed query, binding {@value #KEY_PARAMETER} to the root keys — or
+ *        {@code null} for a plain expansion, which selects nothing and resolves every proxy
  * @param parameters the filter's bound values, by name
  * @author Mark Hoffmann
  */
@@ -66,5 +67,13 @@ public record JpaExpandPlan(List<EReference> path, String jpql, Map<String, Obje
 	/** @return the last segment — the reference whose proxies this expansion resolves */
 	public EReference target() {
 		return path.get(path.size() - 1);
+	}
+
+	/**
+	 * @return {@code true} if this expansion narrows what it resolves. A plain one carries no
+	 *         query: every proxy on the path is part of it
+	 */
+	public boolean filtered() {
+		return jpql != null;
 	}
 }
