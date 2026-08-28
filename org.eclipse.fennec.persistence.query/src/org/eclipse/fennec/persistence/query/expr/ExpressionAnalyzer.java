@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.AliasRef;
 import org.eclipse.fennec.model.expression.And;
@@ -820,6 +821,16 @@ public final class ExpressionAnalyzer {
 	 */
 	private static String scanExpandShape(List<Expand> expansions) {
 		for (Expand expand : expansions) {
+			EStructuralFeature last = expand.getPath() == null || expand.getPath().getSegments().isEmpty()
+					? null
+					: expand.getPath().getSegments().get(expand.getPath().getSegments().size() - 1);
+			if (expand.getFilter() != null && last instanceof EReference reference
+					&& reference.isContainment()) {
+				return "Expansion '" + pathName(expand.getPath())
+						+ "' filters a containment reference — its children are not proxies but part"
+						+ " of the object, so there is nothing to select: narrowing them would have"
+						+ " to remove entries from the feature, which an expansion never does";
+			}
 			if (!expand.getOrderBy().isEmpty() && expand.getTop() <= 0 && expand.getSkip() <= 0) {
 				return "Expansion '" + pathName(expand.getPath())
 						+ "' orders without top or skip — an expansion selects which children are"
