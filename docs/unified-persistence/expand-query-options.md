@@ -93,6 +93,29 @@ alone, where it could only promise an order we do not deliver.
 This keeps the project's line from #239 and #233: what cannot be honoured is refused uniformly in
 `validate()`, not approximated.
 
+> **D4 — A filter needs proxies, so it needs a non-containment reference.**
+
+Containment children are not proxies: they are part of the object and arrive with it. There is
+nothing for a filter to select, and narrowing them would have to *remove entries from the
+feature* — exactly what D1 says an expansion never does. A filtered expansion whose last segment
+is a containment reference is therefore refused with `CODE_INVALID_EXPAND`, structurally, like
+the standing-alone `orderBy` of D3. No capability lets a backend out of it.
+
+Found by the TCK rather than by thinking: the first end-to-end test filtered `Person.addresses`,
+which is containment, and both children came back resolved because they had never been proxies.
+
+> **D1b is a contract on the feature, not only on the response.**
+
+An expansion must leave the reference holding the resolved object. `EcoreUtil.resolve` returns the
+target and leaves the list holding the proxy — `EcoreEList.Dynamic` does not resolve on access — so
+resolving without replacing the entry means the expansion read its targets and threw them away, and
+`eIsProxy()` stops being the discriminator D1b names. Both backends had this defect.
+
+It also decides something about *plain* expansions on JPA: riding on the fetch joins and
+batch-fetch hints of #95 is not enough, because those read the rows but leave the EMF feature
+pointing at a proxy. A plain expansion therefore runs through the same resolution, selecting
+nothing.
+
 ## 4. Shape
 
 `Expand` becomes a class; `count` from the issue's sketch drops out under D2.
@@ -126,11 +149,14 @@ plain expand is a separate piece of work, tracked as #254 and not part of this o
 
 ## 6. Slicing
 
-1. `Expand` class in `query.ecore` + builder, plain-path behaviour unchanged; `validate()` refuses
-   filter/order/page against the two new capabilities.
-2. `EXPAND_FILTER` on JPA — batched second query with the filter.
+1. **Done** — `Expand` class in `query.ecore` + builder, plain-path behaviour unchanged;
+   `validate()` refuses filter/order/page against the two new capabilities.
+2. **Done** — `EXPAND_FILTER` on JPA: a keyed second query per chunk of roots,
+   `SELECT e FROM Root p JOIN p.<ref> e WHERE p.<id> IN :expandKeys AND (<filter>)`. The target
+   carries the `e` alias so the filter — which addresses the expanded type — translates through
+   the ordinary path with nothing changed in the translator.
 3. `EXPAND_PAGE` on JPA — window function per parent, `orderBy` as selector.
-4. Mongo plain `EXPAND` via `$lookup` — **#254**, prerequisite for anything beyond on Mongo.
+4. **Done** — Mongo plain `EXPAND` (#254), by batched `$in` reads rather than `$lookup`.
 
 Nesting (`Expand.expand`) rides on the multi-segment hints of #95 and is decided per slice, not up
 front.
