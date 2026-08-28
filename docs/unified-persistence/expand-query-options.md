@@ -51,15 +51,28 @@ This is what makes the construct safe:
   would — and writing that instance back would delete the filtered-out elements, the same class of
   defect as the containment-lifecycle round (#142–#144).
 - **No new result surface.** `QueryShape.OBJECTS` exposes a `Stream<EObject>`; nothing has to be
-  added beside it. The discriminator is `eIsProxy()`, which every consumer already has.
+  added beside it. The discriminator is `eIsProxy()`, which every consumer already has — see D1b
+  for what that means for the delivered result.
 - **The translation from the issue is unchanged and still right**: one batched second query per
   expanded reference, `WHERE parentKey IN (:keys)` plus the filter, and
   `ROW_NUMBER() OVER (PARTITION BY parentKey ORDER BY …)` for the per-parent `top` — the window
   mechanic #214 introduced for group representatives.
 
-**Honest caveat.** "Five resolved" is a cache-warm state, not a guarantee. A consumer that iterates
-the collection and touches a proxy resolves it through the normal EMF path. Expand promises *these
-were resolved for you in one query*, not *these are the only ones you can reach*.
+> **D1b — What is delivered is exactly the selected set.**
+
+The two statements are about different layers and must not be conflated:
+
+- **Delivered result.** The expansion handed to the consumer — and serialised by `emf.odata` —
+  contains exactly the children the options selected. Five requested, five returned. `eIsProxy()`
+  is the discriminator: the resolved ones are the expansion, the untouched proxies are not part of
+  it. A response never carries more than was asked for, and `$top` is not a lie.
+- **Live object graph, in process.** The feature itself still holds every child the store has, as
+  proxies. A consumer that goes on navigating `customer.getOrders()` and touches one resolves it
+  through the normal EMF path.
+
+That second point is EMF's contract, not a leak in expand: a non-containment reference is always
+navigable. Expand promises *these were resolved and returned to you in one query* — it does not,
+and could not, revoke the ability to navigate the rest later.
 
 ## 3. What is refused, and why
 
@@ -109,7 +122,7 @@ expansion is a reasonable state:
 
 **Mongo declares no `EXPAND` at all.** There is no expansion there to extend — the issue's
 "`$lookup` takes a pipeline" argument describes a construct that does not exist yet. Teaching Mongo
-plain expand is a separate piece of work, not part of this one.
+plain expand is a separate piece of work, tracked as #254 and not part of this one.
 
 ## 6. Slicing
 
@@ -117,7 +130,7 @@ plain expand is a separate piece of work, not part of this one.
    filter/order/page against the two new capabilities.
 2. `EXPAND_FILTER` on JPA — batched second query with the filter.
 3. `EXPAND_PAGE` on JPA — window function per parent, `orderBy` as selector.
-4. Mongo plain `EXPAND` via `$lookup` — **own issue**, prerequisite for anything beyond.
+4. Mongo plain `EXPAND` via `$lookup` — **#254**, prerequisite for anything beyond on Mongo.
 
 Nesting (`Expand.expand`) rides on the multi-segment hints of #95 and is decided per slice, not up
 front.
