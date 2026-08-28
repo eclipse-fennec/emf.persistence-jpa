@@ -1913,6 +1913,66 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
+	 * Issue #238 slice 3: {@code top} caps the resolved children <strong>per parent</strong>, not
+	 * across the result — the point of partitioning the window.
+	 * <p>
+	 * D1 still holds throughout: the collections keep every child the store has, and the cap only
+	 * decides how many of them stop being proxies. And per D3 the ordering is what makes the cap
+	 * meaningful — it selects <em>which</em> children, never the order they are delivered in.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.EXPAND_PAGE,
+			QueryFeature.SORT })
+	public void queryExpandTopIsPerParent() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		EObject carol = newPerson(3, "Carol", 50);
+		EObject dave = newPerson(4, "Dave", 60);
+		EObject erin = newPerson(5, "Erin", 25);
+		EObject frank = newPerson(6, "Frank", 35);
+		EObject one = newCompany(21, "One");
+		EObject two = newCompany(22, "Two");
+		// two companies, three employees each
+		listOf(one, companyEmployees).add(alice);
+		listOf(one, companyEmployees).add(bob);
+		listOf(one, companyEmployees).add(carol);
+		listOf(two, companyEmployees).add(dave);
+		listOf(two, companyEmployees).add(erin);
+		listOf(two, companyEmployees).add(frank);
+		// employees has an eOpposite on Person.employer, so the FK sits on Person: the
+		// companies have to exist before the employees that point at them
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource companies = writeSet.createResource(uriFor("Company"));
+		companies.getContents().add(one);
+		companies.getContents().add(two);
+		companies.save(null);
+		save(writeSet, "Person", alice, bob, carol, dave, erin, frank);
+
+		Query query = QueryBuilder.from(companyClass)
+				.expand(Expands.of(companyEmployees).orderByAsc(personName).top(2).build())
+				.build();
+
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = ((QueryableResource) readSet.createResource(uriFor("Company")))
+				.query(query)) {
+			List<EObject> found = result.objects().toList();
+			assertThat(found).hasSize(2);
+
+			for (EObject company : found) {
+				List<EObject> employees = listOf(company, companyEmployees);
+				assertThat(employees)
+						.as("D1: the collection is untouched by the cap")
+						.hasSize(3);
+				List<EObject> resolvedOnes = employees.stream()
+						.filter(employee -> !employee.eIsProxy()).toList();
+				assertThat(resolvedOnes)
+						.as("top(2) is per parent, not two across the whole result")
+						.hasSize(2);
+			}
+		}
+	}
+
+	/**
 	 * Issue #238: a filtered expansion resolves only the children the filter matched — and
 	 * leaves the collection complete.
 	 * <p>

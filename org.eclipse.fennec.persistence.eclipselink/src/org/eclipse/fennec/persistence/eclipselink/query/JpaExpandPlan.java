@@ -52,6 +52,12 @@ public record JpaExpandPlan(List<EReference> path, String jpql, Map<String, Obje
 	/** The parameter the root keys of one chunk are bound to. */
 	public static final String KEY_PARAMETER = "expandKeys";
 
+	/** The lower bound of a per-parent page — rows with a higher row number are kept. */
+	public static final String SKIP_PARAMETER = "expandSkip";
+
+	/** The upper bound of a per-parent page: {@code skip + top}. */
+	public static final String UPPER_PARAMETER = "expandUpper";
+
 	/**
 	 * Creates a plan.
 	 *
