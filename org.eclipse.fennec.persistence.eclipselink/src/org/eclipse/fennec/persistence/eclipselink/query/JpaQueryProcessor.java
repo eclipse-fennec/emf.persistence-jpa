@@ -66,6 +66,7 @@ import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
 import org.eclipse.fennec.model.query.SkipStage;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -244,9 +245,10 @@ public class JpaQueryProcessor implements QueryProcessor {
 			top = combinedTop;
 		}
 		List<JpaExpandPlan> expandPlans = expandPlans(query, context);
+		JpaRepresentativePlan representatives = representativePlan(query, context);
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
 				skip, top, rowKeys, rowAliases, batchFetchPaths, translation.requiresInlineLiterals,
-				expandPlans);
+				expandPlans, representatives);
 	}
 
 	/**
@@ -313,6 +315,140 @@ public class JpaQueryProcessor implements QueryProcessor {
 					filterTranslation));
 		}
 		return plans;
+	}
+
+	/**
+	 * The one shape representatives have no window for: an <em>expression</em> group key.
+	 * <p>
+	 * The representative query selects the group keys against the outer alias so the stitching
+	 * key matches what the main query put in its key cells. A plain path renders there by hand;
+	 * an expression would have to be translated against that alias, and the expression translator
+	 * renders everything against {@code ALIAS}, which the derived table already occupies. Refused
+	 * rather than approximated — grouping by an expression and asking for representatives is a
+	 * combination this backend does not serve.
+	 */
+	private static void representativeGuard(GroupByStage group) throws QueryException {
+		if (!group.getKeys().isEmpty()) {
+			throw new QueryException("Representatives over an expression group key are not served by"
+					+ " the jpa backend (issue #259): the group key has to be addressable on the"
+					+ " outer query of the windowed representative read, which only a plain path is");
+		}
+	}
+
+	/**
+	 * Translates the representatives of a grouped query into a windowed query of its own
+	 * (issues #214, #259).
+	 * <p>
+	 * The window partitions by the group key and orders within the group, so both the membership
+	 * and the choice happen in the database; the second query exists because a row cell holding a
+	 * list of objects is not something one SQL result can carry (decision R1), not because
+	 * anything is filtered afterwards.
+	 * <p>
+	 * The grouped entity anchors the FROM clause itself — there is no parent to correlate
+	 * against, and EclipseLink refuses a derived table as the first declaration. Its columns are
+	 * named after the attributes they come from, because {@code sub.x} resolves as an attribute
+	 * path rather than as a select alias.
+	 *
+	 * @return the plan, or {@code null} when the query has no representatives
+	 */
+	private JpaRepresentativePlan representativePlan(Query query, QueryContext context)
+			throws QueryException {
+		if (query.getApply() == null) {
+			return null;
+		}
+		GroupByStage group = query.getApply().getStages().stream()
+				.filter(GroupByStage.class::isInstance).map(GroupByStage.class::cast)
+				.findFirst().orElse(null);
+		if (group == null || group.getRepresentatives() == null) {
+			return null;
+		}
+		RepresentativeSpec spec = group.getRepresentatives();
+		EClass rootEClass = query.getFrom();
+		EAttribute rootId = rootEClass.getEIDAttribute();
+		if (rootId == null) {
+			throw new QueryException("Representatives need an id attribute on '" + rootEClass.getName()
+					+ "' to address the windowed rows by");
+		}
+		Translation translation = new Translation(context);
+		translation.rootEClass = rootEClass;
+
+		List<String> partition = new ArrayList<>();
+		List<String> outerKeys = new ArrayList<>();
+		List<String> keyAliases = new ArrayList<>();
+		for (PropertyPath path : group.getPaths()) {
+			partition.add(rootPath(path));
+			outerKeys.add(pathFrom("t", path));
+			keyAliases.add(outputKeyOf(path));
+		}
+		List<String> orderFragments = new ArrayList<>();
+		List<String> orderArguments = new ArrayList<>();
+		for (OrderBy orderBy : spec.getOrderBy()) {
+			orderArguments.add(orderBy.getKey() != null
+					? translation.render(orderBy.getKey())
+					: rootPath(orderBy.getPath()));
+			orderFragments.add("?" + (orderBy.getDirection() == SortDirection.DESC ? " DESC" : " ASC"));
+		}
+		if (orderFragments.isEmpty()) {
+			// an unspecified window is legal per the model, but a non-deterministic one is not
+			// useful; the id keeps it stable
+			orderFragments.add("? ASC");
+			orderArguments.add(ALIAS + "." + rootId.getName());
+		}
+		List<String> windowArguments = new ArrayList<>(partition);
+		windowArguments.addAll(orderArguments);
+		String window = "SQL('ROW_NUMBER() OVER (PARTITION BY "
+				+ String.join(", ", java.util.Collections.nCopies(partition.size(), "?"))
+				+ " ORDER BY " + String.join(", ", orderFragments) + ")', "
+				+ String.join(", ", windowArguments) + ") AS rn";
+
+		String where = query.getPredicate() == null ? "" : translation.render(query.getPredicate());
+		String derived = "SELECT " + ALIAS + "." + rootId.getName() + " AS " + rootId.getName()
+				+ ", " + window + " FROM " + rootEClass.getName() + " " + ALIAS
+				+ (where.isEmpty() ? "" : " WHERE " + where);
+
+		int offset = constantOf(spec.getOffset(), context, 0);
+		int count = constantOf(spec.getCount(), context, 0);
+		if (count <= 0) {
+			throw new QueryException("A representative count must be a positive constant");
+		}
+		StringBuilder jpql = new StringBuilder("SELECT ");
+		outerKeys.forEach(key -> jpql.append(key).append(", "));
+		jpql.append("t FROM ").append(rootEClass.getName()).append(" t, (").append(derived)
+				.append(") sub WHERE t.").append(rootId.getName()).append(" = sub.")
+				.append(rootId.getName())
+				.append(" AND sub.rn > :").append(JpaRepresentativePlan.SKIP_PARAMETER)
+				.append(" AND sub.rn <= :").append(JpaRepresentativePlan.UPPER_PARAMETER)
+				// the window numbers the rows, it does not return them in that order: without an
+				// explicit sort the outer query hands them back however the plan happened to
+				// produce them, and the spec's orderBy IS the order within the group. Measured on
+				// PostgreSQL, which returned them reversed where h2 and MariaDB did not
+				.append(" ORDER BY sub.rn ASC");
+
+		Map<String, Object> parameters = new LinkedHashMap<>(translation.parameters);
+		parameters.put(JpaRepresentativePlan.SKIP_PARAMETER, offset);
+		parameters.put(JpaRepresentativePlan.UPPER_PARAMETER, offset + count);
+		return new JpaRepresentativePlan(jpql.toString(), parameters, spec.getAlias(), keyAliases);
+	}
+
+	/** A representative count/offset is a constant by contract — a literal or a bound parameter. */
+	private static int constantOf(Expression expression, QueryContext context, int fallback)
+			throws QueryException {
+		if (expression == null) {
+			return fallback;
+		}
+		Object value = ExpressionValues.resolve(expression, null, context.parameters(),
+				context.converter());
+		if (!(value instanceof Number number)) {
+			throw new QueryException("A representative count/offset must be a constant number, was "
+					+ value);
+		}
+		return number.intValue();
+	}
+
+	/** The output alias a plain group path carries in the result rows. */
+	private static String outputKeyOf(PropertyPath path) {
+		List<EStructuralFeature> segments = path.getSegments();
+		return segments.get(segments.size() - 1).getName();
 	}
 
 	/** {@code JOIN <prev>.<seg> <alias>} for every segment, the last one aliased {@code last}. */
@@ -725,10 +861,10 @@ public class JpaQueryProcessor implements QueryProcessor {
 				}
 			}
 			if (group != null && group.getRepresentatives() != null) {
-				// backstop — GROUP_REPRESENTATIVES is undeclared, validation refuses first
-				throw new QueryException("Representatives per group are not supported by the JPA"
-						+ " backend (feature GROUP_REPRESENTATIVES): JPQL has no window functions,"
-						+ " so the route — native SQL or a two-pass execution — is its own decision");
+				// served since issue #259 — a window in a derived table, run as its own query and
+				// stitched onto the groups by key (R1). The plan is built by the caller, which
+				// has the envelope; here we only make sure the shape is one we can address.
+				representativeGuard(group);
 			}
 			StringBuilder columns = new StringBuilder();
 			if (group != null) {

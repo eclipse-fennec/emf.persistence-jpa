@@ -93,6 +93,9 @@ class JpaWindowFunctionSpikeTest {
 		childClass.setName("Child");
 		addId(childClass, "cid");
 		addString(childClass, "label");
+		// group key of issue #259: an ordinary attribute, not an id
+		addString(childClass, "groupKey");
+		addString(childClass, "subKey");
 
 		parentClass = ecore.createEClass();
 		parentClass.setName("Parent");
@@ -288,6 +291,85 @@ class JpaWindowFunctionSpikeTest {
 		}
 	}
 
+	// ---------------------------------------------------------- issue #259: representatives
+
+	/**
+	 * Issue #259: the partition of a representative window is a <strong>group key</strong>, not an
+	 * id — an ordinary attribute, and the entity being grouped is its own anchor.
+	 * <p>
+	 * Unlike an expansion there is no parent to correlate against, so the target type takes the
+	 * first declaration of the FROM clause itself. The group key needs no column of its own: it
+	 * can be read off the returned entity.
+	 */
+	@Test
+	void aWindowCanPartitionByAnOrdinaryAttribute() {
+		EntityManager em = emf.createEntityManager();
+		try {
+			List<?> rows = em.createQuery(
+					"SELECT t FROM Child t, ("
+							+ "SELECT e.cid AS cid,"
+							+ " SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ?)', e.groupKey, e.label) AS rn"
+							+ " FROM Child e) sub"
+							+ " WHERE t.cid = sub.cid AND sub.rn <= :top")
+					.setParameter("top", 2)
+					.getResultList();
+
+			assertThat(rows)
+					.as("two representatives per group, and PARENTS groups")
+					.hasSize(PARENTS * 2);
+			assertThat(rows).allSatisfy(row -> assertThat(row).isInstanceOf(EObject.class));
+		} finally {
+			em.close();
+		}
+	}
+
+	/** A composite group key — two partition arguments rather than one. */
+	@Test
+	void aWindowCanPartitionBySeveralExpressions() {
+		EntityManager em = emf.createEntityManager();
+		try {
+			List<?> rows = em.createQuery(
+					"SELECT t FROM Child t, ("
+							+ "SELECT e.cid AS cid,"
+							+ " SQL('ROW_NUMBER() OVER (PARTITION BY ?, ? ORDER BY ?)',"
+							+ " e.groupKey, e.subKey, e.label) AS rn"
+							+ " FROM Child e) sub"
+							+ " WHERE t.cid = sub.cid AND sub.rn <= :top")
+					.setParameter("top", 1)
+					.getResultList();
+
+			assertThat(rows)
+					.as("one per (groupKey, subKey) pair — every child is its own pair here")
+					.hasSize(PARENTS * CHILDREN);
+		} finally {
+			em.close();
+		}
+	}
+
+	/**
+	 * A partition over a rendered <em>expression</em> rather than a bare path — what
+	 * {@code GROUP_EXPRESSION} allows a group key to be.
+	 */
+	@Test
+	void aWindowCanPartitionByARenderedExpression() {
+		EntityManager em = emf.createEntityManager();
+		try {
+			List<?> rows = em.createQuery(
+					"SELECT t FROM Child t, ("
+							+ "SELECT e.cid AS cid,"
+							+ " SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ?)',"
+							+ " UPPER(e.groupKey), e.label) AS rn"
+							+ " FROM Child e) sub"
+							+ " WHERE t.cid = sub.cid AND sub.rn <= :top")
+					.setParameter("top", 2)
+					.getResultList();
+
+			assertThat(rows).hasSize(PARENTS * 2);
+		} finally {
+			em.close();
+		}
+	}
+
 	/** {@code PARENTS} parents, each with {@code CHILDREN} children whose labels sort per parent. */
 	private void saveFixture() throws Exception {
 		ResourceSet writeSet = resourceSet();
@@ -303,6 +385,8 @@ class JpaWindowFunctionSpikeTest {
 				String label = "p" + p + "-c" + c;
 				child.eSet(childClass.getEStructuralFeature("cid"), label);
 				child.eSet(childClass.getEStructuralFeature("label"), label);
+				child.eSet(childClass.getEStructuralFeature("groupKey"), "g" + p);
+				child.eSet(childClass.getEStructuralFeature("subKey"), "s" + c);
 				children.add(child);
 			}
 			resource.getContents().add(parent);

@@ -91,7 +91,10 @@ public final class JpaFlavorCapabilities {
 					// EclipseLink's SQL() and filtered from the outside (issue #238, slice 3).
 					// Still JPQL — no native query and no second pass; measured on h2, PostgreSQL
 					// and MariaDB in JpaWindowFunctionSpikeTest.
-					QueryFeature.EXPAND_PAGE)
+					QueryFeature.EXPAND_PAGE,
+					// representatives per group, through the same window mechanic (issue #259);
+					// the earlier refusal rested on the premise that JPQL has no window functions
+					QueryFeature.GROUP_REPRESENTATIVES)
 			.maxFeaturePathDepth(-1)
 			.build();
 
