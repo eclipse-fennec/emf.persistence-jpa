@@ -47,10 +47,18 @@ public final class JpaQueryPlan implements QueryPlan {
 	private final List<String> rowAliases;
 	private final List<String> batchFetchPaths;
 	private final boolean inlineLiterals;
+	private final List<JpaExpandPlan> expandPlans;
 
 	JpaQueryPlan(Query source, QueryShape shape, String jpql, Map<String, Object> parameters, int skip, int limit,
 			List<String> rowKeys, List<String> rowAliases, List<String> batchFetchPaths,
 			boolean inlineLiterals) {
+		this(source, shape, jpql, parameters, skip, limit, rowKeys, rowAliases, batchFetchPaths,
+				inlineLiterals, List.of());
+	}
+
+	JpaQueryPlan(Query source, QueryShape shape, String jpql, Map<String, Object> parameters, int skip, int limit,
+			List<String> rowKeys, List<String> rowAliases, List<String> batchFetchPaths,
+			boolean inlineLiterals, List<JpaExpandPlan> expandPlans) {
 		this.source = Objects.requireNonNull(source, "source must not be null");
 		this.shape = Objects.requireNonNull(shape, "shape must not be null");
 		this.jpql = Objects.requireNonNull(jpql, "jpql must not be null");
@@ -64,6 +72,7 @@ public final class JpaQueryPlan implements QueryPlan {
 				: Collections.unmodifiableList(new ArrayList<>(rowAliases));
 		this.batchFetchPaths = batchFetchPaths == null ? List.of() : List.copyOf(batchFetchPaths);
 		this.inlineLiterals = inlineLiterals;
+		this.expandPlans = expandPlans == null ? List.of() : List.copyOf(expandPlans);
 	}
 
 	@Override
@@ -149,6 +158,17 @@ public final class JpaQueryPlan implements QueryPlan {
 	 *
 	 * @return the batch-fetch paths; empty when every expand level fetch-joins
 	 */
+	/**
+	 * The filtered expansions, each a keyed query of its own (issue #238). Plain expansions are
+	 * not here — they ride on {@link #batchFetchPaths()} and the fetch joins, which fetch
+	 * everything the reference holds.
+	 *
+	 * @return the expansion plans, in envelope order; empty when nothing is filtered
+	 */
+	public List<JpaExpandPlan> expandPlans() {
+		return expandPlans;
+	}
+
 	public List<String> batchFetchPaths() {
 		return batchFetchPaths;
 	}

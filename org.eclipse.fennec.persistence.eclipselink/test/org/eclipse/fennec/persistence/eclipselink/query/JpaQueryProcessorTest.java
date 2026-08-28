@@ -58,6 +58,7 @@ class JpaQueryProcessorTest {
 	private final JpaQueryProcessor processor = new JpaQueryProcessor();
 
 	private EClass person;
+	private EAttribute personId;
 	private EAttribute name;
 	private EAttribute age;
 	private EReference addresses;
@@ -72,6 +73,12 @@ class JpaQueryProcessorTest {
 		EcoreFactory ecore = EcoreFactory.eINSTANCE;
 		person = ecore.createEClass();
 		person.setName("Person");
+		// a filtered expand keys its second query by the root id (issue #238)
+		personId = ecore.createEAttribute();
+		personId.setName("id");
+		personId.setEType(EcorePackage.Literals.ESTRING);
+		personId.setID(true);
+		person.getEStructuralFeatures().add(personId);
 		name = ecore.createEAttribute();
 		name.setName("name");
 		name.setEType(EcorePackage.Literals.ESTRING);
@@ -597,23 +604,49 @@ class JpaQueryProcessorTest {
 	}
 
 	/**
-	 * Slice 1 of #238 carries the shape only. A caller that bypasses {@code validate()} — which
-	 * would refuse this against the undeclared EXPAND_FILTER/EXPAND_PAGE — must still get a
-	 * refusal here, never a plan that silently drops the options and returns the wrong rows.
+	 * Per-parent paging is slice 3. A caller bypassing {@code validate()} — which refuses it
+	 * against the undeclared EXPAND_PAGE — must still get a refusal here, never a plan that
+	 * silently drops the option and returns the wrong children.
 	 */
 	@Test
-	void expandOptionsAreRefusedByTheTranslatorToo() throws QueryException {
+	void expandPagingIsRefusedByTheTranslatorToo() {
+		Query paged = QueryBuilder.from(person).expand(Expands.of(addresses).top(5).build()).build();
+
+		assertThatThrownBy(() -> translate(paged))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("expand paging");
+	}
+
+	/**
+	 * Issue #238: a filtered expansion becomes a keyed second query. The target carries the
+	 * {@code e} alias so the filter — which addresses the expanded type — translates through the
+	 * ordinary path; the root is joined in under its own alias and keys the query.
+	 */
+	@Test
+	void aFilteredExpansionBecomesAKeyedSecondQuery() throws QueryException {
 		Query filtered = QueryBuilder.from(person)
 				.expand(Expands.of(addresses).filter(Expressions.path(street).eq("Main")).build())
 				.build();
-		assertThatThrownBy(() -> translate(filtered))
-				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("expand query options");
 
-		Query paged = QueryBuilder.from(person).expand(Expands.of(addresses).top(5).build()).build();
-		assertThatThrownBy(() -> translate(paged))
-				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("expand query options");
+		JpaQueryPlan plan = translate(filtered);
+
+		assertThat(plan.expandPlans()).hasSize(1);
+		JpaExpandPlan expand = plan.expandPlans().get(0);
+		assertThat(expand.jpql()).contains("FROM Person p JOIN p.addresses e")
+				.contains("WHERE p.")
+				.contains("IN :expandKeys AND (e.street = :p0)");
+		assertThat(expand.parameters()).containsEntry("p0", "Main");
+		assertThat(expand.target()).isEqualTo(addresses);
+		assertThat(plan.jpql())
+				.as("the main query is untouched — the filter never belongs to the root")
+				.doesNotContain("street");
+	}
+
+	/** A plain expansion produces no second query: the fetch joins of #95 already serve it. */
+	@Test
+	void aPlainExpansionProducesNoSecondQuery() throws QueryException {
+		assertThat(translate(QueryBuilder.from(person).expand(addresses).build()).expandPlans())
+				.isEmpty();
 	}
 
 	/** The plain fetch hint is untouched by #238 — same JPQL as before the type changed. */

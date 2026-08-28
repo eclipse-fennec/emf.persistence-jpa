@@ -82,7 +82,11 @@ public final class JpaFlavorCapabilities {
 					// $root resolves to a value before translation (issue #241) — one keyed
 					// read, so this is a capability of the resource rather than of JPQL
 					QueryFeature.ROOT_REFERENCE,
-					QueryFeature.EXPAND)
+					QueryFeature.EXPAND,
+					// a filtered expansion becomes a keyed second query per chunk of roots, and
+					// resolves exactly the proxies it matched (issue #238). EXPAND_PAGE stays
+					// undeclared until the window-function slice serves per-parent top/skip.
+					QueryFeature.EXPAND_FILTER)
 			.maxFeaturePathDepth(-1)
 			.build();
 

@@ -65,6 +65,7 @@ import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.TopStage;
+import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.model.stream.ChangeEntry;
@@ -1874,6 +1875,52 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(bestFriend.eGet(personName)).isEqualTo("Alice");
 			EObject employer = resolved((EObject) bestFriend.eGet(personEmployer), readSet);
 			assertThat(employer.eGet(companyName)).isEqualTo("Data In Motion");
+		}
+	}
+
+	/**
+	 * Issue #238: a filtered expansion resolves only the children the filter matched — and
+	 * leaves the collection complete.
+	 * <p>
+	 * That second half is decision D1 and the reason the construct is safe. An expansion selects
+	 * which <em>proxies</em> get resolved, never which entries the feature holds: Bob keeps both
+	 * addresses whatever the filter says, so the object cannot misreport the store and writing it
+	 * back cannot delete the child that did not match. What the expansion delivered is exactly
+	 * what stopped being a proxy (D1b).
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.EXPAND_FILTER,
+			QueryFeature.WHERE_EQ, QueryFeature.WHERE_STRING_MATCH })
+	public void queryExpandFilterResolvesOnlyTheMatchingChildren() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject carol = newPerson(3, "Carol", 50);
+		EObject bob = newPerson(2, "Bob", 40);
+		listOf(bob, personFriends).add(alice);
+		listOf(bob, personFriends).add(carol);
+		save(createBackendResourceSet(), "Person", alice, carol, bob);
+
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("Bob"))
+				.expand(Expands.of(personFriends)
+						.filter(Expressions.path(personName).eq("Alice"))
+						.build())
+				.build();
+
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet).query(query)) {
+			List<EObject> persons = result.objects().toList();
+			assertThat(persons).hasSize(1);
+			List<EObject> friends = listOf(persons.get(0), personFriends);
+
+			assertThat(friends)
+					.as("D1: the collection keeps every child the store has, filter or not")
+					.hasSize(2);
+			assertThat(friends.stream().filter(friend -> !friend.eIsProxy()))
+					.as("D1b: exactly the matching child was resolved")
+					.hasSize(1);
+			EObject resolvedOne = friends.stream().filter(friend -> !friend.eIsProxy())
+					.findFirst().orElseThrow();
+			assertThat(resolvedOne.eGet(personName)).isEqualTo("Alice");
 		}
 	}
 

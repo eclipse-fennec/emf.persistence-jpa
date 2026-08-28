@@ -243,8 +243,68 @@ public class JpaQueryProcessor implements QueryProcessor {
 			skip = combinedSkip;
 			top = combinedTop;
 		}
+		List<JpaExpandPlan> expandPlans = expandPlans(query, context);
 		return new JpaQueryPlan(query, shape, jpql.toString(), translation.parameters,
-				skip, top, rowKeys, rowAliases, batchFetchPaths, translation.requiresInlineLiterals);
+				skip, top, rowKeys, rowAliases, batchFetchPaths, translation.requiresInlineLiterals,
+				expandPlans);
+	}
+
+	/**
+	 * Translates every filtered expansion into a keyed query of its own (issue #238).
+	 * <p>
+	 * A plain expansion is not here: it rides on the fetch joins and batch-fetch hints of issue
+	 * #95, which fetch everything the reference holds. A filter cannot ride along — the hint has
+	 * no room for a predicate — so it becomes a second query, run once per chunk of roots:
+	 *
+	 * <pre>
+	 * SELECT e FROM Person p JOIN p.addresses e WHERE p.id IN :expandKeys AND (e.street = :p0)
+	 * </pre>
+	 *
+	 * <strong>The target carries {@code ALIAS}, not the root.</strong> Every path in the
+	 * expression IR renders against {@code ALIAS}, and the filter addresses the expanded type —
+	 * so making the target the alias lets it translate through the ordinary
+	 * {@link Translation} with nothing changed there. The root only appears as the join source
+	 * and in the key predicate, both built here by hand.
+	 *
+	 * @param query the envelope
+	 * @param context the query context
+	 * @return one plan per filtered expansion, in envelope order
+	 * @throws QueryException if a filter cannot be translated, or the root has no id attribute
+	 */
+	private List<JpaExpandPlan> expandPlans(Query query, QueryContext context) throws QueryException {
+		List<JpaExpandPlan> plans = new ArrayList<>();
+		for (Expand expansion : query.getExpand()) {
+			if (expansion.getFilter() == null) {
+				continue;
+			}
+			List<EReference> path = new ArrayList<>();
+			for (EStructuralFeature segment : expansion.getPath().getSegments()) {
+				path.add((EReference) segment);
+			}
+			EAttribute rootId = query.getFrom().getEIDAttribute();
+			if (rootId == null) {
+				throw new QueryException("A filtered expand needs an id attribute on the root type '"
+						+ query.getFrom().getName() + "' to key the second query by");
+			}
+			Translation filterTranslation = new Translation(context);
+			filterTranslation.rootEClass = path.get(path.size() - 1).getEReferenceType();
+			String filter = filterTranslation.render(expansion.getFilter());
+
+			StringBuilder jpql = new StringBuilder("SELECT ").append(ALIAS)
+					.append(" FROM ").append(query.getFrom().getName()).append(" p");
+			String previous = "p";
+			for (int i = 0; i < path.size(); i++) {
+				String alias = i == path.size() - 1 ? ALIAS : "x" + i;
+				jpql.append(" JOIN ").append(previous).append('.').append(path.get(i).getName())
+						.append(' ').append(alias);
+				previous = alias;
+			}
+			jpql.append(" WHERE p.").append(rootId.getName())
+					.append(" IN :").append(JpaExpandPlan.KEY_PARAMETER)
+					.append(" AND (").append(filter).append(')');
+			plans.add(new JpaExpandPlan(path, jpql.toString(), filterTranslation.parameters));
+		}
+		return plans;
 	}
 
 	/** The JPQL fragments of a translated pipeline (issue #82). */
@@ -312,15 +372,14 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (expand.getCastBase() != null) {
 				throw new QueryException("expand does not support cast paths (castBase)");
 			}
-			if (expansion.getFilter() != null || !expansion.getOrderBy().isEmpty()
-					|| expansion.getTop() > 0 || expansion.getSkip() > 0
-					|| !expansion.getExpand().isEmpty()) {
-				// slice 1 of #238 carries the shape only: validate() refuses these against
-				// EXPAND_FILTER/EXPAND_PAGE, which this backend does not declare yet. Guarded
-				// here too so a caller bypassing validate() gets a refusal rather than a plan
-				// that silently drops the options.
-				throw new QueryException("expand query options are not served by the jpa backend yet"
-						+ " (issue #238)");
+			if (!expansion.getOrderBy().isEmpty() || expansion.getTop() > 0
+					|| expansion.getSkip() > 0 || !expansion.getExpand().isEmpty()) {
+				// per-parent paging and nesting are slice 3: validate() refuses them against the
+				// undeclared EXPAND_PAGE, and the guard repeats it here so a caller bypassing
+				// validation gets a refusal rather than a plan that silently drops them. The
+				// filter is served (issue #238) and translated in expandPlans().
+				throw new QueryException("expand paging and nesting are not served by the jpa"
+						+ " backend yet (issue #238)");
 			}
 			String parentAlias = ALIAS;
 			StringBuilder dotted = new StringBuilder(ALIAS);

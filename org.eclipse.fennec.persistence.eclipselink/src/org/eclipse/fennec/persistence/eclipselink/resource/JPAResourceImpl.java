@@ -26,6 +26,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
@@ -48,6 +49,7 @@ import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
@@ -142,6 +144,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	private static final Logger LOG = Logger.getLogger(JPAResourceImpl.class.getName());
 
 	/** Diagnostic source of this resource layer (issue #19): the bundle namespace. */
+	/** Roots per filtered-expand round trip (issue #238). */
+	private static final int EXPAND_CHUNK = 256;
+
 	static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.eclipselink";
 
 	private final JPAUnit unit;
@@ -2004,9 +2009,10 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				});
 			}
 			if (plan.shape() == QueryShape.OBJECTS) {
-				return QueryResults.objects(rows
+				Stream<EObject> objects = rows
 						.filter(EObject.class::isInstance)
-						.map(EObject.class::cast));
+						.map(EObject.class::cast);
+				return QueryResults.objects(expanding(objects, plan, em));
 			}
 			return QueryResults.rows(plan.shape(), rows.map(row -> toRow(row, plan)));
 		} catch (RuntimeException e) {
@@ -2016,6 +2022,61 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					"Failed to execute query on '" + entityName + "': " + e.getMessage(), getURI(), e));
 			throw new IOException("Failed to execute query on '" + entityName + "'", e);
 		}
+	}
+
+	/**
+	 * Wraps the object stream so each chunk has its filtered expansions resolved before the
+	 * chunk is emitted (issue #238).
+	 * <p>
+	 * Chunked for the same reason as the mongo side (issue #254): a query over a million rows
+	 * must not materialise a million roots to expand them, and the caller's stream has to stay
+	 * lazy. Plain expansions never come here — they ride on the fetch joins and batch-fetch
+	 * hints of issue #95.
+	 *
+	 * @param objects the result objects
+	 * @param plan the translated query
+	 * @param em the entity manager the query runs on
+	 * @return the stream, expanded chunk by chunk; the original if nothing is filtered
+	 */
+	private Stream<EObject> expanding(Stream<EObject> objects, JpaQueryPlan plan, EntityManager em) {
+		if (plan.expandPlans().isEmpty()) {
+			return objects;
+		}
+		ResourceSet resourceSet = getResourceSet();
+		Iterator<EObject> source = objects.iterator();
+		Iterator<EObject> expanded = new Iterator<>() {
+
+			private final List<EObject> chunk = new ArrayList<>();
+			private int position;
+
+			@Override
+			public boolean hasNext() {
+				if (position < chunk.size()) {
+					return true;
+				}
+				chunk.clear();
+				position = 0;
+				while (chunk.size() < EXPAND_CHUNK && source.hasNext()) {
+					chunk.add(source.next());
+				}
+				if (chunk.isEmpty()) {
+					return false;
+				}
+				JpaExpansions.resolve(chunk, plan.expandPlans(), em, resourceSet);
+				return true;
+			}
+
+			@Override
+			public EObject next() {
+				if (!hasNext()) {
+					throw new NoSuchElementException();
+				}
+				return chunk.get(position++);
+			}
+		};
+		return StreamSupport
+				.stream(Spliterators.spliteratorUnknownSize(expanded, Spliterator.ORDERED), false)
+				.onClose(objects::close);
 	}
 
 	private Class<?> resultType(JpaQueryPlan plan) {
