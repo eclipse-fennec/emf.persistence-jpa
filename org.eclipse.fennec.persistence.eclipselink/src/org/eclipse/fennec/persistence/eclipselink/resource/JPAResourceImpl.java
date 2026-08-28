@@ -82,6 +82,7 @@ import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueries;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryPlan;
+import org.eclipse.fennec.persistence.eclipselink.query.JpaRepresentativePlan;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
@@ -2014,7 +2015,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						.map(EObject.class::cast);
 				return QueryResults.objects(expanding(objects, plan, em));
 			}
-			return QueryResults.rows(plan.shape(), rows.map(row -> toRow(row, plan)));
+			Map<List<Object>, List<EObject>> representatives = readRepresentatives(plan, em);
+			return QueryResults.rows(plan.shape(),
+					rows.map(row -> toRow(row, plan, representatives)));
 		} catch (RuntimeException e) {
 			em.close();
 			lease.close();
@@ -2101,14 +2104,77 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		return StreamSupport.stream(rows, false);
 	}
 
-	private QueryResultRow toRow(Object row, JpaQueryPlan plan) {
+	private QueryResultRow toRow(Object row, JpaQueryPlan plan,
+			Map<List<Object>, List<EObject>> representatives) {
 		List<Object> values;
 		if (row instanceof Object[] cells) {
 			values = Arrays.asList(cells);
 		} else {
 			values = Collections.singletonList(row);
 		}
-		return QueryResultRows.of(plan.rowAliases(), values);
+		JpaRepresentativePlan spec = plan.representatives();
+		if (spec == null) {
+			return QueryResultRows.of(plan.rowAliases(), values);
+		}
+		// R1: the representatives are one more cell of the group's row, keyed by the very values
+		// the group keys already occupy. A group whose window is empty keeps its row and gets an
+		// empty list — never null, so a consumer needs no special case.
+		List<Object> key = new ArrayList<>();
+		for (String alias : spec.groupKeyAliases()) {
+			int index = plan.rowAliases().indexOf(alias);
+			key.add(index < 0 || index >= values.size() ? null : values.get(index));
+		}
+		List<String> aliases = new ArrayList<>(plan.rowAliases());
+		List<Object> cells = new ArrayList<>(values);
+		aliases.add(spec.alias());
+		cells.add(representatives.getOrDefault(normaliseKey(key), List.of()));
+		return QueryResultRows.of(aliases, cells);
+	}
+
+	/**
+	 * Runs the windowed representative read and groups what comes back by group key
+	 * (issues #214, #259).
+	 * <p>
+	 * Each row is the group key values followed by the representative, so the map is keyed by
+	 * exactly what the group rows carry in their own key cells. Numbers are normalised, because
+	 * the two queries can return the same key as different numeric types — a group key read as
+	 * {@code Integer} in one and {@code Long} in the other would never match.
+	 *
+	 * @return representatives by group key; empty when the query asks for none
+	 */
+	private Map<List<Object>, List<EObject>> readRepresentatives(JpaQueryPlan plan, EntityManager em) {
+		JpaRepresentativePlan spec = plan.representatives();
+		if (spec == null) {
+			return Map.of();
+		}
+		jakarta.persistence.Query query = em.createQuery(spec.jpql());
+		spec.parameters().forEach(query::setParameter);
+		int keyCount = spec.groupKeyAliases().size();
+		Map<List<Object>, List<EObject>> byGroup = new LinkedHashMap<>();
+		for (Object row : query.getResultList()) {
+			Object[] cells = row instanceof Object[] array ? array : new Object[] { row };
+			if (cells.length < keyCount + 1) {
+				continue;
+			}
+			List<Object> key = new ArrayList<>();
+			for (int index = 0; index < keyCount; index++) {
+				key.add(cells[index]);
+			}
+			if (cells[keyCount] instanceof EObject representative) {
+				byGroup.computeIfAbsent(normaliseKey(key), unused -> new ArrayList<>())
+						.add(representative);
+			}
+		}
+		return byGroup;
+	}
+
+	/** Numbers compare by value, so the two reads agree on a key whatever width they used. */
+	private static List<Object> normaliseKey(List<Object> key) {
+		List<Object> normalised = new ArrayList<>(key.size());
+		for (Object value : key) {
+			normalised.add(value instanceof Number number ? number.toString() : value);
+		}
+		return normalised;
 	}
 
 	@Override
