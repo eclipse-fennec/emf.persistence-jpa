@@ -6,7 +6,7 @@ resource layer that turns EMF operations into MongoDB operations, and the BSON c
 bridge that maps EObjects to documents. This is the Mongo counterpart to the
 [OSGi Architecture](osgi-architecture.md) document, which covers the JPA side. Design
 history and the original decision record live in the
-[Mongo persistence working document](discussion-mongo-persistence.md).
+Mongo persistence working document.
 
 The backend implements the same backend-agnostic contract as JPA —
 `PersistenceResource` and `StreamingResource` from `org.eclipse.fennec.persistence` —
@@ -72,7 +72,7 @@ Resolves a `MongoDatabase` handle (`client.getDatabase(name)` — again no I/O) 
 `mongo.database.alias` property. It contains **no liveness code of its own**: its static
 `@Reference` to the gated client gives it correct appear/disappear behavior for free.
 This is the DS reference cascade described in the
-[Connection Liveness concept](concept-connection-liveness.md) — gate the lowest service
+Connection Liveness concept — gate the lowest service
 you own, let DS propagate the truth upward.
 
 ### Resource layer wiring
@@ -97,7 +97,7 @@ delegates to — and as the non-OSGi entry point: plain-Java consumers register 
 ## Connection liveness
 
 The full model — state machine, `Condition` services, runtime DTOs — is specified in
-the [Connection Liveness concept](concept-connection-liveness.md); this section only
+the Connection Liveness concept; this section only
 summarizes the Mongo-specific integration.
 
 The `LivenessGate` (shared, backend-agnostic, in

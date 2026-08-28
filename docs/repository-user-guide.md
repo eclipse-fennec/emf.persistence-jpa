@@ -47,7 +47,7 @@ the same contract as `PersistenceResource.capabilities()`.
 One factory configuration = one repository, bound to one backend location. The flavour
 bundles resolve the backend through a standard DS reference target, so the repository
 appears exactly when its backend is available and disappears with it (including
-[connection-liveness](concept-connection-liveness.md) gating on the Mongo side — the
+connection-liveness gating on the Mongo side — the
 `MongoDatabase` service is already gated, the repository inherits that through the DS
 cascade).
 

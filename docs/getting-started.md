@@ -765,5 +765,5 @@ view.
 
 - [`repository-user-guide.md`](repository-user-guide.md) — the repository facade in full: interfaces, queries, prepared queries, both flavours
 - [`configuration-reference.md`](configuration-reference.md) — full property catalogue (both modes)
-- [`REVIEW.md`](REVIEW.md) — structured review and status of every work package
+- `REVIEW.md` — structured review and status of every work package
 - [`development-guide.md`](development-guide.md) — internals, session continuity, contribution notes
