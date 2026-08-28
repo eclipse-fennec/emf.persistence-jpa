@@ -42,6 +42,14 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//OrderBy/key"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//OrderBy/direction"/>
     </genClasses>
+    <genClasses ecoreClass="query.ecore#//Expand">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Expand/path"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Expand/filter"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Expand/orderBy"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Expand/top"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//Expand/skip"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Expand/expand"/>
+    </genClasses>
     <genClasses ecoreClass="query.ecore#//Selection">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Selection/path"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Selection/key"/>

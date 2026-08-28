@@ -88,6 +88,12 @@ public class QuerySwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case QueryPackage.EXPAND: {
+				Expand expand = (Expand)theEObject;
+				T result = caseExpand(expand);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case QueryPackage.SELECTION: {
 				Selection selection = (Selection)theEObject;
 				T result = caseSelection(selection);
@@ -202,6 +208,21 @@ public class QuerySwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseOrderBy(OrderBy object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Expand</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Expand</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseExpand(Expand object) {
 		return null;
 	}
 

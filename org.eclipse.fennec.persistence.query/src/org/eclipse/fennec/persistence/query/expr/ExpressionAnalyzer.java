@@ -20,7 +20,9 @@ import java.time.temporal.Temporal;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
@@ -69,6 +71,7 @@ import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.Computation;
 import org.eclipse.fennec.model.query.ComputeStage;
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
@@ -174,7 +177,7 @@ public final class ExpressionAnalyzer {
 				invalidAggregate, invalidRepresentatives);
 		if (!query.getExpand().isEmpty()) {
 			features.add(QueryFeature.EXPAND);
-			query.getExpand().forEach(expand -> path(expand, features, maxDepth));
+			query.getExpand().forEach(expand -> expansion(expand, features, maxDepth, zeroDivision));
 		}
 		if (query.getTop() > 0) {
 			features.add(QueryFeature.LIMIT);
@@ -207,7 +210,8 @@ public final class ExpressionAnalyzer {
 				? scanIntervalStructure(query) : null;
 		return new QueryAnalysis(features, maxDepth[0], shape, zeroDivision[0], invalidAggregate[0],
 				invalidSort[0], invalidGeo, invalidStringMatch, invalidMapValue, invalidProjection[0],
-				invalidInterval, invalidRepresentatives[0], scanPipelineShape(query.getApply()));
+				invalidInterval, invalidRepresentatives[0], scanPipelineShape(query.getApply()),
+				scanExpandShape(query.getExpand()));
 	}
 
 	/**
@@ -798,6 +802,79 @@ public final class ExpressionAnalyzer {
 
 	private static void path(PropertyPath path, Set<QueryFeature> features, int[] maxDepth) {
 		track(depthOf(path), features, maxDepth);
+	}
+
+	/**
+	 * Structural findings for expansions (issue #238), recursing into nested ones.
+	 * <p>
+	 * One rule, and it is contract rather than capability — no backend declares its way out:
+	 * an {@code orderBy} is served only together with {@code top} or {@code skip}. Under the
+	 * resolution semantics an expansion selects which proxies of a reference get resolved and
+	 * never reorders the feature, whose order belongs to the store; ordering is meaningful
+	 * only as the selector that decides <em>which</em> children paging picks. Standing alone it
+	 * could promise nothing anyone delivers, so it is refused rather than silently ignored —
+	 * the line of #239 and #233.
+	 *
+	 * @param expansions the expansions of the envelope
+	 * @return the finding, or {@code null} if every expansion is well-formed
+	 */
+	private static String scanExpandShape(List<Expand> expansions) {
+		for (Expand expand : expansions) {
+			if (!expand.getOrderBy().isEmpty() && expand.getTop() <= 0 && expand.getSkip() <= 0) {
+				return "Expansion '" + pathName(expand.getPath())
+						+ "' orders without top or skip — an expansion selects which children are"
+						+ " resolved and never reorders the feature, so orderBy is served only as"
+						+ " the selector for paging";
+			}
+			String nested = scanExpandShape(expand.getExpand());
+			if (nested != null) {
+				return nested;
+			}
+		}
+		return null;
+	}
+
+	/** Dotted rendering of an expansion path, for diagnostics. */
+	private static String pathName(PropertyPath path) {
+		if (path == null || path.getSegments().isEmpty()) {
+			return "<empty>";
+		}
+		return path.getSegments().stream().map(EStructuralFeature::getName)
+				.collect(Collectors.joining("."));
+	}
+
+	/**
+	 * Flags one expansion and its options (issue #238), recursing into nested ones.
+	 * <p>
+	 * A bare path is the plain fetch hint and flags nothing beyond {@code EXPAND}. A filter
+	 * adds {@code EXPAND_FILTER}; {@code top}/{@code skip} add {@code EXPAND_PAGE}. Its
+	 * {@code orderBy} rides on {@code EXPAND_PAGE} too — under the resolution semantics it is
+	 * the selector that makes paging meaningful and is never a delivered order, so it is
+	 * flagged whether or not paging accompanies it. Whether standing alone is legal at all is
+	 * the validator's call, not the analyzer's.
+	 * <p>
+	 * The filter is walked like any other predicate so the features it uses (and a division by
+	 * a literal zero) are flagged as they would be in {@code where}.
+	 */
+	private static void expansion(Expand expand, Set<QueryFeature> features, int[] maxDepth,
+			boolean[] zeroDivision) {
+		path(expand.getPath(), features, maxDepth);
+		if (expand.getFilter() != null) {
+			features.add(QueryFeature.EXPAND_FILTER);
+			walk(expand.getFilter(), features, maxDepth, zeroDivision);
+		}
+		if (expand.getTop() > 0 || expand.getSkip() > 0 || !expand.getOrderBy().isEmpty()) {
+			features.add(QueryFeature.EXPAND_PAGE);
+		}
+		expand.getOrderBy().forEach(orderBy -> {
+			if (orderBy.getPath() != null) {
+				path(orderBy.getPath(), features, maxDepth);
+			}
+			if (orderBy.getKey() != null) {
+				walk(orderBy.getKey(), features, maxDepth, zeroDivision);
+			}
+		});
+		expand.getExpand().forEach(nested -> expansion(nested, features, maxDepth, zeroDivision));
 	}
 
 	private static void track(int depth, Set<QueryFeature> features, int[] maxDepth) {

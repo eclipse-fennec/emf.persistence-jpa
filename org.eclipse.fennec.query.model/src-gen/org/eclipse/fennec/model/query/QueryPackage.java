@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:b3a4a8fd5940e13f2a8e73d960c3176b7e854a36cf241a87076d8c6b1ad0e24c", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:cf8c537c55f42c97aa9482a4e803417ef4f89e10c6128b01a65e856826da1c48", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -287,6 +287,88 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int ORDER_BY_OPERATION_COUNT = 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.ExpandImpl <em>Expand</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.impl.ExpandImpl
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getExpand()
+	 * @generated
+	 */
+	int EXPAND = 2;
+
+	/**
+	 * The feature id for the '<em><b>Path</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND__PATH = 0;
+
+	/**
+	 * The feature id for the '<em><b>Filter</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND__FILTER = 1;
+
+	/**
+	 * The feature id for the '<em><b>Order By</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND__ORDER_BY = 2;
+
+	/**
+	 * The feature id for the '<em><b>Top</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND__TOP = 3;
+
+	/**
+	 * The feature id for the '<em><b>Skip</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND__SKIP = 4;
+
+	/**
+	 * The feature id for the '<em><b>Expand</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND__EXPAND = 5;
+
+	/**
+	 * The number of structural features of the '<em>Expand</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND_FEATURE_COUNT = 6;
+
+	/**
+	 * The number of operations of the '<em>Expand</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EXPAND_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.impl.SelectionImpl <em>Selection</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -294,7 +376,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSelection()
 	 * @generated
 	 */
-	int SELECTION = 2;
+	int SELECTION = 3;
 
 	/**
 	 * The feature id for the '<em><b>Path</b></em>' containment reference.
@@ -349,7 +431,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getParameterDecl()
 	 * @generated
 	 */
-	int PARAMETER_DECL = 3;
+	int PARAMETER_DECL = 4;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -395,7 +477,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getPipeline()
 	 * @generated
 	 */
-	int PIPELINE = 4;
+	int PIPELINE = 5;
 
 	/**
 	 * The feature id for the '<em><b>Stages</b></em>' containment reference list.
@@ -432,7 +514,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getStage()
 	 * @generated
 	 */
-	int STAGE = 5;
+	int STAGE = 6;
 
 	/**
 	 * The number of structural features of the '<em>Stage</em>' class.
@@ -460,7 +542,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getFilterStage()
 	 * @generated
 	 */
-	int FILTER_STAGE = 6;
+	int FILTER_STAGE = 7;
 
 	/**
 	 * The feature id for the '<em><b>Predicate</b></em>' containment reference.
@@ -497,7 +579,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGroupByStage()
 	 * @generated
 	 */
-	int GROUP_BY_STAGE = 7;
+	int GROUP_BY_STAGE = 8;
 
 	/**
 	 * The feature id for the '<em><b>Paths</b></em>' containment reference list.
@@ -561,7 +643,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getRepresentativeSpec()
 	 * @generated
 	 */
-	int REPRESENTATIVE_SPEC = 8;
+	int REPRESENTATIVE_SPEC = 9;
 
 	/**
 	 * The feature id for the '<em><b>Alias</b></em>' attribute.
@@ -625,7 +707,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getGroupKey()
 	 * @generated
 	 */
-	int GROUP_KEY = 9;
+	int GROUP_KEY = 10;
 
 	/**
 	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
@@ -671,7 +753,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregate()
 	 * @generated
 	 */
-	int AGGREGATE = 10;
+	int AGGREGATE = 11;
 
 	/**
 	 * The feature id for the '<em><b>Path</b></em>' containment reference.
@@ -735,7 +817,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getTopStage()
 	 * @generated
 	 */
-	int TOP_STAGE = 11;
+	int TOP_STAGE = 12;
 
 	/**
 	 * The feature id for the '<em><b>Count</b></em>' attribute.
@@ -772,7 +854,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSkipStage()
 	 * @generated
 	 */
-	int SKIP_STAGE = 12;
+	int SKIP_STAGE = 13;
 
 	/**
 	 * The feature id for the '<em><b>Count</b></em>' attribute.
@@ -809,7 +891,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputeStage()
 	 * @generated
 	 */
-	int COMPUTE_STAGE = 13;
+	int COMPUTE_STAGE = 14;
 
 	/**
 	 * The feature id for the '<em><b>Computations</b></em>' containment reference list.
@@ -846,7 +928,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getComputation()
 	 * @generated
 	 */
-	int COMPUTATION = 14;
+	int COMPUTATION = 15;
 
 	/**
 	 * The feature id for the '<em><b>Expression</b></em>' containment reference.
@@ -892,7 +974,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getSortDirection()
 	 * @generated
 	 */
-	int SORT_DIRECTION = 15;
+	int SORT_DIRECTION = 16;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}' enum.
@@ -902,7 +984,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregateMethod()
 	 * @generated
 	 */
-	int AGGREGATE_METHOD = 16;
+	int AGGREGATE_METHOD = 17;
 
 
 	/**
@@ -1111,6 +1193,82 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getOrderBy_Direction();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Expand <em>Expand</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Expand</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand
+	 * @generated
+	 */
+	EClass getExpand();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.Expand#getPath <em>Path</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Path</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand#getPath()
+	 * @see #getExpand()
+	 * @generated
+	 */
+	EReference getExpand_Path();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.model.query.Expand#getFilter <em>Filter</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Filter</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand#getFilter()
+	 * @see #getExpand()
+	 * @generated
+	 */
+	EReference getExpand_Filter();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.Expand#getOrderBy <em>Order By</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Order By</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand#getOrderBy()
+	 * @see #getExpand()
+	 * @generated
+	 */
+	EReference getExpand_OrderBy();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.Expand#getTop <em>Top</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Top</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand#getTop()
+	 * @see #getExpand()
+	 * @generated
+	 */
+	EAttribute getExpand_Top();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.Expand#getSkip <em>Skip</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Skip</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand#getSkip()
+	 * @see #getExpand()
+	 * @generated
+	 */
+	EAttribute getExpand_Skip();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.query.Expand#getExpand <em>Expand</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Expand</em>'.
+	 * @see org.eclipse.fennec.model.query.Expand#getExpand()
+	 * @see #getExpand()
+	 * @generated
+	 */
+	EReference getExpand_Expand();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Selection <em>Selection</em>}'.
@@ -1726,6 +1884,64 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute ORDER_BY__DIRECTION = eINSTANCE.getOrderBy_Direction();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.ExpandImpl <em>Expand</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.impl.ExpandImpl
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getExpand()
+		 * @generated
+		 */
+		EClass EXPAND = eINSTANCE.getExpand();
+
+		/**
+		 * The meta object literal for the '<em><b>Path</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference EXPAND__PATH = eINSTANCE.getExpand_Path();
+
+		/**
+		 * The meta object literal for the '<em><b>Filter</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference EXPAND__FILTER = eINSTANCE.getExpand_Filter();
+
+		/**
+		 * The meta object literal for the '<em><b>Order By</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference EXPAND__ORDER_BY = eINSTANCE.getExpand_OrderBy();
+
+		/**
+		 * The meta object literal for the '<em><b>Top</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute EXPAND__TOP = eINSTANCE.getExpand_Top();
+
+		/**
+		 * The meta object literal for the '<em><b>Skip</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute EXPAND__SKIP = eINSTANCE.getExpand_Skip();
+
+		/**
+		 * The meta object literal for the '<em><b>Expand</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference EXPAND__EXPAND = eINSTANCE.getExpand_Expand();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.SelectionImpl <em>Selection</em>}' class.

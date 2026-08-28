@@ -29,8 +29,8 @@ import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.model.expression.Expression;
-import org.eclipse.fennec.model.expression.PropertyPath;
 
+import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -123,7 +123,7 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 	 * @generated
 	 * @ordered
 	 */
-	protected EList<PropertyPath> expand;
+	protected EList<Expand> expand;
 
 	/**
 	 * The default value of the '{@link #getTop() <em>Top</em>}' attribute.
@@ -456,9 +456,9 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 	 * @generated
 	 */
 	@Override
-	public EList<PropertyPath> getExpand() {
+	public EList<Expand> getExpand() {
 		if (expand == null) {
-			expand = new EObjectContainmentEList<PropertyPath>(PropertyPath.class, this, QueryPackage.QUERY__EXPAND);
+			expand = new EObjectContainmentEList<Expand>(Expand.class, this, QueryPackage.QUERY__EXPAND);
 		}
 		return expand;
 	}
@@ -730,7 +730,7 @@ public class QueryImpl extends MinimalEObjectImpl.Container implements Query {
 				return;
 			case QueryPackage.QUERY__EXPAND:
 				getExpand().clear();
-				getExpand().addAll((Collection<? extends PropertyPath>)newValue);
+				getExpand().addAll((Collection<? extends Expand>)newValue);
 				return;
 			case QueryPackage.QUERY__TOP:
 				setTop((Integer)newValue);

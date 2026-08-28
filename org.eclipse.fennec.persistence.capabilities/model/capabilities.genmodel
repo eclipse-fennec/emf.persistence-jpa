@@ -63,6 +63,8 @@
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/INTERVAL_MATCH"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/GROUP_REPRESENTATIVES"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/ROOT_REFERENCE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/EXPAND_FILTER"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/EXPAND_PAGE"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AS_OF"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//CommandFeature">

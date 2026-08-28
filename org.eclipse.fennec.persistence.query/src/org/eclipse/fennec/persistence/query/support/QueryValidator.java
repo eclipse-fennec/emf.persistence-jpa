@@ -95,6 +95,14 @@ public final class QueryValidator {
 	 */
 	public static final int CODE_INVALID_REPRESENTATIVES = 11;
 
+	/**
+	 * An expansion whose options do not form a meaningful request (issue #238) — currently an
+	 * {@code orderBy} without {@code top}/{@code skip}. Structural, not a capability gap: under
+	 * the resolution semantics the list order belongs to the store, so a standing-alone
+	 * {@code orderBy} could only promise an order no backend ever delivers.
+	 */
+	public static final int CODE_INVALID_EXPAND = 12;
+
 	private QueryValidator() {
 	}
 
@@ -190,6 +198,11 @@ public final class QueryValidator {
 			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE,
 					CODE_INVALID_REPRESENTATIVES,
 					analysis.invalidRepresentatives() + " (root type '" + rootName + "')",
+					new Object[] { analysis }));
+		}
+		if (analysis.invalidExpand() != null) {
+			result.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, CODE_INVALID_EXPAND,
+					analysis.invalidExpand() + " (root type '" + rootName + "')",
 					new Object[] { analysis }));
 		}
 		if (analysis.unsupportedPipeline() != null) {

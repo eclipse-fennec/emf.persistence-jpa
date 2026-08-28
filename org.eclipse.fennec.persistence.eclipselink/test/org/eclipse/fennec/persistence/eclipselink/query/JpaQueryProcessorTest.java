@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -593,5 +594,33 @@ class JpaQueryProcessorTest {
 	@Test
 	void likeEscaping() {
 		assertThat(JpaQueryProcessor.escapeLike("a%b_c\\d")).isEqualTo("a\\%b\\_c\\\\d");
+	}
+
+	/**
+	 * Slice 1 of #238 carries the shape only. A caller that bypasses {@code validate()} — which
+	 * would refuse this against the undeclared EXPAND_FILTER/EXPAND_PAGE — must still get a
+	 * refusal here, never a plan that silently drops the options and returns the wrong rows.
+	 */
+	@Test
+	void expandOptionsAreRefusedByTheTranslatorToo() throws QueryException {
+		Query filtered = QueryBuilder.from(person)
+				.expand(Expands.of(addresses).filter(Expressions.path(street).eq("Main")).build())
+				.build();
+		assertThatThrownBy(() -> translate(filtered))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("expand query options");
+
+		Query paged = QueryBuilder.from(person).expand(Expands.of(addresses).top(5).build()).build();
+		assertThatThrownBy(() -> translate(paged))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("expand query options");
+	}
+
+	/** The plain fetch hint is untouched by #238 — same JPQL as before the type changed. */
+	@Test
+	void aPlainExpandStillRendersTheFetchJoin() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person).expand(friend).build());
+
+		assertThat(plan.jpql()).contains("LEFT JOIN FETCH e.friend");
 	}
 }
