@@ -86,7 +86,12 @@ public final class JpaFlavorCapabilities {
 					// a filtered expansion becomes a keyed second query per chunk of roots, and
 					// resolves exactly the proxies it matched (issue #238). EXPAND_PAGE stays
 					// undeclared until the window-function slice serves per-parent top/skip.
-					QueryFeature.EXPAND_FILTER)
+					QueryFeature.EXPAND_FILTER,
+					// per-parent top/skip through a window in a derived table, spliced with
+					// EclipseLink's SQL() and filtered from the outside (issue #238, slice 3).
+					// Still JPQL — no native query and no second pass; measured on h2, PostgreSQL
+					// and MariaDB in JpaWindowFunctionSpikeTest.
+					QueryFeature.EXPAND_PAGE)
 			.maxFeaturePathDepth(-1)
 			.build();
 

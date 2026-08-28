@@ -90,6 +90,12 @@ class JpaQueryProcessorTest {
 
 		EClass address = ecore.createEClass();
 		address.setName("Address");
+		// a paged expand addresses the expanded rows by their id (issue #238, slice 3)
+		EAttribute addressId = ecore.createEAttribute();
+		addressId.setName("aid");
+		addressId.setEType(EcorePackage.Literals.ESTRING);
+		addressId.setID(true);
+		address.getEStructuralFeatures().add(addressId);
 		street = ecore.createEAttribute();
 		street.setName("street");
 		street.setEType(EcorePackage.Literals.ESTRING);
@@ -604,17 +610,49 @@ class JpaQueryProcessorTest {
 	}
 
 	/**
-	 * Per-parent paging is slice 3. A caller bypassing {@code validate()} — which refuses it
-	 * against the undeclared EXPAND_PAGE — must still get a refusal here, never a plan that
-	 * silently drops the option and returns the wrong children.
+	 * Per-parent paging renders a window in a derived table, filtered from the outside — the
+	 * shape measured in {@code JpaWindowFunctionSpikeTest}. The derived table is a secondary
+	 * declaration because EclipseLink refuses it as the first one, and the reference is joined
+	 * again outside so the query returns entities rather than columns.
 	 */
 	@Test
-	void expandPagingIsRefusedByTheTranslatorToo() {
-		Query paged = QueryBuilder.from(person).expand(Expands.of(addresses).top(5).build()).build();
+	void perParentPagingRendersAWindowInADerivedTable() throws QueryException {
+		Query paged = QueryBuilder.from(person)
+				.expand(Expands.of(addresses).orderByAsc(street).top(2).skip(1).build())
+				.build();
+
+		JpaQueryPlan plan = translate(paged);
+
+		assertThat(plan.expandPlans()).hasSize(1);
+		JpaExpandPlan expand = plan.expandPlans().get(0);
+		assertThat(expand.jpql())
+				.contains("FROM Person anchor JOIN anchor.addresses t")
+				.contains("ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ? ASC)")
+				.contains("sub.rn > :expandSkip")
+				.contains("sub.rn <= :expandUpper");
+		assertThat(expand.parameters())
+				.containsEntry("expandSkip", 1)
+				.containsEntry("expandUpper", 3);
+	}
+
+	/**
+	 * The one shape per-parent paging has no room for: root and expanded type sharing an id
+	 * attribute name — every self-reference among them.
+	 * <p>
+	 * The derived table must name its columns after the attributes they come from, because
+	 * EclipseLink resolves {@code sub.x} as an attribute path rather than as a select alias. Two
+	 * columns cannot both be called {@code id}, so the window has no way to address owner and
+	 * target apart. Refused rather than approximated.
+	 */
+	@Test
+	void pagingIsRefusedWhenRootAndTargetShareAnIdAttributeName() {
+		Query paged = QueryBuilder.from(person)
+				.expand(Expands.of(friend).top(2).build())
+				.build();
 
 		assertThatThrownBy(() -> translate(paged))
 				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("expand paging");
+				.hasMessageContaining("share the id attribute name");
 	}
 
 	/**

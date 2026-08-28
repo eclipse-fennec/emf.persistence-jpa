@@ -278,7 +278,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 			for (EStructuralFeature segment : expansion.getPath().getSegments()) {
 				path.add((EReference) segment);
 			}
-			if (expansion.getFilter() == null) {
+			boolean paged = expansion.getTop() > 0 || expansion.getSkip() > 0;
+			if (expansion.getFilter() == null && !paged) {
 				// a plain expansion carries no query: the fetch joins and batch-fetch hints of
 				// issue #95 have already read the targets, and every proxy on the path belongs
 				// to it. The plan still travels, because the resolution has to leave the feature
@@ -288,28 +289,140 @@ public class JpaQueryProcessor implements QueryProcessor {
 			}
 			EAttribute rootId = query.getFrom().getEIDAttribute();
 			if (rootId == null) {
-				throw new QueryException("A filtered expand needs an id attribute on the root type '"
+				throw new QueryException("A narrowed expand needs an id attribute on the root type '"
 						+ query.getFrom().getName() + "' to key the second query by");
 			}
+			EClass targetEClass = path.get(path.size() - 1).getEReferenceType();
 			Translation filterTranslation = new Translation(context);
-			filterTranslation.rootEClass = path.get(path.size() - 1).getEReferenceType();
-			String filter = filterTranslation.render(expansion.getFilter());
+			filterTranslation.rootEClass = targetEClass;
+			String filter = expansion.getFilter() == null
+					? ""
+					: filterTranslation.render(expansion.getFilter());
 
-			StringBuilder jpql = new StringBuilder("SELECT ").append(ALIAS)
-					.append(" FROM ").append(query.getFrom().getName()).append(" p");
-			String previous = "p";
-			for (int i = 0; i < path.size(); i++) {
-				String alias = i == path.size() - 1 ? ALIAS : "x" + i;
-				jpql.append(" JOIN ").append(previous).append('.').append(path.get(i).getName())
-						.append(' ').append(alias);
-				previous = alias;
+			String joins = joinChain("p", path, ALIAS);
+			String keyed = "p." + rootId.getName() + " IN :" + JpaExpandPlan.KEY_PARAMETER
+					+ (filter.isEmpty() ? "" : " AND (" + filter + ")");
+			if (!paged) {
+				plans.add(new JpaExpandPlan(path,
+						"SELECT " + ALIAS + " FROM " + query.getFrom().getName() + " p" + joins
+								+ " WHERE " + keyed,
+						filterTranslation.parameters));
+				continue;
 			}
-			jpql.append(" WHERE p.").append(rootId.getName())
-					.append(" IN :").append(JpaExpandPlan.KEY_PARAMETER)
-					.append(" AND (").append(filter).append(')');
-			plans.add(new JpaExpandPlan(path, jpql.toString(), filterTranslation.parameters));
+			plans.add(windowedPlan(query, expansion, path, rootId, targetEClass, joins, keyed,
+					filterTranslation));
 		}
 		return plans;
+	}
+
+	/** {@code JOIN <prev>.<seg> <alias>} for every segment, the last one aliased {@code last}. */
+	private static String joinChain(String root, List<EReference> path, String last) {
+		StringBuilder joins = new StringBuilder();
+		String previous = root;
+		for (int i = 0; i < path.size(); i++) {
+			String alias = i == path.size() - 1 ? last : root + "x" + i;
+			joins.append(" JOIN ").append(previous).append('.').append(path.get(i).getName())
+					.append(' ').append(alias);
+			previous = alias;
+		}
+		return joins.toString();
+	}
+
+	/**
+	 * The per-parent paging form (issue #238, slice 3): a window in a derived table, filtered
+	 * from the outside.
+	 *
+	 * <pre>
+	 * SELECT t FROM Person anchor JOIN anchor.friends t, (
+	 *     SELECT p.pid AS xpOwner, e.pid AS xpTarget,
+	 *            SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ?)', p.pid, e.name) AS rn
+	 *     FROM Person p JOIN p.friends e WHERE p.pid IN :expandKeys)
+	 *   sub
+	 *  WHERE anchor.pid = sub.xpOwner AND t.pid = sub.xpTarget
+	 *    AND sub.rn &gt; :expandSkip AND sub.rn &lt;= :expandUpper
+	 * </pre>
+	 *
+	 * Three things about the shape, each measured in {@code JpaWindowFunctionSpikeTest} rather
+	 * than assumed:
+	 * <ul>
+	 * <li>{@code SQL(...)} splices the window into the generated statement, with each {@code ?}
+	 *     replaced by the translated argument. The query stays JPQL — no native query, no second
+	 *     pass — so binding, mapping and the cursor path are untouched. The backend already uses
+	 *     the same grammar for {@code CAST(… AS DATE)} (issue #240).</li>
+	 * <li>The derived table <strong>cannot be the first declaration</strong> of the FROM clause;
+	 *     EclipseLink refuses that outright. An entity anchors the clause and is correlated on
+	 *     the parent key, so it is a join rather than a cartesian product.</li>
+	 * <li>The reference is joined a second time on the outside and equated with the windowed id,
+	 *     which is what lets the query return <em>entities</em>. A derived table yields columns,
+	 *     and columns would leave the targets unread — the point of returning managed objects is
+	 *     that the persistence context is warm and the proxy resolution afterwards is free.</li>
+	 * </ul>
+	 * The ordering is the selector of D3, never a delivered order: it decides <em>which</em>
+	 * children the window picks. With none given the target id orders, so the window is
+	 * deterministic rather than at the database's whim.
+	 */
+	private JpaExpandPlan windowedPlan(Query query, Expand expansion, List<EReference> path,
+			EAttribute rootId, EClass targetEClass, String joins, String keyed,
+			Translation filterTranslation) throws QueryException {
+		EAttribute targetId = targetEClass.getEIDAttribute();
+		if (targetId == null) {
+			throw new QueryException("A paged expand needs an id attribute on the expanded type '"
+					+ targetEClass.getName() + "' to address its rows by");
+		}
+		if (rootId.getName().equals(targetId.getName())) {
+			// The derived table has to name its columns after the attributes they come from:
+			// EclipseLink resolves `sub.x` as an attribute path, not as a select alias, and a
+			// name that is no attribute makes it treat `sub` as an object ("Object comparisons
+			// can only be used with OneToOneMappings"). Two columns cannot both be called `pid`,
+			// so a paged expansion whose root and target share an id attribute name — every
+			// self-reference among them — has no shape here. Declared rather than approximated.
+			throw new QueryException("Per-parent paging of expand '" + path.get(path.size() - 1).getName()
+					+ "' is not served: root type '" + query.getFrom().getName() + "' and expanded"
+					+ " type '" + targetEClass.getName() + "' share the id attribute name '"
+					+ rootId.getName() + "', which the windowed query cannot address apart");
+		}
+		StringBuilder order = new StringBuilder();
+		List<String> orderArguments = new ArrayList<>();
+		for (OrderBy orderBy : expansion.getOrderBy()) {
+			String rendered = orderBy.getKey() != null
+					? filterTranslation.render(orderBy.getKey())
+					: rootPath(orderBy.getPath());
+			if (!order.isEmpty()) {
+				order.append(", ");
+			}
+			order.append('?').append(orderBy.getDirection() == SortDirection.DESC ? " DESC" : " ASC");
+			orderArguments.add(rendered);
+		}
+		if (order.isEmpty()) {
+			// a window with no ordering is non-deterministic; the id is the stable fallback
+			order.append("? ASC");
+			orderArguments.add(ALIAS + "." + targetId.getName());
+		}
+		String window = "SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY " + order + ")', p."
+				+ rootId.getName() + ", " + String.join(", ", orderArguments) + ") AS rn";
+
+		String derived = "SELECT p." + rootId.getName() + " AS " + rootId.getName() + ", "
+				+ ALIAS + "." + targetId.getName() + " AS " + targetId.getName() + ", " + window
+				+ " FROM " + query.getFrom().getName() + " p" + joins + " WHERE " + keyed;
+
+		StringBuilder jpql = new StringBuilder("SELECT t FROM ")
+				.append(query.getFrom().getName()).append(" anchor")
+				.append(joinChain("anchor", path, "t"))
+				.append(", (").append(derived).append(") sub")
+				.append(" WHERE anchor.").append(rootId.getName()).append(" = sub.").append(rootId.getName())
+				.append(" AND t.").append(targetId.getName()).append(" = sub.").append(targetId.getName());
+
+		Map<String, Object> parameters = new LinkedHashMap<>(filterTranslation.parameters);
+		int skip = Math.max(0, expansion.getSkip());
+		if (skip > 0) {
+			jpql.append(" AND sub.rn > :").append(JpaExpandPlan.SKIP_PARAMETER);
+			parameters.put(JpaExpandPlan.SKIP_PARAMETER, skip);
+		}
+		if (expansion.getTop() > 0) {
+			jpql.append(" AND sub.rn <= :").append(JpaExpandPlan.UPPER_PARAMETER);
+			parameters.put(JpaExpandPlan.UPPER_PARAMETER, skip + expansion.getTop());
+		}
+		return new JpaExpandPlan(path, jpql.toString(), parameters);
 	}
 
 	/** The JPQL fragments of a translated pipeline (issue #82). */
@@ -377,14 +490,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (expand.getCastBase() != null) {
 				throw new QueryException("expand does not support cast paths (castBase)");
 			}
-			if (!expansion.getOrderBy().isEmpty() || expansion.getTop() > 0
-					|| expansion.getSkip() > 0 || !expansion.getExpand().isEmpty()) {
-				// per-parent paging and nesting are slice 3: validate() refuses them against the
-				// undeclared EXPAND_PAGE, and the guard repeats it here so a caller bypassing
-				// validation gets a refusal rather than a plan that silently drops them. The
-				// filter is served (issue #238) and translated in expandPlans().
-				throw new QueryException("expand paging and nesting are not served by the jpa"
-						+ " backend yet (issue #238)");
+			if (!expansion.getExpand().isEmpty()) {
+				// nesting is not served yet: validate() refuses it, and the guard repeats it here
+				// so a caller bypassing validation gets a refusal rather than a plan that
+				// silently drops the nested level (issue #238)
+				throw new QueryException("nested expand is not served by the jpa backend yet"
+						+ " (issue #238)");
 			}
 			String parentAlias = ALIAS;
 			StringBuilder dotted = new StringBuilder(ALIAS);
