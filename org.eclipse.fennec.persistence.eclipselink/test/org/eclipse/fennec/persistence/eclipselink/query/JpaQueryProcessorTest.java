@@ -642,11 +642,19 @@ class JpaQueryProcessorTest {
 				.doesNotContain("street");
 	}
 
-	/** A plain expansion produces no second query: the fetch joins of #95 already serve it. */
+	/**
+	 * A plain expansion produces an <em>unfiltered</em> plan: no second query — the fetch joins
+	 * and batch-fetch hints of #95 already read the targets — but the plan still travels, because
+	 * the resolution has to leave the feature holding the resolved object rather than the proxy.
+	 * Without that, {@code eIsProxy()} would not be the discriminator D1b says it is.
+	 */
 	@Test
-	void aPlainExpansionProducesNoSecondQuery() throws QueryException {
-		assertThat(translate(QueryBuilder.from(person).expand(addresses).build()).expandPlans())
-				.isEmpty();
+	void aPlainExpansionProducesAnUnfilteredPlan() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person).expand(addresses).build());
+
+		assertThat(plan.expandPlans()).hasSize(1);
+		assertThat(plan.expandPlans().get(0).filtered()).isFalse();
+		assertThat(plan.expandPlans().get(0).jpql()).isNull();
 	}
 
 	/** The plain fetch hint is untouched by #238 — same JPQL as before the type changed. */

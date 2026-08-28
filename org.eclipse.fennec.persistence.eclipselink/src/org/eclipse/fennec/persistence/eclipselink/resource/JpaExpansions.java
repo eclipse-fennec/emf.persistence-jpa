@@ -78,8 +78,9 @@ final class JpaExpansions {
 			return;
 		}
 		for (JpaExpandPlan plan : plans) {
-			Set<String> matching = matchingIds(plan, keys, em);
-			if (matching.isEmpty()) {
+			// a plain expansion selects nothing: every proxy on the path belongs to it
+			Set<String> matching = plan.filtered() ? matchingIds(plan, keys, em) : null;
+			if (nonNull(matching) && matching.isEmpty()) {
 				continue;
 			}
 			resolveMatching(roots, plan, matching, resourceSet);

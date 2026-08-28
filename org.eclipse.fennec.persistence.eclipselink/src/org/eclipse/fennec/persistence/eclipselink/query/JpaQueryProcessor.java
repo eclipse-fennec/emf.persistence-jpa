@@ -274,12 +274,17 @@ public class JpaQueryProcessor implements QueryProcessor {
 	private List<JpaExpandPlan> expandPlans(Query query, QueryContext context) throws QueryException {
 		List<JpaExpandPlan> plans = new ArrayList<>();
 		for (Expand expansion : query.getExpand()) {
-			if (expansion.getFilter() == null) {
-				continue;
-			}
 			List<EReference> path = new ArrayList<>();
 			for (EStructuralFeature segment : expansion.getPath().getSegments()) {
 				path.add((EReference) segment);
+			}
+			if (expansion.getFilter() == null) {
+				// a plain expansion carries no query: the fetch joins and batch-fetch hints of
+				// issue #95 have already read the targets, and every proxy on the path belongs
+				// to it. The plan still travels, because the resolution has to leave the feature
+				// holding the resolved object rather than the proxy (D1b)
+				plans.add(new JpaExpandPlan(path, null, Map.of()));
+				continue;
 			}
 			EAttribute rootId = query.getFrom().getEIDAttribute();
 			if (rootId == null) {

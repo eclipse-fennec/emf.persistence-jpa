@@ -1879,6 +1879,40 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
+	 * A plain expansion leaves the reference holding resolved objects, not proxies — decision
+	 * D1b, with {@code eIsProxy()} as the discriminator a consumer reads it by.
+	 * <p>
+	 * This is what makes an expansion observable at all. Resolving a proxy and leaving the
+	 * feature pointing at the old one would mean the expansion read its targets and threw them
+	 * away: the caller would see nothing but proxies and could not tell an expansion happened.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.WHERE_EQ })
+	public void queryExpandLeavesTheReferenceResolved() throws Exception {
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		bob.eSet(personBestFriend, alice);
+		save(createBackendResourceSet(), "Person", alice, bob);
+
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("Bob"))
+				.expand(personBestFriend)
+				.build();
+
+		try (QueryResult result = queryable(createBackendResourceSet()).query(query)) {
+			List<EObject> persons = result.objects().toList();
+			assertThat(persons).hasSize(1);
+			EObject bestFriend = (EObject) persons.get(0).eGet(personBestFriend);
+
+			assertThat(bestFriend).isNotNull();
+			assertThat(bestFriend.eIsProxy())
+					.as("an expansion that resolved its target must leave it in the feature")
+					.isFalse();
+			assertThat(bestFriend.eGet(personName)).isEqualTo("Alice");
+		}
+	}
+
+	/**
 	 * Issue #238: a filtered expansion resolves only the children the filter matched — and
 	 * leaves the collection complete.
 	 * <p>

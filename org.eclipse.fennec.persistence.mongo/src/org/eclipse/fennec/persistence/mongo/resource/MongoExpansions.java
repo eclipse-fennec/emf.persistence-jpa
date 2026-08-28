@@ -30,6 +30,8 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.query.Expand;
 
@@ -124,19 +126,61 @@ final class MongoExpansions {
 		}
 		byResource.forEach((resourceUri, fragments) -> preload(resourceUri, fragments, resourceSet));
 
-		// touching the values now resolves them from memory — the preload put them there
+		// resolving now costs nothing — the preload put the targets in memory
 		List<EObject> resolved = new ArrayList<>();
 		for (EObject owner : level) {
-			for (EObject value : valuesOf(owner, reference)) {
-				EObject target = value.eIsProxy()
-						? org.eclipse.emf.ecore.util.EcoreUtil.resolve(value, resourceSet)
-						: value;
-				if (!target.eIsProxy()) {
-					resolved.add(target);
-				}
-			}
+			resolveInto(owner, reference, resolved, resourceSet);
 		}
 		return resolved;
+	}
+
+	/**
+	 * Resolves one owner's values of {@code reference} <strong>in place</strong>, collecting
+	 * what came out.
+	 * <p>
+	 * Replacing the entry is the point, not a detail. {@code EcoreUtil.resolve} returns the
+	 * resolved object and leaves the list holding the proxy, so without the replacement the
+	 * expansion would have read its targets and thrown them away: the feature would still report
+	 * nothing but proxies, and decision D1b — what is delivered is exactly the selected set,
+	 * discriminated by {@code eIsProxy()} — would be unobservable. Mirrors what the JPA side of
+	 * issue #238 does.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void resolveInto(EObject owner, EReference reference, List<EObject> resolved,
+			ResourceSet resourceSet) {
+		if (!owner.eClass().getEAllReferences().contains(reference)) {
+			return;
+		}
+		if (!reference.isMany()) {
+			Object raw = ((InternalEObject) owner).eGet(reference, false);
+			if (!(raw instanceof EObject value)) {
+				return;
+			}
+			EObject target = value.eIsProxy() ? EcoreUtil.resolve(value, resourceSet) : value;
+			if (!target.eIsProxy()) {
+				if (target != value) {
+					owner.eSet(reference, target);
+				}
+				resolved.add(target);
+			}
+			return;
+		}
+		if (!(((InternalEObject) owner).eGet(reference, false) instanceof List<?> raw)) {
+			return;
+		}
+		List<EObject> values = (List<EObject>) raw;
+		for (int index = 0; index < values.size(); index++) {
+			EObject value = values instanceof InternalEList<?> internal
+					? (EObject) internal.basicGet(index)
+					: values.get(index);
+			EObject target = value.eIsProxy() ? EcoreUtil.resolve(value, resourceSet) : value;
+			if (!target.eIsProxy()) {
+				if (target != value) {
+					values.set(index, target);
+				}
+				resolved.add(target);
+			}
+		}
 	}
 
 	/** Hands the fragments to their own resource, which reads them in one query. */
