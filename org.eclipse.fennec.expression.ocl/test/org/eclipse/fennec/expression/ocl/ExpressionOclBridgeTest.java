@@ -31,6 +31,10 @@ import static org.eclipse.fennec.model.query.builder.Expressions.propertyPath;
 import static org.eclipse.fennec.model.query.builder.Expressions.score;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Map;
 import java.util.UUID;
 
@@ -44,10 +48,17 @@ import org.eclipse.fennec.m2x.model.ocl.IteratorExp;
 import org.eclipse.fennec.m2x.model.ocl.OclExpression;
 import org.eclipse.fennec.m2x.model.ocl.OclFactory;
 import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
+import org.eclipse.fennec.m2x.model.ocl.PrimitiveType;
 import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
+import org.eclipse.fennec.model.expression.Comparison;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.GeoWithin;
+import org.eclipse.fennec.model.expression.GuidLiteral;
+import org.eclipse.fennec.model.expression.StringLiteral;
+import org.eclipse.fennec.model.expression.TemporalKind;
+import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.junit.jupiter.api.BeforeEach;
@@ -251,16 +262,85 @@ class ExpressionOclBridgeTest {
 
 	@Test
 	void guidAndDurationLiteralsMapToOclStrings() throws QueryException {
-		// no OCL guid/duration literals — the canonical text is the total form (issue #83)
+		// no OCL guid/duration literals — the canonical text is the total form (issue #83),
+		// typed with the OData primitive-type name so the way back is lossless (issue #263)
 		OperationCallExp guid = (OperationCallExp) ExprToOcl.toOcl(
 				path(name).eq(UUID.fromString("123e4567-e89b-12d3-a456-426614174000")));
-		assertThat(((StringLiteralExp) guid.getOwnedArguments().get(0)).getStringSymbol())
-				.isEqualTo("123e4567-e89b-12d3-a456-426614174000");
+		StringLiteralExp guidText = (StringLiteralExp) guid.getOwnedArguments().get(0);
+		assertThat(guidText.getStringSymbol()).isEqualTo("123e4567-e89b-12d3-a456-426614174000");
+		assertThat(guidText.getType().getName()).isEqualTo("Guid");
 
 		OperationCallExp duration = (OperationCallExp) ExprToOcl.toOcl(
 				path(name).eq(Duration.ofMinutes(90)));
-		assertThat(((StringLiteralExp) duration.getOwnedArguments().get(0)).getStringSymbol())
-				.isEqualTo("PT1H30M");
+		StringLiteralExp durationText = (StringLiteralExp) duration.getOwnedArguments().get(0);
+		assertThat(durationText.getStringSymbol()).isEqualTo("PT1H30M");
+		assertThat(durationText.getType().getName()).isEqualTo("Duration");
+	}
+
+	/**
+	 * The lossy leg of issue #263: a temporal literal used to come back as a plain string,
+	 * so every engine compared a String against a Date — never equal, never an error. The
+	 * type reference on the rendered string literal is what makes the trip lossless.
+	 */
+	@Test
+	void temporalGuidAndDurationLiteralsRoundTripStructurally() throws QueryException {
+		Expression original = and(
+				path(name).eq(Instant.parse("1990-01-01T10:30:00Z")),
+				path(name).ge(LocalDate.parse("1986-01-01")),
+				path(name).eq(LocalTime.parse("23:59:00")),
+				path(name).lt(LocalDateTime.parse("1990-01-01T23:00:00")),
+				path(name).eq(UUID.fromString("123e4567-e89b-12d3-a456-426614174000")),
+				path(name).ne(Duration.ofMinutes(90)));
+		Expression back = roundTrip(original);
+		assertThat(EcoreUtil.equals(original, back))
+				.as("temporal/guid/duration expr → ocl → expr must be structurally identical")
+				.isTrue();
+	}
+
+	/**
+	 * The consumer entry of issue #263: emf.odata's {@code ODataToOclBuilder} emits its
+	 * pre-typed literals as {@code StringLiteralExp}s whose {@code PrimitiveType} names the
+	 * OData type — the bridge must restore the typed literal from that name.
+	 */
+	@Test
+	void preTypedOdataStringsRestoreTheTypedLiterals() throws QueryException {
+		assertThat(rightOf(call("=", property(name), typedString("1990-01-01T10:30:00Z", "DateTimeOffset"))))
+				.isInstanceOfSatisfying(TemporalLiteral.class, literal -> {
+					assertThat(literal.getKind()).isEqualTo(TemporalKind.INSTANT);
+					assertThat(literal.getValue()).isEqualTo("1990-01-01T10:30:00Z");
+				});
+		assertThat(rightOf(call("=", property(name), typedString("1990-01-01", "Date"))))
+				.isInstanceOfSatisfying(TemporalLiteral.class,
+						literal -> assertThat(literal.getKind()).isEqualTo(TemporalKind.DATE));
+		assertThat(rightOf(call("=", property(name), typedString("23:59:00", "TimeOfDay"))))
+				.isInstanceOfSatisfying(TemporalLiteral.class,
+						literal -> assertThat(literal.getKind()).isEqualTo(TemporalKind.TIME));
+		assertThat(rightOf(call("=", property(name), typedString("1990-01-01T23:00:00", "DateTime"))))
+				.isInstanceOfSatisfying(TemporalLiteral.class,
+						literal -> assertThat(literal.getKind()).isEqualTo(TemporalKind.DATE_TIME));
+		assertThat(rightOf(call("=", property(name),
+				typedString("123e4567-e89b-12d3-a456-426614174000", "Guid"))))
+				.isInstanceOfSatisfying(GuidLiteral.class, literal -> assertThat(literal.getValue())
+						.isEqualTo("123e4567-e89b-12d3-a456-426614174000"));
+		assertThat(rightOf(call("=", property(name), typedString("PT1H30M", "Duration"))))
+				.isInstanceOfSatisfying(DurationLiteral.class,
+						literal -> assertThat(literal.getIso8601()).isEqualTo("PT1H30M"));
+	}
+
+	@Test
+	void untypedAndForeignTypedStringsStayStrings() throws QueryException {
+		// no type, an explicit String type, and the OData types without a typed literal
+		// (Binary, JSON) all stay plain strings — only the named typed literals restore
+		assertThat(rightOf(call("=", property(name), string("Alice"))))
+				.isInstanceOf(StringLiteral.class);
+		assertThat(rightOf(call("=", property(name), typedString("Alice", "String"))))
+				.isInstanceOf(StringLiteral.class);
+		assertThat(rightOf(call("=", property(name), typedString("T0RhdGE", "Binary"))))
+				.isInstanceOf(StringLiteral.class);
+	}
+
+	private static Expression rightOf(OperationCallExp comparison) throws QueryException {
+		return ((Comparison) OclToExpr.toExpr(comparison)).getRight();
 	}
 
 	@Test
@@ -349,6 +429,15 @@ class ExpressionOclBridgeTest {
 	private static StringLiteralExp string(String value) {
 		StringLiteralExp literal = OclFactory.eINSTANCE.createStringLiteralExp();
 		literal.setStringSymbol(value);
+		return literal;
+	}
+
+	/** The pre-typed shape emf.odata's {@code ODataToOclBuilder} emits (issue #263). */
+	private static StringLiteralExp typedString(String value, String typeName) {
+		StringLiteralExp literal = string(value);
+		PrimitiveType type = OclFactory.eINSTANCE.createPrimitiveType();
+		type.setName(typeName);
+		literal.setType(type);
 		return literal;
 	}
 
