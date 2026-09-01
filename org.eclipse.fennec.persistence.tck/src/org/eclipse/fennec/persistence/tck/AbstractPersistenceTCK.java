@@ -53,10 +53,13 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.expression.Between;
+import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.GeoBox;
 import org.eclipse.fennec.model.expression.GeoPointLiteral;
 import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.Expression;
+import org.eclipse.fennec.model.expression.In;
 import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
@@ -1078,12 +1081,8 @@ public abstract class AbstractPersistenceTCK {
 	/**
 	 * Saves the standard query fixture: three persons with UTC birthdays, Bob with two
 	 * addresses, Alice and Bob with favourite colors (Carol's stays unset).
-	 * <p>
-	 * Protected (like {@link #queryable(ResourceSet)}) so a backend driver can add rows of
-	 * its own over the same fixture — for constructs one backend serves and another refuses
-	 * loudly, which the capability gate cannot express (issue #267).
 	 */
-	protected void saveQueryFixture() throws Exception {
+	private void saveQueryFixture() throws Exception {
 		EObject alice = newPerson(1, "Alice", 30);
 		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
 		alice.eSet(personFavoriteColor, colorLiteral("GREEN"));
@@ -1104,7 +1103,7 @@ public abstract class AbstractPersistenceTCK {
 		return colors.getEEnumLiteral(name).getInstance();
 	}
 
-	protected QueryableResource queryable(ResourceSet resourceSet) {
+	private QueryableResource queryable(ResourceSet resourceSet) {
 		return (QueryableResource) resourceSet.createResource(uriFor("Person"));
 	}
 
@@ -1562,6 +1561,70 @@ public abstract class AbstractPersistenceTCK {
 					.as("time ordering holds across the whole day")
 					.containsExactlyInAnyOrder("Alice", "Carol");
 		}
+	}
+
+	/**
+	 * {@code Between}/{@code In} over a computed source — the derived cross product of
+	 * contract §9.1b (issue #269): a backend that declares the range/in vocabulary and the
+	 * source's feature serves the composition; there is no literal to opt out with. The
+	 * fluent builder cannot spell these (no {@code between}/{@code in} on the function step),
+	 * but the model can, and OData's {@code in} operator reaches it through the OCL bridge —
+	 * so they are built through the factory, the way that consumer arrives. The values encode
+	 * like a comparison's would (issues #265/#267); the negated forms exercise the 3VL
+	 * complements (issue #97).
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.TEMPORAL_FUNCTIONS, QueryFeature.WHERE_RANGE,
+			QueryFeature.IN })
+	public void queryTimeExtractionBetweenAndIn() throws Exception {
+		saveQueryFixture();
+		// time-of-day fixture: Alice 10:30:45, Bob 23:59:59, Carol 00:00:05 (all UTC)
+		Query between = QueryBuilder.from(personClass).where(timeBetweenTenAndNoon()).build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(between)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("BETWEEN bounds beside time() compare in time()'s representation")
+					.containsExactly("Alice");
+		}
+		Query notBetween = QueryBuilder.from(personClass)
+				.where(Expressions.not(timeBetweenTenAndNoon())).build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(notBetween)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("the negated range is its exact complement over non-null values")
+					.containsExactlyInAnyOrder("Bob", "Carol");
+		}
+		Query in = QueryBuilder.from(personClass).where(timeInBobAndCarol()).build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(in)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("IN options beside time() compare in time()'s representation")
+					.containsExactlyInAnyOrder("Bob", "Carol");
+		}
+		Query notIn = QueryBuilder.from(personClass)
+				.where(Expressions.not(timeInBobAndCarol())).build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(notIn)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("the negated IN is its exact complement over non-null values")
+					.containsExactly("Alice");
+		}
+	}
+
+	/** A fresh instance per query — the query envelope contains its predicate. */
+	private Between timeBetweenTenAndNoon() {
+		Between between = ExpressionFactory.eINSTANCE.createBetween();
+		between.setSource(Expressions.path(personBirthday).time().toExpression());
+		between.setLower(Expressions.literal(LocalTime.of(10, 0)));
+		between.setUpper(Expressions.literal(LocalTime.of(12, 0)));
+		between.setLowerIncluded(true);
+		between.setUpperIncluded(true);
+		return between;
+	}
+
+	/** A fresh instance per query — the query envelope contains its predicate. */
+	private In timeInBobAndCarol() {
+		In in = ExpressionFactory.eINSTANCE.createIn();
+		in.setSource(Expressions.path(personBirthday).time().toExpression());
+		in.getValues().add(Expressions.literal(LocalTime.of(23, 59, 59)));
+		in.getValues().add(Expressions.literal(LocalTime.of(0, 0, 5)));
+		return in;
 	}
 
 	@Test

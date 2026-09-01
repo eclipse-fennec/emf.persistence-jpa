@@ -1,7 +1,8 @@
 # Conformance and capabilities — the persistence contract
 
 **Status:** target picture, approved 2026-08-13; third category and declaration surface added
-2026-08-14 (§2C, §5a); the four remaining boundary decisions frozen 2026-08-19 (§9, #171).
+2026-08-14 (§2C, §5a); the four remaining boundary decisions frozen 2026-08-19 (§9, #171);
+derived value-position composition recorded 2026-09-01 (§9.1b, #269).
 Partly implemented since: §4a and §4b describe shipped behaviour
 (#138–#140, #150), the declaration surface of §5a exists as its own bundle with
 `PersistenceResource.capabilities()` as its carrier, and the `backend × flavor` matrix of §6 runs
@@ -133,7 +134,7 @@ produces a contract statement plus an asserting test.
 | Full-text / score | index-dependent |
 | Streaming | `stream()` and `pushStream` themselves are a capability (§9.4); `SERVER_CURSORS` is the separate question of the result's lifetime (§5a) |
 | Index (future) | see §7 |
-| Query expression vocabulary | the `QueryFeature` set, granular (§5) — including the four that look like translator gaps (§9.1) |
+| Query expression vocabulary | the `QueryFeature` set, granular (§5) — including the four that look like translator gaps (§9.1). Compositions of declared features are a derived claim, never a literal (§9.1b) |
 
 ### Out of contract
 
@@ -664,6 +665,32 @@ it becomes expressible, translatable and quietly wrong about which column it rea
 
 Recorded as out of scope in the same breath, because the consumer asked: `rollup` grouping sets,
 `aggregate … from`, custom aggregation methods, and the recursive-hierarchy family stay refused.
+
+### 9.1b Value-position composition is a derived claim, never a literal (issue #269)
+
+The command side decided this long ago: verbs are core, the selector vocabulary is a capability,
+and the cross product is *derived, never declared* — otherwise the flag set explodes into
+`DELETE_WITH_GEO_SELECTOR` and friends. §9.1b records that the same rule holds on the query side,
+where #267 surfaced its missing half: `time(x) BETWEEN a AND b` validated on mongo (`WHERE_RANGE`,
+`IN` and `TEMPORAL_FUNCTIONS` are all declared) and then died in translation, because the find
+vocabulary addresses fields only. A runtime exception after a passing `validate()` breaks the
+contract in both directions at once — declared must mean it runs, undeclared must mean a
+diagnostic.
+
+**The rule: a backend that declares the participating features serves their composition.** A
+`Between`/`In` (or any other value-position construct) over a computed source is not its own
+capability — the §2 test settles it, because no store can find `time(x) BETWEEN a AND b` harder
+than the `time(x) >= a AND time(x) <= b` it already serves; unlike `EXPAND` on an inverted index
+(§9.1) there is no backend that refuses the composition *by nature* while serving its parts. A
+composition literal would also be the query-side flag explosion the command decision forbade.
+§9.1a's uniform refusal does not apply either: memory and JPA serve it, so "nobody serves it"
+was never true.
+
+Consequence: mongo renders `Between`/`In` over a non-path source through `$expr`, as the
+conjunction of its bound comparisons (In as the disjunction of equalities), with the same
+peer-aware value encoding those comparisons use (issue #265) and the usual `$ne null` guards
+(3VL, #97). The TCK carries the composition as an ordinary gated row — gated on the features it
+composes, nothing else.
 
 ### 9.2 `EMap` is core; feature maps are out of contract
 

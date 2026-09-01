@@ -380,6 +380,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 					isNull.getSource(), context);
 		}
 		if (expression instanceof Between between) {
+			if (computedSource(between.getSource())) {
+				return exprBetween(between, context, false);
+			}
 			String field = field(between.getSource(), context);
 			EStructuralFeature target = targetOf(between.getSource());
 			Object lower = value(between.getLower(), target, context);
@@ -393,6 +396,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return intervalFilter(interval, context);
 		}
 		if (expression instanceof In in) {
+			if (computedSource(in.getSource())) {
+				return exprIn(in, context, false);
+			}
 			String field = field(in.getSource(), context);
 			EStructuralFeature target = targetOf(in.getSource());
 			List<Object> values = new ArrayList<>(in.getValues().size());
@@ -497,6 +503,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 					isNull.getSource(), context);
 		}
 		if (expression instanceof Between between) {
+			if (computedSource(between.getSource())) {
+				return exprBetween(between, context, true);
+			}
 			// ¬(l ≤ x ≤ u) → x < l OR x > u — positive operators exclude nulls natively
 			String field = field(between.getSource(), context);
 			EStructuralFeature target = targetOf(between.getSource());
@@ -511,6 +520,9 @@ public class MongoQueryProcessor implements QueryProcessor {
 			return negatedIntervalFilter(interval, context);
 		}
 		if (expression instanceof In in) {
+			if (computedSource(in.getSource())) {
+				return exprIn(in, context, true);
+			}
 			String field = field(in.getSource(), context);
 			EStructuralFeature target = targetOf(in.getSource());
 			List<Object> values = new ArrayList<>(in.getValues().size());
@@ -755,6 +767,80 @@ public class MongoQueryProcessor implements QueryProcessor {
 		List<Object> operands = new ArrayList<>(guards);
 		operands.add(compare);
 		return Filters.expr(new Document("$and", operands));
+	}
+
+	/**
+	 * A source the find vocabulary cannot address as a field — {@code time(x)}, arithmetic,
+	 * a string function. {@code Between}/{@code In} over one is the derived cross product of
+	 * §9.1b (issue #269): every participating feature is declared, so the composition must be
+	 * served, through {@code $expr} like the comparisons with the same source.
+	 */
+	private static boolean computedSource(Expression source) {
+		return !(source instanceof PropertyPath || source instanceof MapValue);
+	}
+
+	/**
+	 * {@code Between} over a computed source as the {@code $and} of its two bound comparisons
+	 * (negated: the {@code $or} of their complements — exact under 3VL because the guards
+	 * exclude UNKNOWN, issue #97). The bounds take the peer-aware value encoding of the
+	 * comparisons (issue #265).
+	 */
+	private Bson exprBetween(Between between, QueryContext context, boolean negated)
+			throws QueryException {
+		List<Object> guards = new ArrayList<>();
+		EStructuralFeature target = targetOf(between.getSource());
+		Object source = exprOperand(between.getSource(), target, context, guards);
+		Object lower = exprComparisonOperand(between.getLower(), between.getSource(), target,
+				context, guards);
+		Object upper = exprComparisonOperand(between.getUpper(), between.getSource(), target,
+				context, guards);
+		Document range = negated
+				? new Document("$or", Arrays.asList(
+						new Document(between.isLowerIncluded() ? "$lt" : "$lte",
+								Arrays.asList(source, lower)),
+						new Document(between.isUpperIncluded() ? "$gt" : "$gte",
+								Arrays.asList(source, upper))))
+				: new Document("$and", Arrays.asList(
+						new Document(between.isLowerIncluded() ? "$gte" : "$gt",
+								Arrays.asList(source, lower)),
+						new Document(between.isUpperIncluded() ? "$lte" : "$lt",
+								Arrays.asList(source, upper))));
+		return Filters.expr(guardedCondition(range, guards));
+	}
+
+	/**
+	 * {@code In} over a computed source as the {@code $or} of {@code $eq}s (negated: the
+	 * {@code $and} of {@code $ne}s — the complement is exact once the guards pin the source
+	 * non-null). Null options keep the find-path semantics: skipped on the positive form,
+	 * never-TRUE on the negated one.
+	 */
+	private Bson exprIn(In in, QueryContext context, boolean negated) throws QueryException {
+		List<Object> guards = new ArrayList<>();
+		EStructuralFeature target = targetOf(in.getSource());
+		Object source = exprOperand(in.getSource(), target, context, guards);
+		List<Object> comparisons = new ArrayList<>(in.getValues().size());
+		for (Expression option : in.getValues()) {
+			if ((option instanceof Literal || option instanceof ParameterRef)
+					&& ExpressionValues.resolve(option, target, context.parameters(),
+							context.converter()) == null) {
+				if (negated) {
+					// SQL: NOT IN over a null option can never be TRUE
+					return Filters.expr(false);
+				}
+				// SQL: a null option never matches
+				continue;
+			}
+			comparisons.add(new Document(negated ? "$ne" : "$eq", Arrays.asList(source,
+					exprComparisonOperand(option, in.getSource(), target, context, guards))));
+		}
+		if (comparisons.isEmpty()) {
+			// no live option: IN matches nothing; NOT IN over nothing keeps only the guards
+			// ($and over an empty list is true)
+			return negated ? Filters.expr(guardedCondition(new Document("$and", List.of()), guards))
+					: Filters.expr(false);
+		}
+		Document combined = new Document(negated ? "$and" : "$or", comparisons);
+		return Filters.expr(guardedCondition(combined, guards));
 	}
 
 	private static String mongoOperator(ComparisonOperator operator) {
