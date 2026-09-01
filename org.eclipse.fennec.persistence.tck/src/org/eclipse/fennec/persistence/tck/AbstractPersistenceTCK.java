@@ -1078,8 +1078,12 @@ public abstract class AbstractPersistenceTCK {
 	/**
 	 * Saves the standard query fixture: three persons with UTC birthdays, Bob with two
 	 * addresses, Alice and Bob with favourite colors (Carol's stays unset).
+	 * <p>
+	 * Protected (like {@link #queryable(ResourceSet)}) so a backend driver can add rows of
+	 * its own over the same fixture — for constructs one backend serves and another refuses
+	 * loudly, which the capability gate cannot express (issue #267).
 	 */
-	private void saveQueryFixture() throws Exception {
+	protected void saveQueryFixture() throws Exception {
 		EObject alice = newPerson(1, "Alice", 30);
 		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
 		alice.eSet(personFavoriteColor, colorLiteral("GREEN"));
@@ -1100,7 +1104,7 @@ public abstract class AbstractPersistenceTCK {
 		return colors.getEEnumLiteral(name).getInstance();
 	}
 
-	private QueryableResource queryable(ResourceSet resourceSet) {
+	protected QueryableResource queryable(ResourceSet resourceSet) {
 		return (QueryableResource) resourceSet.createResource(uriFor("Person"));
 	}
 
