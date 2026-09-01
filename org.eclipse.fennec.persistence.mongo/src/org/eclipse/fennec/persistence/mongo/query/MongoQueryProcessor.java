@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.mongo.query;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -62,6 +63,7 @@ import org.eclipse.fennec.model.expression.StringFunctionKind;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
@@ -742,8 +744,10 @@ public class MongoQueryProcessor implements QueryProcessor {
 			throws QueryException {
 		EStructuralFeature target = exprTarget(comparison.getLeft(), comparison.getRight());
 		List<Object> guards = new ArrayList<>();
-		Object left = exprOperand(comparison.getLeft(), target, context, guards);
-		Object right = exprOperand(comparison.getRight(), target, context, guards);
+		Object left = exprComparisonOperand(comparison.getLeft(), comparison.getRight(), target,
+				context, guards);
+		Object right = exprComparisonOperand(comparison.getRight(), comparison.getLeft(), target,
+				context, guards);
 		Document compare = new Document(mongoOperator(operator), Arrays.asList(left, right));
 		if (guards.isEmpty()) {
 			return Filters.expr(compare);
@@ -941,6 +945,36 @@ public class MongoQueryProcessor implements QueryProcessor {
 		}
 		throw new QueryException("Unsupported operand " + expression.eClass().getName()
 				+ " inside a filtered collection count on the mongo backend");
+	}
+
+	/**
+	 * One comparison side, aware of its peer: {@code time()} renders as milliseconds since
+	 * midnight (see the TemporalFunction rendering below), so its comparison value must be
+	 * encoded the same way — left to the driver, the JSR-310 codec turns a {@link LocalTime}
+	 * into a BSON date on 1970-01-01, and {@code $eq} is type-bracketed, so the predicate was
+	 * false whatever the values (issue #265). The conversion lives here, with the backend that
+	 * chose the numeric representation, not in the shared {@code ExpressionValues}.
+	 */
+	private Object exprComparisonOperand(Expression side, Expression peer, EStructuralFeature target,
+			QueryContext context, List<Object> guards) throws QueryException {
+		if ((side instanceof Literal || side instanceof ParameterRef)
+				&& peer instanceof TemporalFunction function
+				&& function.getKind() == TemporalFunctionKind.TIME) {
+			Object resolved = ExpressionValues.resolve(side, target, context.parameters(),
+					context.converter());
+			if (resolved instanceof LocalTime localTime) {
+				if (localTime.getNano() % 1_000_000 != 0) {
+					// the extraction is millisecond-precise (BSON dates carry no more) —
+					// truncating the value would be a plausible wrong answer, which §5
+					// forbids more strongly than a refusal
+					throw new QueryException("Sub-millisecond time-of-day comparisons are not"
+							+ " served on the mongo backend — BSON dates carry millisecond"
+							+ " precision");
+				}
+				return new Document("$literal", localTime.toNanoOfDay() / 1_000_000);
+			}
+		}
+		return exprOperand(side, target, context, guards);
 	}
 
 	/** Renders one {@code $expr} operand; collects a {@code $ne null} guard per referenced field. */

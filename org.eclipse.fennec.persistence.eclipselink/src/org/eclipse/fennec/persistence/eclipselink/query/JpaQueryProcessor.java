@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.query;
 
+import java.sql.Time;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -55,6 +57,7 @@ import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
+import org.eclipse.fennec.model.expression.TemporalFunctionKind;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.model.query.Aggregate;
@@ -985,7 +988,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 				case GE -> " >= ";
 				};
 				EStructuralFeature target = targetOf(comparison.getLeft(), comparison.getRight());
-				return operand(comparison.getLeft(), target) + operator + operand(comparison.getRight(), target);
+				return comparisonOperand(comparison.getLeft(), comparison.getRight(), target)
+						+ operator + comparisonOperand(comparison.getRight(), comparison.getLeft(), target);
 			}
 			if (expression instanceof IsNull isNull) {
 				return operand(isNull.getSource(), null) + (isNull.isNegated() ? " IS NOT NULL" : " IS NULL");
@@ -1362,6 +1366,37 @@ public class JpaQueryProcessor implements QueryProcessor {
 						+ keyFeature.getName() + " = " + bind(key));
 			}
 			return alias + "." + valueFeature.getName();
+		}
+
+		/**
+		 * One comparison side, aware of its peer: the value beside a {@code time()}
+		 * extraction must reach the driver as a SQL TIME. EclipseLink deliberately binds a
+		 * bare {@link LocalTime} parameter as a TIMESTAMP on 1970-01-01
+		 * ({@code DatabasePlatform.setParameterValueInDatabaseCall}, "some platforms rely on
+		 * full TIMESTAMP types") — a value {@code CAST(x AS TIME)} can never equal, so the
+		 * predicate was silently false on every flavor (issue #265). {@link Time} takes the
+		 * {@code setTime} route instead. Kept next to the rendering that chose the TIME
+		 * representation, like the mongo backend does with its milliseconds encoding.
+		 */
+		private String comparisonOperand(Expression side, Expression peer, EStructuralFeature target)
+				throws QueryException {
+			if ((side instanceof Literal || side instanceof ParameterRef)
+					&& peer instanceof TemporalFunction function
+					&& function.getKind() == TemporalFunctionKind.TIME) {
+				Object value = ExpressionValues.resolve(side, target, context.parameters(),
+						context.converter());
+				if (value instanceof LocalTime localTime) {
+					if (localTime.getNano() != 0) {
+						// Time.valueOf would silently truncate to the second — a plausible
+						// wrong answer, which §5 forbids more strongly than a refusal
+						throw new QueryException("Fractional-second time-of-day comparisons are"
+								+ " not served on the JPA backend — CAST(… AS TIME) compares at"
+								+ " second precision");
+					}
+					return bind(Time.valueOf(localTime));
+				}
+			}
+			return operand(side, target);
 		}
 
 		private EStructuralFeature targetOf(Expression left, Expression right) {

@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -1533,6 +1534,29 @@ public abstract class AbstractPersistenceTCK {
 			assertThat(result.objects().map(person -> person.eGet(personName)))
 					.as("the hour component still works next to the new value kinds")
 					.containsExactly("Bob");
+		}
+
+		// the exact time of day, as one predicate — the row issue #265 was missing: the
+		// time() rendering and its comparison value must agree on one representation
+		// (mongo rendered milliseconds since midnight but encoded the LocalTime as a
+		// BSON date on 1970-01-01, so the predicate could never match)
+		Query atBobsTime = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).time().eq(LocalTime.of(23, 59, 59)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(atBobsTime)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("time equality compares the value, not a representation mismatch")
+					.containsExactly("Bob");
+		}
+
+		// and ordered: the numeric encoding must order like the time of day
+		Query beforeNoon = QueryBuilder.from(personClass)
+				.where(Expressions.path(personBirthday).time().lt(LocalTime.of(12, 0)))
+				.build();
+		try (QueryResult result = queryable(createBackendResourceSet()).query(beforeNoon)) {
+			assertThat(result.objects().map(person -> person.eGet(personName)))
+					.as("time ordering holds across the whole day")
+					.containsExactlyInAnyOrder("Alice", "Carol");
 		}
 	}
 
