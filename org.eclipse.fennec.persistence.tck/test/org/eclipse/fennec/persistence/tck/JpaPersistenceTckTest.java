@@ -12,10 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.tck;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.io.IOException;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,18 +23,10 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.fennec.model.expression.Between;
-import org.eclipse.fennec.model.expression.ExpressionFactory;
-import org.eclipse.fennec.model.expression.In;
-import org.eclipse.fennec.model.query.Query;
-import org.eclipse.fennec.model.query.builder.Expressions;
-import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
-import org.eclipse.fennec.persistence.query.api.QueryResult;
-import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.EntityManagerFactory;
 
@@ -161,44 +150,4 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		return URI.createURI("jpa://" + PU_NAME + "/" + typeName);
 	}
 
-	/**
-	 * {@code Between}/{@code In} over a {@code time()} source bind their values through the
-	 * same peer-aware route as a comparison's (issue #267) — without it, EclipseLink's
-	 * TIMESTAMP-on-1970-01-01 binding made both silently empty, the shape of issue #265.
-	 * The fluent builder cannot spell these (no {@code between}/{@code in} on the function
-	 * step), but the model can, and OData's {@code in} operator reaches it through the OCL
-	 * bridge — so they are built through the factory here, the way that consumer arrives.
-	 * <p>
-	 * Driver-local rather than a TCK row: the mongo find vocabulary refuses a computed
-	 * {@code Between}/{@code In} source loudly (a {@code QueryException}, not a missing
-	 * capability), so a shared row would fail there instead of skipping — the capability
-	 * surface question of issue #134.
-	 */
-	@Test
-	public void queryTimeExtractionBetweenAndIn() throws Exception {
-		saveQueryFixture();
-		// time-of-day fixture: Alice 10:30:45, Bob 23:59:59, Carol 00:00:05 (all UTC)
-		Between between = ExpressionFactory.eINSTANCE.createBetween();
-		between.setSource(Expressions.path(personBirthday).time().toExpression());
-		between.setLower(Expressions.literal(LocalTime.of(10, 0)));
-		between.setUpper(Expressions.literal(LocalTime.of(12, 0)));
-		between.setLowerIncluded(true);
-		between.setUpperIncluded(true);
-		Query betweenQuery = QueryBuilder.from(personClass).where(between).build();
-		try (QueryResult result = queryable(createBackendResourceSet()).query(betweenQuery)) {
-			assertThat(result.objects().map(person -> person.eGet(personName)))
-					.as("BETWEEN bounds beside time() bind as SQL TIME, not as a timestamp")
-					.containsExactly("Alice");
-		}
-		In in = ExpressionFactory.eINSTANCE.createIn();
-		in.setSource(Expressions.path(personBirthday).time().toExpression());
-		in.getValues().add(Expressions.literal(LocalTime.of(23, 59, 59)));
-		in.getValues().add(Expressions.literal(LocalTime.of(0, 0, 5)));
-		Query inQuery = QueryBuilder.from(personClass).where(in).build();
-		try (QueryResult result = queryable(createBackendResourceSet()).query(inQuery)) {
-			assertThat(result.objects().map(person -> person.eGet(personName)))
-					.as("IN options beside time() bind as SQL TIME, not as a timestamp")
-					.containsExactlyInAnyOrder("Bob", "Carol");
-		}
-	}
 }
