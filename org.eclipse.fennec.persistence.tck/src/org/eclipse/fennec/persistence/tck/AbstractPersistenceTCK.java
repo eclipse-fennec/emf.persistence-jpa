@@ -1835,6 +1835,84 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
+	/**
+	 * {@code Between}/{@code In} over an {@code AliasRef} — the second face of the derived
+	 * composition of contract §9.1b (issue #269, follow-up): a range or option set over a
+	 * pipeline output column is the same claim as the comparison {@code having} already
+	 * exercises. On mongo these route through {@code $expr} over the flattened
+	 * {@code $group} output (no null guard, like every alias comparison — issue #82);
+	 * before #270 they died in translation. The negated range exercises the complement
+	 * rendering, which for never-null aggregate columns is exact without guards.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_BY, QueryFeature.AGG_SUM,
+			QueryFeature.AGG_COUNT, QueryFeature.PIPELINE, QueryFeature.WHERE_RANGE,
+			QueryFeature.IN })
+	public void queryPipelineHavingBetweenAndIn() throws Exception {
+		saveQueryFixture();
+		// Dora shares age 30 with Alice — groups: 30 → (cnt 2, total 60), 40 → (1, 40),
+		// 50 → (1, 50)
+		save(createBackendResourceSet(), "Person", newPerson(4, "Dora", 30));
+
+		Query between = groupedByAgeHaving(totalBetween(45, 65));
+		try (QueryResult result = queryable(createBackendResourceSet()).query(between)) {
+			assertThat(result.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.as("a range over the aggregate output column keeps the matching groups")
+					.containsExactlyInAnyOrder(30, 50);
+		}
+		Query notBetween = groupedByAgeHaving(Expressions.not(totalBetween(45, 65)));
+		try (QueryResult result = queryable(createBackendResourceSet()).query(notBetween)) {
+			assertThat(result.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.as("the negated range is its exact complement over aggregate columns")
+					.containsExactly(40);
+		}
+		Query in = groupedByAgeHaving(totalIn(40, 60));
+		try (QueryResult result = queryable(createBackendResourceSet()).query(in)) {
+			assertThat(result.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.as("an option set over the aggregate output column keeps the matching groups")
+					.containsExactlyInAnyOrder(30, 40);
+		}
+
+		// differential: the memory oracle answers the range the same way
+		List<EObject> oracle = List.of(
+				newPerson(1, "Alice", 30), newPerson(2, "Bob", 40),
+				newPerson(3, "Carol", 50), newPerson(4, "Dora", 30));
+		try (QueryResult memory = MemoryQueries.execute(groupedByAgeHaving(totalBetween(45, 65)),
+				oracle, null)) {
+			assertThat(memory.rows().map(row -> ((Number) row.get("age")).intValue()))
+					.containsExactlyInAnyOrder(30, 50);
+		}
+	}
+
+	private Query groupedByAgeHaving(Expression having) {
+		return QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.sum("total", personAge)
+				.countOf("cnt")
+				.having(having)
+				.build();
+	}
+
+	/** A fresh instance per query — the query envelope contains its predicate. */
+	private Between totalBetween(int lower, int upper) {
+		Between between = ExpressionFactory.eINSTANCE.createBetween();
+		between.setSource(Expressions.aliasRef("total").toExpression());
+		between.setLower(Expressions.literal(lower));
+		between.setUpper(Expressions.literal(upper));
+		between.setLowerIncluded(true);
+		between.setUpperIncluded(true);
+		return between;
+	}
+
+	/** A fresh instance per query — the query envelope contains its predicate. */
+	private In totalIn(int first, int second) {
+		In in = ExpressionFactory.eINSTANCE.createIn();
+		in.setSource(Expressions.aliasRef("total").toExpression());
+		in.getValues().add(Expressions.literal(first));
+		in.getValues().add(Expressions.literal(second));
+		return in;
+	}
+
 	@Test
 	@RequiresCapabilities(query = { QueryFeature.PIPELINE, QueryFeature.PIPELINE_COMPUTE,
 			QueryFeature.GROUP_BY, QueryFeature.GROUP_EXPRESSION, QueryFeature.AGG_SUM,
