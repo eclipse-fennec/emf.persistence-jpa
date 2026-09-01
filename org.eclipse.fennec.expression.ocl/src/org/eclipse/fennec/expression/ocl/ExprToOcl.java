@@ -28,6 +28,7 @@ import org.eclipse.fennec.m2x.model.ocl.IteratorExp;
 import org.eclipse.fennec.m2x.model.ocl.OclExpression;
 import org.eclipse.fennec.m2x.model.ocl.OclFactory;
 import org.eclipse.fennec.m2x.model.ocl.OperationCallExp;
+import org.eclipse.fennec.m2x.model.ocl.PrimitiveType;
 import org.eclipse.fennec.m2x.model.ocl.PropertyCallExp;
 import org.eclipse.fennec.m2x.model.ocl.RealLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.StringLiteralExp;
@@ -97,7 +98,9 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * concept) — pass the bindings; unbound parameters are refused.</li>
  * <li>{@link EnumLiteral}s resolve against the comparison target's {@code EEnum} where
  * derivable, otherwise they fall back to their literal name as a string.
- * {@link TemporalLiteral}s map to their ISO string (OCL has no temporal literals).</li>
+ * {@link TemporalLiteral}s, {@link GuidLiteral}s and {@link DurationLiteral}s map to
+ * their canonical text (OCL has no such literals), typed with their OData primitive-type
+ * name so {@link OclToExpr} restores the literal on the way back (issue #263).</li>
  * </ul>
  *
  * @author Mark Hoffmann
@@ -422,16 +425,22 @@ public final class ExprToOcl {
 				return stringLiteral(enumLiteral.getLiteralName());
 			}
 			if (literal instanceof TemporalLiteral temporal) {
-				// OCL has no temporal literals — the ISO text is the canonical fallback
-				return stringLiteral(temporal.getValue());
+				// OCL has no temporal literals — the ISO text, typed so OclToExpr can
+				// restore the literal instead of guessing a plain string (issue #263)
+				return typedString(temporal.getValue(), switch (temporal.getKind()) {
+				case DATE -> "Date";
+				case TIME -> "TimeOfDay";
+				case DATE_TIME -> "DateTime";
+				case INSTANT -> "DateTimeOffset";
+				});
 			}
 			if (literal instanceof GuidLiteral guid) {
-				// no OCL guid literal — the canonical text form (issue #83)
-				return stringLiteral(guid.getValue());
+				// no OCL guid literal — the canonical text form (issue #83), typed (issue #263)
+				return typedString(guid.getValue(), "Guid");
 			}
 			if (literal instanceof DurationLiteral duration) {
-				// no OCL duration literal — the ISO-8601 text form (issue #83)
-				return stringLiteral(duration.getIso8601());
+				// no OCL duration literal — the ISO-8601 text form (issue #83), typed (issue #263)
+				return typedString(duration.getIso8601(), "Duration");
 			}
 			throw new QueryException("Unsupported literal " + literal.eClass().getName());
 		}
@@ -466,6 +475,22 @@ public final class ExprToOcl {
 		private StringLiteralExp stringLiteral(String value) {
 			StringLiteralExp exp = OCL.createStringLiteralExp();
 			exp.setStringSymbol(value);
+			return exp;
+		}
+
+		/**
+		 * A string literal carrying its primitive type by name — the same shape emf.odata's
+		 * {@code $filter} builder emits for its pre-typed literals, using the OData spellings
+		 * ({@code Date}, {@code TimeOfDay}, {@code DateTimeOffset}, {@code Guid},
+		 * {@code Duration}; {@code DateTime} is the bridge's own name for the local
+		 * date-time OData does not have). The type reference is what keeps the round trip
+		 * lossless (issue #263).
+		 */
+		private StringLiteralExp typedString(String value, String typeName) {
+			StringLiteralExp exp = stringLiteral(value);
+			PrimitiveType type = OCL.createPrimitiveType();
+			type.setName(typeName);
+			exp.setType(type);
 			return exp;
 		}
 

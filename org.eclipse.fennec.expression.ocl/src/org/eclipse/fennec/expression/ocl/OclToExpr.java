@@ -39,6 +39,7 @@ import org.eclipse.fennec.model.expression.CollectionCount;
 import org.eclipse.fennec.model.expression.Comparison;
 import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.Concat;
+import org.eclipse.fennec.model.expression.DurationLiteral;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.In;
@@ -56,15 +57,19 @@ import org.eclipse.fennec.model.expression.GeoPolygon;
 import org.eclipse.fennec.model.expression.GeoShape;
 import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.expression.GeoWithin;
+import org.eclipse.fennec.model.expression.GuidLiteral;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.expression.Quantifier;
 import org.eclipse.fennec.model.expression.StringFunction;
 import org.eclipse.fennec.model.expression.StringFunctionKind;
+import org.eclipse.fennec.model.expression.StringLiteral;
 import org.eclipse.fennec.model.expression.StringMatch;
 import org.eclipse.fennec.model.expression.StringMatchKind;
 import org.eclipse.fennec.model.expression.Substring;
 import org.eclipse.fennec.model.expression.TemporalFunction;
 import org.eclipse.fennec.model.expression.TemporalFunctionKind;
+import org.eclipse.fennec.model.expression.TemporalKind;
+import org.eclipse.fennec.model.expression.TemporalLiteral;
 import org.eclipse.fennec.model.expression.TypeCheck;
 import org.eclipse.fennec.model.expression.Variable;
 import org.eclipse.fennec.persistence.query.QueryException;
@@ -91,7 +96,9 @@ import org.eclipse.fennec.persistence.query.QueryException;
  * {@code + - * / mod} (→ Arithmetic; a source-only {@code -} → Negate; the integer
  * division {@code div} stays refused — truncation is deliberately not modelled),
  * {@code exists/forAll} iterators (→ quantifiers), property-call chains
- * (→ PropertyPath) and the literal set.
+ * (→ PropertyPath) and the literal set — a string literal whose OCL type names an OData
+ * primitive ({@code Date}, {@code DateTimeOffset}, {@code TimeOfDay}, {@code DateTime},
+ * {@code Guid}, {@code Duration}) restores the typed literal it stands for (issue #263).
  *
  * @author Mark Hoffmann
  * @since 24.07.2026
@@ -153,9 +160,7 @@ public final class OclToExpr {
 				return ref;
 			}
 			if (ocl instanceof StringLiteralExp string) {
-				org.eclipse.fennec.model.expression.StringLiteral literal = EXPR.createStringLiteral();
-				literal.setValue(string.getStringSymbol());
-				return literal;
+				return stringLiteral(string);
 			}
 			if (ocl instanceof IntegerLiteralExp integer) {
 				org.eclipse.fennec.model.expression.IntegerLiteral literal = EXPR.createIntegerLiteral();
@@ -561,6 +566,55 @@ public final class OclToExpr {
 				path.getSegments().add(link.getReferredProperty());
 			}
 			return path;
+		}
+
+		/**
+		 * A string literal may carry its primitive type by name — emf.odata's {@code $filter}
+		 * builder stamps {@code Date}/{@code DateTimeOffset}/{@code TimeOfDay}/{@code Guid}/
+		 * {@code Duration} on its pre-typed literals, and {@link ExprToOcl} stamps the same
+		 * names (plus {@code DateTime} for the local date-time) when it renders the typed
+		 * literals as text. Honouring the name restores the literal the text form stands for;
+		 * dropping it would compare a string against a date and silently match nothing
+		 * (issue #263). An untyped or unknown-typed string stays a plain string.
+		 */
+		private Expression stringLiteral(StringLiteralExp string) {
+			String typeName = string.getType() == null ? "" : string.getType().getName();
+			switch (typeName == null ? "" : typeName) {
+			case "Date" -> {
+				return temporal(TemporalKind.DATE, string.getStringSymbol());
+			}
+			case "TimeOfDay" -> {
+				return temporal(TemporalKind.TIME, string.getStringSymbol());
+			}
+			case "DateTime" -> {
+				return temporal(TemporalKind.DATE_TIME, string.getStringSymbol());
+			}
+			case "DateTimeOffset" -> {
+				return temporal(TemporalKind.INSTANT, string.getStringSymbol());
+			}
+			case "Guid" -> {
+				GuidLiteral literal = EXPR.createGuidLiteral();
+				literal.setValue(string.getStringSymbol());
+				return literal;
+			}
+			case "Duration" -> {
+				DurationLiteral literal = EXPR.createDurationLiteral();
+				literal.setIso8601(string.getStringSymbol());
+				return literal;
+			}
+			default -> {
+				StringLiteral literal = EXPR.createStringLiteral();
+				literal.setValue(string.getStringSymbol());
+				return literal;
+			}
+			}
+		}
+
+		private static TemporalLiteral temporal(TemporalKind kind, String value) {
+			TemporalLiteral literal = EXPR.createTemporalLiteral();
+			literal.setKind(kind);
+			literal.setValue(value);
+			return literal;
 		}
 
 		private Variable scoped(VariableExp variableExp) throws QueryException {
