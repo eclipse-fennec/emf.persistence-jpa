@@ -997,8 +997,10 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (expression instanceof Between between) {
 				EStructuralFeature target = targetOf(between.getSource(), null);
 				String source = operand(between.getSource(), target);
-				String lower = operand(between.getLower(), target);
-				String upper = operand(between.getUpper(), target);
+				// the bounds are peers of the source — a time() source needs its values
+				// bound as SQL TIME, exactly like a comparison's (issue #267)
+				String lower = comparisonOperand(between.getLower(), between.getSource(), target);
+				String upper = comparisonOperand(between.getUpper(), between.getSource(), target);
 				return "(" + source + (between.isLowerIncluded() ? " >= " : " > ") + lower + " AND " + source
 						+ (between.isUpperIncluded() ? " <= " : " < ") + upper + ")";
 			}
@@ -1009,7 +1011,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 					if (i > 0) {
 						rendered.append(", ");
 					}
-					rendered.append(operand(in.getValues().get(i), target));
+					// options are peers of the source, like a comparison's (issue #267)
+					rendered.append(comparisonOperand(in.getValues().get(i), in.getSource(), target));
 				}
 				return rendered.append(')').toString();
 			}
@@ -1369,7 +1372,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 		}
 
 		/**
-		 * One comparison side, aware of its peer: the value beside a {@code time()}
+		 * One value-position operand, aware of its peer — the other comparison side, or the
+		 * {@code Between}/{@code In} source (issue #267): the value beside a {@code time()}
 		 * extraction must reach the driver as a SQL TIME. EclipseLink deliberately binds a
 		 * bare {@link LocalTime} parameter as a TIMESTAMP on 1970-01-01
 		 * ({@code DatabasePlatform.setParameterValueInDatabaseCall}, "some platforms rely on
