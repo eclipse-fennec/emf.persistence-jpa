@@ -148,13 +148,22 @@ public class RepositoryIntegrationTest extends EPersistenceBase {
 				.where(Expressions.path(nameAttribute).eq(Expressions.param("wanted")))
 				.build();
 		try (QueryResult result = repository.find(byName, Map.of("wanted", "Bob"), null)) {
-			assertEquals(List.of("Bob"), result.objects().map(person -> person.eGet(nameAttribute)).toList());
+			List<EObject> found = result.objects().toList();
+			assertEquals(List.of("Bob"), found.stream().map(person -> person.eGet(nameAttribute)).toList());
+			// issue #280: a find result must carry its resource. Without one it has no
+			// ResourceSet either, so a non-containment reference on it can never be
+			// resolved — the read path silently disagreed with getEObject.
+			assertNotNull(found.get(0).eResource(), "a find result must be attached");
+			assertEquals(URI.createURI("jpa://repoUnit/Person"), found.get(0).eResource().getURI());
 		}
 
 		// prepared query: validated once, executed with just the parameters
 		PreparedQuery prepared = repository.prepare(byName);
 		try (QueryResult result = prepared.execute(Map.of("wanted", "Alice"))) {
-			assertEquals(List.of("Alice"), result.objects().map(person -> person.eGet(nameAttribute)).toList());
+			List<EObject> found = result.objects().toList();
+			assertEquals(List.of("Alice"), found.stream().map(person -> person.eGet(nameAttribute)).toList());
+			// prepared execution routes through find, so it carries the same guarantee
+			assertNotNull(found.get(0).eResource(), "a prepared-query result must be attached");
 		}
 
 		// count convenience over a canonical query
