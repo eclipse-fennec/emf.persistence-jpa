@@ -16,6 +16,8 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.lang.reflect.Proxy;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -37,6 +39,7 @@ import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -61,9 +64,13 @@ import com.mongodb.client.MongoDatabase;
  * <p>
  * Databases are tracked as {@link ServiceReference}s and their alias is read <em>from the
  * reference properties</em>; the service object is resolved (and cached) only when a URI
- * actually hits the alias. A URI addressing an unknown alias still yields a resource — it
- * fails with a clear diagnostic on load/save instead of returning {@code null} (no silent
- * fallback to another database).
+ * actually hits the alias. That tracking is a cache, not the authority: an alias it does not
+ * know is looked up in the service registry before it is declared unavailable (issue #282),
+ * because registering a {@code MongoDatabase} is itself what activates the components that
+ * query through this factory — the whiteboard callback for that service may still be owed
+ * while a consumer is already asking for it. A URI addressing an alias no
+ * {@code MongoDatabase} serves still yields a resource — it fails with a clear diagnostic on
+ * load/save instead of returning {@code null} (no silent fallback to another database).
  * <p>
  * Resource construction is delegated to {@link MongoResourceFactory} — the same factory
  * non-OSGi consumers instantiate directly — so both modes share one construction path.
@@ -167,11 +174,14 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 			return;
 		}
 		ServiceReference<MongoDatabase> previous = databaseRefs.put(alias, reference);
-		if (nonNull(previous)) {
-			LOG.log(Level.WARNING, "Multiple MongoDatabase services for alias ''{0}'' — using the newest one", alias);
-			resolvedDatabases.remove(alias);
-			ctx.ungetService(previous);
+		if (isNull(previous) || previous.equals(reference)) {
+			// unknown, or the very reference a registry lookup already adopted for this
+			// alias (issue #282) — keep whatever it resolved
+			return;
 		}
+		LOG.log(Level.WARNING, "Multiple MongoDatabase services for alias ''{0}'' — using the newest one", alias);
+		resolvedDatabases.remove(alias);
+		ctx.ungetService(previous);
 	}
 
 	void removeDatabase(ServiceReference<MongoDatabase> reference) {
@@ -271,6 +281,9 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 		}
 		ServiceReference<MongoDatabase> reference = databaseRefs.get(alias);
 		if (isNull(reference)) {
+			reference = adoptFromRegistry(alias);
+		}
+		if (isNull(reference)) {
 			return null;
 		}
 		MongoDatabase database = ctx.getService(reference);
@@ -286,6 +299,47 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 			return previous;
 		}
 		return database;
+	}
+
+	/**
+	 * Looks the alias up in the service registry and adopts what it finds into the
+	 * whiteboard's tracking — the fix for issue #282.
+	 * <p>
+	 * {@code BundleContext.registerService} dispatches its event synchronously, so the
+	 * stack that publishes a {@code MongoDatabase} is the same stack that activates the
+	 * repository component bound to it, and that repository can be queried before DS has
+	 * got around to this component's {@code addDatabase}. Both are listeners on one
+	 * registration event and nothing orders them. The registry, however, already holds the
+	 * service by then: consulting it turns a startup ordering question into a lookup, for
+	 * every consumer of a {@code mongodb://} URI rather than for the repository alone.
+	 * <p>
+	 * Among several databases for one alias the greatest reference wins — the ranking order
+	 * {@code getServiceReference} itself applies — and it is stored under the alias, so the
+	 * flavor and the eventual {@code removeDatabase} see the same reference.
+	 *
+	 * @param alias the URI authority to resolve
+	 * @return the adopted reference, or {@code null} if no registered database carries the alias
+	 */
+	private ServiceReference<MongoDatabase> adoptFromRegistry(String alias) {
+		Collection<ServiceReference<MongoDatabase>> registered;
+		try {
+			registered = ctx.getServiceReferences(MongoDatabase.class, null);
+		} catch (InvalidSyntaxException e) {
+			// unreachable with a null filter, and not worth propagating if it ever were
+			LOG.log(Level.WARNING, "Cannot look up MongoDatabase services for alias " + alias, e);
+			return null;
+		}
+		ServiceReference<MongoDatabase> found = registered.stream()
+				.filter(reference -> alias.equals(alias(reference)))
+				.max(Comparator.naturalOrder())
+				.orElse(null);
+		if (isNull(found)) {
+			return null;
+		}
+		LOG.log(Level.FINE, "Alias ''{0}'' resolved from the service registry — the whiteboard "
+				+ "has not been notified of its MongoDatabase yet", alias);
+		ServiceReference<MongoDatabase> raced = databaseRefs.putIfAbsent(alias, found);
+		return isNull(raced) ? found : raced;
 	}
 
 	/**

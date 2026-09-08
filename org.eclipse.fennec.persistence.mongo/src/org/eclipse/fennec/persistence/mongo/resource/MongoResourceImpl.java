@@ -876,7 +876,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		if (isNull(collectionName)) {
 			throw new IOException("Resource URI has no collection segment — cannot query: " + getURI());
 		}
-		EClass eClass = resolveEClass(collectionName, options);
+		EClass eClass = resolveQueryEClass(query, collectionName, options);
 		MongoQueryPlan plan;
 		try {
 			// $root resolves to a value before translation (issue #241): mongo has no
@@ -895,12 +895,21 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		} catch (QueryException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query rejected: " + e.getMessage(), getURI(), e));
 			throw new IOException("Query rejected for collection '" + collectionName + "': " + e.getMessage(), e);
+		} catch (RuntimeException e) {
+			// translation is a deep call chain over the expression IR and the model; whatever
+			// it stumbles over, a caller of query(..) is owed the same IOException as every
+			// other failure here rather than an unwrapped runtime exception (issue #282)
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
+					"Query translation failed: " + e.getMessage(), getURI(), e));
+			throw new IOException("Query translation failed for collection '" + collectionName + "': "
+					+ e.getMessage(), e);
 		}
 		try {
 			return execute(plan, collectionName, eClass, options);
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Query execution failed: " + e.getMessage(), getURI(), e));
-			throw new IOException("Query execution failed on collection '" + collectionName + "'", e);
+			throw new IOException("Query execution failed on collection '" + collectionName + "': "
+					+ e.getMessage(), e);
 		}
 	}
 
@@ -2565,6 +2574,50 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			return null;
 		}
 		return uri.segment(1);
+	}
+
+	/**
+	 * Resolves the root type a {@link Query} is translated against (issue #282).
+	 * <p>
+	 * The query carries its own {@code from} — a required feature of the envelope, and the
+	 * type filter the translation actually needs — so it is preferred over guessing a
+	 * classifier named after the collection. That guess resolves through the package
+	 * registries, which makes it depend on whether the model bundle's
+	 * {@code EPackageConfigurator} has already registered: it returned {@code null} during
+	 * activation and the translation then failed with a raw
+	 * {@code IllegalArgumentException} escaping this method unwrapped. Taking the type from
+	 * the query removes the timing question, and matches what the command paths
+	 * ({@code executeDelete}, {@code executeUpdate}) have always done with their selectors.
+	 * <p>
+	 * An explicit {@code Options.getTableEClass} still wins — it is a deliberate override —
+	 * and a query with neither is refused as an {@link IOException} like every other query
+	 * failure.
+	 *
+	 * @param query the query about to be translated
+	 * @param collectionName the collection the resource URI addresses
+	 * @param options the load options, may be {@code null}
+	 * @return the root type, never {@code null}
+	 * @throws IOException if the root type cannot be determined
+	 */
+	private EClass resolveQueryEClass(Query query, String collectionName, Map<?, ?> options)
+			throws IOException {
+		EClass explicit = nonNull(options) ? Options.getTableEClass(options) : null;
+		if (nonNull(explicit)) {
+			return explicit;
+		}
+		EClass from = query.getFrom();
+		if (nonNull(from)) {
+			return from;
+		}
+		EClass byName = resolveEClass(collectionName, options);
+		if (isNull(byName)) {
+			String message = "Query on collection '" + collectionName
+					+ "' has no root type: it carries no 'from' and no registered EPackage holds an EClass named '"
+					+ collectionName + "'";
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+			throw new IOException(message);
+		}
+		return byName;
 	}
 
 	/**

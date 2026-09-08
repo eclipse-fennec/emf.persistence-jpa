@@ -83,9 +83,13 @@ registered via `@EMFConfigurator(configuratorType = RESOURCE_FACTORY, protocol =
 (see [OSGi Architecture](osgi-architecture.md)). It tracks every `MongoDatabase` service
 by its `mongo.database.alias` property and dispatches on the URI authority
 (`mongodb://<alias>/<collection>`); the service object is resolved lazily on the first
-URI that addresses the alias. An unknown or no-longer-available alias yields an
-unavailable-proxy resource whose operations fail with a diagnostic naming the missing
-alias — fail-loud, no fallback. Created resources are additionally wired with the
+URI that addresses the alias. That tracking is a cache, not the authority: an alias it
+has not been told about is looked up in the service registry before it is declared
+unavailable (#282) — publishing a `MongoDatabase` is itself what activates the repository
+components that query through this factory, so DS can still owe the whiteboard its
+`addDatabase` callback while a consumer is already reading in its `@Activate`. An alias no
+registered `MongoDatabase` serves yields an unavailable-proxy resource whose operations
+fail with a diagnostic naming the missing alias — fail-loud, no fallback. Created resources are additionally wired with the
 alias's declared `MongoFlavor` (#118) and, when present as services, the `mongo`-backend
 `QueryProcessor` (#61), a `CodecValueRegistry` and the `ConverterService` (#164).
 
