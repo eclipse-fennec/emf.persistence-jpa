@@ -268,7 +268,7 @@ What holds:
 resource, not the child's. A JPA row is identical whether its object was an ordinary
 containment child or additionally a resource root — the foreign key is the same — so
 nothing on load can tell the two apart. The Mongo backend can, because the parent document
-records it with a `{"$ref": …}` marker; JPA has nowhere for that fact to live, and
+records it with a `{"_ref": …}` marker; JPA has nowhere for that fact to live, and
 persisting it in a side table was judged not worth schema the model does not describe.
 
 Practical consequences:

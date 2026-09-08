@@ -237,9 +237,18 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		// the per-EClass id configuration rides the resolver's resource plane (issue
 		// #110): the map reference is shared and populated lazily — always BEFORE the
 		// first encode/decode of the class, so the resolver's per-class cache is warm
-		// with the right values
+		// with the right values.
+		//
+		// The reference key rides the same plane (issue #277), and for the same reason the
+		// id settings do: BSON key policy is this backend's business. The codec's default is
+		// `$ref` — right for JSON, fatal in BSON, because MongoDB reserves that name for
+		// DBRefs and demands a `$id` beside it, and every root is saved with a
+		// ReplaceOneModel, which is exactly the write the server validates. One plane for
+		// both directions, so decode reads the key encode wrote.
 		super(uri, metadataService, ConfigurationResolver.defaults().toBuilder()
-				.resourceProperties(Map.of(ConfigProperty.ECLASS_CONFIG.getKey(), compositeIdConfigs))
+				.resourceProperties(Map.of(
+						ConfigProperty.ECLASS_CONFIG.getKey(), compositeIdConfigs,
+						ConfigProperty.REF_KEY.getKey(), MongoPersistenceConstants.REF_FIELD))
 				.build(), valueRegistry, null, null);
 		requireNonNull(database, "MongoDatabase is required");
 		this.database = database;
@@ -765,13 +774,16 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	/**
-	 * The configured reference key, {@code $ref} unless the model configures otherwise.
+	 * The configured reference key — {@link MongoPersistenceConstants#REF_FIELD} as this
+	 * backend pins it, and whatever a replaced resolver configures instead. The fallback is
+	 * the pinned key rather than the codec's {@code $ref} default (issue #277): a
+	 * {@code $}-prefixed name is nothing this backend can have written.
 	 */
 	private String refKey() {
 		Object configured = getResolver().getGlobalProperty(ConfigProperty.REF_KEY);
 		return configured instanceof String key && !key.isBlank()
 				? key
-				: (String) ConfigProperty.REF_KEY.getDefaultValue();
+				: MongoPersistenceConstants.REF_FIELD;
 	}
 
 	@Override
