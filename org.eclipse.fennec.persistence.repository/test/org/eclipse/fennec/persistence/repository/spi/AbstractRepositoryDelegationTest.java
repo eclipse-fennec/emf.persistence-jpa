@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.repository.spi;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIOException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -53,6 +55,7 @@ import org.eclipse.fennec.persistence.query.api.QueryResult;
 import org.eclipse.fennec.persistence.query.api.QueryResultRow;
 import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
+import org.eclipse.fennec.persistence.query.support.QueryResults;
 import org.eclipse.fennec.persistence.repository.RepositoryConstants;
 import org.eclipse.fennec.persistence.repository.api.PreparedQuery;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -73,6 +76,8 @@ public class AbstractRepositoryDelegationTest {
 	private EClass personClass;
 	private EClass addressClass;
 	private EAttribute idAttribute;
+	/** Non-containment, so a stored value is a proxy that needs a resource to resolve (#280). */
+	private EReference homeReference;
 	private final List<FakeResource> created = new ArrayList<>();
 	private FakeQueryProcessor queryProcessor;
 
@@ -87,9 +92,15 @@ public class AbstractRepositoryDelegationTest {
 		personClass = eClassWithId(ePackage, "Person");
 		idAttribute = (EAttribute) personClass.getEStructuralFeature("pid");
 		addressClass = eClassWithId(ePackage, "Address");
+		homeReference = EcoreFactory.eINSTANCE.createEReference();
+		homeReference.setName("home");
+		homeReference.setEType(addressClass);
+		homeReference.setContainment(false);
+		personClass.getEStructuralFeatures().add(homeReference);
 		queryProcessor = new FakeQueryProcessor();
 		repository = newRepository(Map.of(), Map.of());
 		FakeResource.nextObjects = List.of();
+		FakeResource.nextScored = false;
 		FakeResource.lookup.clear();
 	}
 
@@ -129,6 +140,17 @@ public class AbstractRepositoryDelegationTest {
 		EObject person = personClass.getEPackage().getEFactoryInstance().create(personClass);
 		person.eSet(idAttribute, id);
 		return person;
+	}
+
+	private EObject address(String id, String label) {
+		EObject address = addressClass.getEPackage().getEFactoryInstance().create(addressClass);
+		address.eSet(addressClass.getEStructuralFeature("pid"), id);
+		address.eSet(addressClass.getEStructuralFeature("label"), label);
+		return address;
+	}
+
+	private static Object label(EObject object) {
+		return object.eGet(object.eClass().getEStructuralFeature("label"));
 	}
 
 	private FakeResource resourceFor(String segment) {
@@ -185,6 +207,143 @@ public class AbstractRepositoryDelegationTest {
 		}
 		assertThat(resourceFor("Person").lastResult.closed)
 				.as("closing the stream must close the QueryResult").isTrue();
+	}
+
+	// ------------------------------------------- find results are attached (#280)
+
+	/**
+	 * The blocker of issue #280: an object handed out by {@code find} had
+	 * {@code eResource() == null}, so it had no ResourceSet either, so a non-containment
+	 * reference stayed an unresolvable proxy for good — every attribute of the target read
+	 * null, and the NPE surfaced far from here. {@code getEObject} never had the problem
+	 * because it attaches what it resolves.
+	 */
+	@Test
+	void aReferenceOnAFindResultResolves() throws IOException {
+		EObject home = address("a1", "Baker Street");
+		FakeResource.lookup.put("a1", home);
+		EObject person = person("p1");
+		person.eSet(homeReference, repository.createProxy(addressClass, "a1"));
+		FakeResource.nextObjects = List.of(person);
+
+		EObject found;
+		try (QueryResult result = repository.find(QueryBuilder.from(personClass).build())) {
+			found = result.objects().findFirst().orElseThrow();
+		}
+
+		EObject resolved = (EObject) found.eGet(homeReference);
+		assertThat(resolved.eIsProxy()).as("the proxy resolved through the repository's set").isFalse();
+		assertThat(label(resolved)).isEqualTo("Baker Street");
+	}
+
+	@Test
+	void findResultsCarryTheCollectionResourceOfTheirType() throws IOException {
+		FakeResource.nextObjects = List.of(person("p1"), person("p2"));
+
+		try (QueryResult result = repository.find(QueryBuilder.from(personClass).build())) {
+			assertThat(result.objects()).allSatisfy(object -> assertThat(object.eResource())
+					.isNotNull()
+					.extracting(Resource::getURI)
+					.isEqualTo(BASE.appendSegment("Person")));
+		}
+	}
+
+	/**
+	 * Attachment rides the stream, so a query over a large collection does not materialise
+	 * and retain the whole result at {@code find} time — the laziness the streaming API
+	 * exists for.
+	 */
+	@Test
+	void resultsAreAttachedAsTheStreamIsConsumed() throws IOException {
+		FakeResource.nextObjects = List.of(person("p1"), person("p2"), person("p3"));
+
+		try (QueryResult result = repository.find(QueryBuilder.from(personClass).build())) {
+			assertThat(resourceFor("Person").getContents())
+					.as("nothing attached before the first element is pulled").isEmpty();
+			Stream<EObject> objects = result.objects();
+			EObject first = objects.iterator().next();
+			assertThat(resourceFor("Person").getContents()).containsExactly(first);
+		}
+	}
+
+	@Test
+	void anAlreadyAttachedResultKeepsItsResource() throws IOException {
+		EObject person = person("p1");
+		Resource origin = repository.attach(person);
+		FakeResource.nextObjects = List.of(person);
+
+		try (QueryResult result = repository.find(QueryBuilder.from(personClass).build())) {
+			assertThat(result.objects()).singleElement()
+					.satisfies(object -> assertThat(object.eResource()).isSameAs(origin));
+		}
+		assertThat(origin.getContents()).as("attached once, not twice").containsExactly(person);
+	}
+
+	@Test
+	void getAllEObjectsAttachesItsResultsToo() throws IOException {
+		FakeResource.nextObjects = List.of(person("p1"));
+
+		try (Stream<EObject> all = repository.getAllEObjects(personClass)) {
+			assertThat(all).allSatisfy(object -> assertThat(object.eResource()).isNotNull());
+		}
+	}
+
+	@Test
+	void findByNameAttachesItsResultsToo() throws IOException {
+		FakeResource.nextObjects = List.of(person("p1"));
+		repository.find(QueryBuilder.from(personClass).named("byName").build(), null, null).close();
+		FakeResource.nextObjects = List.of(person("p2"));
+
+		try (QueryResult result = repository.find("byName", null, null)) {
+			assertThat(result.objects()).allSatisfy(object -> assertThat(object.eResource()).isNotNull());
+		}
+	}
+
+	/** The scored view of the same cursor (issue #165) hands out the same objects. */
+	@Test
+	void scoredHitsAreAttachedToo() throws IOException {
+		FakeResource.nextObjects = List.of(person("p1"));
+		FakeResource.nextScored = true;
+
+		try (QueryResult result = repository.find(QueryBuilder.from(personClass).build())) {
+			assertThat(result.hits()).allSatisfy(hit -> assertThat(hit.object().eResource()).isNotNull());
+		}
+	}
+
+	@Test
+	void aCountResultIsUnaffected() throws IOException {
+		Query counted = QueryBuilder.from(personClass).build();
+		counted.setCountOnly(true);
+
+		try (QueryResult result = repository.find(counted)) {
+			assertThat(result.shape()).isEqualTo(QueryShape.COUNT);
+			assertThat(result.count()).isEqualTo(FakeResource.COUNT_ANSWER);
+			assertThatIllegalStateException().as("the shape contract still holds")
+					.isThrownBy(result::objects);
+		}
+	}
+
+	/**
+	 * #280 expected {@code reload} to be broken on a find result too. It is not — the fresh
+	 * read happens in a scratch set and {@code copyState} works in place, so attachment never
+	 * mattered here. Kept as the guard that attaching the result does not change that.
+	 */
+	@Test
+	void aFindResultCanBeReloaded() throws IOException {
+		EObject person = person("p1");
+		person.eSet(personClass.getEStructuralFeature("label"), "stale");
+		FakeResource.nextObjects = List.of(person);
+		EObject fresh = person("p1");
+		fresh.eSet(personClass.getEStructuralFeature("label"), "fresh");
+		FakeResource.lookup.put("p1", fresh);
+
+		EObject found;
+		try (QueryResult result = repository.find(QueryBuilder.from(personClass).build())) {
+			found = result.objects().findFirst().orElseThrow();
+		}
+		repository.reload(found);
+
+		assertThat(label(found)).isEqualTo("fresh");
 	}
 
 	@Test
@@ -408,6 +567,8 @@ public class AbstractRepositoryDelegationTest {
 			}
 		};
 		static List<EObject> nextObjects = List.of();
+		/** When set, query() answers a scored result so hits() is usable. */
+		static boolean nextScored;
 		/** Keyed-read answers by id fragment, consulted when the contents hold no match. */
 		static final Map<String, EObject> lookup = new LinkedHashMap<>();
 
@@ -461,7 +622,8 @@ public class AbstractRepositoryDelegationTest {
 			lastQuery = query;
 			lastParameters = parameters;
 			lastQueryOptions = options;
-			lastResult = new FakeResult(query.isCountOnly() ? QueryShape.COUNT : QueryShape.OBJECTS, nextObjects);
+			lastResult = new FakeResult(query.isCountOnly() ? QueryShape.COUNT : QueryShape.OBJECTS,
+					nextObjects, nextScored);
 			return lastResult;
 		}
 
@@ -470,7 +632,7 @@ public class AbstractRepositoryDelegationTest {
 			lastQueryName = name;
 			lastParameters = parameters;
 			lastQueryOptions = options;
-			lastResult = new FakeResult(QueryShape.OBJECTS, nextObjects);
+			lastResult = new FakeResult(QueryShape.OBJECTS, nextObjects, nextScored);
 			return lastResult;
 		}
 
@@ -531,11 +693,17 @@ public class AbstractRepositoryDelegationTest {
 	static final class FakeResult implements QueryResult {
 		final QueryShape shape;
 		final List<EObject> objects;
+		final boolean scored;
 		boolean closed;
 
 		FakeResult(QueryShape shape, List<EObject> objects) {
+			this(shape, objects, false);
+		}
+
+		FakeResult(QueryShape shape, List<EObject> objects, boolean scored) {
 			this.shape = shape;
 			this.objects = objects;
+			this.scored = scored;
 		}
 
 		@Override
@@ -545,6 +713,9 @@ public class AbstractRepositoryDelegationTest {
 
 		@Override
 		public Stream<EObject> objects() {
+			if (shape != QueryShape.OBJECTS) {
+				throw new IllegalStateException("objects() is only valid for OBJECTS, this is " + shape);
+			}
 			return objects.stream();
 		}
 
@@ -560,7 +731,10 @@ public class AbstractRepositoryDelegationTest {
 
 		@Override
 		public Stream<Hit> hits() {
-			throw new UnsupportedOperationException();
+			if (!scored) {
+				throw new IllegalStateException("unscored");
+			}
+			return objects.stream().map(object -> QueryResults.hit(object, 1.0d));
 		}
 
 		@Override

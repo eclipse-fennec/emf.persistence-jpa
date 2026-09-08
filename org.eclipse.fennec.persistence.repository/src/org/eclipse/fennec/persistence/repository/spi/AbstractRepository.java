@@ -47,8 +47,11 @@ import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryResultRow;
+import org.eclipse.fennec.persistence.query.api.QueryShape;
 import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.repository.RepositoryConstants;
 import java.util.Optional;
@@ -409,14 +412,15 @@ public abstract class AbstractRepository implements Repository {
 		if (query.isSaveQuery() && nonNull(query.getName())) {
 			namedQueryRoots.put(query.getName(), root);
 		}
-		return queryableFor(root).query(query, parameters, effective(options, defaultLoadOptions));
+		return attaching(queryableFor(root).query(query, parameters, effective(options, defaultLoadOptions)));
 	}
 
 	@Override
 	public QueryResult find(String name, Map<String, Object> parameters, Map<?, ?> options) throws IOException {
 		checkNotDisposed();
 		requireNonNull(name, "query name must not be null");
-		return queryableFor(namedRoot(name, options)).query(name, parameters, effective(options, defaultLoadOptions));
+		return attaching(queryableFor(namedRoot(name, options))
+				.query(name, parameters, effective(options, defaultLoadOptions)));
 	}
 
 	@Override
@@ -616,6 +620,95 @@ public abstract class AbstractRepository implements Repository {
 	/*
 	 * ==================== internals ====================
 	 */
+
+	/**
+	 * Wraps a result so every object it hands out is attached to its collection resource in
+	 * this repository's ResourceSet (issue #280).
+	 * <p>
+	 * Without this a queried object has no {@code eResource()}, hence no ResourceSet, hence
+	 * no way to resolve a non-containment reference: the value stays an EMF proxy for good
+	 * and every attribute of the target reads {@code null}. {@link #getEObject(URI, Map)}
+	 * never had the problem because the backends attach what a keyed read resolves, so the
+	 * two read paths disagreed on something a caller cannot reasonably be expected to know.
+	 * <p>
+	 * Attachment rides the stream rather than happening here, so a query over a large
+	 * collection is not materialised at {@code find} time — {@link #attached(EObject)} runs
+	 * per element as the caller pulls it. Only the object stream and the scored
+	 * {@link Hit} view are covered; {@link QueryResult#rows()} is passed through untouched,
+	 * because a projection cell is a value, not an identity this repository owns.
+	 * <p>
+	 * The objects land in the repository's own ResourceSet and stay there until
+	 * {@link #dispose()} or an explicit {@link #detach(EObject)} — the same bargain
+	 * {@code getEObject} and {@link #attach(EObject)} already strike. The collection
+	 * resource is never saved as a whole (writes isolate into a scratch set, see
+	 * {@code saveIsolated}), so a queried object is not written back by a later save.
+	 */
+	private QueryResult attaching(QueryResult result) {
+		return new AttachingResult(result);
+	}
+
+	/**
+	 * Attaches one result object unless it already has a resource — the backend may well
+	 * have served an instance from the collection resource's own contents.
+	 *
+	 * @param object the result object, may be null
+	 * @return the very same object, for use as a stream mapper
+	 */
+	private EObject attached(EObject object) {
+		if (nonNull(object) && isNull(object.eResource())) {
+			attach(object);
+		}
+		return object;
+	}
+
+	/** The {@link #attaching(QueryResult)} decorator; everything else delegates unchanged. */
+	private final class AttachingResult implements QueryResult {
+
+		private final QueryResult delegate;
+
+		private AttachingResult(QueryResult delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public QueryShape shape() {
+			return delegate.shape();
+		}
+
+		@Override
+		public Stream<EObject> objects() {
+			return delegate.objects().map(AbstractRepository.this::attached);
+		}
+
+		@Override
+		public Stream<Hit> hits() {
+			// the hit keeps its identity; attaching acts on the object it carries
+			return delegate.hits().map(hit -> {
+				attached(hit.object());
+				return hit;
+			});
+		}
+
+		@Override
+		public Stream<QueryResultRow> rows() {
+			return delegate.rows();
+		}
+
+		@Override
+		public long count() {
+			return delegate.count();
+		}
+
+		@Override
+		public Map<String, Double> scores() {
+			return delegate.scores();
+		}
+
+		@Override
+		public void close() {
+			delegate.close();
+		}
+	}
 
 	/** The collection URI for a type: {@code <baseUri>/<EClassName>}. */
 	protected URI collectionUri(EClass eClass) {
