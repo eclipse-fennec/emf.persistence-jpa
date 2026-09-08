@@ -707,10 +707,10 @@ Because there is no eorm model, the eorm-driven tuning of the JPA backend
 ## Codec settings for MongoDB
 
 The resource rides the codec defaults — they are the recommended MongoDB
-configuration, and several query features depend on them. Every setting is
-overridable through the normal codec configuration chain (globally, per
-EPackage or per EClass, e.g. via EAnnotations); this is what each document
-carries and why it matters:
+configuration, and several query features depend on them. These are overridable
+through the normal codec configuration chain (globally, per EPackage or per
+EClass, e.g. via EAnnotations); this is what each document carries and why it
+matters:
 
 | Setting | Default | Stored as | Why it matters for MongoDB |
 |---|---|---|---|
@@ -722,6 +722,11 @@ carries and why it matters:
 Recommendation for large collections: create an **index on the type field**
 (`_type`, plus `_supertype` where serialized) — type predicates filter on it
 directly.
+
+One setting is **not** overridable: the reference key. BSON reserves `$ref`, so
+the resource pins `refKey` to `_ref` on the codec's resource plane, which
+outranks EPackage-, EClass- and feature-level annotations. See
+[The reference key `_ref`](#the-reference-key-_ref) below.
 
 ## References and proxies
 
@@ -764,6 +769,39 @@ the earlier limitation (a post-save rewrite that only covered the root object's
 references, a workaround for
 [emf.codec#50](https://github.com/eclipse-fennec/emf.codec/issues/50)) is gone
 since #116. The codec decides per reference while writing.
+
+### The reference key `_ref`
+
+A stored reference is a small sub-document, and the target sits under `_ref`:
+
+```json
+{ "_id": "b1", "_type": "urn:library#//Book",
+  "author": { "_type": "urn:library#//Author", "_ref": "/Author#a1" } }
+```
+
+The codec's own default for that key is `$ref` — the JSON Reference convention,
+and unusable here. **MongoDB reserves `$ref` for DBRefs** and requires a `$id`
+beside it; every root is saved with a `ReplaceOneModel`, and a replacement
+document is exactly the write the server validates, so a bare `$ref` fails the
+whole batch with *The DBRef `$ref` field must be followed by a `$id` field*
+(error code 55). The Mongo backend therefore pins `_ref`
+(`MongoPersistenceConstants.REF_FIELD`) alongside the `_id` and id-format
+settings it already pins — one setting for both directions, so reads use the key
+writes produced.
+
+MongoDB 5.0 relaxed `$`-prefixed field names, so a `$ref` written by an earlier
+Fennec version was **accepted on a 5.0+ server and rejected on a 4.x one** —
+which is why this surfaced late ([#277](https://github.com/eclipse-fennec/emf.persistence-jpa/issues/277)).
+
+> **Upgrading: documents written before the fix carry `$ref`.** Reads match the
+> configured key exactly, so on such a document the reference decodes as **absent**
+> — the object loads, the reference is silently empty. There is no automatic
+> fallback. If you have data from a 5.0+ deployment, rewrite the key before
+> upgrading. `$rename` does not cover it: references also sit inside embedded
+> children and arrays, so the rewrite has to walk each document — read it, replace
+> every `$ref` field name with `_ref` at any depth, write it back. Collections
+> whose objects have no non-containment references, and any data written on a 4.x
+> server (where the save always failed), are unaffected.
 
 ## Cross-document ownership
 

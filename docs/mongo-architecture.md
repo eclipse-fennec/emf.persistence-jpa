@@ -210,14 +210,14 @@ backend never invents numeric ids. An EClass without an ID attribute cannot be s
   EObject = one document, including its containment tree. Loading materializes the
   children (no proxies) with correct `eContainer()` wiring.
 - **Cross-document containment is the documented exception.** A containment child that is
-  also a root of its own `Resource` (`eDirectResource`) is written as a `{"$ref": <uri>}`
+  also a root of its own `Resource` (`eDirectResource`) is written as a `{"_ref": <uri>}`
   marker instead of being inlined, and comes back resolved: `eGet` hands out the child
-  itself, owned by the parent and resident in its own resource. The `$ref` and the proxy
+  itself, owned by the parent and resident in its own resource. The `_ref` and the proxy
   behind it are storage internals — no consumer-facing API exposes them, `eContents` and
   `EcoreUtil.getAllContents` resolve as well (`MongoCrossResourceReferenceTest`). The
   decision is per reference in the codec (`ReferenceSerializationEntry`, emf.codec#123 /
   #128). One consequence worth knowing: the query layer assumes containment is embedded,
-  so a `$ref` child is invisible to filters and `$elemMatch` over that path (refused with
+  so a `_ref` child is invisible to filters and `$elemMatch` over that path (refused with
   `CODE_NON_EMBEDDED_PATH`). Its **lifecycle** is covered — see
   [Cross-document ownership](#cross-document-ownership).
 - **Non-containment references are stored as URIs/ids**, not foreign keys.
@@ -229,6 +229,17 @@ backend never invents numeric ids. An EClass without an ID attribute cannot be s
   `_id` lookup, decodes and attaches the result (standard EMF pattern, no second round
   trip). Two fragment shapes are accepted: the plain id, and the JPA-compatible
   `//refName/idAttr/idValue` persistence proxy format.
+- **The reference key is `_ref`, not the codec's `$ref` default.** BSON key policy belongs
+  to this backend — it pins the reference key on the codec's resource plane next to `_id`
+  and the id-format settings (`MongoPersistenceConstants.REF_FIELD`). MongoDB reserves
+  `$ref` for DBRefs and requires a `$id` beside it, and every root is saved with a
+  `ReplaceOneModel`, which is the write the server validates: a bare `$ref` fails the whole
+  batch with *The DBRef $ref field must be followed by a $id field* (code 55). MongoDB 5.0
+  relaxed `$`-prefixed field names, so this only shows on a 4.x server or a stricter
+  gateway — the reason it went unnoticed while the suite ran on mongo:7. One plane governs
+  both directions, so decode reads the key encode wrote (issue #277). Documents written by
+  an earlier version carry `$ref` and decode with the reference absent — see the
+  [upgrade note](mongo-user-guide.md#the-reference-key-_ref).
 - **Cross-backend references work in one direction.** Because references are URIs, a
   Mongo document can reference a JPA-persisted object (`jpa://…#<id>` resolves through
   a shared `ResourceSet` via `JPAResourceImpl.getEObject`); the reverse is impossible —

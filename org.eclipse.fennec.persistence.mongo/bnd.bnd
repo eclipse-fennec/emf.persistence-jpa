@@ -29,4 +29,5 @@ Bundle-Description: EMF Persistence with MongoDB
 	org.mongodb.driver-sync;version=latest
 
 -testpath: \
-	assertj-core
+	assertj-core,\
+	org.eclipse.fennec.emf.osgi.component.minimal;version=latest
