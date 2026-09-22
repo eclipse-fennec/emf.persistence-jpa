@@ -22,7 +22,6 @@ import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EEnumLiteral;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.m2x.model.ocl.BooleanLiteralExp;
-import org.eclipse.fennec.m2x.model.ocl.ClassifierType;
 import org.eclipse.fennec.m2x.model.ocl.IntegerLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.IteratorExp;
 import org.eclipse.fennec.m2x.model.ocl.OclExpression;
@@ -376,10 +375,8 @@ public final class ExprToOcl {
 		}
 
 		private TypeExp typeExp(EClass type) {
-			ClassifierType classifierType = OCL.createClassifierType();
-			classifierType.setReferredClassifier(type);
 			TypeExp typeExp = OCL.createTypeExp();
-			typeExp.setReferredType(classifierType);
+			typeExp.setReferredType(type);
 			return typeExp;
 		}
 

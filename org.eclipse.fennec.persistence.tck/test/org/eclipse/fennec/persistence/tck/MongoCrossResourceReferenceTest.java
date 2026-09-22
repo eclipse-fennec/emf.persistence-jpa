@@ -16,6 +16,7 @@ import static java.util.Objects.nonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +37,7 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataServices;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataWhiteboard;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -214,11 +216,32 @@ class MongoCrossResourceReferenceTest {
 		return object.eGet(object.eClass().getEStructuralFeature(feature));
 	}
 
-	/** The stored reference target — the codec writes {@code {$ref: <uri>}} documents. */
+	/**
+	 * The stored reference target — the Mongo layer writes
+	 * {@code {_ref: <uri>}} documents (issue #277: {@code $ref} is BSON-reserved).
+	 */
 	private static String refString(org.bson.BsonValue stored) {
 		return stored.isDocument()
-				? stored.asDocument().getString("$ref").getValue()
+				? stored.asDocument().getString(MongoPersistenceConstants.REF_FIELD).getValue()
 				: stored.asString().getValue();
+	}
+
+	/** Every field name in the value, at any depth, arrays included. */
+	private static List<String> fieldNames(org.bson.BsonValue value) {
+		List<String> names = new ArrayList<>();
+		collectFieldNames(value, names);
+		return names;
+	}
+
+	private static void collectFieldNames(org.bson.BsonValue value, List<String> names) {
+		if (value.isDocument()) {
+			value.asDocument().forEach((name, child) -> {
+				names.add(name);
+				collectFieldNames(child, names);
+			});
+		} else if (value.isArray()) {
+			value.asArray().forEach(child -> collectFieldNames(child, names));
+		}
 	}
 
 	// -------------------------------------------------------------------- matrix
@@ -339,7 +362,7 @@ class MongoCrossResourceReferenceTest {
 	void crossDocumentContainmentResolvesToTheContainedChild() throws Exception {
 		// the child is contained by the book AND a root of its own resource
 		// (eDirectResource) — the emf.codec#123 shape; pinned as SUPPORTED.
-		// The $ref marker and the proxy behind it are storage internals: what the contract
+		// The reference marker and the proxy behind it are storage internals: what the contract
 		// requires is that eGet hands back the resolved child, never a proxy.
 		ResourceSet writeSet = resourceSet();
 		EObject book = book("b1", "Anthology");
@@ -354,7 +377,8 @@ class MongoCrossResourceReferenceTest {
 
 		// stored as a reference marker, not an inlined value copy
 		assertThat(rawDocument("Book", "b1").get("appendix").isDocument()).isTrue();
-		assertThat(rawDocument("Book", "b1").get("appendix").asDocument().containsKey("$ref")).isTrue();
+		assertThat(rawDocument("Book", "b1").get("appendix").asDocument()
+				.containsKey(MongoPersistenceConstants.REF_FIELD)).isTrue();
 
 		ResourceSet readSet = resourceSet();
 		EObject loadedBook = load(readSet, "Book").getContents().get(0);
@@ -387,7 +411,7 @@ class MongoCrossResourceReferenceTest {
 		assertThat(resolved.eResource().getURI()).isEqualTo(uriFor("Chapter"));
 	}
 
-	/** The multi-valued analogue — the {@code $ref} check per array element (emf.codec#128). */
+	/** The multi-valued analogue — the reference-marker check per array element (emf.codec#128). */
 	@Test
 	void crossDocumentContainmentInAManyValuedReference() throws Exception {
 		ResourceSet writeSet = resourceSet();
@@ -410,5 +434,45 @@ class MongoCrossResourceReferenceTest {
 		assertThat(resolved.eIsProxy()).isFalse();
 		assertThat(value(resolved, "cid")).isEqualTo("c1");
 		assertThat(value(resolved, "title")).isEqualTo("Standalone");
+	}
+	/**
+	 * Issue #277: no field the backend writes may be BSON-reserved.
+	 * <p>
+	 * The codec's {@code $ref} default is the JSON Reference convention and MongoDB reserves
+	 * that name for DBRefs, where it must be followed by {@code $id}. Every root is saved
+	 * with a {@code ReplaceOneModel} and a replacement document is precisely where the server
+	 * enforces the rule, so a bare {@code $ref} fails the whole write with
+	 * <em>The DBRef $ref field must be followed by a $id field</em> (code 55) — the blocker
+	 * this test pins. It asserts the invariant rather than the exception, because MongoDB 5.0
+	 * relaxed {@code $}-prefixed field names: on the mongo:7 this suite runs against the write
+	 * goes through, and only a 4.x server (or a stricter gateway) refuses it.
+	 */
+	@Test
+	void noStoredFieldNameIsBsonReserved() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject tolkien = author("a1", "Tolkien");
+		EObject hobbit = book("b1", "The Hobbit");
+		hobbit.eSet(bookAuthor, tolkien);
+		EObject silmarillion = book("b2", "The Silmarillion");
+		@SuppressWarnings("unchecked")
+		List<EObject> related = (List<EObject>) hobbit.eGet(bookRelated);
+		related.add(silmarillion);
+		save(writeSet, "Author", tolkien);
+		save(writeSet, "Book", hobbit, silmarillion);
+
+		BsonDocument stored = rawDocument("Book", "b1");
+		assertThat(stored.get("author").isDocument()).as("stored as a reference marker").isTrue();
+		assertThat(fieldNames(stored))
+				.as("a $-prefixed field name is what the server refuses")
+				.isNotEmpty()
+				.noneMatch(name -> name.startsWith("$"));
+
+		// and the reference still resolves, so the safe key is read the way it is written
+		ResourceSet readSet = resourceSet();
+		EObject loaded = load(readSet, "Book").getEObject("b1");
+		assertThat(value((EObject) loaded.eGet(bookAuthor), "aid")).isEqualTo("a1");
+		@SuppressWarnings("unchecked")
+		List<EObject> loadedRelated = (List<EObject>) loaded.eGet(bookRelated);
+		assertThat(loadedRelated).extracting(object -> value(object, "bid")).containsExactly("b2");
 	}
 }

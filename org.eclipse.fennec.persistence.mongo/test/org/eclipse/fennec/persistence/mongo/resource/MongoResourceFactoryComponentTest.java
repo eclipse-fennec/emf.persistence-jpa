@@ -20,12 +20,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.mongo.query.MongoQueryProcessor;
@@ -92,7 +94,10 @@ class MongoResourceFactoryComponentTest {
 	}
 
 	@Test
-	void unknownAliasYieldsResourceFailingWithDiagnostic() {
+	void unknownAliasYieldsResourceFailingWithDiagnostic() throws Exception {
+		// unknown to the whiteboard *and* to the registry — the alias really does not exist
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of());
+
 		Resource resource = component.createResource(URI.createURI("mongodb://ghost/Person"));
 
 		assertThat(resource).isNotNull();
@@ -170,12 +175,14 @@ class MongoResourceFactoryComponentTest {
 	}
 
 	@Test
-	void removeReleasesResolvedService() {
+	void removeReleasesResolvedService() throws Exception {
 		bindDatabase("app", reference, database);
 		component.createResource(URI.createURI("mongodb://app/Person"));
 
 		component.removeDatabase(reference);
 		verify(ctx).ungetService(reference);
+		// the service is gone from the registry too
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of());
 
 		Resource resource = component.createResource(URI.createURI("mongodb://app/Person"));
 		assertThatThrownBy(() -> resource.load(Map.of()))
@@ -219,5 +226,91 @@ class MongoResourceFactoryComponentTest {
 
 		verify(ctx).ungetService(reference);
 		verify(ctx).ungetService(unresolved);
+	}
+
+	/**
+	 * Issue #282: the {@code MongoDatabase} registration is what activates the repository
+	 * component, so a consumer can query through this factory while DS still owes it the
+	 * {@code addDatabase} callback for that very service. The registry — not the whiteboard
+	 * cache — is the authority on which aliases exist.
+	 */
+	@Test
+	void anAliasRegisteredButNotYetBoundResolvesFromTheRegistry() throws Exception {
+		when(reference.getProperty(MongoPersistenceConstants.DATABASE_ALIAS)).thenReturn("nsc");
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of(reference));
+		when(ctx.getService(reference)).thenReturn(database);
+
+		Resource resource = component.createResource(URI.createURI("mongodb://nsc/PartitionedDocument"));
+
+		assertThat(resource).isInstanceOf(MongoResourceImpl.class);
+		assertThat(((MongoResourceImpl) resource).getDatabase()).isSameAs(database);
+	}
+
+	@Test
+	void theFlavorOfANotYetBoundAliasIsHonoured() throws Exception {
+		when(reference.getProperty(MongoPersistenceConstants.DATABASE_ALIAS)).thenReturn("nsc");
+		when(reference.getProperty(MongoPersistenceConstants.FLAVOR)).thenReturn(MongoFlavor.FERRETDB.id());
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of(reference));
+		when(ctx.getService(reference)).thenReturn(database);
+
+		MongoResourceImpl resource = (MongoResourceImpl) component
+				.createResource(URI.createURI("mongodb://nsc/PartitionedDocument"));
+
+		// the discovered reference carries the flavor, so the resource must not silently
+		// fall back to the plain-mongo capabilities
+		assertThat(((MongoQueryProcessor) resource.queryProcessor()).flavor())
+				.isEqualTo(MongoFlavor.FERRETDB);
+	}
+
+	@Test
+	void theLateBindOfAnAlreadyDiscoveredReferenceChangesNothing() throws Exception {
+		when(reference.getProperty(MongoPersistenceConstants.DATABASE_ALIAS)).thenReturn("nsc");
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of(reference));
+		when(ctx.getService(reference)).thenReturn(database);
+		component.createResource(URI.createURI("mongodb://nsc/PartitionedDocument"));
+
+		// DS catches up with the callback for the same service
+		component.addDatabase(reference);
+
+		// it is not a second database for the alias: nothing is released, nothing re-resolved
+		verify(ctx, never()).ungetService(reference);
+		MongoResourceImpl resource = (MongoResourceImpl) component
+				.createResource(URI.createURI("mongodb://nsc/PartitionedDocument"));
+		assertThat(resource.getDatabase()).isSameAs(database);
+		verify(ctx, times(1)).getService(reference);
+	}
+
+	@Test
+	void theHighestRankedServiceWinsAmongSeveralForOneAlias(
+			@Mock ServiceReference<MongoDatabase> lower, @Mock MongoDatabase higherDb) throws Exception {
+		when(lower.getProperty(MongoPersistenceConstants.DATABASE_ALIAS)).thenReturn("nsc");
+		when(reference.getProperty(MongoPersistenceConstants.DATABASE_ALIAS)).thenReturn("nsc");
+		// ServiceReference orders by ranking: the greater reference is the one a plain
+		// getServiceReference() would hand out
+		when(lower.compareTo(reference)).thenReturn(-1);
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of(lower, reference));
+		when(ctx.getService(reference)).thenReturn(higherDb);
+
+		MongoResourceImpl resource = (MongoResourceImpl) component
+				.createResource(URI.createURI("mongodb://nsc/PartitionedDocument"));
+
+		assertThat(resource.getDatabase()).isSameAs(higherDb);
+		verify(ctx, never()).getService(lower);
+	}
+
+	@Test
+	void aDatabaseWithoutAnAliasIsNotDiscovered(@Mock ServiceReference<MongoDatabase> anonymous)
+			throws Exception {
+		when(anonymous.getProperty(MongoPersistenceConstants.DATABASE_ALIAS)).thenReturn(null);
+		when(ctx.getServiceReferences(MongoDatabase.class, null)).thenReturn(List.of(anonymous));
+
+		Resource resource = component.createResource(URI.createURI("mongodb://nsc/Person"));
+
+		verify(ctx, never()).getService(anonymous);
+		assertThatThrownBy(() -> resource.load(Map.of()))
+				.isInstanceOf(IOException.class)
+				.cause()
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("nsc");
 	}
 }

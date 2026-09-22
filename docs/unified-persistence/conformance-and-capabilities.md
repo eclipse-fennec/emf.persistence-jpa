@@ -334,7 +334,7 @@ child's own resource explicitly hands it over as a root there on both backends, 
 reachable either way — the difference only shows when the parent alone was loaded.
 
 The reason is in the storage model, not in the implementation. A Mongo document records the
-shape: the parent carries `{"$ref": …}` where an embedded child would sit. **A JPA row does
+shape: the parent carries `{"_ref": …}` where an embedded child would sit. **A JPA row does
 not** — the foreign key to the parent is identical whether the object was an ordinary
 containment child or additionally a root of its own resource. Reconstructing the difference on
 load would mean persisting it in a side table, and that was built and then withdrawn: the shape's

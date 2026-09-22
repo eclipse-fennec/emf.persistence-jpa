@@ -47,6 +47,7 @@ import org.eclipse.fennec.model.stream.ChangeSet;
 import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.Options;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.junit.jupiter.api.AfterEach;
@@ -447,7 +448,7 @@ class MongoDeleteWalkCostTest {
 				.hasSize(2);
 		assertThat(finds.get(0)).as("the resolve, keyed by the selector").startsWith("Library filter=");
 		assertThat(finds.get(1)).as("the #195 probe, one $in over the matched ids")
-				.contains("neighbour.$ref").contains("$in");
+				.contains("neighbour." + MongoPersistenceConstants.REF_FIELD).contains("$in");
 		assertThat(database.getCollection("Archive", BsonDocument.class).countDocuments())
 				.as("and the owned children went with the root").isZero();
 	}

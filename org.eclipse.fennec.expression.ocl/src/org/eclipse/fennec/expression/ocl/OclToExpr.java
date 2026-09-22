@@ -19,7 +19,6 @@ import java.util.Map;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.fennec.m2x.model.ocl.BooleanLiteralExp;
-import org.eclipse.fennec.m2x.model.ocl.ClassifierType;
 import org.eclipse.fennec.m2x.model.ocl.CollectionItem;
 import org.eclipse.fennec.m2x.model.ocl.CollectionLiteralExp;
 import org.eclipse.fennec.m2x.model.ocl.EnumLiteralExp;
@@ -650,11 +649,10 @@ public final class OclToExpr {
 					&& ("toLowerCase".equals(call.getName()) || "toLower".equals(call.getName()));
 		}
 
-		/** Unwraps the type argument: TypeExp → ClassifierType → EClass (issue #80). */
+		/** Unwraps the type argument: TypeExp → EClass (issue #80). */
 		private static EClass classifierArgument(OperationCallExp call) throws QueryException {
 			if (argument(call, 0) instanceof TypeExp typeExp
-					&& typeExp.getReferredType() instanceof ClassifierType classifierType
-					&& classifierType.getReferredClassifier() instanceof EClass eClass) {
+					&& typeExp.getReferredType() instanceof EClass eClass) {
 				return eClass;
 			}
 			throw refuse("operation '" + call.getName() + "' without an EClass type argument");

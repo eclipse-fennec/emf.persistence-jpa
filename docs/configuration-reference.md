@@ -214,7 +214,7 @@ The Mongo backend stores documents through the Fennec codec and rides its
 defaults; several query features depend on them (details and the full table:
 `mongo-user-guide.md` → *Codec settings for MongoDB*). Overridable through
 the codec configuration chain (globally, per EPackage or EClass, e.g. via
-EAnnotations):
+EAnnotations) — except `codec.refKey`, which the backend pins:
 
 | Codec key | Default | Purpose for MongoDB |
 |-----------|---------|---------------------|
@@ -222,6 +222,7 @@ EAnnotations):
 | `codec.superTypeSerialize` | `false` | Opt-in `_supertype` array: switches `isOf` to a direct supertype match (no subtype closure) |
 | `codec.dateFormat` | unset | Keep unset — temporal attributes then store as native `BsonDateTime`, required by the temporal query operators |
 | `codec.smartCompression` | `false` | Keep the plain default — values stored explicitly, queries see the model state |
+| `codec.refKey` | `_ref` (**pinned**, codec default `$ref`) | The field a non-containment reference target is written under. BSON reserves `$ref` for DBRefs, so the backend pins `_ref` on the resource plane, outranking any annotation. Documents written before this fix carry `$ref` and need rewriting — see `mongo-user-guide.md` → *The reference key `_ref`* |
 
 ## Non-OSGi bootstrap properties
 

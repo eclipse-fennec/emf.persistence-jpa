@@ -39,6 +39,7 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
@@ -232,7 +233,7 @@ class MongoCascadeDeleteTest {
 	/**
 	 * The fixture itself, so the disabled cases below cannot be dismissed as a broken
 	 * setup: the section really is embedded, the archive really is a separate document
-	 * referenced by {@code $ref}, and the whole thing reloads.
+	 * referenced by {@code _ref}, and the whole thing reloads.
 	 */
 	@Test
 	void nestedCrossDocumentContainmentRoundTrips() throws Exception {
@@ -242,7 +243,8 @@ class MongoCascadeDeleteTest {
 		assertThat(stored.get("section").isDocument()).as("section is embedded").isTrue();
 		BsonDocument storedSection = stored.get("section").asDocument();
 		assertThat(storedSection.getString("title").getValue()).isEqualTo("Rare Books");
-		assertThat(storedSection.get("archive").asDocument().containsKey("$ref"))
+		assertThat(storedSection.get("archive").asDocument()
+				.containsKey(MongoPersistenceConstants.REF_FIELD))
 				.as("the grandchild is a reference marker, not an inlined copy")
 				.isTrue();
 		assertThat(documentCount("Archive")).as("grandchild has its own document").isEqualTo(1);

@@ -145,6 +145,33 @@ below):
 - **`delete(object)` deletes exactly the given object** — never the rest of the loaded
   resource.
 
+### Every object you read is attached
+
+Whichever read path you use — `getEObject`, `getAllEObjects`, `find`, a prepared query —
+the object comes back **attached** to its collection resource in the repository's own
+`ResourceSet`, so `eResource()` is never null. That is what makes a non-containment
+reference usable: EMF stores such a value as a proxy and resolves it through the owning
+object's `ResourceSet`, so a detached result would leave the reference unresolvable and
+every attribute of its target reading `null`.
+
+```java
+try (QueryResult result = repository.find(byAge, Map.of("min", 18), null)) {
+    EObject person = result.objects().findFirst().orElseThrow();
+    EObject employer = (EObject) person.eGet(employerReference);  // resolved on access
+}
+```
+
+The bargain: read objects stay in the repository's `ResourceSet` until you `detach` them
+or `dispose()` the repository. This is deliberate — it is what gives you object identity
+across reads and lets references resolve — but it means a long-lived repository that
+streams very large results holds on to what it handed out. `detach(object)` releases one;
+a short-lived repository (prototype scope, see above) releases all of them when it is
+disposed. Attachment happens per element as you consume the stream, so `find` itself
+never materialises a result set.
+
+Attachment never causes a write: the collection resource is never saved as a whole, so an
+object you merely read is not written back by a later `save` of something else.
+
 Per-call option maps can be passed to every operation; configured defaults (if any) are
 merged underneath.
 
