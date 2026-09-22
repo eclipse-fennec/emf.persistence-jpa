@@ -20,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Date;
@@ -33,7 +38,11 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EDataType;
@@ -411,22 +420,22 @@ class ComprehensiveTypeConverterTest {
     class ArrayTests {
 
         @Test
-        @DisplayName("Primitive int[] round-trip via BLOB serialization")
+        @DisplayName("Primitive int[] round-trip via BLOB encoding")
         void testPrimitiveIntArrayRoundTrip() {
             EDataType dataType = createDataType("int[]");
 
-            // EMF → DB: int[] → byte[] (serialized)
+            // EMF → DB: int[] → byte[] (encoded)
             int[] original = {1, 2, 3, 4, 5};
             Object dbValue = converter.convertEMFToValue(dataType, original);
             assertInstanceOf(byte[].class, dbValue);
 
-            // DB → EMF: byte[] → int[] (deserialized)
+            // DB → EMF: byte[] → int[] (decoded)
             Object emfValue = converter.convertValueToEMF(dataType, dbValue);
             assertArrayEquals(original, (int[]) emfValue);
         }
 
         @Test
-        @DisplayName("Primitive double[] round-trip via BLOB serialization")
+        @DisplayName("Primitive double[] round-trip via BLOB encoding")
         void testPrimitiveDoubleArrayRoundTrip() {
             EDataType dataType = createDataType("double[]");
 
@@ -439,7 +448,7 @@ class ComprehensiveTypeConverterTest {
         }
 
         @Test
-        @DisplayName("Primitive boolean[] round-trip via BLOB serialization")
+        @DisplayName("Primitive boolean[] round-trip via BLOB encoding")
         void testPrimitiveBooleanArrayRoundTrip() {
             EDataType dataType = createDataType("boolean[]");
 
@@ -449,6 +458,119 @@ class ComprehensiveTypeConverterTest {
 
             Object emfValue = converter.convertValueToEMF(dataType, dbValue);
             assertArrayEquals(original, (boolean[]) emfValue);
+        }
+
+        @Test
+        @DisplayName("All eight primitive array kinds round-trip through the BLOB encoding")
+        void testAllPrimitiveArrayKindsRoundTrip() {
+            assertArrayEquals(new int[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE},
+                    (int[]) roundTrip("int[]", new int[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE}));
+            assertArrayEquals(new double[]{Double.NaN, -0.0, Double.MAX_VALUE, Double.MIN_VALUE},
+                    (double[]) roundTrip("double[]", new double[]{Double.NaN, -0.0, Double.MAX_VALUE, Double.MIN_VALUE}));
+            assertArrayEquals(new float[]{1.5f, Float.NEGATIVE_INFINITY, Float.MIN_VALUE},
+                    (float[]) roundTrip("float[]", new float[]{1.5f, Float.NEGATIVE_INFINITY, Float.MIN_VALUE}));
+            assertArrayEquals(new long[]{Long.MIN_VALUE, 0L, Long.MAX_VALUE},
+                    (long[]) roundTrip("long[]", new long[]{Long.MIN_VALUE, 0L, Long.MAX_VALUE}));
+            assertArrayEquals(new boolean[]{true, false, false, true},
+                    (boolean[]) roundTrip("boolean[]", new boolean[]{true, false, false, true}));
+            assertArrayEquals(new byte[]{Byte.MIN_VALUE, 0, Byte.MAX_VALUE},
+                    (byte[]) roundTrip("byte[]", new byte[]{Byte.MIN_VALUE, 0, Byte.MAX_VALUE}));
+            assertArrayEquals(new char[]{'a', '\u00e4', Character.MAX_VALUE, '\0'},
+                    (char[]) roundTrip("char[]", new char[]{'a', '\u00e4', Character.MAX_VALUE, '\0'}));
+            assertArrayEquals(new short[]{Short.MIN_VALUE, 7, Short.MAX_VALUE},
+                    (short[]) roundTrip("short[]", new short[]{Short.MIN_VALUE, 7, Short.MAX_VALUE}));
+        }
+
+        @Test
+        @DisplayName("Empty primitive arrays round-trip and stay distinguishable from null")
+        void testEmptyPrimitiveArrayRoundTrip() {
+            Object result = roundTrip("int[]", new int[0]);
+            assertInstanceOf(int[].class, result);
+            assertEquals(0, ((int[]) result).length);
+            assertNull(converter.convertValueToEMF(createDataType("int[]"), null));
+        }
+
+        @Test
+        @DisplayName("BLOB encoding is a tag, a length and the raw elements - no Java serialization stream")
+        void testBlobEncodingLayout() {
+            byte[] blob = (byte[]) converter.convertEMFToValue(createDataType("int[]"), new int[]{1, 2});
+            // tag(1) + length(4) + 2 * int(4)
+            assertEquals(13, blob.length);
+            assertEquals(1, blob[0]);
+            assertArrayEquals(new byte[]{0, 0, 0, 2}, Arrays.copyOfRange(blob, 1, 5));
+            assertArrayEquals(new byte[]{0, 0, 0, 1, 0, 0, 0, 2}, Arrays.copyOfRange(blob, 5, 13));
+            // java.io.ObjectOutputStream always starts with the STREAM_MAGIC 0xACED
+            assertFalse((blob[0] & 0xFF) == 0xAC && (blob[1] & 0xFF) == 0xED,
+                    "BLOB must not be a Java serialization stream");
+        }
+
+        @Test
+        @DisplayName("A Java-serialized object in the BLOB column is rejected without being deserialized")
+        void testJavaSerializedPayloadIsRejected() throws IOException {
+            EDataType dataType = createDataType("int[]");
+            ReadObjectProbe.FIRED.set(false);
+
+            assertNull(converter.convertValueToEMF(dataType, javaSerialize(new ReadObjectProbe())));
+            assertFalse(ReadObjectProbe.FIRED.get(), "readObject() of a column-supplied class must never run");
+
+            Map<String, String> map = new HashMap<>();
+            map.put("pwned", "yes");
+            assertNull(converter.convertValueToEMF(dataType, javaSerialize(map)));
+
+            // even a Java-serialized int[] is not the storage format and is refused
+            assertNull(converter.convertValueToEMF(dataType, javaSerialize(new int[]{1, 2, 3})));
+        }
+
+        @Test
+        @DisplayName("A payload whose type tag does not match the declared EDataType is rejected")
+        void testMismatchedTypeTagIsRejected() {
+            byte[] doubleBlob = (byte[]) converter.convertEMFToValue(createDataType("double[]"), new double[]{1.0});
+            assertNull(converter.convertValueToEMF(createDataType("int[]"), doubleBlob));
+
+            byte[] unknownTag = doubleBlob.clone();
+            unknownTag[0] = 42;
+            assertNull(converter.convertValueToEMF(createDataType("double[]"), unknownTag));
+            unknownTag[0] = 0;
+            assertNull(converter.convertValueToEMF(createDataType("double[]"), unknownTag));
+        }
+
+        @Test
+        @DisplayName("A payload whose length header does not fit the bytes is rejected")
+        void testInconsistentLengthIsRejected() {
+            EDataType dataType = createDataType("long[]");
+            byte[] blob = (byte[]) converter.convertEMFToValue(dataType, new long[]{1L, 2L});
+
+            byte[] truncated = Arrays.copyOf(blob, blob.length - 3);
+            assertNull(converter.convertValueToEMF(dataType, truncated));
+
+            byte[] padded = Arrays.copyOf(blob, blob.length + 1);
+            assertNull(converter.convertValueToEMF(dataType, padded));
+
+            byte[] hugeLength = blob.clone();
+            hugeLength[1] = 0x7F; hugeLength[2] = (byte) 0xFF; hugeLength[3] = (byte) 0xFF; hugeLength[4] = (byte) 0xFF;
+            assertNull(converter.convertValueToEMF(dataType, hugeLength));
+
+            byte[] negativeLength = blob.clone();
+            negativeLength[1] = (byte) 0xFF;
+            assertNull(converter.convertValueToEMF(dataType, negativeLength));
+
+            assertNull(converter.convertValueToEMF(dataType, new byte[0]));
+            assertNull(converter.convertValueToEMF(dataType, new byte[]{4, 0, 0}));
+        }
+
+        private Object roundTrip(String instanceClassName, Object original) {
+            EDataType dataType = createDataType(instanceClassName);
+            Object dbValue = converter.convertEMFToValue(dataType, original);
+            assertInstanceOf(byte[].class, dbValue);
+            return converter.convertValueToEMF(dataType, dbValue);
+        }
+
+        private byte[] javaSerialize(Object o) throws IOException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+                oos.writeObject(o);
+            }
+            return baos.toByteArray();
         }
 
         @Test
@@ -617,5 +739,15 @@ class ComprehensiveTypeConverterTest {
         EClass eClass = ecoreFactory.createEClass();
         eClass.setName(name);
         return eClass;
+    }
+    /** Records whether Java deserialization ever instantiated it. */
+    static class ReadObjectProbe implements Serializable {
+        private static final long serialVersionUID = 1L;
+        static final AtomicBoolean FIRED = new AtomicBoolean(false);
+
+        private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+            in.defaultReadObject();
+            FIRED.set(true);
+        }
     }
 }

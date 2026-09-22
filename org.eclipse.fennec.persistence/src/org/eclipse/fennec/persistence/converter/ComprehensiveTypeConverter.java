@@ -17,9 +17,10 @@ import static java.util.Objects.nonNull;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
@@ -484,7 +485,59 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         }
     }
 
-    private static class PrimitiveArrayInternalConverter implements InternalConverter {
+    /**
+     * Converts primitive arrays to and from a compact, self-describing binary encoding for BLOB storage.
+     * <p>
+     * Layout: {@code [typeTag:byte][length:int][elements...]} written with {@link DataOutputStream}.
+     * The encoding is decoded element-wise with {@link DataInputStream}; no class loading and no
+     * Java object serialization is involved, so the column content can never instantiate anything
+     * but the declared primitive array type. A payload whose tag does not match the declared
+     * {@code EDataType} or whose length does not fit the remaining bytes is rejected and yields
+     * {@code null}.
+     */
+    static class PrimitiveArrayInternalConverter implements InternalConverter {
+
+        /** Element kind of an encoded primitive array. Ordinal + 1 is the wire tag. */
+        enum Kind {
+            INT("int[]", Integer.BYTES),
+            DOUBLE("double[]", Double.BYTES),
+            FLOAT("float[]", Float.BYTES),
+            LONG("long[]", Long.BYTES),
+            BOOLEAN("boolean[]", 1),
+            BYTE("byte[]", Byte.BYTES),
+            CHAR("char[]", Character.BYTES),
+            SHORT("short[]", Short.BYTES);
+
+            final String className;
+            final int elementSize;
+
+            Kind(String className, int elementSize) {
+                this.className = className;
+                this.elementSize = elementSize;
+            }
+
+            byte tag() {
+                return (byte) (ordinal() + 1);
+            }
+
+            static Kind forClassName(String className) {
+                for (Kind kind : values()) {
+                    if (kind.className.equals(className)) {
+                        return kind;
+                    }
+                }
+                return null;
+            }
+
+            static Kind forTag(byte tag) {
+                int index = tag - 1;
+                return index >= 0 && index < values().length ? values()[index] : null;
+            }
+        }
+
+        /** Size of the header: one tag byte plus a four byte length. */
+        static final int HEADER_SIZE = Byte.BYTES + Integer.BYTES;
+
         @Override
         public Object convertValueToEMF(EClassifier eDataType, Object value) {
             if (isNull(value)) return null;
@@ -493,9 +546,9 @@ public class ComprehensiveTypeConverter implements TypeConverter {
                 logger.warning("EDataType has null instance class name. Not supported by primitive array converter!");
                 return value;
             }
-            // BLOB path: byte[] from DB → deserialize to primitive array
+            // BLOB path: byte[] from DB → decode to the declared primitive array
             if (value instanceof byte[] bytes) {
-                return deserializeArray(bytes);
+                return decodeArray(bytes, className);
             }
             // Legacy path: Object[] from DB → convert to primitive array
             if (value instanceof Object[] objArray) {
@@ -507,31 +560,109 @@ public class ComprehensiveTypeConverter implements TypeConverter {
         @Override
         public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
             if (isNull(emfValue)) return null;
-            // Serialize primitive arrays to byte[] for BLOB storage
+            // Encode primitive arrays to byte[] for BLOB storage
             if (emfValue.getClass().isArray() && emfValue.getClass().getComponentType().isPrimitive()) {
-                return serializeArray(emfValue);
+                return encodeArray(emfValue);
             }
             return emfValue;
         }
 
-        private byte[] serializeArray(Object array) {
-            try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                 ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                oos.writeObject(array);
-                oos.flush();
-                return baos.toByteArray();
-            } catch (IOException e) {
-                logger.log(Level.WARNING, "Failed to serialize array", e);
+        byte[] encodeArray(Object array) {
+            Kind kind = Kind.forClassName(array.getClass().getComponentType().getName() + "[]");
+            if (isNull(kind)) {
+                logger.warning(String.format("Primitive array type %s not supported!", array.getClass().getName()));
                 return null;
             }
+            int length = Array.getLength(array);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(HEADER_SIZE + length * kind.elementSize);
+            try (DataOutputStream out = new DataOutputStream(baos)) {
+                out.writeByte(kind.tag());
+                out.writeInt(length);
+                switch (kind) {
+                    case INT -> { for (int v : (int[]) array) out.writeInt(v); }
+                    case DOUBLE -> { for (double v : (double[]) array) out.writeDouble(v); }
+                    case FLOAT -> { for (float v : (float[]) array) out.writeFloat(v); }
+                    case LONG -> { for (long v : (long[]) array) out.writeLong(v); }
+                    case BOOLEAN -> { for (boolean v : (boolean[]) array) out.writeBoolean(v); }
+                    case BYTE -> out.write((byte[]) array);
+                    case CHAR -> { for (char v : (char[]) array) out.writeChar(v); }
+                    case SHORT -> { for (short v : (short[]) array) out.writeShort(v); }
+                }
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Failed to encode array", e);
+                return null;
+            }
+            return baos.toByteArray();
         }
 
-        private Object deserializeArray(byte[] bytes) {
-            try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-                 ObjectInputStream ois = new ObjectInputStream(bais)) {
-                return ois.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                logger.log(Level.WARNING, "Failed to deserialize array", e);
+        Object decodeArray(byte[] bytes, String className) {
+            Kind expected = Kind.forClassName(className);
+            if (isNull(expected)) {
+                logger.warning(String.format("Primitive array type %s not supported!", className));
+                return null;
+            }
+            if (bytes.length < HEADER_SIZE) {
+                logger.warning(String.format("Rejected primitive array payload for %s: %d bytes is shorter than the header",
+                        className, bytes.length));
+                return null;
+            }
+            try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(bytes))) {
+                Kind actual = Kind.forTag(in.readByte());
+                if (actual != expected) {
+                    logger.warning(String.format("Rejected primitive array payload for %s: type tag denotes %s",
+                            className, isNull(actual) ? "an unknown type" : actual.className));
+                    return null;
+                }
+                int length = in.readInt();
+                if (length < 0 || (long) length * expected.elementSize != bytes.length - HEADER_SIZE) {
+                    logger.warning(String.format("Rejected primitive array payload for %s: length %d does not match %d payload bytes",
+                            className, length, bytes.length - HEADER_SIZE));
+                    return null;
+                }
+                return switch (expected) {
+                    case INT -> {
+                        int[] a = new int[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readInt();
+                        yield a;
+                    }
+                    case DOUBLE -> {
+                        double[] a = new double[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readDouble();
+                        yield a;
+                    }
+                    case FLOAT -> {
+                        float[] a = new float[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readFloat();
+                        yield a;
+                    }
+                    case LONG -> {
+                        long[] a = new long[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readLong();
+                        yield a;
+                    }
+                    case BOOLEAN -> {
+                        boolean[] a = new boolean[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readBoolean();
+                        yield a;
+                    }
+                    case BYTE -> {
+                        byte[] a = new byte[length];
+                        in.readFully(a);
+                        yield a;
+                    }
+                    case CHAR -> {
+                        char[] a = new char[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readChar();
+                        yield a;
+                    }
+                    case SHORT -> {
+                        short[] a = new short[length];
+                        for (int i = 0; i < length; i++) a[i] = in.readShort();
+                        yield a;
+                    }
+                };
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Failed to decode array", e);
                 return null;
             }
         }
