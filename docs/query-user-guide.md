@@ -29,6 +29,7 @@ Two consequences are worth internalising before the first query:
 12. [Capabilities and refusals](#capabilities-and-refusals)
 13. [Querying in memory](#querying-in-memory)
 14. [Derived references](#derived-references)
+15. [Which features a query touches](#which-features-a-query-touches)
 
 ## Building a query
 
@@ -653,6 +654,67 @@ Recognised shape: `self.<manyReference>->select(v | <predicate>)` with the predi
 the supported expression subset. Other derivations fall back to the plain OCL delegate,
 and are refused in a runtime without an OCL engine. Results are unmodifiable and
 **volatile** — every access queries, so snapshot the list in hot loops.
+
+## Which features a query touches
+
+`FeatureUsageAnalyzer` (package `org.eclipse.fennec.model.query.analysis`, in the
+`org.eclipse.fennec.query.model` bundle) answers, from the model alone, which features and
+types a query touches and in which role. Use it for GDPR reports, field-level access checks,
+index hints, or to decide whether a change can affect a saved query. It needs no backend
+and no registry: a consumer depends on the query and expression models only.
+
+```java
+FeatureUsage usage = FeatureUsageAnalyzer.analyze(query);
+
+usage.features(FeatureRole.FILTER);   // what decides which objects qualify
+usage.exposedFeatures();              // what leaves the store
+usage.deliveredTypes();               // what is handed out as whole objects
+```
+
+Every feature path in the query becomes a `PathUse(role, segments)`. The intermediate
+segments are the navigated references, and the last segment is the addressed feature. The
+role comes from the query slot the path sits under, whatever expression it is nested in:
+
+| Role | Slot |
+|------|------|
+| `FILTER` | `Query.predicate`, a filter stage (including HAVING), `Expand.filter` |
+| `SORT` | `OrderBy` of the query, an expansion or the representatives |
+| `PROJECTION` | `Selection.path`, `Selection.key` |
+| `GROUP` | `GroupByStage.paths`, `GroupKey.expression` |
+| `AGGREGATE` | `Aggregate.path`, `Aggregate.source` |
+| `COMPUTE` | `Computation.expression` |
+| `EXPAND` | `Expand.path` |
+| `PAGE` | representatives `count`/`offset`. These are constant by contract, so a path here is an invalid query |
+
+So a quantifier, a geo subject or a map value in the predicate is `FILTER`. The predicate
+of a *projected* `count(…)` is `PROJECTION`, because it shapes a delivered column. If a
+future query-model slot has no role yet, the analysis throws instead of dropping its paths.
+
+**Implicit delivery.** A query with an empty `select` hands out the whole object without
+naming a single feature. `deliveredTypes()` makes this visible:
+
+- An `OBJECTS` result delivers its root type and everything reachable through containment.
+- Representatives per group deliver the grouped objects in a row cell.
+- An expansion delivers its target type.
+- A projected reference is counted as delivering its target. This is the conservative
+  reading.
+- A non-containment reference that is not expanded arrives as a proxy. The reference itself
+  is delivered, its target's features are not.
+
+`exposedFeatures()` is the delivered features plus everything that a projection, grouping
+key, aggregate or computed column reads. Filter and sort paths decide *which* values are
+delivered. They are not delivered themselves.
+
+`types()` lists the classes the query names: the root, downcasts (`pathAs`), type checks
+(`isOf`) and `RootReference` origins.
+
+Limits:
+
+- The analysis follows the **static** types. A `Person` query also delivers `Employee`
+  instances with their extra features. Widening `deliveredTypes()` by the subtypes in your
+  package registry is up to the caller.
+- `analyze(Expression)` covers a bare expression, such as a write command's selector or a
+  derivation. Every path in it counts as `FILTER`, and nothing is delivered.
 
 ## How it fits together
 
