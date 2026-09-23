@@ -21,6 +21,7 @@ import java.util.Map;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
+import org.eclipse.fennec.persistence.eclipselink.dynamic.DdlAction;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicPersistenceUnitInfo;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
@@ -53,10 +54,27 @@ final class JpaTckSupport {
 	static EntityManagerFactory bootstrap(String puName, List<EClassifier> eClasses) {
 		EntityMapper mapper = new EntityMapper();
 		EntityMappings mappings = mapper.createMappings(new ArrayList<>(eClasses));
+		// driver, url, credentials and dialect come from the flavor under test (issue #134, §6);
+		// DDL generation deliberately stays in the picture — it is where dialects differ
+		return bootstrap(puName, mappings, JpaTestSupport.jdbcProperties(puName), "create-or-extend-tables");
+	}
 
+	/**
+	 * Bootstraps a unit from a given mapping onto given JDBC properties — the schema-import
+	 * round trip (issue #298) maps onto a schema it created itself, with DDL generation
+	 * {@code none}.
+	 *
+	 * @param puName the persistence unit name
+	 * @param mappings the eorm mapping
+	 * @param jdbcProperties driver, url, credentials and dialect
+	 * @param ddlGeneration the EclipseLink DDL generation mode
+	 * @return the entity manager factory
+	 */
+	static EntityManagerFactory bootstrap(String puName, EntityMappings mappings, Map<String, Object> jdbcProperties,
+			String ddlGeneration) {
 		DynamicClassLoader dcl = new DynamicClassLoader(JpaTckSupport.class.getClassLoader());
 		Map<String, Object> props = new HashMap<>();
-		props.put(PersistenceUnitProperties.DDL_GENERATION, "create-or-extend-tables");
+		props.put(PersistenceUnitProperties.DDL_GENERATION, ddlGeneration);
 		props.put(PersistenceUnitProperties.DDL_GENERATION_MODE, "database");
 		// -Djpa.test.logging=FINE surfaces the DDL a flavor rejects — create-or-extend
 		// swallows DDL failures, so a missing table is otherwise diagnosed at first SELECT
@@ -65,9 +83,7 @@ final class JpaTckSupport {
 		props.put(PersistenceUnitProperties.WEAVING, "false");
 		props.put(PersistenceUnitProperties.TRANSACTION_TYPE, "RESOURCE_LOCAL");
 		props.put(PersistenceUnitProperties.CLASSLOADER, dcl);
-		// driver, url, credentials and dialect come from the flavor under test (issue #134, §6);
-		// DDL generation deliberately stays in the picture — it is where dialects differ
-		props.putAll(JpaTestSupport.jdbcProperties(puName));
+		props.putAll(jdbcProperties);
 
 		PersistenceUnit persistenceUnit = EPersistenceFactory.eINSTANCE.createPersistenceUnit();
 		persistenceUnit.setName(puName);
@@ -85,7 +101,10 @@ final class JpaTckSupport {
 		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
 
 		EDynamicHelper helper = new EDynamicHelper(emf, dcl);
-		helper.addETypes(true, true, types);
+		// "none" maps onto an existing schema (#298): no table, no sequence table, no FK — the
+		// helper's boolean overload would create missing tables whatever the unit says
+		boolean ddl = !"none".equals(ddlGeneration);
+		helper.addETypes(ddl ? DdlAction.CREATE_TABLES : DdlAction.NONE, ddl, types);
 		return emf;
 	}
 

@@ -1,6 +1,6 @@
 # DatabaseEcoreParser - Feature Status
 
-> Letzte Aktualisierung: 2026-09-23 (#294, #295, #305)
+> Letzte Aktualisierung: 2026-09-23 (#294, #295, #305, #298)
 
 ## Implemented Features
 
@@ -49,6 +49,19 @@
 - ❌ Custom type extensions (PostGIS geometry, JSON, etc.)
 - ❌ Incremental model update (compare DB vs. existing Ecore)
 
+## Round trip onto the existing schema (#298)
+
+`JpaSchemaImportRoundTripTest` (TCK) parses a schema with rows, maps it back with DDL generation `none` and compares every row, every reference and a set of writes with plain SQL — 16 cases × parse/read/navigate/write/schema-unchanged, on h2, PostgreSQL and MariaDB. It is **test-first**: aspects that cannot pass yet are listed in `KNOWN_GAPS` with the issue that closes them; they still run, a failure is reported as skipped, and a gap that starts passing fails the suite.
+
+State 2026-09-23, identical on all three flavors: 47 green, 22 known gaps —
+- **#296** (eorm onto the existing schema): column, join-column, join-table and table names of the default ORM derivation; sequence instead of IDENTITY; tables without primary key; views
+- **#297** (EclipseLink join columns): composite many-to-one, junction join columns
+- **#307** deleting a fragment-resolved object deletes the whole table
+- **#308** a dynamic UUID data type cannot be read
+- **#309** a new object's many-to-one is inserted with a NULL foreign key
+
+Green already with the default mapping: plain tables, java.time/decimal/boolean types, a single-column FK (read, navigate, update), literal defaults on insert, inline enums.
+
 ## Test Coverage
 
 | Category | Tests | Status |
@@ -68,3 +81,4 @@
 | Type rules, defaults, plurals, enum names (#295, unit) | 11 | ✅ |
 | H2: schema facts, defaults, types, names (#295) | 12 | ✅ |
 | Namespace isolation on h2, PostgreSQL, MariaDB (#305, `JpaSchemaImportNamespaceTest` in the TCK, flavor runs) | 2 | ✅ |
+| Round trip onto the existing schema (#298, `JpaSchemaImportRoundTripTest` in the TCK, all flavors) | 69 | 47 ✅ / 22 known gaps |
