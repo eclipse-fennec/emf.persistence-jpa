@@ -46,7 +46,7 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 | `org.eclipse.fennec.persistence.query.derived` | Query-backed derived references via OCL derivation annotations |
 | `org.eclipse.fennec.persistence.pushstreams` | OSGi PushStream support for persistence resources |
 | `org.eclipse.fennec.persistence.tck` | The conformance suite both backends run: `AbstractPersistenceTCK` plus the per-backend and per-flavor drivers. Capability-gated — an unserved feature skips rather than fails |
-| `org.eclipse.fennec.query.model` | The canonical query envelope (`query.ecore`: `Query`, `Expand`, `GroupByStage`, …) and its fluent builders |
+| `org.eclipse.fennec.query.model` | The canonical query envelope (`query.ecore`: `Query`, `Expand`, `GroupByStage`, …), its fluent builders and `FeatureUsageAnalyzer` (which features a query touches, in which role) |
 | `org.eclipse.fennec.expression.model` | The expression IR the query envelope is built from (`expression.ecore`) |
 | `org.eclipse.fennec.expression.ocl` | Bidirectional bridge between the expression model and OCL |
 | `org.eclipse.fennec.command.model` | Write commands — Insert, Delete-by-selector, Update-by-selector with a ChangeSet template |
