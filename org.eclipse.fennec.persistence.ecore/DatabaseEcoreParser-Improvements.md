@@ -1,6 +1,6 @@
 # DatabaseEcoreParser - Feature Status
 
-> Letzte Aktualisierung: 2026-09-23 (#294, #295)
+> Letzte Aktualisierung: 2026-09-23 (#294, #295, #305)
 
 ## Implemented Features
 
@@ -17,7 +17,8 @@
 - ✅ **Junction table detection → ManyToMany** with EOpposite (table removed from model)
 - ✅ **Containment heuristic**: NOT NULL FK + ON DELETE CASCADE → containment
 - ✅ **View support**: configurable, views become read-only EClasses (annotation)
-- ✅ **Multi-schema support**: one EPackage per schema, schema annotation on package
+- ✅ **Multi-namespace support**: one EPackage per namespace. The namespace is the **schema** on PostgreSQL/H2 and the **catalog** (= database) on MariaDB/MySQL, decided from `supportsSchemasInTableDefinitions()` / `supportsCatalogsInTableDefinitions()`; every metadata call passes it in the matching argument, so nothing outside it is read. Default = the connection's current schema resp. catalog — never an assumed `PUBLIC`; none → ERROR diagnostic. Package annotation `schema` resp. `catalog`; `TableFacts.catalog()`/`schema()` set on the level the database addresses tables with (#305)
+- ✅ Non-OSGi entry point `DatabaseEcoreParser.parse(DataSource, ParserSettings)` (#305)
 - ✅ **Naming transformation**: configurable (on/off), SNAKE_CASE → CamelCase
 - ✅ Primary key detection; a **composite PK** is declared via `idFeatures` (`http://eclipse.org/fennec/persistence/1.0`, key order) instead of several `isID` attributes (#294)
 - ✅ **Composite FKs** become one reference (grouped by `FK_NAME`, columns in `KEY_SEQ` order) (#294)
@@ -44,7 +45,7 @@
 - ❌ Enumerations from PostgreSQL `CREATE TYPE … AS ENUM`, MariaDB `information_schema`, and `CHECK (col IN (...))`; boolean emulation from `CHECK` constraints — vendor readers, #303
 
 ### Priority 2
-- ❌ Cross-schema FK handling (references between packages)
+- ❌ Cross-namespace FK handling (references between packages) — today a warning and a plain attribute
 - ❌ Custom type extensions (PostGIS geometry, JSON, etc.)
 - ❌ Incremental model update (compare DB vs. existing Ecore)
 
@@ -66,3 +67,4 @@
 | H2: schema patterns (#294) — every case validated with `Diagnostician` | 9 | ✅ |
 | Type rules, defaults, plurals, enum names (#295, unit) | 11 | ✅ |
 | H2: schema facts, defaults, types, names (#295) | 12 | ✅ |
+| Namespace isolation on h2, PostgreSQL, MariaDB (#305, `JpaSchemaImportNamespaceTest` in the TCK, flavor runs) | 2 | ✅ |

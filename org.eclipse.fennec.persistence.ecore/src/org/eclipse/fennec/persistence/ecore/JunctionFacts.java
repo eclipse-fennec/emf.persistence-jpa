@@ -17,7 +17,8 @@ import org.eclipse.emf.ecore.EReference;
 /**
  * A junction table that became a ManyToMany pair instead of a class (issue #295).
  *
- * @param schema the schema the table lives in
+ * @param catalog the catalog the table is addressed with, see {@link TableFacts#catalog()}
+ * @param schema the schema the table is addressed with, see {@link TableFacts#schema()}
  * @param name the junction table name
  * @param sourceKey the foreign key towards the owner of {@code reference}
  * @param targetKey the foreign key towards the type of {@code reference}
@@ -26,6 +27,6 @@ import org.eclipse.emf.ecore.EReference;
  * @author Mark Hoffmann
  * @since 23.09.2026
  */
-public record JunctionFacts(String schema, String name, TableFacts.ForeignKey sourceKey,
+public record JunctionFacts(String catalog, String schema, String name, TableFacts.ForeignKey sourceKey,
 		TableFacts.ForeignKey targetKey, EReference reference, EReference opposite) {
 }

@@ -14,7 +14,9 @@ package org.eclipse.fennec.persistence.ecore;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static java.util.Objects.requireNonNull;
 
+import java.lang.annotation.Annotation;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -23,6 +25,7 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -100,6 +103,8 @@ public class DatabaseEcoreParser {
 	static final String ANNOTATION_READ_ONLY = "readOnly";
 	static final String ANNOTATION_TABLE_NAME = "tableName";
 	static final String ANNOTATION_SCHEMA = "schema";
+	/** The package's namespace on a catalog database (MariaDB/MySQL: the database). */
+	static final String ANNOTATION_CATALOG = "catalog";
 	/** Original column name of an attribute. */
 	static final String ANNOTATION_COLUMN_NAME = "columnName";
 	/** Comma-separated FK columns of a forward reference, in key order. */
@@ -148,7 +153,7 @@ public class DatabaseEcoreParser {
 		@AttributeDefinition(name = "Package version", description = "Optional package version")
 		String version() default "1.0";
 
-		@AttributeDefinition(name = "Schemas", description = "Database schemas to parse. Empty for default schema. Multiple schemas produce one EPackage each.")
+		@AttributeDefinition(name = "Schemas", description = "Namespaces to parse: schemas on PostgreSQL/H2, databases (JDBC catalogs) on MariaDB/MySQL. Empty for the connection's current one. Multiple namespaces produce one EPackage each.")
 		String[] schemas() default {};
 
 		@AttributeDefinition(name = "Include views", description = "Whether to include database views as read-only EClasses")
@@ -160,6 +165,59 @@ public class DatabaseEcoreParser {
 
 	public void activate(DatabaseParserConfig config) {
 		this.config = config;
+	}
+
+	/**
+	 * Parses outside OSGi: the same run as the component's {@link #parseAllWithDiagnostics()},
+	 * with the settings in place of the configuration.
+	 *
+	 * @param dataSource the database to read the schema from, must not be {@code null}
+	 * @param settings the parser settings, must not be {@code null}
+	 * @return the parse result, never {@code null}
+	 * @throws SQLException if the metadata cannot be read
+	 */
+	public static ParseResult parse(DataSource dataSource, ParserSettings settings) throws SQLException {
+		requireNonNull(dataSource, "dataSource must not be null");
+		requireNonNull(settings, "settings must not be null");
+		DatabaseEcoreParser parser = new DatabaseEcoreParser();
+		parser.datasource = dataSource;
+		parser.activate(new DatabaseParserConfig() {
+			@Override
+			public String packageName() {
+				return settings.packageName();
+			}
+
+			@Override
+			public String uriPrefix() {
+				return settings.uriPrefix();
+			}
+
+			@Override
+			public String version() {
+				return settings.version();
+			}
+
+			@Override
+			public String[] schemas() {
+				return settings.namespaces().toArray(String[]::new);
+			}
+
+			@Override
+			public boolean includeViews() {
+				return settings.includeViews();
+			}
+
+			@Override
+			public boolean transformNames() {
+				return settings.transformNames();
+			}
+
+			@Override
+			public Class<? extends Annotation> annotationType() {
+				return DatabaseParserConfig.class;
+			}
+		});
+		return parser.parseAllWithDiagnostics();
 	}
 
 	/**
@@ -177,17 +235,18 @@ public class DatabaseEcoreParser {
 		List<JunctionFacts> junctions = new ArrayList<>();
 		try (Connection con = datasource.getConnection()) {
 			DatabaseMetaData metaData = con.getMetaData();
-			List<String> schemas = resolveSchemas(con);
+			List<Namespace> namespaces = resolveNamespaces(con, metaData, diagnostics);
 
-			for (String schema : schemas) {
-				String pkgName = schemas.size() == 1
+			for (Namespace ns : namespaces) {
+				String pkgName = namespaces.size() == 1
 						? config.packageName()
-						: config.packageName() + "." + schema.toLowerCase();
+						: config.packageName() + "." + ns.name().toLowerCase();
 				String uri = config.uriPrefix() + "/" + pkgName + "/" + config.version();
 				EPackage ePackage = createPackage(pkgName, pkgName, uri);
-				addAnnotation(ePackage, ANNOTATION_SCHEMA, schema);
+				addAnnotation(ePackage, ns.kind() == NamespaceKind.CATALOG ? ANNOTATION_CATALOG : ANNOTATION_SCHEMA,
+						ns.name());
 
-				parseSchema(metaData, schema, ePackage, diagnostics, tables, junctions);
+				parseSchema(metaData, ns, ePackage, diagnostics, tables, junctions);
 				packages.add(ePackage);
 			}
 		}
@@ -219,14 +278,14 @@ public class DatabaseEcoreParser {
 				config.uriPrefix() + "/" + config.packageName() + "/" + config.version()) : packages.get(0);
 	}
 
-	private void parseSchema(DatabaseMetaData metaData, String schema, EPackage ePackage,
+	private void parseSchema(DatabaseMetaData metaData, Namespace ns, EPackage ePackage,
 			List<Diagnostic> diagnostics, List<TableFacts> tableFacts, List<JunctionFacts> junctionFacts)
 			throws SQLException {
 		String escape = metaData.getSearchStringEscape();
 
 		// table metadata in metadata order: the produced model must not depend on hash order
 		List<TableInfo> tables = new ArrayList<>();
-		for (TableRow row : loadTables(metaData, schema, escape)) {
+		for (TableRow row : loadTables(metaData, ns, escape)) {
 			EClass eClass = createEClass(classifierName(ePackage, transformClassName(row.name()), diagnostics));
 			addAnnotation(eClass, ANNOTATION_TABLE_NAME, row.name());
 			if (row.view()) {
@@ -235,9 +294,9 @@ public class DatabaseEcoreParser {
 			addDocumentation(eClass, row.remarks());
 			ePackage.getEClassifiers().add(eClass);
 			tables.add(new TableInfo(eClass, row.name(), row.view(), row.remarks(),
-					loadColumns(metaData, schema, row.name(), escape),
-					loadPrimaryKeys(metaData, schema, row.name()), loadForeignKeys(metaData, schema, row.name()),
-					row.view() ? List.of() : loadIndexes(metaData, schema, row.name())));
+					loadColumns(metaData, ns, row.name(), escape),
+					loadPrimaryKeys(metaData, ns, row.name()), loadForeignKeys(metaData, ns, row.name()),
+					row.view() ? List.of() : loadIndexes(metaData, ns, row.name())));
 		}
 
 		// junction tables become ManyToMany references, not classes
@@ -254,7 +313,7 @@ public class DatabaseEcoreParser {
 		Map<ForeignKeyInfo, EReference> forwardReferences = new HashMap<>();
 		for (TableInfo ti : tables) {
 			if (!junctions.contains(ti)) {
-				columnFeatures.put(ti, processTable(ti, schema, ePackage, links, forwardReferences, diagnostics));
+				columnFeatures.put(ti, processTable(ti, ns, ePackage, links, forwardReferences, diagnostics));
 			}
 		}
 		// Pass 2: reverse references and ManyToMany pairs
@@ -262,39 +321,64 @@ public class DatabaseEcoreParser {
 			addReverseReference(link, diagnostics);
 		}
 		for (TableInfo junction : junctions) {
-			JunctionFacts facts = processJunctionTable(junction, schema, ePackage, diagnostics);
+			JunctionFacts facts = processJunctionTable(junction, ns, ePackage, diagnostics);
 			if (nonNull(facts)) {
 				junctionFacts.add(facts);
 			}
 		}
 		for (var entry : columnFeatures.entrySet()) {
-			tableFacts.add(toFacts(entry.getKey(), schema, entry.getValue(), forwardReferences));
+			tableFacts.add(toFacts(entry.getKey(), ns, entry.getValue(), forwardReferences));
 		}
 	}
 
-	private List<String> resolveSchemas(Connection con) throws SQLException {
+	/**
+	 * The namespaces to parse. On a catalog database the namespace is the catalog — MariaDB
+	 * and MySQL call it database and report no schema at all — elsewhere the schema. The
+	 * current one is the connection's, never an assumed name: an unknown namespace passed as
+	 * {@code null} would widen every metadata call to the whole server (issue #305).
+	 */
+	private List<Namespace> resolveNamespaces(Connection con, DatabaseMetaData metaData, List<Diagnostic> diagnostics)
+			throws SQLException {
+		NamespaceKind kind = namespaceKind(metaData);
 		String[] configured = config.schemas();
 		if (nonNull(configured) && configured.length > 0) {
-			return List.of(configured);
+			return Arrays.stream(configured).map(name -> new Namespace(kind, name)).toList();
 		}
-		String schema = con.getSchema();
-		return List.of(isNull(schema) ? "PUBLIC" : schema);
+		String current = kind == NamespaceKind.CATALOG ? con.getCatalog() : con.getSchema();
+		if (isNull(current) || current.isBlank()) {
+			diagnostics.add(new BasicDiagnostic(Diagnostic.ERROR, DIAGNOSTIC_SOURCE, 0, "The connection has no current "
+					+ kind.name().toLowerCase(Locale.ROOT) + " (" + metaData.getDatabaseProductName()
+					+ "); configure the namespaces to parse — reading all of them is never a default", new Object[0]));
+			return List.of();
+		}
+		return List.of(new Namespace(kind, current));
+	}
+
+	/**
+	 * A database without schemas in table definitions but with catalogs there addresses a
+	 * table as {@code catalog.table} — MariaDB and MySQL. Everything else as
+	 * {@code schema.table}.
+	 */
+	static NamespaceKind namespaceKind(DatabaseMetaData metaData) throws SQLException {
+		return !metaData.supportsSchemasInTableDefinitions() && metaData.supportsCatalogsInTableDefinitions()
+				? NamespaceKind.CATALOG
+				: NamespaceKind.SCHEMA;
 	}
 
 	// --- Table/View loading ---
 
-	private List<TableRow> loadTables(DatabaseMetaData metaData, String schema, String escape) throws SQLException {
+	private List<TableRow> loadTables(DatabaseMetaData metaData, Namespace ns, String escape) throws SQLException {
 		List<TableRow> rows = new ArrayList<>();
-		readTables(metaData, schema, escape, "TABLE", rows);
+		readTables(metaData, ns, escape, "TABLE", rows);
 		if (config.includeViews()) {
-			readTables(metaData, schema, escape, "VIEW", rows);
+			readTables(metaData, ns, escape, "VIEW", rows);
 		}
 		return rows;
 	}
 
-	private void readTables(DatabaseMetaData metaData, String schema, String escape, String type, List<TableRow> rows)
+	private void readTables(DatabaseMetaData metaData, Namespace ns, String escape, String type, List<TableRow> rows)
 			throws SQLException {
-		try (ResultSet rs = metaData.getTables(null, pattern(schema, escape), "%", new String[] { type })) {
+		try (ResultSet rs = metaData.getTables(ns.catalog(), pattern(ns.schema(), escape), "%", new String[] { type })) {
 			while (rs.next()) {
 				rows.add(new TableRow(rs.getString("TABLE_NAME"), "VIEW".equals(type), blankToNull(rs.getString("REMARKS"))));
 			}
@@ -308,14 +392,14 @@ public class DatabaseEcoreParser {
 	 *
 	 * @return the feature per column name
 	 */
-	private Map<String, EStructuralFeature> processTable(TableInfo ti, String schema, EPackage ePackage,
+	private Map<String, EStructuralFeature> processTable(TableInfo ti, Namespace ns, EPackage ePackage,
 			List<Link> links, Map<ForeignKeyInfo, EReference> forwardReferences, List<Diagnostic> diagnostics) {
 		// resolve the foreign keys first: a resolved FK column is carried by its reference
 		List<ForeignKeyInfo> resolved = new ArrayList<>();
 		List<EClass> targets = new ArrayList<>();
 		Set<String> referenceColumns = new HashSet<>();
 		for (ForeignKeyInfo fk : ti.foreignKeys()) {
-			EClass target = resolveTarget(ePackage, schema, fk);
+			EClass target = resolveTarget(ePackage, ns, fk);
 			if (isNull(target)) {
 				boolean composite = fk.fkColumns().size() > 1;
 				diagnostics.add(warning("FK target '" + fk.pkTable() + "' not found for column"
@@ -401,19 +485,19 @@ public class DatabaseEcoreParser {
 		setOpposite(link.forward(), reverse);
 	}
 
-	private TableFacts toFacts(TableInfo ti, String schema, Map<String, EStructuralFeature> features,
+	private TableFacts toFacts(TableInfo ti, Namespace ns, Map<String, EStructuralFeature> features,
 			Map<ForeignKeyInfo, EReference> forwardReferences) {
 		List<TableFacts.Column> columns = ti.columns().stream().map(c -> new TableFacts.Column(c.name(),
 				c.dataType(), c.typeName(), c.size(), c.decimalDigits(), c.nullable(), c.autoIncrement(),
 				c.generated(), c.defaultValue(), c.remarks(), features.get(c.name()))).toList();
 		List<TableFacts.ForeignKey> foreignKeys = ti.foreignKeys().stream()
 				.map(fk -> toFacts(fk, forwardReferences.get(fk))).toList();
-		return new TableFacts(schema, ti.tableName(), ti.view(), ti.remarks(), ti.eClass(), columns,
+		return new TableFacts(ns.catalog(), ns.schema(), ti.tableName(), ti.view(), ti.remarks(), ti.eClass(), columns,
 				ti.pkColumns(), foreignKeys, ti.indexes());
 	}
 
 	private static TableFacts.ForeignKey toFacts(ForeignKeyInfo fk, EReference reference) {
-		return new TableFacts.ForeignKey(fk.name(), fk.pkSchema(), fk.pkTable(), fk.fkColumns(), fk.pkColumns(),
+		return new TableFacts.ForeignKey(fk.name(), fk.pkCatalog(), fk.pkSchema(), fk.pkTable(), fk.fkColumns(), fk.pkColumns(),
 				fk.deleteRule(), reference);
 	}
 
@@ -434,12 +518,12 @@ public class DatabaseEcoreParser {
 				&& ti.columns().stream().allMatch(c -> fkColumns.contains(c.name()));
 	}
 
-	private JunctionFacts processJunctionTable(TableInfo ti, String schema, EPackage ePackage,
+	private JunctionFacts processJunctionTable(TableInfo ti, Namespace ns, EPackage ePackage,
 			List<Diagnostic> diagnostics) {
 		ForeignKeyInfo fkA = ti.foreignKeys().get(0);
 		ForeignKeyInfo fkB = ti.foreignKeys().get(1);
-		EClass classA = resolveTarget(ePackage, schema, fkA);
-		EClass classB = resolveTarget(ePackage, schema, fkB);
+		EClass classA = resolveTarget(ePackage, ns, fkA);
+		EClass classB = resolveTarget(ePackage, ns, fkB);
 		if (isNull(classA) || isNull(classB)) {
 			diagnostics.add(warning("Junction table '" + ti.tableName() + "' references a table outside the package ('"
 					+ (isNull(classA) ? fkA.pkTable() : fkB.pkTable()) + "'); no ManyToMany created", ti.eClass()));
@@ -454,16 +538,16 @@ public class DatabaseEcoreParser {
 				qualifier(fkA), diagnostics);
 		EReference refBA = addManyReference(classB, nameBA, classA);
 		setOpposite(refAB, refBA);
-		return new JunctionFacts(schema, ti.tableName(), toFacts(fkA, null), toFacts(fkB, null), refAB, refBA);
+		return new JunctionFacts(ns.catalog(), ns.schema(), ti.tableName(), toFacts(fkA, null), toFacts(fkB, null), refAB, refBA);
 	}
 
 	// --- Metadata loading ---
 
-	private List<ColumnInfo> loadColumns(DatabaseMetaData metaData, String schema, String tableName, String escape)
+	private List<ColumnInfo> loadColumns(DatabaseMetaData metaData, Namespace ns, String tableName, String escape)
 			throws SQLException {
 		List<ColumnInfo> columns = new ArrayList<>();
 		// getColumns takes patterns: an unescaped '_' would also match USERXACCOUNT for USER_ACCOUNT
-		try (ResultSet rs = metaData.getColumns(null, pattern(schema, escape), pattern(tableName, escape), "%")) {
+		try (ResultSet rs = metaData.getColumns(ns.catalog(), pattern(ns.schema(), escape), pattern(tableName, escape), "%")) {
 			while (rs.next()) {
 				columns.add(new ColumnInfo(rs.getString("COLUMN_NAME"), rs.getInt("DATA_TYPE"),
 						rs.getString("TYPE_NAME"), rs.getInt("COLUMN_SIZE"), rs.getInt("DECIMAL_DIGITS"),
@@ -481,14 +565,15 @@ public class DatabaseEcoreParser {
 	 * Grouped by {@code FK_NAME}; a driver that reports no name gets one group per
 	 * {@code KEY_SEQ} run towards the same target table.
 	 */
-	private List<ForeignKeyInfo> loadForeignKeys(DatabaseMetaData metaData, String schema, String tableName)
+	private List<ForeignKeyInfo> loadForeignKeys(DatabaseMetaData metaData, Namespace ns, String tableName)
 			throws SQLException {
 		Map<String, List<KeyColumn>> groups = new LinkedHashMap<>();
 		Map<String, ForeignKeyInfo> heads = new LinkedHashMap<>();
 		Map<String, Integer> unnamedRuns = new HashMap<>();
-		try (ResultSet rs = metaData.getImportedKeys(null, schema, tableName)) {
+		try (ResultSet rs = metaData.getImportedKeys(ns.catalog(), ns.schema(), tableName)) {
 			while (rs.next()) {
 				String fkName = rs.getString("FK_NAME");
+				String pkCatalog = rs.getString("PKTABLE_CAT");
 				String pkSchema = rs.getString("PKTABLE_SCHEM");
 				String pkTable = rs.getString("PKTABLE_NAME");
 				int keySeq = rs.getInt("KEY_SEQ");
@@ -496,13 +581,13 @@ public class DatabaseEcoreParser {
 				if (nonNull(fkName)) {
 					key = "name:" + fkName;
 				} else {
-					String target = pkSchema + "." + pkTable;
+					String target = pkCatalog + "." + pkSchema + "." + pkTable;
 					int run = keySeq == 1 ? unnamedRuns.merge(target, 1, Integer::sum) : unnamedRuns.getOrDefault(target, 1);
 					key = "unnamed:" + target + "#" + run;
 				}
 				groups.computeIfAbsent(key, k -> new ArrayList<>())
 						.add(new KeyColumn(keySeq, rs.getString("FKCOLUMN_NAME"), rs.getString("PKCOLUMN_NAME")));
-				heads.putIfAbsent(key, new ForeignKeyInfo(fkName, pkSchema, pkTable, rs.getInt("DELETE_RULE"),
+				heads.putIfAbsent(key, new ForeignKeyInfo(fkName, pkCatalog, pkSchema, pkTable, rs.getInt("DELETE_RULE"),
 						List.of(), List.of()));
 			}
 		}
@@ -511,7 +596,7 @@ public class DatabaseEcoreParser {
 			List<KeyColumn> keyColumns = new ArrayList<>(entry.getValue());
 			keyColumns.sort(Comparator.comparingInt(KeyColumn::keySeq));
 			ForeignKeyInfo head = heads.get(entry.getKey());
-			foreignKeys.add(new ForeignKeyInfo(head.name(), head.pkSchema(), head.pkTable(), head.deleteRule(),
+			foreignKeys.add(new ForeignKeyInfo(head.name(), head.pkCatalog(), head.pkSchema(), head.pkTable(), head.deleteRule(),
 					keyColumns.stream().map(KeyColumn::fkColumn).toList(),
 					keyColumns.stream().map(KeyColumn::pkColumn).toList()));
 		}
@@ -519,9 +604,9 @@ public class DatabaseEcoreParser {
 	}
 
 	/** Primary key columns in key order — the driver returns them ordered by column name. */
-	private List<String> loadPrimaryKeys(DatabaseMetaData metaData, String schema, String tableName) throws SQLException {
+	private List<String> loadPrimaryKeys(DatabaseMetaData metaData, Namespace ns, String tableName) throws SQLException {
 		List<KeyColumn> keyColumns = new ArrayList<>();
-		try (ResultSet rs = metaData.getPrimaryKeys(null, schema, tableName)) {
+		try (ResultSet rs = metaData.getPrimaryKeys(ns.catalog(), ns.schema(), tableName)) {
 			while (rs.next()) {
 				keyColumns.add(new KeyColumn(rs.getInt("KEY_SEQ"), rs.getString("COLUMN_NAME"), null));
 			}
@@ -534,11 +619,11 @@ public class DatabaseEcoreParser {
 	 * Indexes of a table, columns in index order. The primary key's own unique index is left
 	 * out — it is the primary key, not an additional fact.
 	 */
-	private List<TableFacts.Index> loadIndexes(DatabaseMetaData metaData, String schema, String tableName)
+	private List<TableFacts.Index> loadIndexes(DatabaseMetaData metaData, Namespace ns, String tableName)
 			throws SQLException {
 		Map<String, List<KeyColumn>> columns = new LinkedHashMap<>();
 		Map<String, Boolean> unique = new HashMap<>();
-		try (ResultSet rs = metaData.getIndexInfo(null, schema, tableName, false, true)) {
+		try (ResultSet rs = metaData.getIndexInfo(ns.catalog(), ns.schema(), tableName, false, true)) {
 			while (rs.next()) {
 				String indexName = rs.getString("INDEX_NAME");
 				String columnName = rs.getString("COLUMN_NAME");
@@ -550,7 +635,7 @@ public class DatabaseEcoreParser {
 				unique.put(indexName, !rs.getBoolean("NON_UNIQUE"));
 			}
 		}
-		List<String> primaryKey = loadPrimaryKeys(metaData, schema, tableName);
+		List<String> primaryKey = loadPrimaryKeys(metaData, ns, tableName);
 		List<TableFacts.Index> indexes = new ArrayList<>();
 		for (var entry : columns.entrySet()) {
 			List<KeyColumn> keyColumns = new ArrayList<>(entry.getValue());
@@ -783,10 +868,13 @@ public class DatabaseEcoreParser {
 
 	/**
 	 * The class of the FK target table in this package, {@code null} when it lives in
-	 * another schema or is not part of the package.
+	 * another namespace or is not part of the package. The namespace is compared on the
+	 * level the database addresses tables with — on MariaDB the target schema is always
+	 * {@code null}, the catalog tells (issue #305).
 	 */
-	private EClass resolveTarget(EPackage ePackage, String schema, ForeignKeyInfo fk) {
-		if (nonNull(fk.pkSchema()) && !fk.pkSchema().equals(schema)) {
+	private EClass resolveTarget(EPackage ePackage, Namespace ns, ForeignKeyInfo fk) {
+		String targetNamespace = ns.kind() == NamespaceKind.CATALOG ? fk.pkCatalog() : fk.pkSchema();
+		if (nonNull(targetNamespace) && !targetNamespace.equals(ns.name())) {
 			return null;
 		}
 		return findClassByTableName(ePackage, fk.pkTable());
@@ -1140,8 +1228,26 @@ public class DatabaseEcoreParser {
 	record KeyColumn(int keySeq, String fkColumn, String pkColumn) {}
 
 	/** One foreign key constraint, its columns in key order. {@code name} may be {@code null}. */
-	record ForeignKeyInfo(String name, String pkSchema, String pkTable, int deleteRule, List<String> fkColumns,
-			List<String> pkColumns) {}
+	record ForeignKeyInfo(String name, String pkCatalog, String pkSchema, String pkTable, int deleteRule,
+			List<String> fkColumns, List<String> pkColumns) {}
+
+	/** Whether a database addresses tables as {@code schema.table} or as {@code catalog.table}. */
+	enum NamespaceKind { SCHEMA, CATALOG }
+
+	/**
+	 * The namespace one package is parsed from. It goes into exactly one metadata argument:
+	 * the catalog on a catalog database, the schema pattern elsewhere.
+	 */
+	record Namespace(NamespaceKind kind, String name) {
+
+		String catalog() {
+			return kind == NamespaceKind.CATALOG ? name : null;
+		}
+
+		String schema() {
+			return kind == NamespaceKind.SCHEMA ? name : null;
+		}
+	}
 
 	record TableInfo(EClass eClass, String tableName, boolean view, String remarks, List<ColumnInfo> columns,
 			List<String> pkColumns, List<ForeignKeyInfo> foreignKeys, List<TableFacts.Index> indexes) {}

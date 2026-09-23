@@ -24,7 +24,10 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  * default expression, an index — yet a mapping onto the existing schema needs every one
  * of them.
  *
- * @param schema the schema the table lives in
+ * @param catalog the catalog the table is addressed with — set on catalog databases
+ *            (MariaDB/MySQL: the database), {@code null} elsewhere
+ * @param schema the schema the table is addressed with — set on schema databases
+ *            (PostgreSQL, H2), {@code null} on catalog databases
  * @param name the table name as the database reports it
  * @param view whether this is a view
  * @param remarks the table comment, {@code null} if none
@@ -36,7 +39,7 @@ import org.eclipse.emf.ecore.EStructuralFeature;
  * @author Mark Hoffmann
  * @since 23.09.2026
  */
-public record TableFacts(String schema, String name, boolean view, String remarks, EClass eClass,
+public record TableFacts(String catalog, String schema, String name, boolean view, String remarks, EClass eClass,
 		List<Column> columns, List<String> primaryKey, List<ForeignKey> foreignKeys, List<Index> indexes) {
 
 	/**
@@ -84,7 +87,8 @@ public record TableFacts(String schema, String name, boolean view, String remark
 	 * One foreign key constraint.
 	 *
 	 * @param name the constraint name, {@code null} if the driver reports none
-	 * @param targetSchema the schema of the referenced table
+	 * @param targetCatalog the catalog of the referenced table as the driver reports it
+	 * @param targetSchema the schema of the referenced table as the driver reports it
 	 * @param targetTable the referenced table
 	 * @param columns the FK columns in key order
 	 * @param targetColumns the referenced columns, aligned with {@code columns}
@@ -93,7 +97,7 @@ public record TableFacts(String schema, String name, boolean view, String remark
 	 *            not part of the package and the columns stayed attributes, and for the keys
 	 *            of a junction table, whose pair is on {@link JunctionFacts}
 	 */
-	public record ForeignKey(String name, String targetSchema, String targetTable, List<String> columns,
+	public record ForeignKey(String name, String targetCatalog, String targetSchema, String targetTable, List<String> columns,
 			List<String> targetColumns, int deleteRule, EReference reference) {
 
 		/**
