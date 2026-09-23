@@ -1,6 +1,6 @@
 # DatabaseEcoreParser - Feature Status
 
-> Letzte Aktualisierung: 2026-04-14
+> Letzte Aktualisierung: 2026-09-23 (#294)
 
 ## Implemented Features
 
@@ -14,7 +14,14 @@
 - ✅ **View support**: configurable, views become read-only EClasses (annotation)
 - ✅ **Multi-schema support**: one EPackage per schema, schema annotation on package
 - ✅ **Naming transformation**: configurable (on/off), SNAKE_CASE → CamelCase
-- ✅ Primary key detection (composite-safe)
+- ✅ Primary key detection; a **composite PK** is declared via `idFeatures` (`http://eclipse.org/fennec/persistence/1.0`, key order) instead of several `isID` attributes (#294)
+- ✅ **Composite FKs** become one reference (grouped by `FK_NAME`, columns in `KEY_SEQ` order) (#294)
+- ✅ **Identifying FKs** (FK column inside the PK) keep the column as id attribute and add a reference named after the target (#294)
+- ✅ **Unique feature names**: collisions (two FKs to one table, self-referencing junction) fall back to `<name>Via<FkColumns>` and are reported as INFO diagnostic (#294)
+- ✅ Junction table = exactly two FKs covering all columns; a third FK makes it an entity (#294)
+- ✅ Schema and table names are escaped for JDBC metadata patterns (`_`, `%`) (#294)
+- ✅ FK targets in another schema are reported and mapped as plain attributes (#294)
+- ✅ Deterministic output: tables in metadata order, no hash-order dependence (#294)
 - ✅ NOT NULL → `lowerBound=1` (required)
 - ✅ Original table name preserved in EAnnotation for EORM mapping
 - ✅ OSGi component with configuration
@@ -25,7 +32,6 @@
 ### Priority 1
 - ❌ Column size/precision capture (VARCHAR(255), DECIMAL(10,2))
 - ❌ Unique constraints → `EAttribute.unique=true`
-- ❌ Self-referencing FK handling (e.g., employees.manager_id → employees.id)
 - ❌ Pluralization rules (smarter than just appending "s")
 
 ### Priority 2
@@ -48,4 +54,5 @@
 | H2: ManyToMany junction | 2 | ✅ |
 | H2: views | 2 | ✅ |
 | H2: multi-schema | 2 | ✅ |
-| H2: composite PK | 1 | ✅ |
+| H2: composite PK | 3 | ✅ |
+| H2: schema patterns (#294) — every case validated with `Diagnostician` | 9 | ✅ |
