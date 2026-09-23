@@ -13,6 +13,7 @@
 package org.eclipse.fennec.persistence.ecore;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.lang.annotation.Annotation;
 import java.sql.Connection;
@@ -28,6 +29,9 @@ import java.util.logging.Logger;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EEnum;
+import org.eclipse.emf.ecore.EEnumLiteral;
+import org.eclipse.emf.ecore.EModelElement;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcorePackage;
@@ -160,7 +164,8 @@ class DatabaseEcoreParserIntegrationTest {
 			assertThat(((EAttribute) tc.getEStructuralFeature("fBigint")).getEType()).isEqualTo(EcorePackage.Literals.ELONG_OBJECT);
 			assertThat(((EAttribute) tc.getEStructuralFeature("fDecimal")).getEType()).isEqualTo(EcorePackage.Literals.EBIG_DECIMAL);
 			assertThat(((EAttribute) tc.getEStructuralFeature("fBoolean")).getEType()).isEqualTo(EcorePackage.Literals.EBOOLEAN_OBJECT);
-			assertThat(((EAttribute) tc.getEStructuralFeature("fTimestamp")).getEType()).isEqualTo(EcorePackage.Literals.EDATE);
+			assertThat(((EAttribute) tc.getEStructuralFeature("fTimestamp")).getEType().getInstanceClassName())
+					.isEqualTo("java.time.LocalDateTime");
 			assertThat(((EAttribute) tc.getEStructuralFeature("fBlob")).getEType()).isEqualTo(EcorePackage.Literals.EBYTE_ARRAY);
 		}
 	}
@@ -183,7 +188,7 @@ class DatabaseEcoreParserIntegrationTest {
 			EClass emp = findClass(pkg, "Employee");
 
 			// Employee → Department (ManyToOne)
-			EReference empToDept = findReference(emp, "deptId");
+			EReference empToDept = findReference(emp, "dept");
 			assertThat(empToDept).isNotNull();
 			assertThat(empToDept.getEType()).isEqualTo(dept);
 			assertThat(empToDept.isMany()).isFalse();
@@ -261,13 +266,13 @@ class DatabaseEcoreParserIntegrationTest {
 			EClass roles = findClass(pkg, "Roles");
 
 			// Users → Roles (ManyToMany)
-			EReference usersToRoles = findReference(users, "roless");
+			EReference usersToRoles = findReference(users, "roles");
 			assertThat(usersToRoles).isNotNull();
 			assertThat(usersToRoles.getEType()).isEqualTo(roles);
 			assertThat(usersToRoles.isMany()).isTrue();
 
 			// Roles → Users (ManyToMany reverse)
-			EReference rolesToUsers = findReference(roles, "userss");
+			EReference rolesToUsers = findReference(roles, "users");
 			assertThat(rolesToUsers).isNotNull();
 			assertThat(rolesToUsers.getEType()).isEqualTo(users);
 			assertThat(rolesToUsers.isMany()).isTrue();
@@ -434,8 +439,8 @@ class DatabaseEcoreParserIntegrationTest {
 			EClass customer = findClass(pkg, "Customer");
 			EClass orders = findClass(pkg, "Orders");
 
-			EReference billing = findReference(orders, "billingCustomerId");
-			EReference shipping = findReference(orders, "shippingCustomerId");
+			EReference billing = findReference(orders, "billingCustomer");
+			EReference shipping = findReference(orders, "shippingCustomer");
 			assertThat(billing.getEOpposite()).isNotNull().isNotSameAs(shipping.getEOpposite());
 			assertThat(customer.getEReferences()).extracting(EReference::getName)
 					.doesNotHaveDuplicates().hasSize(2)
@@ -559,7 +564,7 @@ class DatabaseEcoreParserIntegrationTest {
 			EPackage pkg = parser.parse();
 			EClass employee = findClass(pkg, "Employee");
 
-			EReference manager = findReference(employee, "managerId");
+			EReference manager = findReference(employee, "manager");
 			assertThat(manager.getEReferenceType()).isSameAs(employee);
 			assertThat(manager.getEOpposite().getEContainingClass()).isSameAs(employee);
 			assertThat(manager.getEOpposite().isMany()).isTrue();
@@ -599,6 +604,263 @@ class DatabaseEcoreParserIntegrationTest {
 				sb.append("} ");
 			}
 			return sb.toString();
+		}
+	}
+
+	// --- Schema facts, defaults, types and names (issue #295) ---
+
+	@Nested
+	@DisplayName("Schema facts, defaults, types and names (#295)")
+	class SchemaFactsTests {
+
+		@Test void testColumnFactsAreLinkedToTheirFeatures() throws SQLException {
+			executeSql("CREATE TABLE CUSTOMER (ID BIGINT AUTO_INCREMENT PRIMARY KEY, EMAIL VARCHAR(120) NOT NULL, "
+					+ "PRICE DECIMAL(10,2), DOUBLED INT GENERATED ALWAYS AS (ID * 2))");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			EClass customer = findClass(result.ePackages().get(0), "Customer");
+			TableFacts table = result.table(customer);
+
+			assertThat(table.name()).isEqualTo("CUSTOMER");
+			assertThat(table.schema()).isEqualTo("PUBLIC");
+			assertThat(table.primaryKey()).containsExactly("ID");
+			TableFacts.Column id = table.column("ID");
+			assertThat(id.autoIncrement()).isTrue();
+			assertThat(id.feature()).isSameAs(customer.getEStructuralFeature("id"));
+			TableFacts.Column email = table.column("EMAIL");
+			assertThat(email.size()).isEqualTo(120);
+			assertThat(email.nullable()).isFalse();
+			assertThat(email.feature()).isSameAs(customer.getEStructuralFeature("email"));
+			TableFacts.Column price = table.column("PRICE");
+			assertThat(price.size()).isEqualTo(10);
+			assertThat(price.decimalDigits()).isEqualTo(2);
+			assertThat(table.column("DOUBLED").generated()).isTrue();
+			// the original name also travels with the serialized model
+			assertThat(customer.getEStructuralFeature("email").getEAnnotation(DatabaseEcoreParser.ANNOTATION_SOURCE)
+					.getDetails().get(DatabaseEcoreParser.ANNOTATION_COLUMN_NAME)).isEqualTo("EMAIL");
+		}
+
+		@Test void testForeignKeyAndJunctionFacts() throws SQLException {
+			executeSql("CREATE TABLE ORDERS (ID BIGINT PRIMARY KEY)",
+					"CREATE TABLE ORDER_LINE (ORDER_NO BIGINT, LINE_NO INT, PRIMARY KEY (ORDER_NO, LINE_NO))",
+					"CREATE TABLE SHIPMENT (ID BIGINT PRIMARY KEY, ORDER_NO BIGINT, LINE_NO INT, "
+							+ "CONSTRAINT FK_SHIP_LINE FOREIGN KEY (ORDER_NO, LINE_NO) REFERENCES ORDER_LINE(ORDER_NO, LINE_NO))",
+					"CREATE TABLE TAG (ID BIGINT PRIMARY KEY)",
+					"CREATE TABLE ORDER_TAG (ORDER_ID BIGINT REFERENCES ORDERS(ID), TAG_ID BIGINT REFERENCES TAG(ID), "
+							+ "PRIMARY KEY (ORDER_ID, TAG_ID))");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			EPackage pkg = result.ePackages().get(0);
+			EClass shipment = findClass(pkg, "Shipment");
+			TableFacts table = result.table(shipment);
+
+			assertThat(table.foreignKeys()).hasSize(1);
+			TableFacts.ForeignKey fk = table.foreignKeys().get(0);
+			assertThat(fk.name()).isEqualTo("FK_SHIP_LINE");
+			assertThat(fk.targetTable()).isEqualTo("ORDER_LINE");
+			assertThat(fk.columns()).containsExactly("ORDER_NO", "LINE_NO");
+			assertThat(fk.targetColumns()).containsExactly("ORDER_NO", "LINE_NO");
+			assertThat(fk.reference()).isSameAs(findReference(shipment, "orderLine"));
+			// both FK columns are carried by the one reference
+			assertThat(table.column("ORDER_NO").feature()).isSameAs(fk.reference());
+			assertThat(table.column("LINE_NO").feature()).isSameAs(fk.reference());
+			assertThat(fk.reference().getEAnnotation(DatabaseEcoreParser.ANNOTATION_SOURCE).getDetails()
+					.get(DatabaseEcoreParser.ANNOTATION_JOIN_COLUMNS)).isEqualTo("ORDER_NO,LINE_NO");
+
+			assertThat(result.junctions()).hasSize(1);
+			JunctionFacts junction = result.junctions().get(0);
+			assertThat(junction.name()).isEqualTo("ORDER_TAG");
+			assertThat(junction.sourceKey().targetTable()).isEqualTo("ORDERS");
+			assertThat(junction.sourceKey().columns()).containsExactly("ORDER_ID");
+			assertThat(junction.targetKey().targetTable()).isEqualTo("TAG");
+			assertThat(junction.reference()).isSameAs(findReference(findClass(pkg, "Orders"), "tags"));
+			assertThat(junction.opposite()).isSameAs(junction.reference().getEOpposite());
+			assertThat(result.table(findClass(pkg, "Orders"))).isNotNull();
+			assertThat(result.tables()).noneMatch(t -> t.name().equals("ORDER_TAG"));
+		}
+
+		@Test void testUniqueConstraintsAndIndexes() throws SQLException {
+			executeSql("CREATE TABLE ACCOUNT (ID BIGINT PRIMARY KEY, EMAIL VARCHAR(50) UNIQUE, X INT, Y INT, "
+					+ "STATE VARCHAR(10), CONSTRAINT UQ_XY UNIQUE (X, Y))",
+					"CREATE INDEX IDX_STATE ON ACCOUNT(STATE)");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			TableFacts table = result.tables().get(0);
+
+			assertThat(table.indexes()).extracting(TableFacts.Index::columns, TableFacts.Index::unique)
+					.containsExactlyInAnyOrder(
+							tuple(List.of("EMAIL"), true),
+							tuple(List.of("X", "Y"), true),
+							tuple(List.of("STATE"), false));
+			// the primary key's own index is the primary key, not an index fact
+			assertThat(table.indexes()).noneMatch(i -> i.columns().equals(List.of("ID")));
+			assertThat(table.indexes()).filteredOn(i -> i.columns().equals(List.of("STATE")))
+					.extracting(TableFacts.Index::name).containsExactly("IDX_STATE");
+		}
+
+		@Test void testCommentsBecomeDocumentation() throws SQLException {
+			executeSql("CREATE TABLE PERSON (ID BIGINT PRIMARY KEY, EMAIL VARCHAR(50))",
+					"COMMENT ON TABLE PERSON IS 'natural persons'",
+					"COMMENT ON COLUMN PERSON.EMAIL IS 'personal contact'");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			EClass person = findClass(result.ePackages().get(0), "Person");
+
+			assertThat(documentation(person)).isEqualTo("natural persons");
+			assertThat(documentation(person.getEStructuralFeature("email"))).isEqualTo("personal contact");
+			assertThat(documentation(person.getEStructuralFeature("id"))).isNull();
+			assertThat(result.table(person).remarks()).isEqualTo("natural persons");
+			assertThat(result.table(person).column("EMAIL").remarks()).isEqualTo("personal contact");
+		}
+
+		@Test void testLiteralDefaultsAndExpressionDefaults() throws SQLException {
+			executeSql("CREATE TABLE TICKET (ID BIGINT AUTO_INCREMENT PRIMARY KEY, STATE VARCHAR(10) DEFAULT 'NEW', "
+					+ "PRIO INT DEFAULT 0, NEG INT DEFAULT -1, OPEN BOOLEAN DEFAULT TRUE, NOTE VARCHAR(10) DEFAULT 'it''s', "
+					+ "CREATED TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			EClass ticket = findClass(result.ePackages().get(0), "Ticket");
+
+			assertThat(attribute(ticket, "state").getDefaultValueLiteral()).isEqualTo("NEW");
+			assertThat(attribute(ticket, "prio").getDefaultValueLiteral()).isEqualTo("0");
+			assertThat(attribute(ticket, "neg").getDefaultValueLiteral()).isEqualTo("-1");
+			assertThat(attribute(ticket, "open").getDefaultValueLiteral()).isEqualTo("true");
+			assertThat(attribute(ticket, "note").getDefaultValueLiteral()).isEqualTo("it's");
+			assertThat(attribute(ticket, "state").getDefaultValue()).isEqualTo("NEW");
+			assertThat(attribute(ticket, "prio").getDefaultValue()).isEqualTo(0);
+			// an expression is no Ecore literal: fact and diagnostic, never a string default
+			assertThat(attribute(ticket, "created").getDefaultValueLiteral()).isNull();
+			assertThat(result.table(ticket).column("CREATED").defaultValue()).isEqualTo("CURRENT_TIMESTAMP");
+			assertThat(result.diagnostics()).filteredOn(d -> d.getMessage().contains("TICKET.CREATED"))
+					.singleElement().satisfies(d -> {
+						assertThat(d.getSeverity()).isEqualTo(Diagnostic.INFO);
+						assertThat(d.getMessage()).contains("kept as schema fact");
+					});
+			// the auto-increment id reports no default at all
+			assertThat(result.diagnostics()).noneMatch(d -> d.getMessage().contains("TICKET.ID"));
+			assertValid(result.ePackages().get(0));
+		}
+
+		@Test void testTemporalTypesAndUuid() throws SQLException {
+			executeSql("CREATE TABLE EVENT (ID UUID PRIMARY KEY, ON_DAY DATE, DUE_DAY DATE, AT_TIME TIME, "
+					+ "STAMP TIMESTAMP, ZONED TIMESTAMP WITH TIME ZONE)");
+			activateDefault();
+			EPackage pkg = parser.parse();
+			EClass event = findClass(pkg, "Event");
+
+			assertThat(attribute(event, "id").getEType().getInstanceClassName()).isEqualTo("java.util.UUID");
+			assertThat(attribute(event, "onDay").getEType().getInstanceClassName()).isEqualTo("java.time.LocalDate");
+			assertThat(attribute(event, "atTime").getEType().getInstanceClassName()).isEqualTo("java.time.LocalTime");
+			assertThat(attribute(event, "stamp").getEType().getInstanceClassName())
+					.isEqualTo("java.time.LocalDateTime");
+			assertThat(attribute(event, "zoned").getEType().getInstanceClassName())
+					.isEqualTo("java.time.OffsetDateTime");
+			// one data type per Java type, declared in the package and shared
+			assertThat(attribute(event, "dueDay").getEType()).isSameAs(attribute(event, "onDay").getEType());
+			assertThat(attribute(event, "onDay").getEType().getEPackage()).isSameAs(pkg);
+			assertThat(attribute(event, "onDay").getEType().getName()).isEqualTo("ELocalDate");
+			assertValid(pkg);
+		}
+
+		@Test void testIntegralDecimals() throws SQLException {
+			executeSql("CREATE TABLE AMOUNTS (ID BIGINT PRIMARY KEY, SMALL DECIMAL(9,0), BIG NUMERIC(30,0), "
+					+ "MONEY DECIMAL(10,2), ANY_NUM DECIMAL)");
+			activateDefault();
+			EClass amounts = findClass(parser.parse(), "Amounts");
+
+			assertThat(attribute(amounts, "small").getEType()).isEqualTo(EcorePackage.Literals.ELONG_OBJECT);
+			assertThat(attribute(amounts, "big").getEType()).isEqualTo(EcorePackage.Literals.EBIG_INTEGER);
+			assertThat(attribute(amounts, "money").getEType()).isEqualTo(EcorePackage.Literals.EBIG_DECIMAL);
+			assertThat(attribute(amounts, "anyNum").getEType()).isEqualTo(EcorePackage.Literals.EBIG_DECIMAL);
+		}
+
+		@Test void testInlineEnumBecomesEEnum() throws SQLException {
+			executeSql("CREATE TABLE TASK (ID BIGINT PRIMARY KEY, "
+					+ "STATE ENUM('open', 'in progress', 'done') DEFAULT 'open')");
+			activateDefault();
+			EPackage pkg = parser.parse();
+			EClass task = findClass(pkg, "Task");
+
+			EAttribute state = attribute(task, "state");
+			assertThat(state.getEType()).isInstanceOf(EEnum.class);
+			EEnum eEnum = (EEnum) state.getEType();
+			assertThat(eEnum.getName()).isEqualTo("TaskState");
+			assertThat(eEnum.getELiterals()).extracting(EEnumLiteral::getLiteral)
+					.containsExactly("open", "in progress", "done");
+			assertThat(eEnum.getELiterals()).extracting(EEnumLiteral::getName)
+					.containsExactly("OPEN", "IN_PROGRESS", "DONE");
+			assertThat(state.getDefaultValueLiteral()).isEqualTo("open");
+			assertThat(state.getDefaultValue()).isSameAs(eEnum.getEEnumLiteral("OPEN").getInstance());
+			assertValid(pkg);
+		}
+
+		@Test void testTableWithoutPrimaryKeyIsReported() throws SQLException {
+			executeSql("CREATE TABLE LOGBOOK (MSG VARCHAR(100))");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			EClass logbook = findClass(result.ePackages().get(0), "Logbook");
+
+			assertThat(logbook.getEIDAttribute()).isNull();
+			assertThat(result.diagnostics()).singleElement().satisfies(d -> {
+				assertThat(d.getSeverity()).isEqualTo(Diagnostic.WARNING);
+				assertThat(d.getMessage()).contains("'LOGBOOK' has no primary key");
+				assertThat(d.getData()).first().isSameAs(logbook);
+			});
+			assertThat(result.table(logbook).primaryKey()).isEmpty();
+		}
+
+		@Test void testReferenceAndPluralNames() throws SQLException {
+			executeSql("CREATE TABLE CATEGORY (ID BIGINT PRIMARY KEY, PARENT_ID BIGINT REFERENCES CATEGORY(ID))",
+					"CREATE TABLE ADDRESS (ID BIGINT PRIMARY KEY)",
+					"CREATE TABLE PERSON (ID BIGINT PRIMARY KEY, HOME_ADDRESS_ID BIGINT REFERENCES ADDRESS(ID), "
+							+ "CATEGORY_ID BIGINT REFERENCES CATEGORY(ID))");
+			activateDefault();
+			EPackage pkg = parser.parse();
+			EClass category = findClass(pkg, "Category");
+			EClass person = findClass(pkg, "Person");
+
+			assertThat(findReference(category, "parent").getEReferenceType()).isSameAs(category);
+			assertThat(findReference(category, "categories").getEOpposite()).isSameAs(findReference(category, "parent"));
+			assertThat(findReference(person, "homeAddress")).isNotNull();
+			assertThat(findReference(person, "category")).isNotNull();
+			assertThat(findReference(findClass(pkg, "Address"), "persons")).isNotNull();
+			assertThat(findReference(category, "persons")).isNotNull();
+			assertValid(pkg);
+		}
+
+		@Test void testReservedJavaNamesAreEscaped() throws SQLException {
+			executeSql("CREATE TABLE \"CLASS\" (ID BIGINT PRIMARY KEY, \"PACKAGE\" VARCHAR(10), \"DEFAULT\" INT)");
+			activateDefault();
+			ParseResult result = parser.parseAllWithDiagnostics();
+			EPackage pkg = result.ePackages().get(0);
+			EClass clazz = findClass(pkg, "Class_");
+
+			assertThat(clazz).isNotNull();
+			assertThat(clazz.getEStructuralFeature("package_")).isNotNull();
+			assertThat(clazz.getEStructuralFeature("default_")).isNotNull();
+			assertThat(result.diagnostics()).filteredOn(d -> d.getSeverity() == Diagnostic.INFO).hasSize(3);
+			// the original names survive for the mapping
+			assertThat(result.table(clazz).name()).isEqualTo("CLASS");
+			assertThat(result.table(clazz).column("PACKAGE").feature()).isSameAs(clazz.getEStructuralFeature("package_"));
+			assertValid(pkg);
+		}
+
+		@Test void testUntransformedNamesStayRaw() throws SQLException {
+			executeSql("CREATE TABLE EMPLOYEE (ID BIGINT PRIMARY KEY, MANAGER_ID BIGINT REFERENCES EMPLOYEE(ID))");
+			activate(false, false);
+			EClass employee = findClass(parser.parse(), "EMPLOYEE");
+
+			assertThat(findReference(employee, "MANAGER_ID")).isNotNull();
+			assertThat(findReference(employee, "EMPLOYEE")).isNotNull();
+		}
+
+		private EAttribute attribute(EClass eClass, String name) {
+			return (EAttribute) eClass.getEStructuralFeature(name);
+		}
+
+		private String documentation(EModelElement element) {
+			var annotation = element.getEAnnotation(DatabaseEcoreParser.GENMODEL_SOURCE);
+			return annotation == null ? null : annotation.getDetails().get(DatabaseEcoreParser.GENMODEL_DOCUMENTATION);
 		}
 	}
 
