@@ -21,12 +21,15 @@ import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -43,6 +46,7 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.diagnostic.Diagnostics;
+import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Reference;
@@ -55,8 +59,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * Features:
  * <ul>
  *   <li>Vendor-independent type mapping via {@link JDBCType}</li>
- *   <li>ManyToOne + reverse OneToMany references with EOpposite</li>
- *   <li>Junction table detection → ManyToMany references</li>
+ *   <li>ManyToOne + reverse OneToMany references with EOpposite; a composite FK is one reference</li>
+ *   <li>Composite PKs declared via {@link CompositeIds#ID_FEATURES}, never several {@code isID} attributes</li>
+ *   <li>Junction table detection (exactly two FKs) → ManyToMany references</li>
+ *   <li>Unique feature names — collisions get a deterministic fallback and an INFO diagnostic</li>
  *   <li>Containment heuristic (NOT NULL FK + ON DELETE CASCADE)</li>
  *   <li>View support (read-only EClasses)</li>
  *   <li>Multi-schema support (one EPackage per schema)</li>
@@ -168,44 +174,43 @@ public class DatabaseEcoreParser {
 
 	private void parseSchema(DatabaseMetaData metaData, String schema, EPackage ePackage,
 			List<Diagnostic> diagnostics) throws SQLException {
-		loadTables(metaData, schema, ePackage);
+		String escape = metaData.getSearchStringEscape();
+		loadTables(metaData, schema, escape, ePackage);
 		if (config.includeViews()) {
-			loadViews(metaData, schema, ePackage);
+			loadViews(metaData, schema, escape, ePackage);
 		}
 
-		// Collect table metadata for junction table detection
-		Map<String, TableInfo> tableInfos = new HashMap<>();
+		// table metadata in package order: the produced model must not depend on hash order
+		List<TableInfo> tables = new ArrayList<>();
 		for (EClassifier c : ePackage.getEClassifiers()) {
 			if (c instanceof EClass eClass) {
 				String tableName = getOriginalTableName(eClass);
-				Set<String> pkCols = loadPrimaryKeys(metaData, schema, tableName);
-				Map<String, ForeignKeyInfo> fkCols = loadForeignKeys(metaData, schema, tableName);
-				tableInfos.put(tableName, new TableInfo(eClass, pkCols, fkCols));
+				tables.add(new TableInfo(eClass, tableName, loadColumns(metaData, schema, tableName, escape),
+						loadPrimaryKeys(metaData, schema, tableName), loadForeignKeys(metaData, schema, tableName)));
 			}
 		}
 
-		// Detect junction tables and process columns
-		Set<String> junctionTables = new HashSet<>();
-		for (var entry : tableInfos.entrySet()) {
-			if (isJunctionTable(entry.getValue(), metaData, schema)) {
-				junctionTables.add(entry.getKey());
-			}
+		// junction tables become ManyToMany references, not classes
+		List<TableInfo> junctions = tables.stream().filter(DatabaseEcoreParser::isJunctionTable).toList();
+		for (TableInfo junction : junctions) {
+			ePackage.getEClassifiers().remove(junction.eClass());
 		}
 
-		// Process junction tables first → ManyToMany
-		for (String jtName : junctionTables) {
-			TableInfo ti = tableInfos.get(jtName);
-			processJunctionTable(ti, ePackage);
-			// Remove the junction EClass from the package
-			ePackage.getEClassifiers().remove(ti.eClass);
-		}
-
-		// Process regular tables
-		for (var entry : tableInfos.entrySet()) {
-			if (junctionTables.contains(entry.getKey())) {
-				continue;
+		// Pass 1: attributes and forward references of every table. Reverse references wait
+		// for pass 2, so that each class already holds its own features when a reverse name
+		// is chosen and a later column can never collide with it.
+		List<Link> links = new ArrayList<>();
+		for (TableInfo ti : tables) {
+			if (!junctions.contains(ti)) {
+				processTable(ti, schema, ePackage, links, diagnostics);
 			}
-			processTable(entry.getValue(), metaData, schema, ePackage, diagnostics);
+		}
+		// Pass 2: reverse references and ManyToMany pairs
+		for (Link link : links) {
+			addReverseReference(link, diagnostics);
+		}
+		for (TableInfo junction : junctions) {
+			processJunctionTable(junction, schema, ePackage, diagnostics);
 		}
 	}
 
@@ -220,8 +225,9 @@ public class DatabaseEcoreParser {
 
 	// --- Table/View loading ---
 
-	private void loadTables(DatabaseMetaData metaData, String schema, EPackage ePackage) throws SQLException {
-		try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"TABLE"})) {
+	private void loadTables(DatabaseMetaData metaData, String schema, String escape, EPackage ePackage)
+			throws SQLException {
+		try (ResultSet rs = metaData.getTables(null, pattern(schema, escape), "%", new String[]{"TABLE"})) {
 			while (rs.next()) {
 				String tableName = rs.getString("TABLE_NAME");
 				EClass eClass = createEClass(transformClassName(tableName));
@@ -231,8 +237,9 @@ public class DatabaseEcoreParser {
 		}
 	}
 
-	private void loadViews(DatabaseMetaData metaData, String schema, EPackage ePackage) throws SQLException {
-		try (ResultSet rs = metaData.getTables(null, schema, "%", new String[]{"VIEW"})) {
+	private void loadViews(DatabaseMetaData metaData, String schema, String escape, EPackage ePackage)
+			throws SQLException {
+		try (ResultSet rs = metaData.getTables(null, pattern(schema, escape), "%", new String[]{"VIEW"})) {
 			while (rs.next()) {
 				String viewName = rs.getString("TABLE_NAME");
 				EClass eClass = createEClass(transformClassName(viewName));
@@ -245,120 +252,243 @@ public class DatabaseEcoreParser {
 
 	// --- Column processing ---
 
-	private void processTable(TableInfo ti, DatabaseMetaData metaData, String schema, EPackage ePackage,
-			List<Diagnostic> diagnostics) throws SQLException {
-		String tableName = getOriginalTableName(ti.eClass);
-
-		try (ResultSet rs = metaData.getColumns(null, schema, tableName, "%")) {
-			while (rs.next()) {
-				String colName = rs.getString("COLUMN_NAME");
-				int dataType = rs.getInt("DATA_TYPE");
-				boolean nullable = rs.getInt("NULLABLE") == DatabaseMetaData.columnNullable;
-				boolean isPK = ti.pkColumns.contains(colName);
-
-				ForeignKeyInfo fkInfo = ti.fkColumns.get(colName);
-				if (nonNull(fkInfo)) {
-					EClass refClass = findClassByTableName(ePackage, fkInfo.pkTableName);
-					if (nonNull(refClass)) {
-						// ManyToOne: this → referenced
-						EReference fwdRef = addReference(ti.eClass, transformAttributeName(colName), refClass);
-						boolean isContainmentCandidate = !nullable && fkInfo.deleteRule == DatabaseMetaData.importedKeyCascade;
-						if (isContainmentCandidate) {
-							// Containment: the referenced class "owns" this class
-							// Reverse direction: parent (refClass) contains children (this)
-							EReference revRef = addManyReference(refClass,
-									transformAttributeName(tableName) + "s", ti.eClass);
-							revRef.setContainment(true);
-							setOpposite(fwdRef, revRef);
-						} else {
-							// Non-containment: plain bidirectional
-							EReference revRef = addManyReference(refClass,
-									transformAttributeName(tableName) + "s", ti.eClass);
-							setOpposite(fwdRef, revRef);
-						}
-					} else {
-						diagnostics.add(warning("FK target '" + fkInfo.pkTableName + "' not found for column '"
-								+ tableName + "." + colName + "'; mapped as plain attribute", ti.eClass));
-						addAttribute(ti.eClass, transformAttributeName(colName),
-								resolveType(dataType, ti.eClass, tableName, colName, diagnostics), isPK, !nullable);
-					}
-				} else {
-					addAttribute(ti.eClass, transformAttributeName(colName),
-							resolveType(dataType, ti.eClass, tableName, colName, diagnostics), isPK, !nullable);
-				}
+	private void processTable(TableInfo ti, String schema, EPackage ePackage, List<Link> links,
+			List<Diagnostic> diagnostics) {
+		// resolve the foreign keys first: a resolved FK column is carried by its reference
+		List<ForeignKeyInfo> resolved = new ArrayList<>();
+		List<EClass> targets = new ArrayList<>();
+		Set<String> referenceColumns = new HashSet<>();
+		for (ForeignKeyInfo fk : ti.foreignKeys()) {
+			EClass target = resolveTarget(ePackage, schema, fk);
+			if (isNull(target)) {
+				boolean composite = fk.fkColumns().size() > 1;
+				diagnostics.add(warning("FK target '" + fk.pkTable() + "' not found for column"
+						+ (composite ? "s" : "") + " '" + qualifiedColumns(ti, fk) + "'; mapped as plain attribute"
+						+ (composite ? "s" : ""), ti.eClass()));
+			} else {
+				resolved.add(fk);
+				targets.add(target);
+				referenceColumns.addAll(fk.fkColumns());
 			}
 		}
+
+		// Attributes. A PK column stays an attribute even when it is also an FK column
+		// (identifying relationship): the id is declared over attributes. A composite PK is
+		// declared through idFeatures — several isID attributes are invalid Ecore.
+		boolean compositeId = ti.pkColumns().size() > 1;
+		Map<String, String> pkAttributes = new HashMap<>();
+		for (ColumnInfo column : ti.columns()) {
+			boolean isPK = ti.pkColumns().contains(column.name());
+			if (referenceColumns.contains(column.name()) && !isPK) {
+				continue;
+			}
+			String name = uniqueName(ti.eClass(), transformAttributeName(column.name()), null, diagnostics);
+			addAttribute(ti.eClass(), name,
+					resolveType(column.dataType(), ti.eClass(), ti.tableName(), column.name(), diagnostics),
+					isPK && !compositeId, !column.nullable());
+			if (isPK) {
+				pkAttributes.put(column.name(), name);
+			}
+		}
+		if (compositeId) {
+			List<String> idFeatures = ti.pkColumns().stream().map(pkAttributes::get).toList();
+			addAnnotation(ti.eClass(), CompositeIds.ANNOTATION_SOURCE, CompositeIds.ID_FEATURES,
+					String.join(",", idFeatures));
+		}
+
+		// Forward references, one per FK — a composite FK is one reference, not one per column
+		for (int i = 0; i < resolved.size(); i++) {
+			ForeignKeyInfo fk = resolved.get(i);
+			boolean identifying = fk.fkColumns().stream().anyMatch(ti.pkColumns()::contains);
+			String preferred = fk.fkColumns().size() == 1 && !identifying
+					? transformAttributeName(fk.fkColumns().get(0))
+					: transformAttributeName(fk.pkTable());
+			String name = uniqueName(ti.eClass(), preferred, qualifier(fk), diagnostics);
+			EReference forward = addReference(ti.eClass(), name, targets.get(i));
+			links.add(new Link(ti, fk, forward, targets.get(i)));
+		}
+	}
+
+	/**
+	 * The reverse side of a forward reference: many-valued, containment when every FK column
+	 * is NOT NULL and the FK deletes on cascade (the parent owns the child).
+	 */
+	private void addReverseReference(Link link, List<Diagnostic> diagnostics) {
+		TableInfo owner = link.owner();
+		String preferred = transformAttributeName(owner.tableName()) + "s";
+		String name = uniqueName(link.target(), preferred, link.forward().getName(), diagnostics);
+		EReference reverse = addManyReference(link.target(), name, owner.eClass());
+		boolean notNull = link.fk().fkColumns().stream().allMatch(c -> owner.columns().stream()
+				.anyMatch(col -> col.name().equals(c) && !col.nullable()));
+		if (notNull && link.fk().deleteRule() == DatabaseMetaData.importedKeyCascade) {
+			reverse.setContainment(true);
+		}
+		setOpposite(link.forward(), reverse);
 	}
 
 	// --- Junction table detection & ManyToMany ---
 
 	/**
-	 * A junction table has exactly 2 FK columns that together form the composite PK,
-	 * and no other non-FK columns (or only the FK columns).
+	 * A junction table has exactly two foreign keys, its columns are exactly their columns,
+	 * and its primary key (if any) lies within them. A third foreign key or a payload column
+	 * makes it an entity of its own.
 	 */
-	private boolean isJunctionTable(TableInfo ti, DatabaseMetaData metaData, String schema) throws SQLException {
-		if (ti.fkColumns.size() < 2) {
+	static boolean isJunctionTable(TableInfo ti) {
+		if (ti.foreignKeys().size() != 2) {
 			return false;
 		}
-		// All PK columns must be FK columns
-		if (!ti.fkColumns.keySet().containsAll(ti.pkColumns)) {
-			return false;
-		}
-		// Count total columns — junction tables have only FK columns (which are also PKs)
-		String tableName = getOriginalTableName(ti.eClass);
-		int totalColumns = 0;
-		try (ResultSet rs = metaData.getColumns(null, schema, tableName, "%")) {
-			while (rs.next()) {
-				totalColumns++;
-			}
-		}
-		return totalColumns == ti.fkColumns.size();
+		Set<String> fkColumns = new HashSet<>();
+		ti.foreignKeys().forEach(fk -> fkColumns.addAll(fk.fkColumns()));
+		return fkColumns.containsAll(ti.pkColumns())
+				&& ti.columns().stream().allMatch(c -> fkColumns.contains(c.name()));
 	}
 
-	private void processJunctionTable(TableInfo ti, EPackage ePackage) {
-		// Find the two referenced tables
-		List<ForeignKeyInfo> fks = new ArrayList<>(ti.fkColumns.values());
-		if (fks.size() < 2) {
-			return;
-		}
-		EClass classA = findClassByTableName(ePackage, fks.get(0).pkTableName);
-		EClass classB = findClassByTableName(ePackage, fks.get(1).pkTableName);
+	private void processJunctionTable(TableInfo ti, String schema, EPackage ePackage, List<Diagnostic> diagnostics) {
+		ForeignKeyInfo fkA = ti.foreignKeys().get(0);
+		ForeignKeyInfo fkB = ti.foreignKeys().get(1);
+		EClass classA = resolveTarget(ePackage, schema, fkA);
+		EClass classB = resolveTarget(ePackage, schema, fkB);
 		if (isNull(classA) || isNull(classB)) {
+			diagnostics.add(warning("Junction table '" + ti.tableName() + "' references a table outside the package ('"
+					+ (isNull(classA) ? fkA.pkTable() : fkB.pkTable()) + "'); no ManyToMany created", ti.eClass()));
 			return;
 		}
-
-		// Create ManyToMany: A → B and B → A with eOpposite
-		String refNameAtoB = transformAttributeName(getOriginalTableName(classB)) + "s";
-		String refNameBtoA = transformAttributeName(getOriginalTableName(classA)) + "s";
-
-		EReference refAB = addManyReference(classA, refNameAtoB, classB);
-		EReference refBA = addManyReference(classB, refNameBtoA, classA);
+		// A self-referencing junction puts both sides on the same class — the second side
+		// then takes the qualified name, and the two stay distinct opposites.
+		String nameAB = uniqueName(classA, transformAttributeName(fkB.pkTable()) + "s", qualifier(fkB), diagnostics);
+		EReference refAB = addManyReference(classA, nameAB, classB);
+		String nameBA = uniqueName(classB, transformAttributeName(fkA.pkTable()) + "s", qualifier(fkA), diagnostics);
+		EReference refBA = addManyReference(classB, nameBA, classA);
 		setOpposite(refAB, refBA);
 	}
 
-	// --- Foreign key loading with delete rule ---
+	// --- Metadata loading ---
 
-	private Map<String, ForeignKeyInfo> loadForeignKeys(DatabaseMetaData metaData, String schema, String tableName) throws SQLException {
-		Map<String, ForeignKeyInfo> fkColumns = new HashMap<>();
-		try (ResultSet rs = metaData.getImportedKeys(null, schema, tableName)) {
+	private List<ColumnInfo> loadColumns(DatabaseMetaData metaData, String schema, String tableName, String escape)
+			throws SQLException {
+		List<ColumnInfo> columns = new ArrayList<>();
+		// getColumns takes patterns: an unescaped '_' would also match USERXACCOUNT for USER_ACCOUNT
+		try (ResultSet rs = metaData.getColumns(null, pattern(schema, escape), pattern(tableName, escape), "%")) {
 			while (rs.next()) {
-				String fkColName = rs.getString("FKCOLUMN_NAME");
-				String pkTableName = rs.getString("PKTABLE_NAME");
-				int deleteRule = rs.getInt("DELETE_RULE");
-				fkColumns.putIfAbsent(fkColName, new ForeignKeyInfo(pkTableName, deleteRule));
+				columns.add(new ColumnInfo(rs.getString("COLUMN_NAME"), rs.getInt("DATA_TYPE"),
+						rs.getInt("NULLABLE") == DatabaseMetaData.columnNullable));
 			}
 		}
-		return fkColumns;
+		return columns;
 	}
 
-	private Set<String> loadPrimaryKeys(DatabaseMetaData metaData, String schema, String tableName) throws SQLException {
-		Set<String> pkColumns = new HashSet<>();
-		try (ResultSet rs = metaData.getPrimaryKeys(null, schema, tableName)) {
+	/**
+	 * Foreign keys of a table, one entry per constraint with its columns in key order.
+	 * Grouped by {@code FK_NAME}; a driver that reports no name gets one group per
+	 * {@code KEY_SEQ} run towards the same target table.
+	 */
+	private List<ForeignKeyInfo> loadForeignKeys(DatabaseMetaData metaData, String schema, String tableName)
+			throws SQLException {
+		Map<String, List<KeyColumn>> groups = new LinkedHashMap<>();
+		Map<String, ForeignKeyInfo> heads = new LinkedHashMap<>();
+		Map<String, Integer> unnamedRuns = new HashMap<>();
+		try (ResultSet rs = metaData.getImportedKeys(null, schema, tableName)) {
 			while (rs.next()) {
-				pkColumns.add(rs.getString("COLUMN_NAME"));
+				String fkName = rs.getString("FK_NAME");
+				String pkSchema = rs.getString("PKTABLE_SCHEM");
+				String pkTable = rs.getString("PKTABLE_NAME");
+				int keySeq = rs.getInt("KEY_SEQ");
+				String key;
+				if (nonNull(fkName)) {
+					key = "name:" + fkName;
+				} else {
+					String target = pkSchema + "." + pkTable;
+					int run = keySeq == 1 ? unnamedRuns.merge(target, 1, Integer::sum) : unnamedRuns.getOrDefault(target, 1);
+					key = "unnamed:" + target + "#" + run;
+				}
+				groups.computeIfAbsent(key, k -> new ArrayList<>())
+						.add(new KeyColumn(keySeq, rs.getString("FKCOLUMN_NAME"), rs.getString("PKCOLUMN_NAME")));
+				heads.putIfAbsent(key, new ForeignKeyInfo(fkName, pkSchema, pkTable, rs.getInt("DELETE_RULE"),
+						List.of(), List.of()));
 			}
 		}
-		return pkColumns;
+		List<ForeignKeyInfo> foreignKeys = new ArrayList<>();
+		for (var entry : groups.entrySet()) {
+			List<KeyColumn> keyColumns = new ArrayList<>(entry.getValue());
+			keyColumns.sort(Comparator.comparingInt(KeyColumn::keySeq));
+			ForeignKeyInfo head = heads.get(entry.getKey());
+			foreignKeys.add(new ForeignKeyInfo(head.name(), head.pkSchema(), head.pkTable(), head.deleteRule(),
+					keyColumns.stream().map(KeyColumn::fkColumn).toList(),
+					keyColumns.stream().map(KeyColumn::pkColumn).toList()));
+		}
+		return foreignKeys;
+	}
+
+	/** Primary key columns in key order — the driver returns them ordered by column name. */
+	private List<String> loadPrimaryKeys(DatabaseMetaData metaData, String schema, String tableName) throws SQLException {
+		List<KeyColumn> keyColumns = new ArrayList<>();
+		try (ResultSet rs = metaData.getPrimaryKeys(null, schema, tableName)) {
+			while (rs.next()) {
+				keyColumns.add(new KeyColumn(rs.getInt("KEY_SEQ"), rs.getString("COLUMN_NAME"), null));
+			}
+		}
+		keyColumns.sort(Comparator.comparingInt(KeyColumn::keySeq));
+		return keyColumns.stream().map(KeyColumn::fkColumn).toList();
+	}
+
+	/**
+	 * Escapes a name for a {@link DatabaseMetaData} pattern argument, where {@code _} and
+	 * {@code %} are wildcards.
+	 */
+	static String pattern(String name, String escape) {
+		if (isNull(name) || isNull(escape) || escape.isEmpty()) {
+			return name;
+		}
+		return name.replace(escape, escape + escape).replace("_", escape + "_").replace("%", escape + "%");
+	}
+
+	// --- Naming ---
+
+	/**
+	 * Returns {@code preferred} when the class has no feature of that name yet, otherwise a
+	 * deterministic fallback — {@code preferred + "Via" + qualifier}, then a counter — and
+	 * reports the fallback as an info diagnostic.
+	 */
+	private String uniqueName(EClass eClass, String preferred, String qualifier, List<Diagnostic> diagnostics) {
+		if (!hasFeature(eClass, preferred)) {
+			return preferred;
+		}
+		String base = isNull(qualifier) ? preferred : preferred + "Via" + capitalize(qualifier);
+		String candidate = base;
+		for (int n = 2; hasFeature(eClass, candidate); n++) {
+			candidate = base + n;
+		}
+		diagnostics.add(new BasicDiagnostic(Diagnostic.INFO, DIAGNOSTIC_SOURCE, 0, "Feature name '" + preferred
+				+ "' is already taken on '" + eClass.getName() + "'; using '" + candidate + "'", new Object[] { eClass }));
+		return candidate;
+	}
+
+	private static boolean hasFeature(EClass eClass, String name) {
+		return eClass.getEStructuralFeatures().stream().anyMatch(f -> name.equals(f.getName()));
+	}
+
+	/** The FK columns as one name part: {@code ORDER_ID, LINE_NO} → {@code orderIdLineNo}. */
+	private String qualifier(ForeignKeyInfo fk) {
+		return transformAttributeName(String.join("_", fk.fkColumns()));
+	}
+
+	private static String capitalize(String name) {
+		return name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
+	}
+
+	private static String qualifiedColumns(TableInfo ti, ForeignKeyInfo fk) {
+		return fk.fkColumns().stream().map(c -> ti.tableName() + "." + c).collect(Collectors.joining(", "));
+	}
+
+	/**
+	 * The class of the FK target table in this package, {@code null} when it lives in
+	 * another schema or is not part of the package.
+	 */
+	private EClass resolveTarget(EPackage ePackage, String schema, ForeignKeyInfo fk) {
+		if (nonNull(fk.pkSchema()) && !fk.pkSchema().equals(schema)) {
+			return null;
+		}
+		return findClassByTableName(ePackage, fk.pkTable());
 	}
 
 	// --- Naming transformation ---
@@ -532,10 +662,14 @@ public class DatabaseEcoreParser {
 	}
 
 	static void addAnnotation(EModelElement element, String key, String value) {
-		EAnnotation ann = element.getEAnnotation(ANNOTATION_SOURCE);
+		addAnnotation(element, ANNOTATION_SOURCE, key, value);
+	}
+
+	static void addAnnotation(EModelElement element, String source, String key, String value) {
+		EAnnotation ann = element.getEAnnotation(source);
 		if (isNull(ann)) {
 			ann = EcoreFactory.eINSTANCE.createEAnnotation();
-			ann.setSource(ANNOTATION_SOURCE);
+			ann.setSource(source);
 			element.getEAnnotations().add(ann);
 		}
 		ann.getDetails().put(key, value);
@@ -557,9 +691,21 @@ public class DatabaseEcoreParser {
 
 	// --- Internal data holders ---
 
-	record ForeignKeyInfo(String pkTableName, int deleteRule) {}
+	/** One column of a table, in ordinal order. */
+	record ColumnInfo(String name, int dataType, boolean nullable) {}
 
-	record TableInfo(EClass eClass, Set<String> pkColumns, Map<String, ForeignKeyInfo> fkColumns) {}
+	/** One key column with its position; {@code pkColumn} is unset for primary keys. */
+	record KeyColumn(int keySeq, String fkColumn, String pkColumn) {}
+
+	/** One foreign key constraint, its columns in key order. {@code name} may be {@code null}. */
+	record ForeignKeyInfo(String name, String pkSchema, String pkTable, int deleteRule, List<String> fkColumns,
+			List<String> pkColumns) {}
+
+	record TableInfo(EClass eClass, String tableName, List<ColumnInfo> columns, List<String> pkColumns,
+			List<ForeignKeyInfo> foreignKeys) {}
+
+	/** A forward reference created in pass 1, waiting for its reverse side. */
+	record Link(TableInfo owner, ForeignKeyInfo fk, EReference forward, EClass target) {}
 
 	/** A mapped EDataType plus, on fallback, the problem to report ({@code null} if clean). */
 	record TypeMapping(EDataType type, String problem) {}
