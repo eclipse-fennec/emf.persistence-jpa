@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.ECollections;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -493,9 +495,24 @@ public class MappingHelper {
 		if (reference.isMany()) {
 			@SuppressWarnings("unchecked")
 			Collection<Object> c = (Collection<Object>) object.eGet(reference);
-			if (value instanceof Collection) {
-				c.addAll((Collection<?>) value);
-			} else {
+			if (value instanceof Collection<?> values) {
+				// a merged collection can carry a null for an element whose original is not in
+				// the target session (EclipseLink's ordered-list merge, issue #330); an EMF list
+				// holds no nulls, and adding one fails in the inverse maintenance
+				List<Object> content = new ArrayList<>(values.size());
+				for (Object element : values) {
+					if (nonNull(element)) {
+						content.add(element);
+					}
+				}
+				if (c instanceof EList<Object> list) {
+					// the value is the complete content: set it, removals and order included —
+					// adding only left removed children and the old order in the shared cache (#338)
+					ECollections.setEList(list, content);
+				} else {
+					c.addAll(content);
+				}
+			} else if (nonNull(value)) {
 				c.add(value);
 			}
 		} else {

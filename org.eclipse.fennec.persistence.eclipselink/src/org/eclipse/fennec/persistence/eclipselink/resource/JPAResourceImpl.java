@@ -21,9 +21,11 @@ import java.io.OutputStream;
 import java.sql.Clob;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -52,6 +54,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
@@ -377,9 +380,42 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	protected void doSave(OutputStream outputStream, Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
+		refuseDuplicateIds();
 		try (Lease lease = leaseChecked()) {
 			saveWithLease(lease, options);
 		}
+	}
+
+	/**
+	 * Refuses a save whose contents hold two distinct objects with the same id in one type
+	 * hierarchy (issue #334). The save upserts by id, so one of them silently overwrote the
+	 * other: the caller lost data without a signal. Refused before anything is written.
+	 */
+	private void refuseDuplicateIds() throws IOException {
+		Map<String, EObject> seen = new HashMap<>();
+		for (EObject object : writableContents()) {
+			Object key = findKey(object);
+			if (isNull(key) || (!(key instanceof Object[]) && isDefaultIdValue(key))) {
+				continue;
+			}
+			String identity = hierarchyRoot(object.eClass()).getName() + "#"
+					+ (key instanceof Object[] parts ? Arrays.toString(parts) : key);
+			EObject previous = seen.putIfAbsent(identity, object);
+			if (nonNull(previous) && previous != object) {
+				String message = "Save refused: two different objects with the id " + identity
+						+ " — the second would silently overwrite the first";
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+				throw new IOException(message + " (" + getURI() + ")");
+			}
+		}
+	}
+
+	private static EClass hierarchyRoot(EClass eClass) {
+		EClass root = eClass;
+		while (!root.getESuperTypes().isEmpty()) {
+			root = root.getESuperTypes().get(0);
+		}
+		return root;
 	}
 
 	private void saveWithLease(Lease lease, Map<?, ?> options) throws IOException {
@@ -397,14 +433,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			try {
 				Map<String, EObject> existingRows = loadExistingRows(em, server);
 				List<EObject[]> managedPairs = new ArrayList<>();
+				List<EObject> updated = new ArrayList<>();
 				for (EObject eo : writableContents()) {
 					EObject source = nonNull(server) ? toManagedEntity(eo, server, entityFactory) : eo;
-					upsert(em, source, eo, server, existingRows);
+					EObject existing = upsert(em, source, eo, server, existingRows);
+					if (nonNull(existing)) {
+						updated.add(existing);
+					}
 					if (source != eo) {
 						managedPairs.add(new EObject[] { eo, source });
 					}
 				}
 				em.getTransaction().commit();
+				// EclipseLink's merge into the shared cache hands an existing owner's list a null
+				// for a child inserted in this save, and the cached children keep their old owner —
+				// a cached read missed new children (#338). The types of the updated owners and of
+				// their contained children leave the cache; the next read builds them from the rows
+				evictContainmentTypes(server, updated);
 				writeBackGeneratedIds(managedPairs);
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
@@ -500,21 +545,21 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * value is still an {@link EObject#eIsProxy() unresolved proxy} are left alone —
 	 * the existing row's FK already points where the proxy points.
 	 */
-	private void upsert(EntityManager em, EObject source, EObject original, Server server,
+	private EObject upsert(EntityManager em, EObject source, EObject original, Server server,
 			Map<String, EObject> existingRows) {
 		ClassDescriptor descriptor = nonNull(server)
 				? server.getDescriptorForAlias(source.eClass().getName())
 				: null;
 		if (isNull(descriptor)) {
 			em.merge(source);
-			return;
+			return null;
 		}
 		Object id = findKey(source);
 		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
 			sanitizeNonContainmentReferences(source, original, server, em);
 			adoptExistingContainmentChildren(source, server, em);
 			em.persist(source);
-			return;
+			return null;
 		}
 		// the batched preload of issue #226 answers this for the common case; em.find remains
 		// the fallback for everything it could not express (composite keys, single objects,
@@ -526,11 +571,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		if (existing instanceof EObject existingEO) {
 			copyStateInto(source, existingEO, server, em);
-		} else {
-			sanitizeNonContainmentReferences(source, original, server, em);
-			adoptExistingContainmentChildren(source, server, em);
-			em.persist(source);
+			return existingEO;
 		}
+		sanitizeNonContainmentReferences(source, original, server, em);
+		adoptExistingContainmentChildren(source, server, em);
+		em.persist(source);
+		return null;
 	}
 
 	/**
@@ -632,9 +678,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 			if (ref.isMany()) {
 				List<EObject> values = (List<EObject>) source.eGet(ref);
+				if (values.isEmpty() && nonNull(ref.getEOpposite()) && nonNull(original) && original != source
+						&& original.eClass() == source.eClass()) {
+					// Recover the elements the EMF copier dropped for a bidirectional many-valued
+					// reference — its targets lie outside the copied tree, like the single-valued
+					// case below (#335: the links of a new object's n:m were never written)
+					for (EObject element : (List<EObject>) original.eGet(ref)) {
+						EObject handle = managedHandle(element, refDescriptor, server, em);
+						if (nonNull(handle)) {
+							values.add(handle);
+						} else if (nonNull(server.getDescriptor(element.getClass()))) {
+							values.add(element);
+						}
+					}
+				}
 				for (int i = 0; i < values.size(); i++) {
 					EObject managed = managedHandle(values.get(i), refDescriptor, server, em);
-					if (nonNull(managed)) {
+					if (nonNull(managed) && managed != values.get(i)) {
 						values.set(i, managed);
 					}
 				}
@@ -649,13 +709,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				if (value instanceof EObject eo) {
 					EObject managed = managedHandle(eo, refDescriptor, server, em);
-					if (isNull(managed) && recovered) {
-						// a recovered target is typically a row resolved through getEObject — an
-						// instance of the entity class, but not managed by this entity manager;
-						// the copy has no value at all, so it needs the handle either way (#309)
-						managed = referenceHandle(eo, refDescriptor, em);
-					}
-					if (nonNull(managed)) {
+					if (nonNull(managed) && (recovered || managed != eo)) {
 						source.eSet(ref, managed);
 					}
 				}
@@ -687,14 +741,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
-	 * Returns a JPA-managed handle for a plain (unmanaged) EObject with a persisted id,
-	 * or {@code null} when the value is already managed or carries no usable id.
+	 * Returns a JPA-managed handle for a value this entity manager does not manage — a plain
+	 * EObject or a detached instance of the entity class — with a persisted id, or {@code null}
+	 * when the value is already managed, carries no usable id or has no row yet.
 	 */
 	private static EObject managedHandle(EObject value, ClassDescriptor refDescriptor, Server server,
 			EntityManager em) {
-		if (isNull(value) || value.eIsProxy() || nonNull(server.getDescriptor(value.getClass()))) {
+		if (isNull(value) || value.eIsProxy()) {
 			return null;
 		}
+		if (nonNull(server.getDescriptor(value.getClass())) && em.contains(value)) {
+			// managed by this entity manager already: the reference is written as it is
+			return null;
+		}
+		// a plain object, or an instance of the entity class this entity manager does not
+		// manage — typically a row resolved through getEObject: handed to the persist cascade
+		// as it is, it would be inserted again (#331); a target that does not exist yet has no
+		// reference, and the cascade inserting it stays correct
 		return referenceHandle(value, refDescriptor, em);
 	}
 
@@ -710,11 +773,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
 			return null;
 		}
+		// em.find, not em.getReference: for a row that does not exist yet getReference throws,
+		// and JPA marks the transaction rollback-only even when the exception is caught — a
+		// target saved later in the same save (a self reference, both sides new) must not doom it
 		try {
-			Object managed = em.getReference(refDescriptor.getJavaClass(), id);
+			Object managed = em.find(refDescriptor.getJavaClass(), id);
 			return managed instanceof EObject managedEO ? managedEO : null;
 		} catch (RuntimeException e) {
-			LOG.log(Level.FINE, "em.getReference failed while sanitizing reference to "
+			LOG.log(Level.FINE, "em.find failed while sanitizing reference to "
 					+ value.eClass().getName(), e);
 			return null;
 		}
@@ -782,9 +848,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			if (ref.isMany()) {
 				if (ref.isContainment()) {
 					syncContainmentList(source, target, ref, server, em);
+				} else {
+					syncReferenceList(source, target, ref, server, em);
 				}
-				// Non-containment collections stay untouched: their elements are lazy
-				// proxies, and touching the list would instantiate them.
 				continue;
 			}
 			Object srcValue = ((InternalEObject) source).eGet(ref, false);
@@ -797,7 +863,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						&& Objects.equals(CompositeIds.fragment(srcChild), CompositeIds.fragment(managedChild))) {
 					copyStateInto(srcChild, managedChild, server, em);
 				} else {
-					target.eSet(ref, srcValue);
+					target.eSet(ref, srcValue instanceof EObject newChild ? prepareChild(newChild, server, em) : srcValue);
 				}
 				continue;
 			}
@@ -837,18 +903,138 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 		}
 		List<EObject> toAdd = new ArrayList<>();
+		List<EObject> desired = new ArrayList<>();
 		for (EObject child : sourceChildren) {
 			String key = CompositeIds.fragment(child);
 			EObject managed = nonNull(key) ? managedByKey.remove(key) : null;
 			if (nonNull(managed)) {
 				copyStateInto(child, managed, server, em);
+				desired.add(managed);
 			} else {
-				toAdd.add(child);
+				EObject prepared = prepareChild(child, server, em);
+				toAdd.add(prepared);
+				desired.add(prepared);
 			}
 		}
 		// whatever is left is an orphan; dropping it from the managed list is the signal
 		targetChildren.removeAll(managedByKey.values());
 		targetChildren.addAll(toAdd);
+		// the source's order is the stored order (issue #330): move, never remove and re-add,
+		// so no child looks dropped to the orphan removal
+		if (targetChildren instanceof EList<EObject> list && !list.equals(desired)) {
+			for (int index = 0; index < desired.size(); index++) {
+				int current = list.indexOf(desired.get(index));
+				if (current >= 0 && current != index) {
+					list.move(index, current);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Prepares a containment child the managed owner does not hold yet (issues #332, #333):
+	 * a child whose row exists — moved from another owner — becomes its managed instance, so
+	 * it is re-parented instead of inserted again; a plain {@code EObject} is converted to an
+	 * instance of its entity class, which EclipseLink needs to persist it at all; either way its
+	 * references and deeper children are prepared like on the insert path.
+	 */
+	private static EObject prepareChild(EObject child, Server server, EntityManager em) {
+		if (isNull(server) || child.eIsProxy()) {
+			return child;
+		}
+		EObject adopted = adoptChild(child, server, em);
+		if (nonNull(adopted)) {
+			return adopted;
+		}
+		EObject entity = isNull(server.getDescriptor(child.getClass())) ? toEntity(child, server) : child;
+		sanitizeNonContainmentReferences(entity, child, server, em);
+		adoptExistingContainmentChildren(entity, server, em);
+		return entity;
+	}
+
+	/**
+	 * Converts a plain {@code EObject} tree into instances of the entity classes, copying all
+	 * features — the insert path's {@code toManagedEntity}, usable from the update path.
+	 * Returns the source when its type has no descriptor.
+	 */
+	private static EObject toEntity(EObject source, Server server) {
+		ClassDescriptor descriptor = server.getDescriptorForAlias(source.eClass().getName());
+		if (isNull(descriptor)) {
+			return source;
+		}
+		EObject target = EDynamicHelper.createInstance(descriptor);
+		ECopier copier = new ECopier(target, null);
+		copier.setCopyContainments(true);
+		copier.setCopyFunction(src -> {
+			ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
+			return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
+		});
+		EObject result = copier.copy(source);
+		copier.copyReferences();
+		return result;
+	}
+
+	/**
+	 * Brings a many-valued non-containment reference of the managed entity in line with the
+	 * source (issue #336). Matching runs by id — a proxy's by its URI fragment, so it is not
+	 * resolved; an unchanged set of targets leaves the managed list untouched. Removed targets
+	 * leave the list (their rows stay), added ones join it as managed instances.
+	 */
+	@SuppressWarnings("unchecked")
+	private static void syncReferenceList(EObject source, EObject target, EReference ref,
+			Server server, EntityManager em) {
+		ClassDescriptor refDescriptor = nonNull(server)
+				? server.getDescriptorForAlias(ref.getEReferenceType().getName())
+				: null;
+		if (isNull(refDescriptor)) {
+			return;
+		}
+		Object raw = source.eGet(ref, false);
+		List<EObject> sourceElements = raw instanceof InternalEList<?> internal
+				? (List<EObject>) internal.basicList()
+				: (List<EObject>) raw;
+		Map<String, EObject> sourceByKey = new LinkedHashMap<>();
+		for (EObject element : sourceElements) {
+			String key = element.eIsProxy() ? proxyKey(element) : CompositeIds.fragment(element);
+			if (isNull(key)) {
+				// an element without an identity cannot be matched — leave the managed list alone
+				return;
+			}
+			sourceByKey.put(key, element);
+		}
+		List<EObject> targetElements = (List<EObject>) target.eGet(ref);
+		Set<String> targetKeys = new LinkedHashSet<>();
+		for (EObject element : targetElements) {
+			targetKeys.add(CompositeIds.fragment(element));
+		}
+		if (targetKeys.equals(sourceByKey.keySet())) {
+			return;
+		}
+		targetElements.removeIf(element -> !sourceByKey.containsKey(CompositeIds.fragment(element)));
+		for (Map.Entry<String, EObject> entry : sourceByKey.entrySet()) {
+			if (targetKeys.contains(entry.getKey())) {
+				continue;
+			}
+			EObject element = entry.getValue();
+			Object id = element.eIsProxy() ? convertId(entry.getKey(), refDescriptor) : findKey(element);
+			Object managed = isNull(id) ? null : em.find(refDescriptor.getJavaClass(), id);
+			if (managed instanceof EObject managedElement) {
+				targetElements.add(managedElement);
+			}
+		}
+	}
+
+	/**
+	 * The id a lazy proxy carries: its URI fragment, or the id segment of the
+	 * {@code //refName/idAttrName/idValue} form the indirection policy writes.
+	 */
+	private static String proxyKey(EObject proxy) {
+		String fragment = EcoreUtil.getURI(proxy).fragment();
+		if (nonNull(fragment) && fragment.startsWith("//")) {
+			String[] parts = fragment.substring(2).split("/");
+			return parts.length >= 3 ? parts[2] : null;
+		}
+		return fragment;
 	}
 
 	private static void copyNonContainmentRef(EObject target, EReference ref, Object srcValue,
@@ -951,6 +1137,39 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				targets.stream().filter(EObject.class::isInstance).map(EObject.class::cast).forEach(opposites::add);
 			}
 			object.eUnset(reference);
+		}
+	}
+
+	/**
+	 * Evicts the types of the given updated owners and of everything they can contain from the
+	 * shared cache (issue #338).
+	 */
+	private static void evictContainmentTypes(Server server, List<EObject> owners) {
+		if (owners.isEmpty() || isNull(server)) {
+			return;
+		}
+		Set<EClass> types = new LinkedHashSet<>();
+		owners.forEach(owner -> collectContainmentTypes(owner.eClass(), types));
+		for (EClass type : types) {
+			ClassDescriptor descriptor = server.getDescriptorForAlias(type.getName());
+			if (nonNull(descriptor)) {
+				// removed, not only invalidated: the merge leaves entries without an object for
+				// the new children, and an invalidated entry is still found and read as null;
+				// a child descriptor shares the identity map of its hierarchy root
+				ClassDescriptor owning = descriptor.isChildDescriptor()
+						? descriptor.getInheritancePolicy().getRootParentDescriptor()
+						: descriptor;
+				server.getIdentityMapAccessor().initializeIdentityMap(owning.getJavaClass());
+			}
+		}
+	}
+
+	private static void collectContainmentTypes(EClass type, Set<EClass> types) {
+		if (!types.add(type)) {
+			return;
+		}
+		for (EReference reference : type.getEAllContainments()) {
+			collectContainmentTypes(reference.getEReferenceType(), types);
 		}
 	}
 
@@ -1077,7 +1296,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 			EntityManager em = lease.createEntityManager();
 			try {
-				return findAndCache(em, descriptor, typedId);
+				return findAndCache(em, descriptor, typedId, idValue);
 			} finally {
 				em.close();
 			}
@@ -1119,7 +1338,15 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		return entityName;
 	}
 
-	private EObject findAndCache(EntityManager em, ClassDescriptor descriptor, Object typedId) {
+	private EObject findAndCache(EntityManager em, ClassDescriptor descriptor, Object typedId, String key) {
+		// one object per id in a resource (#337): resolving a fragment of an object the
+		// resource already holds — an opposite's proxy back to it, say — returns that object;
+		// a second instance would carry the old state, and a save would write it over the change
+		for (EObject held : super.getContents()) {
+			if (descriptor.getJavaClass().isInstance(held) && key.equals(CompositeIds.fragment(held))) {
+				return held;
+			}
+		}
 		Object result = em.find(descriptor.getJavaClass(), typedId);
 		if (result instanceof EObject resolved) {
 			// Add the resolved object to this resource's contents so it has
@@ -2488,7 +2715,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * canonical fragment order and the key order coincide; EclipseLink's
 	 * {@code DynamicIdentityPolicy} accepts {@code Object[]} for multi-PK descriptors).
 	 */
-	private Object convertId(String idValue, ClassDescriptor descriptor) {
+	private static Object convertId(String idValue, ClassDescriptor descriptor) {
 		EClass eClass = eClassOf(descriptor);
 		boolean composite = nonNull(eClass) && CompositeIds.isComposite(eClass);
 		if (composite) {
