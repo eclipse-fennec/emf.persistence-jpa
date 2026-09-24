@@ -47,7 +47,8 @@ import jakarta.persistence.EntityManagerFactory;
 /**
  * A converter declaring large values makes its attribute a Lob when the converter is found by
  * type — no eorm, no {@code Convert}, the converter registered after the defaults the way the
- * OSGi whiteboard adds it, the attribute on the root of a SINGLE_TABLE hierarchy (issue #324).
+ * OSGi whiteboard adds it, the attribute on the root of a SINGLE_TABLE hierarchy, and the data
+ * type at the classifier index Ecore uses for {@code EChar} (issue #324).
  * On PostgreSQL a plain String column is {@code VARCHAR(255)}, so a long value only round-trips
  * as a Lob.
  *
@@ -81,10 +82,20 @@ class JpaLargeValueConverterTest {
 		ePackage.setNsURI("urn:largevalue:test/1.0");
 		ePackage.setNsPrefix("largevalue");
 
+		// the geometry type sits at classifier index 27, as GeoJsonGeometry does in the bath
+		// model of emf.ogc.features — the index of EcorePackage.ECHAR, which the default
+		// converter used to claim by id alone (issue #324)
+		for (int i = 0; i < EcorePackage.ECHAR; i++) {
+			EDataType filler = ecore.createEDataType();
+			filler.setName("Filler" + i);
+			filler.setInstanceClassName("java.lang.String");
+			ePackage.getEClassifiers().add(filler);
+		}
 		EDataType shapeType = ecore.createEDataType();
 		shapeType.setName("ShapeGeometry");
 		shapeType.setInstanceClass(Shape.class);
 		ePackage.getEClassifiers().add(shapeType);
+		assertThat(shapeType.getClassifierID()).isEqualTo(EcorePackage.ECHAR);
 
 		assetClass = ecore.createEClass();
 		assetClass.setName("LvAsset");

@@ -48,7 +48,9 @@ public class DefaultConverter implements TypeConverter {
 	 */
 	@Override
 	public boolean isConverterForType(EClassifier classifier) {
-		if (!(classifier instanceof EDataType eDataType)) {
+		// the classifier ids below are Ecore's; the same index in another package is another
+		// type (issue #324: a GeoJsonGeometry at index 27 was taken for EChar)
+		if (!(classifier instanceof EDataType eDataType) || eDataType.getEPackage() != EcorePackage.eINSTANCE) {
 			return false;
 		}
 		int classifierId = eDataType.getClassifierID();
