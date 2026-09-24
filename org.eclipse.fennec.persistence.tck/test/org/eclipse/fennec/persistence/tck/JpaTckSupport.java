@@ -72,6 +72,15 @@ final class JpaTckSupport {
 	 */
 	static EntityManagerFactory bootstrap(String puName, EntityMappings mappings, Map<String, Object> jdbcProperties,
 			String ddlGeneration) {
+		return bootstrap(puName, mappings, jdbcProperties, ddlGeneration, new DefaultConverterService());
+	}
+
+	/**
+	 * Bootstraps a unit with a converter service of the caller's — the OSGi path hands the
+	 * converter whiteboard, which holds converters beyond the defaults (issue #324).
+	 */
+	static EntityManagerFactory bootstrap(String puName, EntityMappings mappings, Map<String, Object> jdbcProperties,
+			String ddlGeneration, ConverterService converter) {
 		DynamicClassLoader dcl = new DynamicClassLoader(JpaTckSupport.class.getClassLoader());
 		Map<String, Object> props = new HashMap<>();
 		props.put(PersistenceUnitProperties.DDL_GENERATION, ddlGeneration);
@@ -95,7 +104,6 @@ final class JpaTckSupport {
 		EntityManagerFactory emf = provider.createContainerEntityManagerFactory(unitInfo, props);
 		verifyPlatform(emf);
 
-		ConverterService converter = new DefaultConverterService();
 		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl,
 				JpaHelper.getServerSession(emf), puName, converter);
 		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
