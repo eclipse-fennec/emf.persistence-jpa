@@ -441,6 +441,12 @@ closes it when the operation ends. Practical consequences:
 - A `stream()` holds its lease until the stream is closed — a forgotten
   `close()` keeps the factory open (and its connections allocated)
   indefinitely.
+- An embedded H2 closes its database when the last connection closes
+  (`DB_CLOSE_DELAY=0`, H2's default). Handed a `DataSource`, EclipseLink holds
+  no connection between operations, so without a pool in front the database is
+  closed and reopened around every operation, not only after the idle close.
+  Set `DB_CLOSE_DELAY=-1` in the H2 URL (or use a pooled `DataSource`) to keep
+  it open for the lifetime of the framework.
 
 If you consume the `EntityManagerFactory` service directly (plain JPA interop),
 the get/unget window of the service is your lease: do not cache the instance
