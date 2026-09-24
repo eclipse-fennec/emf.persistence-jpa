@@ -17,6 +17,8 @@ import static java.util.Objects.nonNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -42,10 +44,12 @@ import org.eclipse.fennec.persistence.eorm.Basic;
 import org.eclipse.fennec.persistence.eorm.Column;
 import org.eclipse.fennec.persistence.eorm.Convert;
 import org.eclipse.fennec.persistence.eorm.EFeatureObject;
+import org.eclipse.fennec.persistence.eorm.Lob;
 import org.eclipse.fennec.persistence.eorm.Version;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.mappings.DatabaseMapping;
 import org.eclipse.persistence.mappings.DirectToFieldMapping;
+import org.eclipse.persistence.mappings.converters.TypeConversionConverter;
 
 /**
  * Configures @Basic attribute mappings and @Version optimistic locking
@@ -154,6 +158,17 @@ class AttributeConfigurator {
 			mapping.getField().setScale(
 					nonNull(c) && c.isSetScale() ? c.getScale() : DEFAULT_DECIMAL_SCALE);
 		}
+		if (hasColumnFacets(c) || nonNull(basic.getLob())) {
+			// addDirectMapping derived the case-sensitive collation definition (MySQL family)
+			// with the default length, before the facets were known — drop it, apply them,
+			// and derive it again from the real length; a Lob keeps the platform's type
+			mapping.getField().setColumnDefinition("");
+			applyColumnFacets(mapping, c);
+			applyLob(mapping, basic.getLob(), typeClass, feature);
+			if (isNull(basic.getLob())) {
+				ops.applyCaseSensitiveCollation(mapping, typeClass);
+			}
+		}
 		/**
 		 * Converter handling - both explicit and automatic
 		 */
@@ -196,9 +211,59 @@ class AttributeConfigurator {
 		mapping.setAttributeAccessor(efa);
 	}
 
+	private static boolean hasColumnFacets(Column column) {
+		return nonNull(column) && (column.isSetLength()
+				|| (nonNull(column.getColumnDefinition()) && !column.getColumnDefinition().isBlank()));
+	}
+
 	/**
-	 * Check if the given class is a standard database type that doesn't need conversion.
+	 * Carries the eorm column facets {@code length} and {@code columnDefinition} into the field,
+	 * so DDL generation emits them (issue #312). Without them every String column falls back to
+	 * EclipseLink's default length — {@code VARCHAR(255)} on PostgreSQL, where a longer value
+	 * fails on insert, while H2 creates an unbounded {@code VARCHAR} and hides it.
 	 */
+	void applyColumnFacets(DirectToFieldMapping mapping, Column column) {
+		if (isNull(column)) {
+			return;
+		}
+		if (column.isSetLength()) {
+			mapping.getField().setLength(column.getLength());
+		}
+		String definition = column.getColumnDefinition();
+		if (nonNull(definition) && !definition.isBlank()) {
+			mapping.getField().setColumnDefinition(definition);
+		}
+	}
+
+	/**
+	 * Maps a {@code Lob}-marked basic as CLOB or BLOB, the way EclipseLink's own
+	 * {@code LobMetadata} does it: the field is classified as {@link Clob}/{@link Blob} and a
+	 * {@link TypeConversionConverter} converts between the attribute value and the column
+	 * (issue #312). The platform then picks its large-object type — {@code CLOB} on H2,
+	 * {@code TEXT} on PostgreSQL. A type that is neither character nor binary data is refused,
+	 * rather than mapped without the requested large-object column.
+	 */
+	void applyLob(DirectToFieldMapping mapping, Lob lob, Class<?> typeClass, EStructuralFeature feature) {
+		if (isNull(lob)) {
+			return;
+		}
+		Class<?> dataClass;
+		if (typeClass == String.class || typeClass == char[].class || typeClass == Character[].class) {
+			dataClass = Clob.class;
+		} else if (typeClass == byte[].class || typeClass == Byte[].class) {
+			dataClass = Blob.class;
+		} else {
+			throw new IllegalStateException("The eorm mapping of '" + feature.getName()
+					+ "' declares a Lob, but its column type " + typeClass.getName()
+					+ " is neither character nor binary data");
+		}
+		mapping.setFieldClassification(dataClass);
+		TypeConversionConverter converter = new TypeConversionConverter(mapping);
+		converter.setDataClass(dataClass);
+		converter.setObjectClass(typeClass);
+		mapping.setConverter(converter);
+	}
+
 	/**
 	 * The Java type an attribute's column is mapped with — the whole decision in one place, so it
 	 * can be asserted without building a persistence unit.

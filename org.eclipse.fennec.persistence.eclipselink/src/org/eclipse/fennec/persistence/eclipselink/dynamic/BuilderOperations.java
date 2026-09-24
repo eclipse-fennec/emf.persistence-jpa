@@ -34,6 +34,12 @@ interface BuilderOperations {
 
 	DirectToFieldMapping addDirectMapping(String name, Class<?> type, String columnName);
 
+	/**
+	 * Derives the case-sensitive collation column definition on the MySQL family from the
+	 * field's current length; a no-op elsewhere or when a column definition is set.
+	 */
+	void applyCaseSensitiveCollation(DirectToFieldMapping mapping, Class<?> type);
+
 	DatabaseMapping addMapping(DatabaseMapping mapping);
 
 	OneToOneMapping addOneToOneMapping(String name, DynamicType targetType, String fkName);
