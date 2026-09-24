@@ -45,8 +45,10 @@ public class CapabilityGate implements ExecutionCondition {
 			return ConditionEvaluationResult.enabled("conformance core — not gateable");
 		}
 		RequiresCapabilities requires = annotation.get();
-		PersistenceCapabilities declared = ((AbstractPersistenceTCK) context.getRequiredTestInstance())
-				.declaredCapabilities();
+		Object instance = context.getRequiredTestInstance();
+		PersistenceCapabilities declared = instance instanceof AbstractWritePathTCK writePath
+				? writePath.declaredCapabilities()
+				: ((AbstractPersistenceTCK) instance).declaredCapabilities();
 		List<String> undeclared = new ArrayList<>();
 		for (QueryFeature feature : requires.query()) {
 			if (!declared.query().supports(feature)) {
