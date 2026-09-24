@@ -44,7 +44,6 @@ import org.eclipse.fennec.persistence.eorm.Basic;
 import org.eclipse.fennec.persistence.eorm.Column;
 import org.eclipse.fennec.persistence.eorm.Convert;
 import org.eclipse.fennec.persistence.eorm.EFeatureObject;
-import org.eclipse.fennec.persistence.eorm.Lob;
 import org.eclipse.fennec.persistence.eorm.Version;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.mappings.DatabaseMapping;
@@ -158,20 +157,50 @@ class AttributeConfigurator {
 			mapping.getField().setScale(
 					nonNull(c) && c.isSetScale() ? c.getScale() : DEFAULT_DECIMAL_SCALE);
 		}
-		if (hasColumnFacets(c) || nonNull(basic.getLob())) {
+		TypeConverter converter = converterFor(basic, feature);
+		// an explicit eorm facet wins over the converter's large-value hint (issue #319)
+		boolean lob = nonNull(basic.getLob())
+				|| (!hasColumnFacets(c) && isLargeValue(converter, feature, typeClass));
+		if (hasColumnFacets(c) || lob) {
 			// addDirectMapping derived the case-sensitive collation definition (MySQL family)
 			// with the default length, before the facets were known — drop it, apply them,
 			// and derive it again from the real length; a Lob keeps the platform's type
 			mapping.getField().setColumnDefinition("");
 			applyColumnFacets(mapping, c);
-			applyLob(mapping, basic.getLob(), typeClass, feature);
-			if (isNull(basic.getLob())) {
+			if (lob) {
+				applyLob(mapping, typeClass, feature);
+			} else {
 				ops.applyCaseSensitiveCollation(mapping, typeClass);
 			}
 		}
-		/**
-		 * Converter handling - both explicit and automatic
-		 */
+
+		EFeatureAccessor efa = EFeatureAccessor.create(mapping, feature, converter);
+		mapping.setAttributeAccessor(efa);
+	}
+
+	/**
+	 * Whether the converter declares that the attribute's values exceed a regular column
+	 * (issue #319) and the column carries character or binary data a Lob can hold. A hint for
+	 * any other column type is ignored.
+	 */
+	private boolean isLargeValue(TypeConverter converter, EStructuralFeature feature, Class<?> typeClass) {
+		if (isNull(converter) || !(feature instanceof EAttribute ea)
+				|| !converter.isLargeValue(ea.getEAttributeType())) {
+			return false;
+		}
+		if (typeClass == String.class || typeClass == byte[].class) {
+			return true;
+		}
+		LOG.log(Level.FINE, "Converter {0} declares large values for {1}, but its column type {2} "
+				+ "cannot be a Lob — ignored", new Object[] { converter.getName(), feature.getName(), typeClass });
+		return false;
+	}
+
+	/**
+	 * The converter of a basic attribute: the one its eorm mapping names, or the one the
+	 * converter service offers for a non-standard type; {@code null} for none.
+	 */
+	private TypeConverter converterFor(Basic basic, EStructuralFeature feature) {
 		TypeConverter converter = null;
 
 		// First check for explicit converter configuration
@@ -206,9 +235,7 @@ class AttributeConfigurator {
 				}
 			}
 		}
-
-		EFeatureAccessor efa = EFeatureAccessor.create(mapping, feature, converter);
-		mapping.setAttributeAccessor(efa);
+		return converter;
 	}
 
 	private static boolean hasColumnFacets(Column column) {
@@ -243,10 +270,7 @@ class AttributeConfigurator {
 	 * {@code TEXT} on PostgreSQL. A type that is neither character nor binary data is refused,
 	 * rather than mapped without the requested large-object column.
 	 */
-	void applyLob(DirectToFieldMapping mapping, Lob lob, Class<?> typeClass, EStructuralFeature feature) {
-		if (isNull(lob)) {
-			return;
-		}
+	void applyLob(DirectToFieldMapping mapping, Class<?> typeClass, EStructuralFeature feature) {
 		Class<?> dataClass;
 		if (typeClass == String.class || typeClass == char[].class || typeClass == Character[].class) {
 			dataClass = Clob.class;

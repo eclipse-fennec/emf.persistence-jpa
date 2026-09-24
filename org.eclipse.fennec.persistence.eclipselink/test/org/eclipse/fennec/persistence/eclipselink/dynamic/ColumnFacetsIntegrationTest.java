@@ -26,13 +26,18 @@ import java.util.UUID;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.api.TypeConverter;
+import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.persistence.eorm.Basic;
 import org.eclipse.fennec.persistence.eorm.Column;
+import org.eclipse.fennec.persistence.eorm.Convert;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
@@ -187,7 +192,84 @@ class ColumnFacetsIntegrationTest {
 				.hasStackTraceContaining("'count' declares a Lob");
 	}
 
+	@Test
+	@DisplayName("A converter declaring large values maps its String column as a Lob (issue #319)")
+	void largeValueConverterMapsALob() {
+		EntityMappings mappings = mappings();
+		convert(mappings, "body");
+		initEclipseLink(mappings, new GeoConverterService());
+
+		assertLobMapping("body", Clob.class);
+		String text = "[[1.0,2.0],".repeat(20_000);
+		EObject note = newNote(1L);
+		note.eSet(noteClass.getEStructuralFeature("body"), text);
+		persist(note);
+		assertThat(load(1L).eGet(noteClass.getEStructuralFeature("body"))).isEqualTo(text);
+	}
+
+	@Test
+	@DisplayName("An explicit eorm length wins over the converter's large-value hint")
+	void explicitLengthWinsOverTheHint() {
+		EntityMappings mappings = mappings();
+		convert(mappings, "body");
+		column(mappings, "body").setLength(50);
+		initEclipseLink(mappings, new GeoConverterService());
+
+		DirectToFieldMapping mapping = (DirectToFieldMapping) descriptor().getMappingForAttributeName("body");
+		assertThat(mapping.getConverter()).isNull();
+		assertThat(mapping.getField().getLength()).isEqualTo(50);
+	}
+
+	@Test
+	@DisplayName("A large-value hint on a column that cannot be a Lob is ignored")
+	void hintOnANumberColumnIsIgnored() {
+		EntityMappings mappings = mappings();
+		convert(mappings, "count");
+		initEclipseLink(mappings, new GeoConverterService());
+
+		DirectToFieldMapping mapping = (DirectToFieldMapping) descriptor().getMappingForAttributeName("count");
+		assertThat(mapping.getConverter()).isNull();
+	}
+
 	// ── Helpers ─────────────────────────────────────────────────────────────
+
+	/** A converter service with a pass-through converter "geo" whose values are large. */
+	private static final class GeoConverterService extends DefaultConverterService {
+		GeoConverterService() {
+			converters.add(new TypeConverter() {
+				@Override
+				public String getName() {
+					return "geo";
+				}
+
+				@Override
+				public Object convertValueToEMF(EClassifier eDataType, Object value) {
+					return value;
+				}
+
+				@Override
+				public Object convertEMFToValue(EClassifier eDataType, Object emfValue) {
+					return emfValue;
+				}
+
+				@Override
+				public boolean isConverterForType(EClassifier eDataType) {
+					return false;
+				}
+
+				@Override
+				public boolean isLargeValue(EClassifier eDataType) {
+					return true;
+				}
+			});
+		}
+	}
+
+	private void convert(EntityMappings mappings, String name) {
+		Convert convert = EORMFactory.eINSTANCE.createConvert();
+		convert.setConverter("geo");
+		basic(mappings, name).setConvert(convert);
+	}
 
 	private EAttribute addAttribute(String name, EDataType type) {
 		EAttribute attribute = EcoreFactory.eINSTANCE.createEAttribute();
@@ -265,6 +347,10 @@ class ColumnFacetsIntegrationTest {
 	}
 
 	private void initEclipseLink(EntityMappings mappings) {
+		initEclipseLink(mappings, null);
+	}
+
+	private void initEclipseLink(EntityMappings mappings, ConverterService converters) {
 		DynamicClassLoader dcl = new DynamicClassLoader(getClass().getClassLoader());
 
 		Map<String, Object> props = new HashMap<>();
@@ -289,7 +375,9 @@ class ColumnFacetsIntegrationTest {
 		emf = provider.createContainerEntityManagerFactory(pui, props);
 		serverSession = JpaHelper.getServerSession(emf);
 
-		EDynamicTypeGenerator generator = new EDynamicTypeGenerator(dcl, serverSession, "facets_test");
+		EDynamicTypeGenerator generator = converters == null
+				? new EDynamicTypeGenerator(dcl, serverSession, "facets_test")
+				: new EDynamicTypeGenerator(dcl, serverSession, "facets_test", converters);
 		List<EDynamicType> types = generator.createFromMapping(mappings);
 
 		EDynamicHelper helper = new EDynamicHelper(emf, dcl);

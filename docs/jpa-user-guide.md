@@ -251,6 +251,30 @@ Column facets of a basic attribute are taken from its eorm mapping: `Column.leng
 (`TEXT`/`BYTEA` on PostgreSQL). Without them a String column gets the platform default —
 `VARCHAR(255)` on PostgreSQL.
 
+A derived mapping takes these facets from the persistence annotation of the attribute, which the
+generator writes into the eorm:
+
+```xml
+<eStructuralFeatures xsi:type="ecore:EAttribute" name="geometry" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+  <eAnnotations source="https://eclipse.org/fennec/persistence">
+    <details key="lob" value="true"/>
+  </eAnnotations>
+</eStructuralFeatures>
+```
+
+| Key | Value | eorm |
+|-----|-------|------|
+| `length` | a positive integer | `Column.length` |
+| `columnDefinition` | a column definition, e.g. `VARCHAR(2000)` | `Column.columnDefinition` |
+| `lob` | `true` / `false` | `Lob` |
+
+A value that cannot be used is reported as a warning diagnostic and left out.
+
+A `TypeConverter` whose values do not fit a regular column declares it with
+`isLargeValue(EClassifier)` — a GeoJSON geometry converted to text, say. Such an attribute is then
+mapped as a Lob, unless its eorm mapping — written by hand or from the annotation — declares a
+length, column definition or Lob of its own; those always win over the converter.
+
 ### Containment vs. non-containment
 
 The EMF reference kind drives both cascade and fetch semantics:
