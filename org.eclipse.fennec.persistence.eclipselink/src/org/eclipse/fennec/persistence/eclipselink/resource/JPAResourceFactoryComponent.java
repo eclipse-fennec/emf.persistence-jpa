@@ -15,6 +15,8 @@ package org.eclipse.fennec.persistence.eclipselink.resource;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,6 +36,7 @@ import org.eclipse.fennec.persistence.query.QueryConstants;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
 import org.eclipse.fennec.persistence.query.support.NamedOperations;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -140,11 +143,14 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 			return;
 		}
 		ServiceReference<JPAUnit> previous = unitRefs.put(name, reference);
-		if (nonNull(previous)) {
-			LOG.log(Level.WARNING, "Multiple JPAUnit services for unit ''{0}'' — using the newest one", name);
-			resolvedUnits.remove(name);
-			ctx.ungetService(previous);
+		if (isNull(previous) || previous.equals(reference)) {
+			// unknown, or the very reference a registry lookup already adopted for this
+			// unit (issue #313) — keep whatever it resolved
+			return;
 		}
+		LOG.log(Level.WARNING, "Multiple JPAUnit services for unit ''{0}'' — using the newest one", name);
+		resolvedUnits.remove(name);
+		ctx.ungetService(previous);
 	}
 
 	void removeUnit(ServiceReference<JPAUnit> reference) {
@@ -270,6 +276,9 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 		}
 		ServiceReference<JPAUnit> reference = unitRefs.get(puName);
 		if (isNull(reference)) {
+			reference = adoptFromRegistry(puName);
+		}
+		if (isNull(reference)) {
 			return null;
 		}
 		JPAUnit unit = ctx.getService(reference);
@@ -285,5 +294,45 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 			return previous;
 		}
 		return unit;
+	}
+
+	/**
+	 * Looks the unit up in the service registry and adopts what it finds into the
+	 * whiteboard's tracking — the JPA counterpart of the Mongo fix for issue #282 (#313).
+	 * <p>
+	 * {@code BundleContext.registerService} dispatches its event synchronously, so the stack
+	 * that publishes a {@code JPAUnit} is the same stack that activates the repository
+	 * component bound to it, and a consumer of that repository can query before DS has got
+	 * around to this component's {@code addUnit}. Both are listeners on one registration
+	 * event and nothing orders them. The registry already holds the service by then:
+	 * consulting it turns a startup ordering question into a lookup.
+	 * <p>
+	 * Among several units of one name the greatest reference wins — the ranking order
+	 * {@code getServiceReference} itself applies — and it is stored under the name, so the
+	 * flavor and the eventual {@code removeUnit} see the same reference.
+	 *
+	 * @param puName the URI authority to resolve
+	 * @return the adopted reference, or {@code null} if no registered unit carries the name
+	 */
+	private ServiceReference<JPAUnit> adoptFromRegistry(String puName) {
+		Collection<ServiceReference<JPAUnit>> registered;
+		try {
+			registered = ctx.getServiceReferences(JPAUnit.class, null);
+		} catch (InvalidSyntaxException e) {
+			// unreachable with a null filter, and not worth propagating if it ever were
+			LOG.log(Level.WARNING, "Cannot look up JPAUnit services for unit " + puName, e);
+			return null;
+		}
+		ServiceReference<JPAUnit> found = registered.stream()
+				.filter(reference -> puName.equals(unitName(reference)))
+				.max(Comparator.naturalOrder())
+				.orElse(null);
+		if (isNull(found)) {
+			return null;
+		}
+		LOG.log(Level.FINE, "Unit ''{0}'' resolved from the service registry — the whiteboard "
+				+ "has not been notified of its JPAUnit yet", puName);
+		ServiceReference<JPAUnit> raced = unitRefs.putIfAbsent(puName, found);
+		return isNull(raced) ? found : raced;
 	}
 }
