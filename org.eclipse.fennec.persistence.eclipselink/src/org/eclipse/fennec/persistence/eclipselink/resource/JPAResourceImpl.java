@@ -120,6 +120,7 @@ import org.eclipse.persistence.sessions.UnitOfWork;
 import org.eclipse.persistence.sessions.server.Server;
 import org.eclipse.persistence.tools.schemaframework.FieldDefinition.DatabaseType;
 
+import jakarta.persistence.Cache;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.TypedQuery;
@@ -905,13 +906,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			em.getTransaction().begin();
 			try {
 				EList<EObject> contents = writableContents();
+				List<EObject> opposites = new ArrayList<>();
 				// a copy: merging and removing an object with a bidirectional reference updates
 				// its opposite, which can touch this list while it is iterated
 				for (EObject eo : new ArrayList<>(contents)) {
 					Object merged = em.merge(eo);
+					if (merged instanceof EObject managed) {
+						detachFromOpposites(managed, opposites);
+					}
 					em.remove(merged);
 				}
 				em.getTransaction().commit();
+				evictFromSharedCache(em, opposites);
 				contents.clear();
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
@@ -920,6 +926,50 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				getErrors().add(PersistenceDiagnostic.error(refusalCode(e), DIAGNOSTIC_SOURCE,
 						"Failed to delete resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to delete resource: " + getURI(), e);
+			}
+		}
+	}
+
+	/**
+	 * Takes an object that is about to be removed out of the opposite collections of its
+	 * bidirectional non-containment references (issue #326). The merge makes the targets
+	 * managed with their opposite collection still holding the object, and non-containment
+	 * references cascade {@code PERSIST}: at flush the removed object is reachable from a managed
+	 * entity through that cascade and is persisted again — the delete was silently undone.
+	 * Unsetting the reference lets EMF remove the object from the opposite side.
+	 */
+	private static void detachFromOpposites(EObject object, List<EObject> opposites) {
+		for (EReference reference : object.eClass().getEAllReferences()) {
+			if (reference.isContainment() || reference.isContainer() || isNull(reference.getEOpposite())
+					|| !reference.isChangeable() || reference.isDerived() || !object.eIsSet(reference)) {
+				continue;
+			}
+			Object value = object.eGet(reference, false);
+			if (value instanceof EObject target) {
+				opposites.add(target);
+			} else if (value instanceof List<?> targets) {
+				targets.stream().filter(EObject.class::isInstance).map(EObject.class::cast).forEach(opposites::add);
+			}
+			object.eUnset(reference);
+		}
+	}
+
+	/**
+	 * Evicts the targets whose opposite collections lost a deleted object from the shared cache
+	 * (issue #326). A target whose collection was not instantiated in the deleting transaction
+	 * keeps the deleted object in its cached copy, and the next merge of that copy — deleting the
+	 * target, say — inserted the deleted rows again. Evicted, the next read builds the collection
+	 * from the database.
+	 */
+	private static void evictFromSharedCache(EntityManager em, List<EObject> targets) {
+		if (targets.isEmpty()) {
+			return;
+		}
+		Cache cache = em.getEntityManagerFactory().getCache();
+		for (EObject target : targets) {
+			Object key = findKey(target);
+			if (nonNull(key) && !target.eIsProxy()) {
+				cache.evict(target.getClass(), key);
 			}
 		}
 	}
