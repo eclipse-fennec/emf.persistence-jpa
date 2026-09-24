@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm.processor;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.sql.Date;
@@ -21,11 +22,15 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Calendar;
 
+import org.eclipse.emf.ecore.EAnnotation;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.persistence.Keywords;
 import org.eclipse.fennec.persistence.eorm.Base;
+import org.eclipse.fennec.persistence.eorm.Column;
+import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.FetchType;
 import org.eclipse.fennec.persistence.eorm.SimpleBase;
 import org.eclipse.fennec.persistence.eorm.TemporalType;
@@ -57,6 +62,7 @@ public abstract class BaseProcessor<T extends SimpleBase> extends NamedBaseProce
 		createNamedBase();
 		createBase();
 		createSimpleBase();
+		applyAnnotatedColumnFacets();
 		return true;
 	}
 	
@@ -99,6 +105,51 @@ public abstract class BaseProcessor<T extends SimpleBase> extends NamedBaseProce
 		return target;
 	}
 	
+	/**
+	 * Writes the column facets the persistence annotation of the attribute declares into the
+	 * eorm (issue #319), so the eorm stays the single source the type mapping reads:
+	 * <ul>
+	 * <li>{@code length} = a positive integer → {@code Column.length}</li>
+	 * <li>{@code columnDefinition} = a column definition → {@code Column.columnDefinition}</li>
+	 * <li>{@code lob} = {@code true} → {@code Lob}</li>
+	 * </ul>
+	 * A value that cannot be used is reported as a warning and left out, never replaced by a
+	 * guess.
+	 */
+	void applyAnnotatedColumnFacets() {
+		EAnnotation annotation = source.getEAnnotation(Keywords.PERSISTENCE_ANNOTATION_SOURCE);
+		if (isNull(annotation)) {
+			return;
+		}
+		Column column = target.getColumn();
+		String length = annotation.getDetails().get("length");
+		if (nonNull(length) && nonNull(column)) {
+			try {
+				int value = Integer.parseInt(length.trim());
+				if (value <= 0) {
+					throw new NumberFormatException();
+				}
+				column.setLength(value);
+			} catch (NumberFormatException e) {
+				context.warning(MappingContext.DIAGNOSTIC_SOURCE, String.format(
+						"Persistence annotation 'length' of '%s' must be a positive integer, but is '%s' — ignored",
+						source.getName(), length), source);
+			}
+		}
+		String columnDefinition = annotation.getDetails().get("columnDefinition");
+		if (nonNull(columnDefinition) && !columnDefinition.isBlank() && nonNull(column)) {
+			column.setColumnDefinition(columnDefinition);
+		}
+		String lob = annotation.getDetails().get("lob");
+		if ("true".equalsIgnoreCase(lob)) {
+			target.setLob(EORMFactory.eINSTANCE.createLob());
+		} else if (nonNull(lob) && !"false".equalsIgnoreCase(lob)) {
+			context.warning(MappingContext.DIAGNOSTIC_SOURCE, String.format(
+					"Persistence annotation 'lob' of '%s' must be 'true' or 'false', but is '%s' — ignored",
+					source.getName(), lob), source);
+		}
+	}
+
 	/* 
 	 * (non-Javadoc)
 	 * @see org.eclipse.fennec.persistence.orm.processor.NamedBaseProcessor#doPostProcess()

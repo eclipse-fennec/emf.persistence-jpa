@@ -61,4 +61,17 @@ public interface TypeConverter {
 	 */
 	boolean isConverterForType(EClassifier eDataType);
 
+	/**
+	 * Whether converted values of the type can exceed a regular character or binary column —
+	 * a GeoJSON geometry as text, say. A relational store then maps such an attribute as a
+	 * large object (CLOB/BLOB, {@code TEXT}/{@code BYTEA} on PostgreSQL), unless its mapping
+	 * declares a length, column definition or Lob of its own.
+	 *
+	 * @param eDataType the type of the value that is converted
+	 * @return <code>true</code> if values may be large; <code>false</code> by default
+	 */
+	default boolean isLargeValue(EClassifier eDataType) {
+		return false;
+	}
+
 }
