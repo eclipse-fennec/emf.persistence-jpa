@@ -29,6 +29,7 @@ import javax.sql.DataSource;
 
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
+import org.eclipse.fennec.persistence.eclipselink.H2CloseDelayCheck;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.spi.EntityManagerFactoryConfigurator.Builder;
@@ -141,6 +142,9 @@ public abstract class AbstractPersistenceUnitConfigurator {
 			JpaFlavor flavor = JpaFlavor.detect(getDataSource());
 			getLogger().info(() -> String.format("Persistence unit '%s' runs on flavor '%s'",
 					getPersistenceUnitName(), flavor.id()));
+			if (flavor == JpaFlavor.H2) {
+				H2CloseDelayCheck.warning(getDataSource(), getPersistenceUnitName()).ifPresent(getLogger()::warning);
+			}
 
 			Dictionary<String, Object> serviceProps = new Hashtable<>();
 			serviceProps.put(JPAUnit.UNIT_NAME, getPersistenceUnitName());

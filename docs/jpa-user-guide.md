@@ -469,8 +469,11 @@ closes it when the operation ends. Practical consequences:
   (`DB_CLOSE_DELAY=0`, H2's default). Handed a `DataSource`, EclipseLink holds
   no connection between operations, so without a pool in front the database is
   closed and reopened around every operation, not only after the idle close.
-  Set `DB_CLOSE_DELAY=-1` in the H2 URL (or use a pooled `DataSource`) to keep
-  it open for the lifetime of the framework.
+  Besides being slow, H2 2.3 has been seen to lose committed rows of a file
+  database in these open/close cycles (issue #316): the store is truncated on
+  close, with no write in between. Set `DB_CLOSE_DELAY=-1` in the H2 URL (or use
+  a pooled `DataSource`) to keep it open for the lifetime of the framework; a
+  unit on an embedded H2 with `DB_CLOSE_DELAY=0` logs a warning at activation.
 
 If you consume the `EntityManagerFactory` service directly (plain JPA interop),
 the get/unget window of the service is your lease: do not cache the instance
