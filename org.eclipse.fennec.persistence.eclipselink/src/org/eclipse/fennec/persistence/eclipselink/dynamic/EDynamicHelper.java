@@ -175,7 +175,7 @@ public class EDynamicHelper extends JPADynamicHelper {
         if (!getSession().isConnected()) {
             getSession().login();
         }
-        DynamicSchemaManager mgr = new DynamicSchemaManager(session);
+        DynamicSchemaManager mgr = new EDynamicSchemaManager(session);
         switch (action) {
             case CREATE_TABLES:
                 createMissingSchemas(descriptors);
