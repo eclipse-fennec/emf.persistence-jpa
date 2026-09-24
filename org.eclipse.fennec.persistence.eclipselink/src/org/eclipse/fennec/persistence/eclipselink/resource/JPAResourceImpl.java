@@ -1653,6 +1653,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		this.queryProcessor = requireNonNull(queryProcessor, "queryProcessor must not be null");
 	}
 
+	/** The effective processor — package-private so tests can assert the wiring. */
+	QueryProcessor queryProcessor() {
+		return queryProcessor;
+	}
+
+	/** The unit this resource leases from — package-private so tests can assert the wiring. */
+	JPAUnit unit() {
+		return unit;
+	}
+
 	/**
 	 * Overrides the {@link ConverterService} used for literal and parameter values in
 	 * queries and command selectors (issue #164) — intended for wiring the same service the
