@@ -639,13 +639,21 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 			} else {
 				Object value = ((InternalEObject) source).eGet(ref, false);
+				boolean recovered = false;
 				if (isNull(value) && nonNull(ref.getEOpposite()) && nonNull(original) && original != source
 						&& original.eClass() == source.eClass()) {
 					// Recover the value the EMF copier dropped for bidirectional refs.
 					value = ((InternalEObject) original).eGet(ref, false);
+					recovered = nonNull(value);
 				}
 				if (value instanceof EObject eo) {
 					EObject managed = managedHandle(eo, refDescriptor, server, em);
+					if (isNull(managed) && recovered) {
+						// a recovered target is typically a row resolved through getEObject — an
+						// instance of the entity class, but not managed by this entity manager;
+						// the copy has no value at all, so it needs the handle either way (#309)
+						managed = referenceHandle(eo, refDescriptor, em);
+					}
 					if (nonNull(managed)) {
 						source.eSet(ref, managed);
 					}
@@ -684,6 +692,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	private static EObject managedHandle(EObject value, ClassDescriptor refDescriptor, Server server,
 			EntityManager em) {
 		if (isNull(value) || value.eIsProxy() || nonNull(server.getDescriptor(value.getClass()))) {
+			return null;
+		}
+		return referenceHandle(value, refDescriptor, em);
+	}
+
+	/**
+	 * Returns the {@code em.getReference} handle of an object with a persisted id, whatever its
+	 * class, or {@code null} for a proxy or an object without a usable id.
+	 */
+	private static EObject referenceHandle(EObject value, ClassDescriptor refDescriptor, EntityManager em) {
+		if (value.eIsProxy()) {
 			return null;
 		}
 		Object id = findKey(value);
