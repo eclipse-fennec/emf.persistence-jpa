@@ -176,6 +176,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	private boolean contentsPopulated;
 	/** Re-entrancy guard so internal contents access during population does not recurse. */
 	private boolean populating;
+	/**
+	 * {@code true} once {@link #getEObject(String)} attached a keyed-resolved object to the
+	 * raw contents of a not yet populated resource — see {@link #writableContents()}.
+	 */
+	private boolean resolvedByFragment;
 
 	/**
 	 * Creates a resource backed by a {@link JPAUnit} — the narrow capability that hands out
@@ -227,6 +232,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	public EList<EObject> getContents() {
 		populateIfNeeded();
 		return super.getContents();
+	}
+
+	/**
+	 * The contents a {@link #save(Map)} or {@link #delete(Map)} works on (issue #307).
+	 * <p>
+	 * {@code ResourceSet.getEObject(uri, true)} demand-loads the resource — {@code load()} only
+	 * marks it loaded — and {@link #getEObject(String)} attaches the resolved object. Iterating
+	 * {@link #getContents()} there would run the deferred full population and widen the
+	 * resource from "the object I resolved" to "the table": a {@code delete} removed every row.
+	 * So once a fragment was resolved and nobody requested the full contents, a write works on
+	 * what the resource holds. An explicit {@code load} followed by {@code delete} keeps
+	 * removing every entity of the type, and a subset taken through {@code getContents()}
+	 * keeps working on that subset.
+	 */
+	private EList<EObject> writableContents() {
+		return resolvedByFragment && !contentsPopulated ? super.getContents() : getContents();
 	}
 
 	/**
@@ -375,7 +396,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			try {
 				Map<String, EObject> existingRows = loadExistingRows(em, server);
 				List<EObject[]> managedPairs = new ArrayList<>();
-				for (EObject eo : getContents()) {
+				for (EObject eo : writableContents()) {
 					EObject source = nonNull(server) ? toManagedEntity(eo, server, entityFactory) : eo;
 					upsert(em, source, eo, server, existingRows);
 					if (source != eo) {
@@ -414,12 +435,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private Map<String, EObject> loadExistingRows(EntityManager em, Server server) {
 		Map<String, EObject> existing = new LinkedHashMap<>();
-		if (isNull(server) || getContents().isEmpty()) {
+		if (isNull(server) || writableContents().isEmpty()) {
 			return existing;
 		}
 		Map<String, List<Object>> idsByAlias = new LinkedHashMap<>();
 		Map<String, String> idAttributeByAlias = new LinkedHashMap<>();
-		for (EObject root : getContents()) {
+		for (EObject root : writableContents()) {
 			collectWarmableIds(root, server, idsByAlias, idAttributeByAlias);
 		}
 		idsByAlias.forEach((alias, ids) -> {
@@ -864,12 +885,15 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
-				for (EObject eo : getContents()) {
+				EList<EObject> contents = writableContents();
+				// a copy: merging and removing an object with a bidirectional reference updates
+				// its opposite, which can touch this list while it is iterated
+				for (EObject eo : new ArrayList<>(contents)) {
 					Object merged = em.merge(eo);
 					em.remove(merged);
 				}
 				em.getTransaction().commit();
-				getContents().clear();
+				contents.clear();
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
@@ -886,6 +910,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		isLoaded = false;
 		loadRequested = false;
 		contentsPopulated = false;
+		resolvedByFragment = false;
 		loadOptions = null;
 		// Raw list access — a resource being unloaded must not first re-populate.
 		super.getContents().clear();
@@ -1038,6 +1063,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			EList<EObject> raw = super.getContents();
 			if (isNull(resolved.eResource()) && !raw.contains(resolved)) {
 				raw.add(resolved);
+				resolvedByFragment |= !contentsPopulated;
 			}
 			return resolved;
 		}
