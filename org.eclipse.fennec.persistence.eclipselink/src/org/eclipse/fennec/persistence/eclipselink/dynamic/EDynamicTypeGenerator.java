@@ -156,7 +156,7 @@ public class EDynamicTypeGenerator {
 		/*
 		 * Now configure the bi-directional mapping via e.g. mappedby
 		 */
-		return mapping.
+		List<EDynamicType> types = mapping.
 				getEntity().
 				stream().
 				map(context::get).
@@ -164,6 +164,13 @@ public class EDynamicTypeGenerator {
 				map(this::configureDynamicType).
 				filter(Objects::nonNull).
 				toList();
+		/*
+		 * Names that are no SQL identifier would break the DDL silently (issue #314)
+		 */
+		if (!context.isUseDelimitedIdentifiers() && !hasDelimitedIdentifiers(mapping)) {
+			types.forEach(type -> IdentifierValidator.validate(type, context));
+		}
+		return types;
 	}
 
 	/**

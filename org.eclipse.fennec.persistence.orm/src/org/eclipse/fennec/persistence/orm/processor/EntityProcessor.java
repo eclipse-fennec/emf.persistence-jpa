@@ -16,11 +16,13 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static java.util.Objects.requireNonNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.AccessType;
@@ -108,9 +110,8 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		}
 		Table table = EORMFactory.eINSTANCE.createTable();
 		String tableName = name;
-		String altName = EcoreUtil.getAnnotation(source, "http:///org/eclipse/emf/ecore/util/ExtendedMetaData", "name");
-		if (nonNull(altName)) {
-			tableName = altName;
+		if (context.isUseNamesFromExtendedMetaData()) {
+			tableName = MappingHelper.getTableName(source, true);
 		}
 		// SINGLE_TABLE and JOINED children reuse the root entity's table name
 		// (EclipseLink's setJoinedStrategy() reassigns per-subclass tables later).
@@ -124,6 +125,7 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		}
 		table.setName(tableName.toUpperCase());
 		target.setTable(table);
+		reportUnusedExtendedMetaDataNames();
 		Attributes attrs = EORMFactory.eINSTANCE.createAttributes();
 		target.setAttributes(attrs);
 		// Root entities always get IDs. SINGLE_TABLE/JOINED children inherit the
@@ -344,6 +346,52 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		}
 		
 		return ids;
+	}
+
+	/**
+	 * Names an EClass's {@code ExtendedMetaData} names that the mapping leaves unused, once per
+	 * EClass (issue #314). They were table and column names until the switch became opt-in — a
+	 * store created before sees new columns under {@code create-or-extend-tables}, and this is
+	 * where that surfaces. An info, since a model made for XML/JSON carries such names
+	 * legitimately — a warning when one of them escapes a reserved word.
+	 */
+	private void reportUnusedExtendedMetaDataNames() {
+		if (context.isUseNamesFromExtendedMetaData()) {
+			return;
+		}
+		List<String> unused = new ArrayList<>();
+		boolean escapesReservedWord = collectUnused(source.getName(),
+				MappingHelper.getTableName(source, true), unused);
+		for (EStructuralFeature feature : source.getEStructuralFeatures()) {
+			escapesReservedWord |= collectUnused(feature.getName(),
+					MappingHelper.getColumnName(feature, true), unused);
+		}
+		if (unused.isEmpty()) {
+			return;
+		}
+		String message = String.format(
+				"ExtendedMetaData names of '%s' are not used as table/column names: %s. "
+						+ "Enable useNamesFromExtendedMetaData, or declare the names in the eorm mapping.",
+				source.getName(), unused);
+		// a model name that is a reserved word, annotated with one that is not, reads as the
+		// escape the reserved-word warning used to recommend — without the switch the DDL fails
+		if (escapesReservedWord) {
+			context.warning(MappingContext.DIAGNOSTIC_SOURCE, message, source);
+		} else {
+			context.info(MappingContext.DIAGNOSTIC_SOURCE, message, source);
+		}
+	}
+
+	/**
+	 * Adds {@code name=annotated} to {@code unused} when the two differ.
+	 * @return {@code true} if the annotated name escapes a reserved word
+	 */
+	private static boolean collectUnused(String name, String annotated, List<String> unused) {
+		if (annotated.equals(name)) {
+			return false;
+		}
+		unused.add(name + "=" + annotated);
+		return MappingHelper.isReservedName(name) && !MappingHelper.isReservedName(annotated);
 	}
 
 }

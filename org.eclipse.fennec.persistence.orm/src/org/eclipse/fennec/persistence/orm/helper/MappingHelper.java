@@ -128,7 +128,8 @@ public class MappingHelper {
 		}
 		if (RESERVED_WORDS.contains(name.toLowerCase())) {
 			String message = String.format("%s name '%s' is a SQL reserved word and may cause issues with some databases. "
-					+ "Consider renaming or using an ExtendedMetaData annotation to set an explicit column/table name.",
+					+ "Consider renaming, declaring an explicit column/table name in the eorm mapping, "
+					+ "or enabling useNamesFromExtendedMetaData with an ExtendedMetaData name.",
 					context, name);
 			if (nonNull(diagnostics)) {
 				if (nonNull(element)) {
@@ -176,7 +177,8 @@ public class MappingHelper {
 	 * @return the {@link ENamedBase} instance
 	 */
 	public static <T extends ENamedBase> T createNamedBase(T base, EStructuralFeature feature, ProcessingContext diagnostics) {
-		String name = checkReservedName(getFeatureName(feature), "Feature", diagnostics, feature);
+		// the JPA attribute name is the feature name — the runtime resolves features by it
+		String name = checkReservedName(feature.getName(), "Feature", diagnostics, feature);
 		base.setName(name);
 		EFeatureObject efa = EORMFactory.eINSTANCE.createEFeatureObject();
 		efa.setFeature(feature);
@@ -212,8 +214,8 @@ public class MappingHelper {
 		Column column = EORMFactory.eINSTANCE.createColumn();
 		String name = mapEntryColumnName(feature);
 		if (isNull(name)) {
-			name = strict ? getFeatureName(feature)
-					: checkReservedName(getFeatureName(feature), "Column", diagnostics, feature);
+			String columnName = getColumnName(feature, useNamesFromExtendedMetaData(diagnostics));
+			name = strict ? columnName : checkReservedName(columnName, "Column", diagnostics, feature);
 		}
 		column.setName(name);
 		column.setNullable(!feature.isRequired());
@@ -252,13 +254,42 @@ public class MappingHelper {
 		return nonNull(c) ? c.getName() : base.getName();
 	}
 	
-	public static String getFeatureName(EStructuralFeature feature) {
+	/**
+	 * The column name derived for a feature: its name, or — only when asked to (issue #314) —
+	 * its {@code ExtendedMetaData} {@code name}. That name describes an XML/JSON serialization
+	 * and is no SQL identifier by guarantee ({@code marker-color}), so it is opt-in.
+	 * @param feature the feature
+	 * @param useNamesFromExtendedMetaData whether the annotated name wins
+	 * @return the column name, never {@code null}
+	 */
+	public static String getColumnName(EStructuralFeature feature, boolean useNamesFromExtendedMetaData) {
 		requireNonNull(feature);
-		String name = getAnnotation(feature, ExtendedMetaData.ANNOTATION_URI, "name");
-		if (isNull(name)) {
-			name = feature.getName();
-		}
-		return name;
+		String name = useNamesFromExtendedMetaData
+				? getAnnotation(feature, ExtendedMetaData.ANNOTATION_URI, "name") : null;
+		return isNull(name) ? feature.getName() : name;
+	}
+
+	/**
+	 * The table name derived for an EClass: its name, or — only when asked to (issue #314) —
+	 * its {@code ExtendedMetaData} {@code name}.
+	 * @param eClass the EClass
+	 * @param useNamesFromExtendedMetaData whether the annotated name wins
+	 * @return the table name, never {@code null}
+	 */
+	public static String getTableName(EClass eClass, boolean useNamesFromExtendedMetaData) {
+		requireNonNull(eClass);
+		String name = useNamesFromExtendedMetaData
+				? getAnnotation(eClass, ExtendedMetaData.ANNOTATION_URI, "name") : null;
+		return isNull(name) ? eClass.getName() : name;
+	}
+
+	/**
+	 * @return whether the mapping run behind the given context takes names from
+	 *         {@code ExtendedMetaData}; {@code false} without a mapping context
+	 */
+	public static boolean useNamesFromExtendedMetaData(ProcessingContext context) {
+		return context instanceof MappingContext mappingContext
+				&& mappingContext.isUseNamesFromExtendedMetaData();
 	}
 
 	/**

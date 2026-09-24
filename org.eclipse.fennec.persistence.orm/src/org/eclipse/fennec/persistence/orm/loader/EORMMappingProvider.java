@@ -66,8 +66,11 @@ public class EORMMappingProvider {
 		@AttributeDefinition(name = "Entity mapping name")
 		String mappingName();
 		
-		@AttributeDefinition(name = "Does no reserved name checking if set to true. It takes names as they are in the Ecore / ExtendedMetaData annotation")
+		@AttributeDefinition(name = "Does no reserved name checking if set to true. It takes names as they are in the Ecore model")
 		boolean strict() default false;
+
+		@AttributeDefinition(name = "Use names from ExtendedMetaData", description = "Takes table and column names from the ExtendedMetaData 'name' annotation instead of the EClass/feature name. Off by default: that name describes an XML/JSON serialization and need not be a SQL identifier", required = false)
+		boolean useNamesFromExtendedMetaData() default false;
 
 	}
 	
@@ -83,6 +86,7 @@ public class EORMMappingProvider {
 	public void activate(BundleContext bctx, ORMMappingConfig config) {
 		EntityMapper mapper = new EntityMapper();
 		mapper.setStrict(config.strict());
+		mapper.setUseNamesFromExtendedMetaData(config.useNamesFromExtendedMetaData());
 		EntityMappings mappings = createMappings(mapper, config.eClasses());
 		mappings = customizer.customizeMapping(mappings);
 		Dictionary<String, Object> properties = new Hashtable<>();

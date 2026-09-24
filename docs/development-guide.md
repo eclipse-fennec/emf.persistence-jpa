@@ -580,7 +580,7 @@ private static final Logger LOG = Logger.getLogger(MyClass.class.getName());
 - Temporal Keywords (`year`, `month`, `day`, `hour`, `minute`, `second`)
 - Weitere (`end`, `limit`, `offset`, `row`, `trigger`, `view`, `sequence`, `function`, `procedure`)
 
-**Verhalten:** Die Liste wird nur zur **Erkennung und Warnung** genutzt — Namen werden **nicht** automatisch escaped/prefixed. Stattdessen wird ein `LOG.warning()` ausgegeben. Der User entscheidet selbst, ob er umbenennt oder per ExtendedMetaData-Annotation einen expliziten Spaltennamen setzt. Dieser Ansatz folgt dem EclipseLink-Vorbild (dort: `useDelimiters` auf `DatabaseField`-Ebene).
+**Verhalten:** Die Liste wird nur zur **Erkennung und Warnung** genutzt — Namen werden **nicht** automatisch escaped/prefixed. Stattdessen wird ein `LOG.warning()` ausgegeben. Der User entscheidet selbst, ob er umbenennt oder einen expliziten Spaltennamen setzt — in der eorm, oder per ExtendedMetaData-Annotation mit `useNamesFromExtendedMetaData` (seit #314 opt-in). Dieser Ansatz folgt dem EclipseLink-Vorbild (dort: `useDelimiters` auf `DatabaseField`-Ebene).
 
 **Tests:** Parametrisierte Tests (`@ParameterizedTest`) für Erkennung, Case-Insensitivity, Verifizierung dass Namen unverändert zurückgegeben werden, Context-Parameter, Null-Handling, und dass gängige Spaltennamen (`person`, `address`, `email`) nicht als reserved erkannt werden.
 

@@ -31,6 +31,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.junit.jupiter.api.Test;
@@ -92,8 +93,10 @@ class NonOsgiGltContainmentTest extends NonOsgiPersistenceTestBase {
 	private boolean strictMapping = true;
 
 	@Override
-	protected void configureMapper(org.eclipse.fennec.persistence.orm.EntityMapper mapper) {
+	protected void configureMapper(EntityMapper mapper) {
 		mapper.setStrict(strictMapping);
+		// glt.ecore carries its database names as ExtendedMetaData names (BUILDINGS, first_name)
+		mapper.setUseNamesFromExtendedMetaData(true);
 	}
 
 	@Test
