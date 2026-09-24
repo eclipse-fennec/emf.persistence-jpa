@@ -189,6 +189,8 @@ class AttributeConfigurator {
 			return false;
 		}
 		if (typeClass == String.class || typeClass == byte[].class) {
+			LOG.log(Level.FINE, "Attribute {0} is mapped as a Lob: converter {1} declares large values for {2}",
+					new Object[] { feature.getName(), converter.getName(), ea.getEAttributeType().getName() });
 			return true;
 		}
 		LOG.log(Level.FINE, "Converter {0} declares large values for {1}, but its column type {2} "
