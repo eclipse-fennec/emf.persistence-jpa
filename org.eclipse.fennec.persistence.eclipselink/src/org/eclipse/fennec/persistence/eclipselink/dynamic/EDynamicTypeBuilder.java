@@ -336,7 +336,8 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 	 * {@code STRING_MATCH_CASE_INSENSITIVE} opt-in, never ambient. An explicitly
 	 * configured column definition is left alone.
 	 */
-	private void applyCaseSensitiveCollation(DirectToFieldMapping mapping, Class<?> type) {
+	@Override
+	public void applyCaseSensitiveCollation(DirectToFieldMapping mapping, Class<?> type) {
 		if (type != String.class || isNull(context.getSession())) {
 			return;
 		}
