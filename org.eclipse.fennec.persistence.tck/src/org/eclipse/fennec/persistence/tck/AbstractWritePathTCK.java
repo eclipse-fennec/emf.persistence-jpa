@@ -187,8 +187,8 @@ public abstract class AbstractWritePathTCK {
 		EObject o1 = obj(order, "o1");
 		EObject o2 = obj(order, "o2");
 		list(c1, customerOrders).addAll(List.of(o1, o2));
-		saveIn(resourceSet, "WpCustomer", c1);
-		saveIn(resourceSet, "WpOrder", o1, o2);
+		// cross-resource references need resource membership before saving (EMF semantics)
+		saveAll(resourceSet, "WpCustomer", List.of(c1), "WpOrder", List.of(o1, o2));
 
 		assertRef(order, "o1", orderCustomer, "c1");
 		assertRef(order, "o2", orderCustomer, "c1");
@@ -204,8 +204,7 @@ public abstract class AbstractWritePathTCK {
 		EObject s2 = obj(student, "s2");
 		list(s1, studentCourses).addAll(List.of(k1, k2));
 		list(s2, studentCourses).add(k1);
-		saveIn(resourceSet, "WpCourse", k1, k2);
-		saveIn(resourceSet, "WpStudent", s1, s2);
+		saveAll(resourceSet, "WpCourse", List.of(k1, k2), "WpStudent", List.of(s1, s2));
 
 		assertRefs(student, "s1", studentCourses, "k1", "k2");
 		assertRefs(student, "s2", studentCourses, "k1");
@@ -297,12 +296,32 @@ public abstract class AbstractWritePathTCK {
 		List<String> orderIds = ids("o", 200);
 		List<EObject> orders = orderIds.stream().map(id -> obj(order, id)).toList();
 		list(c1, customerOrders).addAll(orders);
-		saveIn(resourceSet, "WpCustomer", c1);
-		saveIn(resourceSet, "WpOrder", orders.toArray(EObject[]::new));
+		saveAll(resourceSet, "WpCustomer", List.of(c1), "WpOrder", orders);
 
 		assertRefsInOrder(owner, "o1", ownerItems, itemIds.toArray(String[]::new));
 		assertRefs(customer, "c1", customerOrders, orderIds.toArray(String[]::new));
 		assertIds(order, orderIds.toArray(String[]::new));
+	}
+
+	@Test
+	public void aReferenceToAnObjectInNoResourceIsNeverStoredCorrupt() throws Exception {
+		EObject c1 = obj(customer, "c1");
+		list(c1, customerOrders).add(obj(order, "o1"));
+		Resource resource = createBackendResourceSet().createResource(uriFor("WpCustomer"));
+		resource.getContents().add(c1);
+		try {
+			resource.save(null);
+		} catch (IOException refused) {
+			// refusing is fine: the order has no resource to be referenced in
+		}
+
+		// whatever the store holds for the reference must name stored objects
+		Set<String> orders = probe.ids(order);
+		for (String customerId : probe.ids(customer)) {
+			assertThat(probe.references(customer, customerId, customerOrders))
+					.as("stored references of %s#%s.orders name stored orders", "WpCustomer", customerId)
+					.allMatch(orders::contains);
+		}
 	}
 
 	// ================================================================= UPDATE
@@ -835,6 +854,17 @@ public abstract class AbstractWritePathTCK {
 		resource.save(null);
 	}
 
+	/** Adds both groups to their resources first, then saves both — the order EMF requires. */
+	private void saveAll(ResourceSet resourceSet, String firstType, List<EObject> first, String secondType,
+			List<EObject> second) throws IOException {
+		Resource firstResource = resourceSet.createResource(uriFor(firstType));
+		Resource secondResource = resourceSet.createResource(uriFor(secondType));
+		firstResource.getContents().addAll(first);
+		secondResource.getContents().addAll(second);
+		firstResource.save(null);
+		secondResource.save(null);
+	}
+
 	private void saveOwnerWithItems(String ownerId, String... itemIds) throws IOException {
 		EObject o = owner(ownerId);
 		for (String itemId : itemIds) {
@@ -864,8 +894,7 @@ public abstract class AbstractWritePathTCK {
 		EObject s2 = obj(student, "s2");
 		list(s1, studentCourses).addAll(List.of(k1, k2));
 		list(s2, studentCourses).add(k1);
-		saveIn(resourceSet, "WpCourse", k1, k2);
-		saveIn(resourceSet, "WpStudent", s1, s2);
+		saveAll(resourceSet, "WpCourse", List.of(k1, k2), "WpStudent", List.of(s1, s2));
 	}
 
 	private void saveTree() throws IOException {
