@@ -419,6 +419,42 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 	}
 
+	/**
+	 * Refuses a save in which a unidirectional non-containment reference points at an object
+	 * that is in no resource (issue #342). Such a target has no URI; the codec then wrote the URI of its type
+	 * ({@code …#//WpOrder}) — a stored reference that names no object and reads back as
+	 * {@code null}, without any signal. EMF requires a cross-resource target to be in a resource
+	 * before saving; a caller who does not follow that gets a refusal, and nothing is written.
+	 */
+	private void refuseReferencesWithoutResource(List<EObject> roots) throws IOException {
+		Set<EObject> tree = new HashSet<>();
+		for (EObject root : roots) {
+			tree.add(root);
+			root.eAllContents().forEachRemaining(tree::add);
+		}
+		for (EObject object : tree) {
+			for (EReference reference : object.eClass().getEAllReferences()) {
+				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
+						|| reference.isDerived() || nonNull(reference.getEOpposite()) || !object.eIsSet(reference)) {
+					// a bidirectional pair is one association whose other side carries it once the
+					// target is saved — which side the store keeps is decided with #343
+					continue;
+				}
+				Object value = object.eGet(reference, false);
+				List<?> targets = value instanceof List<?> list ? list : List.of(value);
+				for (Object target : targets) {
+					if (target instanceof EObject eo && !eo.eIsProxy() && isNull(eo.eResource()) && !tree.contains(eo)) {
+						String message = "Save refused: " + object.eClass().getName() + " '" + EcoreUtil.getID(object)
+								+ "'." + reference.getName() + " references a " + eo.eClass().getName()
+								+ " that is in no resource — add it to a resource before saving";
+						getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+						throw new IOException(message + " (" + getURI() + ")");
+					}
+				}
+			}
+		}
+	}
+
 	@Override
 	public EList<EObject> getContents() {
 		populateIfNeeded();
@@ -552,6 +588,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			// this very resource attaches its result to the contents (issue #107)
 			List<EObject> roots = List.copyOf(writableContents());
 			refuseDuplicateIds(roots);
+			refuseReferencesWithoutResource(roots);
 			List<WriteModel<BsonDocument>> writes = writeModels(roots);
 			if (!writes.isEmpty()) {
 				// Ordered (the driver default), deliberately: the batch is ReplaceOneModels keyed by
