@@ -30,6 +30,7 @@ import org.eclipse.fennec.persistence.eorm.JoinColumn;
 import org.eclipse.fennec.persistence.eorm.JoinTable;
 import org.eclipse.fennec.persistence.eorm.MappedByRef;
 import org.eclipse.fennec.persistence.eorm.OneToMany;
+import org.eclipse.fennec.persistence.eorm.OrderColumn;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.MappingContext.MappedBy;
 
@@ -115,6 +116,13 @@ public class OneToManyProcessor extends BaseReferenceProcessor<OneToMany> {
 				target.getJoinColumn().add(jc);
 				target.setForeignKey(createForeignKey(jc.getName()));
 				constrainMapKeys(jc);
+			}
+			if (source.isOrdered()) {
+				// an ordered containment keeps its order in the store (issue #330): without an
+				// order column the rows came back in any order, and a reorder was lost
+				OrderColumn orderColumn = EORMFactory.eINSTANCE.createOrderColumn();
+				orderColumn.setName(source.getName().toUpperCase() + "_ORDER");
+				target.setOrderColumn(orderColumn);
 			}
 		} else {
 			// NON-CONTAINMENT: Use JoinTable

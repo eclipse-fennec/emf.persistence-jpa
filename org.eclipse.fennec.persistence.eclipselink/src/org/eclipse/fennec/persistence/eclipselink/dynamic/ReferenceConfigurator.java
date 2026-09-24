@@ -51,6 +51,7 @@ import org.eclipse.persistence.mappings.ForeignReferenceMapping;
 import org.eclipse.persistence.mappings.ManyToManyMapping;
 import org.eclipse.persistence.mappings.ManyToOneMapping;
 import org.eclipse.persistence.mappings.OneToManyMapping;
+import org.eclipse.persistence.annotations.OrderCorrectionType;
 import org.eclipse.persistence.mappings.OneToOneMapping;
 import org.eclipse.persistence.mappings.UnidirectionalOneToManyMapping;
 
@@ -200,6 +201,14 @@ class ReferenceConfigurator {
 		}
 		if (isNull(mapping)) {
 			return;
+		}
+		if (isNull(mappedBy) && nonNull(oneToMany.getOrderColumn())) {
+			// the list order lives in an order column (issue #330); EclipseLink switches the
+			// container to an ordered list policy when it initializes the mapping
+			String orderColumn = oneToMany.getOrderColumn().getName();
+			mapping.setListOrderFieldName(nonNull(orderColumn) ? orderColumn : name.toUpperCase() + "_ORDER");
+			// READ: the attribute holds an EList, never the IndirectList READ_WRITE would put there
+			mapping.setOrderCorrectionType(OrderCorrectionType.READ);
 		}
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
 		setOptional(mapping, oneToMany);

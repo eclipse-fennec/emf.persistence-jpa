@@ -76,10 +76,15 @@ public class EReferenceAccessor extends ValuesAccessor {
 		this.reference = feature;
 	}
 
-	/** Preserves the pre-{@link ValuesAccessor} behavior ({@code Object.class}). */
+	/**
+	 * {@code List} for a many-valued reference — EclipseLink requires a {@code List} attribute
+	 * for an ordered collection mapping with an order column (issue #330), and both its default
+	 * collection class and {@code IndirectList} are assignable to it. A single-valued reference
+	 * preserves the pre-{@link ValuesAccessor} behavior ({@code Object.class}).
+	 */
 	@Override
 	public Class<?> getAttributeClass() {
-		return Object.class;
+		return nonNull(reference) && reference.isMany() ? List.class : Object.class;
 	}
 
 	/* 
