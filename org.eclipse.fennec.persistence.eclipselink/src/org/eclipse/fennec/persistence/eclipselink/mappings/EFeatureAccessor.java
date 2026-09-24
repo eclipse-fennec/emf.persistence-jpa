@@ -139,17 +139,21 @@ public class EFeatureAccessor extends ValuesAccessor {
 	}
 
 	/**
-	 * Converts data using the EMF data type conversion 
+	 * Converts a value read from the database into the attribute's data type: through the
+	 * converter when it serves the type, otherwise a String through the EMF data type
+	 * conversion. The converter goes first (issue #308): a dynamic data type has no generated
+	 * factory, and {@code createFromString} cannot build a type without a String constructor
+	 * or {@code valueOf(String)} — {@code UUID} has only {@code fromString}.
 	 * @param value the value to convert
 	 * @param dataType the data type
 	 * @return the converted value or the original one
 	 */
 	private Object dataTypeConvert(Object value, EDataType dataType) {
-		if (value instanceof String &&
+		if (nonNull(converter) && converter.isConverterForType(dataType)) {
+			value = converter.convertValueToEMF(dataType, value);
+		} else if (value instanceof String &&
 				EcorePackage.Literals.ESTRING != dataType) {
 			value = EcoreUtil.createFromString(dataType, value.toString());
-		} else if (nonNull(converter) && converter.isConverterForType(dataType)) {
-			value = converter.convertValueToEMF(dataType, value);
 		}
 		return value;
 	}

@@ -109,7 +109,6 @@ class JpaSchemaImportRoundTripTest {
 	private static final Map<String, String> KNOWN_GAPS = Map.ofEntries(
 			entry("plain/write", "#307: deleting a fragment-resolved object deletes the whole table"),
 			entry("naming/read", "#296: columns are named after the features (FIRSTNAME), not FIRST_NAME"),
-			entry("uuid/read", "#308: a dynamic UUID data type is not converted from the driver's String"),
 			entry("fk/write", "#309: a new object's many-to-one is inserted with a NULL foreign key"),
 			entry("two-fks/parse", TWO_FKS), entry("two-fks/read", TWO_FKS), entry("two-fks/navigate", TWO_FKS),
 			entry("two-fks/schema-unchanged", TWO_FKS),
