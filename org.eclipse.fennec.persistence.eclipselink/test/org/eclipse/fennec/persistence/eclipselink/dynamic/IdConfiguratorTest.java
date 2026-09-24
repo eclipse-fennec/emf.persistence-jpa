@@ -14,6 +14,13 @@ package org.eclipse.fennec.persistence.eclipselink.dynamic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
@@ -28,6 +35,8 @@ import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.GeneratedValue;
 import org.eclipse.fennec.persistence.eorm.GenerationType;
 import org.eclipse.fennec.persistence.eorm.Id;
+import org.eclipse.fennec.persistence.eorm.Inheritance;
+import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.SequenceGenerator;
 import org.eclipse.fennec.persistence.eorm.Table;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
@@ -156,7 +165,74 @@ class IdConfiguratorTest {
 		assertThat(builder.getType().getDescriptor().getPrimaryKeyFieldNames()).isEmpty();
 	}
 
+	@Test
+	@DisplayName("Entity without IDs outside a hierarchy is warned about")
+	void testNoIdWarns() {
+		Entity entity = createEntityForEClass(createEClass("Orphan"));
+
+		List<LogRecord> warnings = captureWarnings(() -> new EDynamicTypeBuilder(entity, context));
+
+		assertThat(warnings).extracting(LogRecord::getParameters)
+			.anySatisfy(p -> assertThat(p).containsExactly("Orphan"));
+	}
+
+	@Test
+	@DisplayName("Hierarchy child inherits its ID silently (issue #315)")
+	void testHierarchyChildDoesNotWarn() {
+		EClass root = createEClass("Facility");
+		EClass child = createEClass("Lawn");
+		child.getESuperTypes().add(root);
+		Entity entity = createEntityForEClass(child);
+		entity.setDiscriminatorValue("Lawn");
+
+		List<LogRecord> warnings = captureWarnings(() -> new EDynamicTypeBuilder(entity, context));
+
+		assertThat(warnings).isEmpty();
+	}
+
+	@Test
+	@DisplayName("Hierarchy root without IDs is still warned about")
+	void testHierarchyRootWithoutIdWarns() {
+		Entity entity = createEntityForEClass(createEClass("Facility"));
+		Inheritance inheritance = EORMFactory.eINSTANCE.createInheritance();
+		inheritance.setStrategy(InheritanceType.SINGLETABLE);
+		entity.setInheritance(inheritance);
+		entity.setDiscriminatorValue("Facility");
+
+		List<LogRecord> warnings = captureWarnings(() -> new EDynamicTypeBuilder(entity, context));
+
+		assertThat(warnings).isNotEmpty();
+	}
+
 	// ===== Helper Methods =====
+
+	private List<LogRecord> captureWarnings(Runnable action) {
+		Logger logger = Logger.getLogger(IdConfigurator.class.getName());
+		List<LogRecord> records = new ArrayList<>();
+		Handler handler = new Handler() {
+			@Override
+			public void publish(LogRecord logRecord) {
+				if (logRecord.getLevel().intValue() >= Level.WARNING.intValue()) {
+					records.add(logRecord);
+				}
+			}
+			@Override
+			public void flush() {
+				// nothing buffered
+			}
+			@Override
+			public void close() {
+				// nothing to release
+			}
+		};
+		logger.addHandler(handler);
+		try {
+			action.run();
+		} finally {
+			logger.removeHandler(handler);
+		}
+		return records;
+	}
 
 	private EClass createEClass(String name) {
 		EClass eClass = EcoreFactory.eINSTANCE.createEClass();

@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.dynamic;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.GenerationType;
 import org.eclipse.fennec.persistence.eorm.Id;
 import org.eclipse.fennec.persistence.eclipselink.mappings.ESyntheticKeyAccessor;
@@ -52,7 +54,11 @@ class IdConfigurator {
 		EClass eClass = eDynamicType.getEClass();
 
 		if (ids.isEmpty()) {
-			LOG.log(Level.WARNING, "No IDs specified for entity {0}", eClass.getName());
+			if (inheritsId(eDynamicType.getEntity())) {
+				LOG.log(Level.FINE, "Entity {0} inherits its ID from its hierarchy", eClass.getName());
+			} else {
+				LOG.log(Level.WARNING, "No IDs specified for entity {0}", eClass.getName());
+			}
 			return;
 		}
 
@@ -61,6 +67,15 @@ class IdConfigurator {
 		} else {
 			configureCompositeIds(eDynamicType, ids);
 		}
+	}
+
+	/**
+	 * Whether the entity is a child of an inheritance hierarchy, whose ID the root declares
+	 * (issue #315). The marker is the one {@code EDynamicTypeBuilder.configureInheritance()}
+	 * attaches a child by: a discriminator value without an inheritance of its own.
+	 */
+	private static boolean inheritsId(Entity entity) {
+		return nonNull(entity) && isNull(entity.getInheritance()) && nonNull(entity.getDiscriminatorValue());
 	}
 
 	/**
