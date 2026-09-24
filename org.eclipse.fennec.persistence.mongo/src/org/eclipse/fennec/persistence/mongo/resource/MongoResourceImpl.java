@@ -221,6 +221,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private boolean contentsPopulated;
 	/** Re-entrancy guard so internal contents access during population does not recurse. */
 	private boolean populating;
+	/**
+	 * {@code true} once a keyed resolution attached an object to the raw contents of a not yet
+	 * populated resource — see {@link #writableContents()}.
+	 */
+	private boolean resolvedByFragment;
 
 	/** Cached hello-probe result (issue #114); {@code null} until first successful probe. */
 	private volatile Boolean transactionalDeployment;
@@ -381,6 +386,39 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * not yet populated resource. Internal callers that must not trigger it — fragment
 	 * resolution, the population itself, {@code doUnload} — use {@code super.getContents()}.
 	 */
+	/**
+	 * The contents a save or delete works on — the Mongo counterpart of JPA's #307. A resource
+	 * demand-loaded to resolve fragments holds the resolved objects; iterating
+	 * {@link #getContents()} there populated the whole collection, and a delete removed every
+	 * document of it. Once a fragment was resolved and nobody requested the full contents, a
+	 * write works on what the resource holds.
+	 */
+	private List<EObject> writableContents() {
+		return resolvedByFragment && !contentsPopulated ? super.getContents() : getContents();
+	}
+
+	/**
+	 * Refuses a save holding two different objects with the same id (the Mongo counterpart of
+	 * JPA's #334): the replace-by-id write let the second silently overwrite the first.
+	 */
+	private void refuseDuplicateIds(List<EObject> roots) throws IOException {
+		Map<BsonValue, EObject> seen = new HashMap<>();
+		for (EObject root : roots) {
+			// the stored _id — composite keys included, where EcoreUtil.getID sees one component
+			BsonValue id = extractId(root);
+			if (isNull(id)) {
+				continue;
+			}
+			EObject previous = seen.putIfAbsent(id, root);
+			if (nonNull(previous) && previous != root) {
+				String message = "Save refused: two different objects with the id " + id
+						+ " — the second would silently overwrite the first";
+				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+				throw new IOException(message + " (" + getURI() + ")");
+			}
+		}
+	}
+
 	@Override
 	public EList<EObject> getContents() {
 		populateIfNeeded();
@@ -512,7 +550,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
 			// snapshot: encoding may resolve proxies, and a keyed-find resolution against
 			// this very resource attaches its result to the contents (issue #107)
-			List<EObject> roots = List.copyOf(getContents());
+			List<EObject> roots = List.copyOf(writableContents());
+			refuseDuplicateIds(roots);
 			List<WriteModel<BsonDocument>> writes = writeModels(roots);
 			if (!writes.isEmpty()) {
 				// Ordered (the driver default), deliberately: the batch is ReplaceOneModels keyed by
@@ -559,11 +598,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		try {
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
+			List<EObject> contents = writableContents();
 			// Collect the owned cross-document documents BEFORE anything is removed: they are
 			// only discoverable from the roots that own them, so deleting the roots first
 			// would lose the information (issue #138).
 			Map<String, Set<BsonValue>> owned = new LinkedHashMap<>();
-			for (EObject eObject : getContents()) {
+			for (EObject eObject : contents) {
 				collectOwnedDocuments(eObject, owned);
 			}
 			int chunkSize = Options.getWriteChunkSize(options);
@@ -572,11 +612,11 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			// before the first removal — a half-done delete would be worse than a refused one.
 			// Asked for the whole set at once (issue #225): one query per candidate reference,
 			// not one per reference per object.
-			List<String> fragmentIds = getContents().stream()
+			List<String> fragmentIds = contents.stream()
 					.map(EcoreUtil::getID)
 					.filter(Objects::nonNull)
 					.toList();
-			String referrer = findInboundReference(commonType(getContents()), fragmentIds,
+			String referrer = findInboundReference(commonType(contents), fragmentIds,
 					collectionName, chunkSize);
 			if (nonNull(referrer)) {
 				// something points into the set; only now is it worth asking which object, and
@@ -584,7 +624,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				throw refuseReferenced(referrer);
 			}
 			List<BsonValue> deletedIds = new ArrayList<>();
-			for (EObject eObject : getContents()) {
+			for (EObject eObject : contents) {
 				BsonValue id = extractId(eObject);
 				if (nonNull(id)) {
 					deletedIds.add(id);
@@ -604,7 +644,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			for (List<BsonValue> batch : chunked(deletedIds, chunkSize)) {
 				removeOwnershipOf(batch, collectionName);
 			}
-			getContents().clear();
+			contents.clear();
 		} catch (RuntimeException e) {
 			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, 
 					"Failed to delete resource: " + e.getMessage(), getURI(), e));
@@ -647,7 +687,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 */
 	private IOException refuseReferenced(String setLevelReferrer) {
 		String message = null;
-		for (EObject eObject : getContents()) {
+		for (EObject eObject : writableContents()) {
 			String referrer = findInboundReference(eObject);
 			if (nonNull(referrer)) {
 				message = "Cannot delete " + eObject.eClass().getName() + " '"
@@ -1775,6 +1815,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		isLoaded = false;
 		loadRequested = false;
 		contentsPopulated = false;
+		resolvedByFragment = false;
 		loadOptions = null;
 		super.getContents().clear();
 	}
@@ -2191,6 +2232,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				// eResource() and subsequent accesses need no further round trip. Raw, so a
 				// keyed resolution does not drag in the whole collection (issue #146).
 				super.getContents().add(resolved);
+				resolvedByFragment |= !contentsPopulated;
 			}
 			return resolved;
 		} catch (RuntimeException | IOException e) {
@@ -2251,6 +2293,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				if (nonNull(decoded) && isNull(decoded.eResource())
 						&& !super.getContents().contains(decoded)) {
 					super.getContents().add(decoded);
+					resolvedByFragment |= !contentsPopulated;
 				}
 			}
 		} catch (RuntimeException | IOException e) {
