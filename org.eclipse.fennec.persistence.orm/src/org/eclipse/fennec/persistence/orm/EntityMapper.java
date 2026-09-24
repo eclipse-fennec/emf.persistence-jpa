@@ -52,6 +52,23 @@ public class EntityMapper {
 
 	private final MappingContext context = new MappingContext();
 	private boolean strict = false;
+	private boolean useNamesFromExtendedMetaData = false;
+
+	/**
+	 * Takes table and column names from the {@code ExtendedMetaData} {@code name} annotation
+	 * instead of the EClass/feature name (issue #314). Off by default.
+	 * @param useNamesFromExtendedMetaData {@code true} to take the annotated names
+	 */
+	public void setUseNamesFromExtendedMetaData(boolean useNamesFromExtendedMetaData) {
+		this.useNamesFromExtendedMetaData = useNamesFromExtendedMetaData;
+	}
+
+	/**
+	 * @return whether table and column names come from the {@code ExtendedMetaData} annotation
+	 */
+	public boolean isUseNamesFromExtendedMetaData() {
+		return useNamesFromExtendedMetaData;
+	}
 	
 	/**
 	 * Sets the strict-mapping mode. This means the mapping will not guess anything or
@@ -179,8 +196,10 @@ public class EntityMapper {
 
 	private MappingProcessor newMappingProcessor(List<EClassifier> classifier) {
 		Collection<EClass> eClasses = EORMHelper.filterEClasses(classifier);
-		return isStrict() ? MappingProcessor.createStrict(new ArrayList<>(eClasses))
+		MappingProcessor processor = isStrict() ? MappingProcessor.createStrict(new ArrayList<>(eClasses))
 				: MappingProcessor.create(new ArrayList<>(eClasses));
+		processor.setUseNamesFromExtendedMetaData(useNamesFromExtendedMetaData);
+		return processor;
 	}
 
 	/**

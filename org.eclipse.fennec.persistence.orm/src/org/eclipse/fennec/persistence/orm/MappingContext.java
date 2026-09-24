@@ -96,6 +96,7 @@ public class MappingContext implements ProcessingContext {
 	 * (parent) EClass.
 	 */
 	private Entity currentEntity;
+	private boolean useNamesFromExtendedMetaData = false;
 
 	private final List<Diagnostic> diagnostics = Collections.synchronizedList(new LinkedList<>());
 
@@ -343,6 +344,20 @@ public class MappingContext implements ProcessingContext {
 
 	public void setCurrentEntity(Entity currentEntity) {
 		this.currentEntity = currentEntity;
+	}
+
+	/**
+	 * Whether table and column names are taken from the {@code ExtendedMetaData} {@code name}
+	 * annotation (issue #314). Off by default: that name describes an XML/JSON serialization,
+	 * and a name like {@code marker-color} is no SQL identifier. The JPA attribute name is the
+	 * feature name either way.
+	 */
+	public boolean isUseNamesFromExtendedMetaData() {
+		return useNamesFromExtendedMetaData;
+	}
+
+	public void setUseNamesFromExtendedMetaData(boolean useNamesFromExtendedMetaData) {
+		this.useNamesFromExtendedMetaData = useNamesFromExtendedMetaData;
 	}
 
 }

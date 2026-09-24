@@ -82,6 +82,7 @@ silently ignored.
 | `fennec.jpa.eorm.mappingName` | String | -- (required) | Published as the `fennec.jpa.eorm.mapping` service property; this is what the unit filters on |
 | `fennec.jpa.eorm.eClasses` | String[] | -- | Names of the EClasses to map. **Omit the key to map every EClass of the EPackage.** A name that is not an EClass of that package is skipped with a log warning |
 | `fennec.jpa.eorm.strict` | boolean | `false` | Take EClass/attribute names as authoritative, skip column-name guessing |
+| `fennec.jpa.eorm.useNamesFromExtendedMetaData` | boolean | `false` | Take table and column names from the `ExtendedMetaData` `name` annotation instead of the EClass/feature name, see [Table and column names](jpa-user-guide.md#table-and-column-names) |
 | `fennec.jpa.eorm.model.target` | filter | -- | Selects the `EPackage` service, e.g. `(emf.nsURI=http://example.org/library/1.0)` |
 | `fennec.jpa.eorm.customizer.target` | filter | -- | Selects an `EORMMappingCustomizer`. Satisfied by the built-in `EmptyMappingCustomizer` when unset -- **a filter matching nothing leaves the component unsatisfied and no mapping appears** |
 

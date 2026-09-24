@@ -81,6 +81,14 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		return context.getDiagnostics();
 	}
 
+	/**
+	 * Takes table and column names from the {@code ExtendedMetaData} {@code name} annotation
+	 * (issue #314), see {@link MappingContext#isUseNamesFromExtendedMetaData()}.
+	 */
+	public void setUseNamesFromExtendedMetaData(boolean useNamesFromExtendedMetaData) {
+		context.setUseNamesFromExtendedMetaData(useNamesFromExtendedMetaData);
+	}
+
 	public static MappingProcessor createStrict(List<EClass> eClasses) {
 		MappingProcessor processor =  new MappingProcessor(eClasses);
 		processor.setStrict(true);

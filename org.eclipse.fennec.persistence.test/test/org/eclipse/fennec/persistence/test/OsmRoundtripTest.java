@@ -35,6 +35,7 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.persistence.eclipselink.resource.JPAResourceImpl;
+import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +51,15 @@ import jakarta.persistence.EntityManager;
  * Uses in-memory H2 to avoid file corruption with large SINGLE_TABLE schemas.
  */
 class OsmRoundtripTest extends NonOsgiPersistenceTestBase {
+
+	/**
+	 * The OSM model escapes reserved words through ExtendedMetaData names
+	 * ({@code user}→{@code userName}, {@code natural}→{@code naturalType}), issue #314.
+	 */
+	@Override
+	protected void configureMapper(EntityMapper mapper) {
+		mapper.setUseNamesFromExtendedMetaData(true);
+	}
 
 	@TempDir
 	File tempDir;

@@ -222,6 +222,35 @@ order:
 In `strict` mode no generators are invented — names and ids are taken as-is
 (useful when mapping onto an existing schema).
 
+### Table and column names
+
+A table is named after its EClass, a column after its feature. The JPA attribute name is always
+the feature name.
+
+`ExtendedMetaData` `name` annotations are **not** used for table and column names unless
+`useNamesFromExtendedMetaData` is enabled (`EntityMapper.setUseNamesFromExtendedMetaData(true)`,
+or `fennec.jpa.eorm.useNamesFromExtendedMetaData=true` on the mapping configuration). Such a name
+describes an XML/JSON serialization and need not be a SQL identifier — the GeoJSON member
+`marker-color` is not. When a model carries names the mapping leaves unused, they are reported once
+per EClass; as a warning when the annotation reads as an escape from a reserved word (`user` →
+`userName`), since the DDL for the reserved word will likely fail.
+
+The ways to give a column a name of its own:
+
+- an explicit `Column.name` in the eorm mapping,
+- `useNamesFromExtendedMetaData` for models whose annotated names are database names,
+- `delimited-identifiers` in the eorm `persistence-unit-defaults`, which quotes every identifier.
+
+A table or column name that is no regular identifier (a letter or `_`, then letters, digits, `_`,
+`$`) and is not delimited fails the deployment of the unit with an error diagnostic naming entity,
+attribute and column. It would otherwise break the `CREATE TABLE`, which
+`create-or-extend-tables` swallows, and surface only as a missing table at the first query.
+
+Column facets of a basic attribute are taken from its eorm mapping: `Column.length`,
+`Column.columnDefinition`, and a `Lob` marker, which maps a String as CLOB and a `byte[]` as BLOB
+(`TEXT`/`BYTEA` on PostgreSQL). Without them a String column gets the platform default —
+`VARCHAR(255)` on PostgreSQL.
+
 ### Containment vs. non-containment
 
 The EMF reference kind drives both cascade and fetch semantics:

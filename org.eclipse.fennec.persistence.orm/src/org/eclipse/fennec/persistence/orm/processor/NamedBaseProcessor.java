@@ -208,8 +208,8 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 	 * @return the {@link JoinColumn} or <code>null</code>
 	 */
 	JoinColumn createJoinColumn(EClass eClass) {
-		return createJoinColumn(eClass, isStrict() ? 
-					MappingHelper.getFeatureName(source) : null);
+		return createJoinColumn(eClass, isStrict() ?
+					MappingHelper.getColumnName(source, context.isUseNamesFromExtendedMetaData()) : null);
 	}
 	
 	/**
