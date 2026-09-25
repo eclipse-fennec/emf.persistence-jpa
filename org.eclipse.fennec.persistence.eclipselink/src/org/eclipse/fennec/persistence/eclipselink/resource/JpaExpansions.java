@@ -16,8 +16,6 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -160,8 +158,11 @@ final class JpaExpansions {
 			return;
 		}
 		// the list has to be asked for with a resolving eGet: this backend's indirection policy
-		// builds it lazily from an id-only query, and an un-triggered read would find it empty.
-		// Building it is already batched — the to-many levels carry eclipselink.batch.
+		// builds it lazily from an id-only query, and an un-triggered read would find it empty —
+		// the expansion would then see nothing to do. Building it is cheap and already batched,
+		// because the to-many levels carry eclipselink.batch. Its elements must still not be
+		// resolved on access, or every proxy would be fetched one by one and the filter would
+		// select from a collection that had already paid for itself.
 		if (!(owner.eGet(reference) instanceof List<?> list)) {
 			return;
 		}
@@ -227,41 +228,5 @@ final class JpaExpansions {
 		}
 		String[] parts = fragment.substring(2).split("/");
 		return parts.length < 3 ? null : parts[2];
-	}
-
-	/**
-	 * The reference's values, single- or multi-valued, <strong>without resolving any of
-	 * them</strong>.
-	 * <p>
-	 * The many case has to ask for the list with a resolving {@code eGet}: this backend's
-	 * indirection policy builds it lazily from an id-only query, and a non-resolving read would
-	 * find it un-triggered and empty — the expansion would then see nothing to do. Building it
-	 * is cheap and already batched, because the to-many levels of an expansion carry
-	 * {@code eclipselink.batch}. Its <em>elements</em> must still not be resolved, or every
-	 * proxy would be fetched one by one and the filter would select from a collection that had
-	 * already paid for itself; {@link InternalEList#basicIterator()} walks them as they are.
-	 */
-	private static List<EObject> valuesOf(EObject owner, EReference reference) {
-		if (!owner.eClass().getEAllReferences().contains(reference)) {
-			return List.of();
-		}
-		if (!reference.isMany()) {
-			Object raw = owner.eGet(reference, false);
-			return raw instanceof EObject eObject ? List.of(eObject) : List.of();
-		}
-		Object raw = owner.eGet(reference);
-		if (!(raw instanceof Collection<?> collection)) {
-			return List.of();
-		}
-		List<EObject> values = new ArrayList<>();
-		Iterator<?> elements = collection instanceof InternalEList<?> internal
-				? internal.basicIterator()
-				: collection.iterator();
-		while (elements.hasNext()) {
-			if (elements.next() instanceof EObject eObject) {
-				values.add(eObject);
-			}
-		}
-		return values;
 	}
 }
