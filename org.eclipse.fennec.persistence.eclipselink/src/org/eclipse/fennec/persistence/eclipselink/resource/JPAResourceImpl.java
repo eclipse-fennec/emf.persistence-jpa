@@ -21,6 +21,9 @@ import java.io.OutputStream;
 import java.sql.Clob;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,17 +36,15 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import java.util.Arrays;
-import java.util.Collections;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.common.util.WrappedException;
@@ -458,6 +459,47 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Assigns the ids a save would generate, before it runs (issue #350): a UUID for a String id,
+	 * the next sequence value for a numeric one — what the mapping's generator would have
+	 * written. EclipseLink keeps a preset id rather than generating over it.
+	 */
+	@Override
+	public void assignIds(Collection<? extends EObject> objects) throws IOException {
+		try (Lease lease = leaseChecked()) {
+			Server server = serverOf(lease);
+			if (isNull(server)) {
+				return;
+			}
+			for (EObject object : objects) {
+				Object key = findKey(object);
+				if (key instanceof Object[] || (nonNull(key) && !isDefaultIdValue(key))) {
+					continue;
+				}
+				List<EAttribute> ids = CompositeIds.idAttributes(object.eClass());
+				if (ids.size() != 1) {
+					throw new IOException("Cannot assign an id to " + object.eClass().getName()
+							+ ": composite ids are assigned, never generated");
+				}
+				EAttribute id = ids.get(0);
+				ClassDescriptor descriptor = server.getDescriptorForAlias(object.eClass().getName());
+				if (isNull(descriptor) || !descriptor.usesSequenceNumbers()) {
+					throw new IOException("Cannot assign an id to " + object.eClass().getName()
+							+ ": its mapping generates none");
+				}
+				Class<?> type = id.getEAttributeType().getInstanceClass();
+				if (type == String.class) {
+					object.eSet(id, UUID.randomUUID().toString());
+				} else {
+					Number next = server.getNextSequenceNumberValue(descriptor.getJavaClass());
+					object.eSet(id, EcoreUtil.createFromString(id.getEAttributeType(), String.valueOf(next)));
+				}
+			}
+		} catch (RuntimeException e) {
+			throw new IOException("Cannot assign ids: " + e.getMessage(), e);
 		}
 	}
 

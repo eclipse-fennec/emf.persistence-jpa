@@ -48,6 +48,7 @@ import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.repository.spi.AbstractRepository;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -956,6 +957,89 @@ public abstract class AbstractWritePathTCK {
 		assertRefs(node, parentId, nodeChildren, "n2");
 	}
 
+	/**
+	 * Issue #350: the repository is the convenient API — new objects of several types that
+	 * reference each other are saved in one call, in any order, because every id is assigned
+	 * before the first resource is saved.
+	 */
+	@Test
+	public void repositorySavesNewObjectsReferencingEachOtherInEitherOrder() throws Exception {
+		EObject c = EcoreUtil.create(customer);
+		EObject o = EcoreUtil.create(order);
+		o.eSet(orderCustomer, c);
+
+		// the order first: saved type by type, it references the customer before that is saved
+		repository().saveAll(List.of(o, c));
+
+		String customerId = EcoreUtil.getID(c);
+		String orderId = EcoreUtil.getID(o);
+		assertThat(customerId).isNotNull();
+		assertThat(orderId).isNotNull();
+		assertIds(customer, customerId);
+		assertIds(order, orderId);
+		assertRef(order, orderId, orderCustomer, customerId);
+		assertRefs(customer, customerId, customerOrders, orderId);
+	}
+
+	@Test
+	public void repositorySavesANewManyToManyGraph() throws Exception {
+		EObject k1 = EcoreUtil.create(course);
+		EObject k2 = EcoreUtil.create(course);
+		EObject s1 = EcoreUtil.create(student);
+		EObject s2 = EcoreUtil.create(student);
+		list(s1, studentCourses).addAll(List.of(k1, k2));
+		list(s2, studentCourses).add(k1);
+
+		repository().saveAll(List.of(s1, k1, s2, k2));
+
+		assertRefs(student, EcoreUtil.getID(s1), studentCourses, EcoreUtil.getID(k1), EcoreUtil.getID(k2));
+		assertRefs(student, EcoreUtil.getID(s2), studentCourses, EcoreUtil.getID(k1));
+		assertRefs(course, EcoreUtil.getID(k1), courseStudents, EcoreUtil.getID(s1), EcoreUtil.getID(s2));
+		assertRefs(course, EcoreUtil.getID(k2), courseStudents, EcoreUtil.getID(s1));
+	}
+
+	/** The id the repository assigned is the one its URI semantics fetch the object by. */
+	@Test
+	public void repositoryFetchesASavedObjectByTheUriOfItsAssignedId() throws Exception {
+		EObject c = EcoreUtil.create(customer);
+		c.eSet(attr(customer, "name"), "by uri");
+		repository().saveAll(List.of(c));
+
+		String id = EcoreUtil.getID(c);
+		evictBackendCaches();
+		EObject viaUri = repository().getEObject(uriFor("WpCustomer").appendFragment(id));
+		assertThat(viaUri).isNotNull();
+		assertThat(viaUri.eGet(attr(customer, "name"))).isEqualTo("by uri");
+		assertThat(repository().getEObject(customer, id)).isNotNull();
+	}
+
+	@Test
+	public void repositoryRefusesATargetInNoResourceOutsideTheSavedSetAndWritesNothing() throws Exception {
+		EObject o1 = obj(order, "o1");
+		o1.eSet(orderCustomer, obj(customer, "c1"));
+
+		assertThatThrownBy(() -> repository().saveAll(List.of(o1))).isInstanceOf(IOException.class);
+
+		assertIds(order);
+		assertIds(customer);
+	}
+
+	@Test
+	public void repositoryRefusesATargetWithoutAnIdOutsideTheSavedSetAndWritesNothing() throws Exception {
+		EObject c = EcoreUtil.create(customer);
+		createBackendResourceSet().createResource(uriFor("WpCustomer")).getContents().add(c);
+		EObject o1 = obj(order, "o1");
+		EObject k1 = obj(course, "k1");
+		o1.eSet(orderCustomer, c);
+
+		// a valid object of another type in the same call is not written either
+		assertThatThrownBy(() -> repository().saveAll(List.of(k1, o1))).isInstanceOf(IOException.class);
+
+		assertIds(order);
+		assertIds(course);
+		assertIds(customer);
+	}
+
 	@Test
 	public void deletingALeafNodeKeepsItsParent() throws Exception {
 		saveTree();
@@ -1108,6 +1192,14 @@ public abstract class AbstractWritePathTCK {
 		for (Resource resource : resources) {
 			resource.save(null);
 		}
+	}
+
+	/** A repository over this backend, as its OSGi flavour builds one. */
+	private AbstractRepository repository() {
+		return new AbstractRepository("writepath", uriFor("WpCustomer").trimSegments(1), this::createBackendResourceSet,
+				null, null, null) {
+			// all behaviour is generic
+		};
 	}
 
 	/** Adds both groups to their resources first, then saves both — the order EMF requires. */

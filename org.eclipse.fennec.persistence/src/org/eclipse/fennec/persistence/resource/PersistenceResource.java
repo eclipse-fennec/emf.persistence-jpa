@@ -13,8 +13,10 @@
 package org.eclipse.fennec.persistence.resource;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Map;
 
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 
@@ -86,5 +88,22 @@ public interface PersistenceResource extends Resource, AutoCloseable {
 	 * @return the effective capabilities, never {@code null}
 	 */
 	PersistenceCapabilities capabilities();
+
+	/**
+	 * Gives every given object that has no id yet the id its next save would give it — in this
+	 * backend's form (issue #350). The ids exist before anything is written, so objects saved
+	 * through several resources can reference each other in any save order: a reference is
+	 * stored under its target's id, and a resource refuses a target that has none (#349).
+	 * <p>
+	 * Objects that already carry an id keep it. Composite ids are assigned by the caller, never
+	 * generated.
+	 *
+	 * @param objects the objects to give an id, typically this resource's contents
+	 * @throws IOException when an id cannot be assigned — an id type the backend does not
+	 *         generate, or an incomplete composite id
+	 */
+	default void assignIds(Collection<? extends EObject> objects) throws IOException {
+		// a backend that generates ids overrides this; without it the save assigns them
+	}
 
 }

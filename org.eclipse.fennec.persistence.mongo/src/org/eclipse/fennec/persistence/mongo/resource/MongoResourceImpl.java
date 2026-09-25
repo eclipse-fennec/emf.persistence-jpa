@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -2656,6 +2657,13 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			return new BsonString(generated);
 		}
 		return toBsonValue(value);
+	}
+
+	@Override
+	public void assignIds(Collection<? extends EObject> objects) throws IOException {
+		for (EObject object : objects) {
+			ensureId(object);
+		}
 	}
 
 	/** Returns the {@code _id} value of the EObject or {@code null} if unset. */

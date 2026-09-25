@@ -20,9 +20,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -552,7 +554,17 @@ public abstract class AbstractRepository implements Repository {
 				origins.put(object, object.eResource());
 				getOrCreate(scratch, collectionUri(object.eClass())).getContents().add(object);
 			}
-			for (Resource resource : List.copyOf(scratch.getResources())) {
+			List<Resource> resources = List.copyOf(scratch.getResources());
+			// every id before the first save, and every reference checked (issue #350): saved one
+			// type after the other, an object would otherwise reference one of a later type before
+			// that one has its id — and a resource refuses such a target (#349)
+			for (Resource resource : resources) {
+				if (resource instanceof PersistenceResource persistence) {
+					persistence.assignIds(List.copyOf(resource.getContents()));
+				}
+			}
+			refuseUnreferenceableTargets(origins.keySet());
+			for (Resource resource : resources) {
 				resource.save(options);
 			}
 		} finally {
@@ -565,6 +577,51 @@ public abstract class AbstractRepository implements Repository {
 					attach(origin.getKey());
 				}
 			}
+		}
+	}
+
+	/**
+	 * Refuses the save before anything is written when a saved object references an object
+	 * outside the saved set that has no resource, or no id (issue #350) — the check the former
+	 * Gecko repository ran as {@code checkForAttachedNonContainmentReferences}.
+	 */
+	private static void refuseUnreferenceableTargets(Set<EObject> saved) throws IOException {
+		Set<EObject> tree = new HashSet<>();
+		for (EObject object : saved) {
+			tree.add(object);
+			object.eAllContents().forEachRemaining(tree::add);
+		}
+		for (EObject object : tree) {
+			for (EReference reference : object.eClass().getEAllReferences()) {
+				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
+						|| reference.isDerived() || !object.eIsSet(reference)) {
+					continue;
+				}
+				Object value = object.eGet(reference, false);
+				List<?> targets = value instanceof List<?> list ? list : List.of(value);
+				for (Object target : targets) {
+					if (!(target instanceof EObject eo) || eo.eIsProxy() || tree.contains(eo)) {
+						continue;
+					}
+					if (isNull(eo.eResource())) {
+						throw new IOException("Save refused: " + object.eClass().getName() + "." + reference.getName()
+								+ " references a " + eo.eClass().getName()
+								+ " that is neither saved with it nor in a resource — save it too");
+					}
+					if (isNull(eo.eContainer()) && isNull(fragmentOf(eo))) {
+						throw new IOException("Save refused: " + object.eClass().getName() + "." + reference.getName()
+								+ " references a " + eo.eClass().getName() + " that has no id — save it too");
+					}
+				}
+			}
+		}
+	}
+
+	private static String fragmentOf(EObject object) {
+		try {
+			return CompositeIds.fragment(object);
+		} catch (IllegalStateException incomplete) {
+			return null;
 		}
 	}
 
