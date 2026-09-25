@@ -2112,14 +2112,16 @@ public abstract class AbstractPersistenceTCK {
 		listOf(two, companyEmployees).add(dave);
 		listOf(two, companyEmployees).add(erin);
 		listOf(two, companyEmployees).add(frank);
-		// employees has an eOpposite on Person.employer, so the FK sits on Person: the
-		// companies have to exist before the employees that point at them
+		// employees has an eOpposite on Person.employer, so both ends hold the link: both
+		// resources get their objects before either is saved — the order EMF requires
 		ResourceSet writeSet = createBackendResourceSet();
 		Resource companies = writeSet.createResource(uriFor("Company"));
 		companies.getContents().add(one);
 		companies.getContents().add(two);
+		Resource persons = writeSet.createResource(uriFor("Person"));
+		persons.getContents().addAll(List.of(alice, bob, carol, dave, erin, frank));
 		companies.save(null);
-		save(writeSet, "Person", alice, bob, carol, dave, erin, frank);
+		persons.save(null);
 
 		Query query = QueryBuilder.from(companyClass)
 				.expand(Expands.of(companyEmployees).orderByAsc(personName).top(2).build())
