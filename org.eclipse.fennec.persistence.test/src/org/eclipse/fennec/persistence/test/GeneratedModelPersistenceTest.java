@@ -132,15 +132,13 @@ public class GeneratedModelPersistenceTest {
 		assertEquals(2, loaded.getContents().size());
 		loaded.getContents().forEach(o -> assertInstanceOf(Person.class, o));
 
-		// and gone again — bob first, since he references alice. Resolved afresh: navigating
-		// his relatives above attached alice to the same collection resource, and delete
-		// removes exactly what the resource holds
+		// and gone again — bob first, since he references alice. Resolved afresh, because
+		// navigating his relatives above attached alice to the same collection resource and
+		// delete removes what the resource holds. A resource resolved by fragment holds the
+		// resolved object only, as long as nobody asks for getContents(): that runs the
+		// deferred full population of the collection (#17, #307)
 		EObject bobAlone = newJpaResourceSet(jpaFactory).getEObject(URI.createURI("jpa://person/Person#bob"), true);
-		Resource holder = bobAlone.eResource();
-		// what a keyed resolution attaches beside bob (a relative the shared cache had
-		// materialized) must not go with him: delete removes exactly the contents
-		holder.getContents().removeIf(o -> o != bobAlone);
-		((PersistenceResource) holder).delete(null);
+		((PersistenceResource) bobAlone.eResource()).delete(null);
 		Resource remaining = newJpaResourceSet(jpaFactory).createResource(URI.createURI("jpa://person/Person"));
 		remaining.load(null);
 		assertEquals(1, remaining.getContents().size(),
