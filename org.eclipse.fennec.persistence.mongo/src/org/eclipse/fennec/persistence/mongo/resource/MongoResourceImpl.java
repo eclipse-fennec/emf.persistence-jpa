@@ -442,15 +442,37 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				Object value = object.eGet(reference, false);
 				List<?> targets = value instanceof List<?> list ? list : List.of(value);
 				for (Object target : targets) {
-					if (target instanceof EObject eo && !eo.eIsProxy() && isNull(eo.eResource()) && !tree.contains(eo)) {
-						String message = "Save refused: " + object.eClass().getName() + " '" + EcoreUtil.getID(object)
-								+ "'." + reference.getName() + " references a " + eo.eClass().getName()
-								+ " that is in no resource — add it to a resource before saving";
-						getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
-						throw new IOException(message + " (" + getURI() + ")");
+					if (!(target instanceof EObject eo) || eo.eIsProxy() || tree.contains(eo)) {
+						continue;
+					}
+					if (isNull(eo.eResource())) {
+						throw refusedReference(object, reference, eo, "that is in no resource — add it to a resource before saving");
+					}
+					if (isNull(eo.eContainer()) && isNull(fragmentId(eo))) {
+						// its fragment would be EMF's positional one — a reference that resolves to
+						// whatever sits at that index later, if anything (issue #349)
+						throw refusedReference(object, reference, eo,
+								"that has no id yet — save its resource first, which assigns it");
 					}
 				}
 			}
+		}
+	}
+
+	private IOException refusedReference(EObject object, EReference reference, EObject target, String why) {
+		String message = "Save refused: " + object.eClass().getName() + " '" + EcoreUtil.getID(object) + "'."
+				+ reference.getName() + " references a " + target.eClass().getName() + " " + why;
+		getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+		return new IOException(message + " (" + getURI() + ")");
+	}
+
+	/** The object's id fragment, the composite form included, or {@code null} while it has none. */
+	private static String fragmentId(EObject object) {
+		try {
+			String composite = CompositeIds.fragment(object);
+			return nonNull(composite) ? composite : EcoreUtil.getID(object);
+		} catch (IllegalStateException incomplete) {
+			return null;
 		}
 	}
 
@@ -612,8 +634,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private List<WriteModel<BsonDocument>> writeModels(List<EObject> objects) throws IOException {
 		List<WriteModel<BsonDocument>> writes = new ArrayList<>(objects.size());
 		ReplaceOptions upsert = new ReplaceOptions().upsert(true);
+		// every id first: a root may reference a later root of the same save, and encoding it
+		// before that one has its id would write EMF's positional fragment (issue #349)
+		List<BsonValue> ids = new ArrayList<>(objects.size());
 		for (EObject eObject : objects) {
-			BsonValue id = ensureId(eObject);
+			ids.add(ensureId(eObject));
+		}
+		for (int index = 0; index < objects.size(); index++) {
+			EObject eObject = objects.get(index);
+			BsonValue id = ids.get(index);
 			BsonDocument document = encode(eObject);
 			document.put(MongoPersistenceConstants.ID_FIELD, id);
 			writes.add(new ReplaceOneModel<>(
