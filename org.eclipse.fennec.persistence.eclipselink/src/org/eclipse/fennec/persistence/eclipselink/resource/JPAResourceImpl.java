@@ -381,6 +381,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		getErrors().clear();
 		getWarnings().clear();
 		refuseDuplicateIds();
+		refuseUnreferenceableTargets();
+		saveLeased(options);
+	}
+
+	private void saveLeased(Map<?, ?> options) throws IOException {
 		try (Lease lease = leaseChecked()) {
 			saveWithLease(lease, options);
 		}
@@ -406,6 +411,52 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						+ " — the second would silently overwrite the first";
 				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
 				throw new IOException(message + " (" + getURI() + ")");
+			}
+		}
+	}
+
+	/**
+	 * Refuses a save whose objects reference a target outside this save that cannot be referenced
+	 * yet (issues #349, #352): one in no resource, or a root that has no id because its own
+	 * resource is not saved. The resource is the low-level API and strict, as XMI is with a
+	 * dangling href — every object takes care of its own resource and id. Without this the
+	 * reference was silently dropped: the foreign key was written NULL. Refused before anything
+	 * is written.
+	 */
+	private void refuseUnreferenceableTargets() throws IOException {
+		Set<EObject> tree = new HashSet<>();
+		for (EObject root : writableContents()) {
+			tree.add(root);
+			root.eAllContents().forEachRemaining(tree::add);
+		}
+		for (EObject object : tree) {
+			for (EReference reference : object.eClass().getEAllReferences()) {
+				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
+						|| reference.isDerived() || !object.eIsSet(reference)) {
+					continue;
+				}
+				Object value = object.eGet(reference, false);
+				List<?> targets = value instanceof List<?> list ? list : List.of(value);
+				for (Object target : targets) {
+					if (!(target instanceof EObject eo) || eo.eIsProxy() || tree.contains(eo)) {
+						continue;
+					}
+					String why = null;
+					if (isNull(eo.eResource())) {
+						why = "that is in no resource — add it to a resource before saving";
+					} else if (isNull(eo.eContainer())) {
+						Object key = findKey(eo);
+						if (isNull(key) || (!(key instanceof Object[]) && isDefaultIdValue(key))) {
+							why = "that has no id yet — save its resource first, which assigns it";
+						}
+					}
+					if (nonNull(why)) {
+						String message = "Save refused: " + object.eClass().getName() + " '" + EcoreUtil.getID(object)
+								+ "'." + reference.getName() + " references a " + eo.eClass().getName() + " " + why;
+						getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+						throw new IOException(message + " (" + getURI() + ")");
+					}
+				}
 			}
 		}
 	}
@@ -1577,7 +1628,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		getContents().addAll(copies);
 		try {
-			save(null);
+			// not save(): the payload's references were bound by id above, and an unbound one
+			// already refused the insert — the resource-level target check (#352) would refuse
+			// the id stubs this API exists to accept (#107)
+			getErrors().clear();
+			getWarnings().clear();
+			refuseDuplicateIds();
+			saveLeased(null);
 		} finally {
 			getContents().clear();
 		}
