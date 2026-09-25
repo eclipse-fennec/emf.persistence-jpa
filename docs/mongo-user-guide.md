@@ -646,7 +646,9 @@ persistence.delete(Map.of(Options.OPTION_DELETE_CLEAR_REFERENCES, true));
 ```
 
 The lookups run on `<field>._ref` of the referring collections, which the delete path indexes on
-first use (#345).
+first use (#345). They cover every package the resource knows — the metadata service's packages
+and the resource set's registry, the global registry only as the last resort (#354) — so a class
+in another package that references or extends the deleted type is found too.
 
 ### Streaming
 

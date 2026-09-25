@@ -278,9 +278,12 @@ before the first removal, because a half-done delete is worse than a refused one
 
 Two limits, stated because they are limits rather than oversights:
 
-- The mongo search covers the EPackage of the deleted object's type. A reference from
-  another model is not found — finding it would mean scanning every collection on every
-  delete.
+- The mongo search covers every EPackage the resource knows — the metadata service's
+  packages and the resource set's registry, the global registry only as the last resort
+  (issue #354, which lifted the earlier one-package limit: a dynamic class in another package
+  that references or extends the deleted type is found). Candidates stay static, the
+  references whose type can hold the deleted type, so the cost grows with those references,
+  not with the number of collections; their fields are indexed (#345).
 - The refusal is uniform, while the eorm mapping can in principle say something finer per
   reference (`nullable`, cascade). Making the behaviour follow that declaration would be a
   refinement; it is noted on issue #29 rather than guessed at here. Uniform refusal is the

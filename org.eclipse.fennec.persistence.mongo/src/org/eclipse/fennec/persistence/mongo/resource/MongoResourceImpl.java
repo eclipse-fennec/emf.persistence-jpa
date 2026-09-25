@@ -76,6 +76,7 @@ import org.eclipse.fennec.codec.module.CodecModule;
 import org.eclipse.fennec.codec.resource.CodecResource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
+import org.eclipse.fennec.emf.osgi.model.metadata.PackageMetadata;
 import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
@@ -848,8 +849,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		if (isNull(targetType) || isNull(targetType.getEPackage()) || ids.isEmpty()) {
 			return null;
 		}
-		for (EClassifier classifier : targetType.getEPackage().getEClassifiers()) {
-			if (!(classifier instanceof EClass candidate) || candidate.isAbstract()) {
+		for (EClass candidate : knownClasses(targetType)) {
+			if (candidate.isAbstract()) {
 				continue;
 			}
 			for (EReference reference : candidate.getEAllReferences()) {
@@ -1740,18 +1741,16 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * The stored references in the type's EPackage that can point at an object of the type — the
 	 * candidates {@link #findInboundReference(EClass, List, String, int)} probes, each once.
 	 */
-	private static List<EReference> inboundReferences(EClass targetType) {
+	private List<EReference> inboundReferences(EClass targetType) {
 		List<EReference> references = new ArrayList<>();
 		if (isNull(targetType) || isNull(targetType.getEPackage())) {
 			return references;
 		}
-		for (EClassifier classifier : targetType.getEPackage().getEClassifiers()) {
-			if (classifier instanceof EClass candidate) {
-				for (EReference reference : candidate.getEReferences()) {
-					if (!reference.isContainment() && !reference.isContainer() && !reference.isDerived()
-							&& !reference.isTransient() && reference.getEReferenceType().isSuperTypeOf(targetType)) {
-						references.add(reference);
-					}
+		for (EClass candidate : knownClasses(targetType)) {
+			for (EReference reference : candidate.getEReferences()) {
+				if (!reference.isContainment() && !reference.isContainer() && !reference.isDerived()
+						&& !reference.isTransient() && reference.getEReferenceType().isSuperTypeOf(targetType)) {
+					references.add(reference);
 				}
 			}
 		}
@@ -1833,15 +1832,64 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 	}
 
-	/** The type and its concrete subtypes in its EPackage — each is stored in a collection of its own. */
-	private static List<EClass> concreteTypes(EClass type) {
+	/** The type and its concrete subtypes, in every known package — each is stored in a collection of its own. */
+	private List<EClass> concreteTypes(EClass type) {
 		List<EClass> types = new ArrayList<>();
-		for (EClassifier classifier : type.getEPackage().getEClassifiers()) {
-			if (classifier instanceof EClass candidate && !candidate.isAbstract() && type.isSuperTypeOf(candidate)) {
+		for (EClass candidate : knownClasses(type)) {
+			if (!candidate.isAbstract() && type.isSuperTypeOf(candidate)) {
 				types.add(candidate);
 			}
 		}
 		return types;
+	}
+
+	/**
+	 * Every EClass a reference to the type, or a subtype of it, can be declared in (issue #354):
+	 * the classes of the type's own package and of every package this resource knows — the
+	 * metadata service's and the resource set's registry. A dynamic class in another package
+	 * that references or extends the type is found there; the global registry is the last
+	 * resort when neither is at hand, since resolving it initializes every package it lists.
+	 */
+	private List<EClass> knownClasses(EClass type) {
+		Set<EPackage> packages = new LinkedHashSet<>();
+		packages.add(type.getEPackage());
+		boolean known = false;
+		MetadataService metadata = getMetadataService();
+		if (nonNull(metadata) && nonNull(metadata.getRegistry())) {
+			known = true;
+			for (PackageMetadata packageMetadata : metadata.getRegistry().getPackages()) {
+				if (nonNull(packageMetadata.getEPackage())) {
+					packages.add(packageMetadata.getEPackage());
+				}
+			}
+		}
+		if (nonNull(getResourceSet())) {
+			known = true;
+			EPackage.Registry registry = getResourceSet().getPackageRegistry();
+			for (String nsURI : new ArrayList<>(registry.keySet())) {
+				EPackage ePackage = registry.getEPackage(nsURI);
+				if (nonNull(ePackage)) {
+					packages.add(ePackage);
+				}
+			}
+		}
+		if (!known) {
+			for (String nsURI : new ArrayList<>(EPackage.Registry.INSTANCE.keySet())) {
+				EPackage ePackage = EPackage.Registry.INSTANCE.getEPackage(nsURI);
+				if (nonNull(ePackage)) {
+					packages.add(ePackage);
+				}
+			}
+		}
+		List<EClass> classes = new ArrayList<>();
+		for (EPackage ePackage : packages) {
+			for (EClassifier classifier : ePackage.getEClassifiers()) {
+				if (classifier instanceof EClass eClass) {
+					classes.add(eClass);
+				}
+			}
+		}
+		return classes;
 	}
 
 	/**
