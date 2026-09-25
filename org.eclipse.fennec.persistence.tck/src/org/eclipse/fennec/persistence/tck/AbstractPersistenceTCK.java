@@ -2028,9 +2028,13 @@ public abstract class AbstractPersistenceTCK {
 		ResourceSet writeSet = createBackendResourceSet();
 		Resource companyResource = writeSet.createResource(uriFor("Company"));
 		companyResource.getContents().add(company);
+		Resource personResource = writeSet.createResource(uriFor("Person"));
+		personResource.getContents().addAll(List.of(alice, bob));
 		alice.eSet(personEmployer, company);
+		// the employer is bidirectional, so the company holds alice too: both resources get their
+		// objects before either is saved — the order EMF requires, as XMI does
 		companyResource.save(null);
-		save(writeSet, "Person", alice, bob);
+		personResource.save(null);
 
 		Query query = QueryBuilder.from(personClass)
 				.where(Expressions.path(personName).eq("Bob"))

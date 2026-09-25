@@ -40,6 +40,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
@@ -435,9 +436,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		for (EObject object : tree) {
 			for (EReference reference : object.eClass().getEAllReferences()) {
 				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
-						|| reference.isDerived() || nonNull(reference.getEOpposite()) || !object.eIsSet(reference)) {
-					// a bidirectional pair is one association whose other side carries it once the
-					// target is saved — which side the store keeps is decided with #343
+						|| reference.isDerived() || !object.eIsSet(reference)) {
 					continue;
 				}
 				Object value = object.eGet(reference, false);
@@ -660,6 +659,16 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				// that costs the per-object probe this path used to pay unconditionally
 				throw refuseReferenced(referrer);
 			}
+			// the links other documents keep to these objects in a many-valued opposite go first:
+			// a crash then leaves an unlinked object, never a link to one that is gone (issue #343)
+			Map<EClass, List<String>> idsByType = new LinkedHashMap<>();
+			for (EObject eObject : contents) {
+				String id = EcoreUtil.getID(eObject);
+				if (nonNull(id)) {
+					idsByType.computeIfAbsent(eObject.eClass(), k -> new ArrayList<>()).add(id);
+				}
+			}
+			idsByType.forEach((type, ids) -> pullBidirectionalLinks(type, ids, collectionName, chunkSize, null));
 			List<BsonValue> deletedIds = new ArrayList<>();
 			for (EObject eObject : contents) {
 				BsonValue id = extractId(eObject);
@@ -792,6 +801,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			for (EReference reference : candidate.getEAllReferences()) {
 				if (reference.isContainment() || reference.isDerived() || reference.isTransient()
+						|| isPulledOnDelete(reference)
 						|| !reference.getEReferenceType().isSuperTypeOf(targetType)) {
 					continue;
 				}
@@ -1505,6 +1515,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			int chunkSize = Options.getWriteChunkSize(options);
 			refuseWhenStillReferenced(eClass, matchedIds, collectionName, chunkSize);
+			if (nonNull(eClass)) {
+				pullBidirectionalLinks(eClass, matchedIds.stream().map(MongoResourceImpl::idFragment)
+						.filter(Objects::nonNull).toList(), collectionName, chunkSize, session);
+			}
 
 			// Deleting by the resolved ids rather than by the selector again: what was checked
 			// is what is removed, and a document arriving between the two is not swept up
@@ -1579,6 +1593,73 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					message, getURI(), null));
 			throw new IOException(message);
 		}
+	}
+
+	/**
+	 * Whether a delete removes a reference to the deleted object instead of being refused by it
+	 * (issue #343): the many-valued end of a bidirectional pair. Such an entry is the other half
+	 * of the deleted object's own association — relationally a join row, or the foreign key on the
+	 * deleted row itself — so it goes with the object, as JPA deletes it. A single-valued end
+	 * (the order's customer, either end of a one-to-one) and every unidirectional reference is a
+	 * dependency on the object and still refuses the delete (issue #195).
+	 */
+	private static boolean isPulledOnDelete(EReference reference) {
+		EReference opposite = reference.getEOpposite();
+		return reference.isMany() && nonNull(opposite) && !reference.isContainment() && !reference.isContainer()
+				&& !opposite.isContainment() && !reference.isTransient() && !reference.isDerived();
+	}
+
+	/**
+	 * Removes the deleted objects from the many-valued opposite of every bidirectional reference
+	 * of their type (issue #343) — one {@code updateMany} per opposite, target collection and
+	 * chunk, matching both stored forms of a reference as {@link #anyReferenceExists} does.
+	 *
+	 * @param type the type of the objects about to be deleted
+	 * @param ids their URI-fragment ids
+	 * @param ownCollection the collection they live in, for the qualified reference form
+	 * @param chunkSize how many ids may travel in one {@code $in} (issue #227)
+	 * @param session the command transaction's session, or {@code null}
+	 */
+	private void pullBidirectionalLinks(EClass type, List<String> ids, String ownCollection, int chunkSize,
+			ClientSession session) {
+		if (ids.isEmpty()) {
+			return;
+		}
+		for (EReference reference : type.getEAllReferences()) {
+			EReference opposite = reference.getEOpposite();
+			if (isNull(opposite) || !isPulledOnDelete(opposite)) {
+				continue;
+			}
+			for (EClass holder : concreteTypes(reference.getEReferenceType())) {
+				MongoCollection<BsonDocument> collection = getCollection(holder.getName());
+				for (List<String> batch : chunked(ids, chunkSize)) {
+					List<BsonValue> forms = new ArrayList<>();
+					for (String id : batch) {
+						forms.add(new BsonString(id));
+						forms.add(new BsonString("/" + ownCollection + "#" + id));
+					}
+					Bson filter = Filters.in(opposite.getName() + "." + refKey(), forms);
+					Bson pull = Updates.pullByFilter(new BsonDocument(opposite.getName(),
+							new BsonDocument(refKey(), new BsonDocument("$in", new BsonArray(forms)))));
+					if (nonNull(session)) {
+						collection.updateMany(session, filter, pull);
+					} else {
+						collection.updateMany(filter, pull);
+					}
+				}
+			}
+		}
+	}
+
+	/** The type and its concrete subtypes in its EPackage — each is stored in a collection of its own. */
+	private static List<EClass> concreteTypes(EClass type) {
+		List<EClass> types = new ArrayList<>();
+		for (EClassifier classifier : type.getEPackage().getEClassifiers()) {
+			if (classifier instanceof EClass candidate && !candidate.isAbstract() && type.isSuperTypeOf(candidate)) {
+				types.add(candidate);
+			}
+		}
+		return types;
 	}
 
 	/**

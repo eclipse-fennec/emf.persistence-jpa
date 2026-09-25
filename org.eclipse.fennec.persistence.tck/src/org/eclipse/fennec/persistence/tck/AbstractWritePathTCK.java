@@ -39,8 +39,15 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.model.command.CommandFactory;
+import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.query.builder.Expressions;
+import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
+import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -174,7 +181,9 @@ public abstract class AbstractWritePathTCK {
 		EObject c1 = resolve(resourceSet, "WpCustomer", "c1");
 		EObject o1 = obj(order, "o1");
 		o1.eSet(orderCustomer, c1);
-		saveIn(resourceSet, "WpOrder", o1);
+		resourceSet.createResource(uriFor("WpOrder")).getContents().add(o1);
+		// both ends changed, so both resources are saved — EMF's contract, as XMI
+		saveResourcesOf(o1, c1);
 
 		assertRef(order, "o1", orderCustomer, "c1");
 		assertRefs(customer, "c1", customerOrders, "o1");
@@ -333,8 +342,9 @@ public abstract class AbstractWritePathTCK {
 
 		ResourceSet resourceSet = createBackendResourceSet();
 		EObject o1 = resolve(resourceSet, "WpOrder", "o1");
-		o1.eSet(orderCustomer, resolve(resourceSet, "WpCustomer", "c1"));
-		o1.eResource().save(null);
+		EObject c1 = resolve(resourceSet, "WpCustomer", "c1");
+		o1.eSet(orderCustomer, c1);
+		saveResourcesOf(o1, c1);
 
 		assertRef(order, "o1", orderCustomer, "c1");
 		assertRefs(customer, "c1", customerOrders, "o1");
@@ -346,8 +356,9 @@ public abstract class AbstractWritePathTCK {
 
 		ResourceSet resourceSet = createBackendResourceSet();
 		EObject o1 = resolve(resourceSet, "WpOrder", "o1");
+		EObject c1 = (EObject) o1.eGet(orderCustomer);
 		o1.eUnset(orderCustomer);
-		o1.eResource().save(null);
+		saveResourcesOf(o1, c1);
 
 		assertRef(order, "o1", orderCustomer, null);
 		assertRefs(customer, "c1", customerOrders);
@@ -361,8 +372,12 @@ public abstract class AbstractWritePathTCK {
 
 		ResourceSet resourceSet = createBackendResourceSet();
 		EObject o1 = resolve(resourceSet, "WpOrder", "o1");
-		o1.eSet(orderCustomer, resolve(resourceSet, "WpCustomer", "c2"));
-		o1.eResource().save(null);
+		// the old end is resolved first: EMF maintains the inverse on what the reference holds,
+		// and on a proxy that would miss the loaded customer
+		EObject c1 = (EObject) o1.eGet(orderCustomer);
+		EObject c2 = resolve(resourceSet, "WpCustomer", "c2");
+		o1.eSet(orderCustomer, c2);
+		saveResourcesOf(o1, c1, c2);
 
 		assertRef(order, "o1", orderCustomer, "c2");
 		assertRefs(customer, "c1", customerOrders);
@@ -409,13 +424,74 @@ public abstract class AbstractWritePathTCK {
 
 		ResourceSet resourceSet = createBackendResourceSet();
 		EObject s1 = resolve(resourceSet, "WpStudent", "s1");
-		list(s1, studentCourses).removeIf(k -> "k1".equals(id(k)));
-		s1.eResource().save(null);
+		EObject k1 = list(s1, studentCourses).stream().filter(k -> "k1".equals(id(k))).findFirst().orElseThrow();
+		assertThat(list(s1, studentCourses).remove(k1)).isTrue();
+		saveResourcesOf(s1, k1);
 
 		assertRefs(student, "s1", studentCourses, "k2");
 		assertRefs(course, "k1", courseStudents, "s2");
 		assertIds(course, "k1", "k2");
 		assertIds(student, "s1", "s2");
+	}
+
+	@Test
+	public void addingAManyToManyLinkFromTheOtherSideWritesIt() throws Exception {
+		saveStudentsAndCourses();
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject s2 = resolve(resourceSet, "WpStudent", "s2");
+		EObject k2 = resolve(resourceSet, "WpCourse", "k2");
+		list(s2, studentCourses).add(k2);
+		saveResourcesOf(s2, k2);
+
+		assertRefs(student, "s2", studentCourses, "k1", "k2");
+		assertRefs(course, "k2", courseStudents, "s1", "s2");
+		assertRefs(course, "k1", courseStudents, "s1", "s2");
+	}
+
+	@Test
+	public void anObjectReachedByReferenceAndByUriIsOneInstance() throws Exception {
+		saveCustomerWithOrders("c1", "o1");
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject c1 = resolve(resourceSet, "WpCustomer", "c1");
+		EObject viaReference = list(c1, customerOrders).get(0);
+		EObject viaUri = resolve(resourceSet, "WpOrder", "o1");
+
+		// two instances of one stored object in one resource set make every edit on one of them
+		// invisible to the other — and to whichever resource saves the other
+		assertThat(viaUri).isSameAs(viaReference);
+		assertThat(viaReference.eGet(orderCustomer)).isSameAs(c1);
+	}
+
+	@Test
+	public void anObjectReachedByUriAndThenByReferenceIsOneInstance() throws Exception {
+		saveCustomerWithOrders("c1", "o1");
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject c1 = resolve(resourceSet, "WpCustomer", "c1");
+		EObject viaUri = resolve(resourceSet, "WpOrder", "o1");
+		EObject viaReference = list(c1, customerOrders).get(0);
+
+		assertThat(viaReference).isSameAs(viaUri);
+		assertThat(viaUri.eGet(orderCustomer)).isSameAs(c1);
+	}
+
+	@Test
+	public void removingAnOrderThroughTheManySideUnlinksIt() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2");
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject c1 = resolve(resourceSet, "WpCustomer", "c1");
+		EObject o1 = list(c1, customerOrders).stream().filter(o -> "o1".equals(id(o))).findFirst().orElseThrow();
+		assertThat(list(c1, customerOrders).remove(o1)).isTrue();
+		// the order keeps existing, without a customer
+		saveResourcesOf(c1, o1);
+
+		assertRefs(customer, "c1", customerOrders, "o2");
+		assertRef(order, "o1", orderCustomer, null);
+		assertRef(order, "o2", orderCustomer, "c1");
+		assertIds(order, "o1", "o2");
 	}
 
 	@Test
@@ -545,8 +621,10 @@ public abstract class AbstractWritePathTCK {
 
 		ResourceSet resourceSet = createBackendResourceSet();
 		EObject n4 = resolve(resourceSet, "WpNode", "n4");
-		n4.eSet(nodeParent, resolve(resourceSet, "WpNode", "n3"));
-		n4.eResource().save(null);
+		EObject n2 = (EObject) n4.eGet(nodeParent);
+		EObject n3 = resolve(resourceSet, "WpNode", "n3");
+		n4.eSet(nodeParent, n3);
+		saveResourcesOf(n4, n2, n3);
 
 		assertRef(node, "n4", nodeParent, "n3");
 		assertRefs(node, "n2", nodeChildren);
@@ -716,6 +794,107 @@ public abstract class AbstractWritePathTCK {
 	}
 
 	@Test
+	public void deletingACourseRemovesItsLinksAndKeepsTheStudents() throws Exception {
+		saveStudentsAndCourses();
+
+		delete(resolve(createBackendResourceSet(), "WpCourse", "k1"));
+
+		assertIds(course, "k2");
+		assertIds(student, "s1", "s2");
+		assertRefs(student, "s1", studentCourses, "k2");
+		assertRefs(student, "s2", studentCourses);
+	}
+
+	@Test
+	public void deletingAllStudentsLeavesTheCoursesWithoutLinks() throws Exception {
+		saveStudentsAndCourses();
+
+		deleteAll("WpStudent");
+
+		assertIds(student);
+		assertIds(course, "k1", "k2");
+		assertRefs(course, "k1", courseStudents);
+		assertRefs(course, "k2", courseStudents);
+	}
+
+	@Test
+	public void deletingAllOrdersOfACustomerEmptiesItsOrders() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2", "o3");
+
+		deleteAll("WpOrder");
+
+		assertIds(order);
+		assertIds(customer, "c1");
+		assertRefs(customer, "c1", customerOrders);
+	}
+
+	/**
+	 * A child points at its parent through a single-valued end — a dependency — so the parent's
+	 * delete is refused, and the refusal comes before anything is changed: in particular the
+	 * link the refused node's own parent keeps to it survives, although that one alone would be
+	 * removed by a delete that went through.
+	 */
+	@Test
+	public void deletingANodeWithChildrenIsRefusedAndChangesNothing() throws Exception {
+		saveTree();
+
+		Resource holder = resolve(createBackendResourceSet(), "WpNode", "n2").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) holder).delete(null)).isInstanceOf(IOException.class);
+
+		assertIds(node, "n1", "n2", "n3", "n4");
+		assertRefs(node, "n1", nodeChildren, "n2", "n3");
+		assertRefs(node, "n2", nodeChildren, "n4");
+		assertRef(node, "n4", nodeParent, "n2");
+		assertRef(node, "n2", nodeParent, "n1");
+	}
+
+	@Test
+	public void savingBothEndsInEitherOrderGivesTheSameStore() throws Exception {
+		saveStudentsAndCourses();
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject s2 = resolve(resourceSet, "WpStudent", "s2");
+		EObject k2 = resolve(resourceSet, "WpCourse", "k2");
+		list(s2, studentCourses).add(k2);
+		// the target end first this time
+		saveResourcesOf(k2, s2);
+
+		assertRefs(student, "s2", studentCourses, "k1", "k2");
+		assertRefs(course, "k2", courseStudents, "s1", "s2");
+	}
+
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
+	public void deletingAStudentByCommandRemovesItsLinks() throws Exception {
+		saveStudentsAndCourses();
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(student).where(Expressions.path(attr(student, "id")).eq("s1")).build());
+		long affected = ((CommandResource) createBackendResourceSet().createResource(uriFor("WpStudent")))
+				.execute(delete);
+
+		assertThat(affected).isEqualTo(1);
+		assertIds(student, "s2");
+		assertRefs(course, "k1", courseStudents, "s2");
+		assertRefs(course, "k2", courseStudents);
+	}
+
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
+	public void deletingAReferencedCustomerByCommandIsRefusedAndChangesNothing() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2");
+
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(customer).where(Expressions.path(attr(customer, "id")).eq("c1")).build());
+		CommandResource commands = (CommandResource) createBackendResourceSet().createResource(uriFor("WpCustomer"));
+		assertThatThrownBy(() -> commands.execute(delete)).isInstanceOf(IOException.class);
+
+		assertIds(customer, "c1");
+		assertRefs(customer, "c1", customerOrders, "o1", "o2");
+		assertRef(order, "o1", orderCustomer, "c1");
+	}
+
+	@Test
 	public void deletingALeafNodeKeepsItsParent() throws Exception {
 		saveTree();
 
@@ -854,6 +1033,21 @@ public abstract class AbstractWritePathTCK {
 		resource.save(null);
 	}
 
+	/**
+	 * Saves the resources the objects are in, each once. A change to a bidirectional reference
+	 * changes both ends, and EMF's contract — as XMI's — is that each resource saves what its own
+	 * objects hold, so every resource an end lives in is saved.
+	 */
+	private static void saveResourcesOf(EObject... objects) throws IOException {
+		Set<Resource> resources = new LinkedHashSet<>();
+		for (EObject object : objects) {
+			resources.add(object.eResource());
+		}
+		for (Resource resource : resources) {
+			resource.save(null);
+		}
+	}
+
 	/** Adds both groups to their resources first, then saves both — the order EMF requires. */
 	private void saveAll(ResourceSet resourceSet, String firstType, List<EObject> first, String secondType,
 			List<EObject> second) throws IOException {
@@ -876,14 +1070,13 @@ public abstract class AbstractWritePathTCK {
 	private void saveCustomerWithOrders(String customerId, String... orderIds) throws IOException {
 		ResourceSet resourceSet = createBackendResourceSet();
 		EObject c = obj(customer, customerId);
-		saveIn(resourceSet, "WpCustomer", c);
 		List<EObject> orders = new ArrayList<>();
 		for (String orderId : orderIds) {
 			EObject o = obj(order, orderId);
 			o.eSet(orderCustomer, c);
 			orders.add(o);
 		}
-		saveIn(resourceSet, "WpOrder", orders.toArray(EObject[]::new));
+		saveAll(resourceSet, "WpCustomer", List.of(c), "WpOrder", orders);
 	}
 
 	private void saveStudentsAndCourses() throws IOException {
