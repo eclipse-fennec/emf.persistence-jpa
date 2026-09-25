@@ -26,7 +26,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * and utility methods for working with them.
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * A single store-dependent capability that is not query vocabulary and not a command verb (issue #134, contract §5a). This is where power that the store either has or has not belongs - the write path included - so reaching such a statement never requires holding a query or a command role. Literal values are grouped with gaps: transactional 0+, streaming 20+, indexing 40+.
+ * A single store-dependent capability that is not query vocabulary and not a command verb (issue #134, contract §5a). This is where power that the store either has or has not belongs - the write path included - so reaching such a statement never requires holding a query or a command role. Literal values are grouped with gaps: transactional 0+, streaming 20+, indexing 40+, deletion 60+.
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.persistence.capabilities.CapabilitiesPackage#getStoreFeature()
  * @model
@@ -58,7 +58,33 @@ public enum StoreFeature implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	SERVER_CURSORS(20, "SERVER_CURSORS", "SERVER_CURSORS");
+	SERVER_CURSORS(20, "SERVER_CURSORS", "SERVER_CURSORS"),
+
+	/**
+	 * The '<em><b>DELETE IGNORE REFERENCES</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Delete option Options.DELETE_IGNORE_REFERENCES (issue #347): the delete neither checks nor removes the references that still point at the deleted objects - no lookup at all, the fastest delete, and references may be left dangling. Only a store without enforced referential integrity can serve it: mongo declares it; JPA cannot, since the database's foreign keys forbid a dangling reference, and refuses the option with a diagnostic.
+	 * <!-- end-model-doc -->
+	 * @see #DELETE_IGNORE_REFERENCES_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	DELETE_IGNORE_REFERENCES(60, "DELETE_IGNORE_REFERENCES", "DELETE_IGNORE_REFERENCES"),
+
+	/**
+	 * The '<em><b>DELETE CLEAR REFERENCES</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Delete option Options.DELETE_CLEAR_REFERENCES (issue #347): every reference that still points at a deleted object is removed first - pulled from a many-valued end, unset in a single-valued one, a join row deleted - and the delete then goes through where it would otherwise be refused. Referential integrity is kept; the cost is one lookup per referring reference. A required single-valued reference (lowerBound >= 1) still refuses the delete, on every backend alike: clearing it would leave its holder invalid.
+	 * <!-- end-model-doc -->
+	 * @see #DELETE_CLEAR_REFERENCES_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	DELETE_CLEAR_REFERENCES(61, "DELETE_CLEAR_REFERENCES", "DELETE_CLEAR_REFERENCES");
 
 	/**
 	 * The '<em><b>TRANSACTION BRACKET</b></em>' literal value.
@@ -89,6 +115,34 @@ public enum StoreFeature implements Enumerator {
 	public static final int SERVER_CURSORS_VALUE = 20;
 
 	/**
+	 * The '<em><b>DELETE IGNORE REFERENCES</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Delete option Options.DELETE_IGNORE_REFERENCES (issue #347): the delete neither checks nor removes the references that still point at the deleted objects - no lookup at all, the fastest delete, and references may be left dangling. Only a store without enforced referential integrity can serve it: mongo declares it; JPA cannot, since the database's foreign keys forbid a dangling reference, and refuses the option with a diagnostic.
+	 * <!-- end-model-doc -->
+	 * @see #DELETE_IGNORE_REFERENCES
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int DELETE_IGNORE_REFERENCES_VALUE = 60;
+
+	/**
+	 * The '<em><b>DELETE CLEAR REFERENCES</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Delete option Options.DELETE_CLEAR_REFERENCES (issue #347): every reference that still points at a deleted object is removed first - pulled from a many-valued end, unset in a single-valued one, a join row deleted - and the delete then goes through where it would otherwise be refused. Referential integrity is kept; the cost is one lookup per referring reference. A required single-valued reference (lowerBound >= 1) still refuses the delete, on every backend alike: clearing it would leave its holder invalid.
+	 * <!-- end-model-doc -->
+	 * @see #DELETE_CLEAR_REFERENCES
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int DELETE_CLEAR_REFERENCES_VALUE = 61;
+
+	/**
 	 * An array of all the '<em><b>Store Feature</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -98,6 +152,8 @@ public enum StoreFeature implements Enumerator {
 		new StoreFeature[] {
 			TRANSACTION_BRACKET,
 			SERVER_CURSORS,
+			DELETE_IGNORE_REFERENCES,
+			DELETE_CLEAR_REFERENCES,
 		};
 
 	/**
@@ -156,6 +212,8 @@ public enum StoreFeature implements Enumerator {
 		switch (value) {
 			case TRANSACTION_BRACKET_VALUE: return TRANSACTION_BRACKET;
 			case SERVER_CURSORS_VALUE: return SERVER_CURSORS;
+			case DELETE_IGNORE_REFERENCES_VALUE: return DELETE_IGNORE_REFERENCES;
+			case DELETE_CLEAR_REFERENCES_VALUE: return DELETE_CLEAR_REFERENCES;
 		}
 		return null;
 	}

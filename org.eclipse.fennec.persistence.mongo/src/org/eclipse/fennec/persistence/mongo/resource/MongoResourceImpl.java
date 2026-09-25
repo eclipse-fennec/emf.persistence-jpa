@@ -671,6 +671,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		if (isNull(collectionName)) {
 			return;
 		}
+		boolean ignoreReferences = ignoreReferences(options);
+		boolean clearReferences = Options.isDeleteClearReferences(options);
 		try {
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
 			List<EObject> contents = writableContents();
@@ -691,15 +693,6 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					.map(EcoreUtil::getID)
 					.filter(Objects::nonNull)
 					.toList();
-			String referrer = findInboundReference(commonType(contents), fragmentIds,
-					collectionName, chunkSize);
-			if (nonNull(referrer)) {
-				// something points into the set; only now is it worth asking which object, and
-				// that costs the per-object probe this path used to pay unconditionally
-				throw refuseReferenced(referrer);
-			}
-			// the links other documents keep to these objects in a many-valued opposite go first:
-			// a crash then leaves an unlinked object, never a link to one that is gone (issue #343)
 			Map<EClass, List<String>> idsByType = new LinkedHashMap<>();
 			for (EObject eObject : contents) {
 				String id = EcoreUtil.getID(eObject);
@@ -707,7 +700,28 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					idsByType.computeIfAbsent(eObject.eClass(), k -> new ArrayList<>()).add(id);
 				}
 			}
-			idsByType.forEach((type, ids) -> pullBidirectionalLinks(type, ids, collectionName, chunkSize, null));
+			if (clearReferences) {
+				// every reference to the set goes first, after the one check that can still refuse
+				// (issue #347): a required single-valued reference cannot be cleared
+				String required = findRequiredInboundReference(commonType(contents), fragmentIds, collectionName,
+						chunkSize);
+				if (nonNull(required)) {
+					throw refuseReferenced(required);
+				}
+				idsByType.forEach((type, ids) -> clearInboundReferences(type, ids, collectionName, chunkSize, null));
+			} else if (!ignoreReferences) {
+				String referrer = findInboundReference(commonType(contents), fragmentIds,
+						collectionName, chunkSize);
+				if (nonNull(referrer)) {
+					// something points into the set; only now is it worth asking which object, and
+					// that costs the per-object probe this path used to pay unconditionally
+					throw refuseReferenced(referrer);
+				}
+				// the links other documents keep to these objects in a many-valued opposite go
+				// first: a crash then leaves an unlinked object, never a link to one that is gone
+				// (issue #343)
+				idsByType.forEach((type, ids) -> pullBidirectionalLinks(type, ids, collectionName, chunkSize, null));
+			}
 			List<BsonValue> deletedIds = new ArrayList<>();
 			for (EObject eObject : contents) {
 				BsonValue id = extractId(eObject);
@@ -1300,7 +1314,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 */
 	@Override
 	public PersistenceCapabilities capabilities() {
-		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create();
+		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create()
+				.support(StoreFeature.DELETE_IGNORE_REFERENCES, StoreFeature.DELETE_CLEAR_REFERENCES);
 		if (nonNull(client) && transactionalDeployment()) {
 			store.support(StoreFeature.TRANSACTION_BRACKET);
 		}
@@ -1553,10 +1568,23 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				return 0;
 			}
 			int chunkSize = Options.getWriteChunkSize(options);
-			refuseWhenStillReferenced(eClass, matchedIds, collectionName, chunkSize);
-			if (nonNull(eClass)) {
-				pullBidirectionalLinks(eClass, matchedIds.stream().map(MongoResourceImpl::idFragment)
-						.filter(Objects::nonNull).toList(), collectionName, chunkSize, session);
+			List<String> fragmentIds = matchedIds.stream().map(MongoResourceImpl::idFragment)
+					.filter(Objects::nonNull).toList();
+			if (Options.isDeleteClearReferences(options)) {
+				String required = nonNull(eClass)
+						? findRequiredInboundReference(eClass, fragmentIds, collectionName, chunkSize)
+						: null;
+				if (nonNull(required)) {
+					throw refuseReferencedSet(collectionName, required, fragmentIds.size());
+				}
+				if (nonNull(eClass)) {
+					clearInboundReferences(eClass, fragmentIds, collectionName, chunkSize, session);
+				}
+			} else if (!ignoreReferences(options)) {
+				refuseWhenStillReferenced(eClass, matchedIds, collectionName, chunkSize);
+				if (nonNull(eClass)) {
+					pullBidirectionalLinks(eClass, fragmentIds, collectionName, chunkSize, session);
+				}
 			}
 
 			// Deleting by the resolved ids rather than by the selector again: what was checked
@@ -1625,13 +1653,109 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		String referrer = findInboundReference(eClass, ids, collectionName, chunkSize);
 		if (nonNull(referrer)) {
-			String message = "Cannot delete from '" + collectionName + "': " + referrer
-					+ " still references at least one of the " + ids.size() + " matched objects";
-			getErrors().add(PersistenceDiagnostic.error(
-					PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
-					message, getURI(), null));
+			throw refuseReferencedSet(collectionName, referrer, ids.size());
+		}
+	}
+
+	private IOException refuseReferencedSet(String collectionName, String referrer, int matched) {
+		String message = "Cannot delete from '" + collectionName + "': " + referrer
+				+ " still references at least one of the " + matched + " matched objects";
+		getErrors().add(PersistenceDiagnostic.error(
+				PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY, DIAGNOSTIC_SOURCE,
+				message, getURI(), null));
+		return new IOException(message);
+	}
+
+	/**
+	 * Whether the delete leaves references as they are ({@link Options#OPTION_DELETE_IGNORE_REFERENCES},
+	 * issue #347), refusing the contradiction of asking to ignore and to clear them at once.
+	 */
+	private boolean ignoreReferences(Map<?, ?> options) throws IOException {
+		boolean ignore = Options.isDeleteIgnoreReferences(options);
+		if (ignore && Options.isDeleteClearReferences(options)) {
+			String message = "Delete refused: " + Options.OPTION_DELETE_IGNORE_REFERENCES + " and "
+					+ Options.OPTION_DELETE_CLEAR_REFERENCES + " contradict each other";
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
 			throw new IOException(message);
 		}
+		return ignore;
+	}
+
+	/**
+	 * The first required single-valued reference ({@code lowerBound >= 1}) in the type's EPackage
+	 * that points at one of {@code ids}, or {@code null} (issue #347). Clearing it would leave its
+	 * holder invalid, so {@link Options#OPTION_DELETE_CLEAR_REFERENCES} still refuses the delete.
+	 */
+	private String findRequiredInboundReference(EClass targetType, List<String> ids, String ownCollection,
+			int chunkSize) {
+		for (EReference reference : inboundReferences(targetType)) {
+			if (!reference.isMany() && reference.isRequired()) {
+				for (EClass holder : concreteTypes(reference.getEContainingClass())) {
+					if (anyReferenceExists(holder.getName(), reference.getName(), ids, ownCollection, chunkSize)) {
+						return holder.getName() + "." + reference.getName();
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Removes every reference to the objects about to be deleted (issue #347): pulled from a
+	 * many-valued reference, unset in a single-valued one — one {@code updateMany} per reference,
+	 * holder collection and chunk.
+	 */
+	private void clearInboundReferences(EClass type, List<String> ids, String ownCollection, int chunkSize,
+			ClientSession session) {
+		if (ids.isEmpty()) {
+			return;
+		}
+		for (EReference reference : inboundReferences(type)) {
+			String field = reference.getName() + "." + refKey();
+			for (EClass holder : concreteTypes(reference.getEContainingClass())) {
+				MongoCollection<BsonDocument> collection = getCollection(holder.getName());
+				ensureReferenceIndex(holder.getName(), field);
+				for (List<String> batch : chunked(ids, chunkSize)) {
+					List<BsonValue> forms = new ArrayList<>();
+					for (String id : batch) {
+						forms.add(new BsonString(id));
+						forms.add(new BsonString("/" + ownCollection + "#" + id));
+					}
+					Bson filter = Filters.in(field, forms);
+					Bson update = reference.isMany()
+							? Updates.pullByFilter(new BsonDocument(reference.getName(),
+									new BsonDocument(refKey(), new BsonDocument("$in", new BsonArray(forms)))))
+							: Updates.unset(reference.getName());
+					if (nonNull(session)) {
+						collection.updateMany(session, filter, update);
+					} else {
+						collection.updateMany(filter, update);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * The stored references in the type's EPackage that can point at an object of the type — the
+	 * candidates {@link #findInboundReference(EClass, List, String, int)} probes, each once.
+	 */
+	private static List<EReference> inboundReferences(EClass targetType) {
+		List<EReference> references = new ArrayList<>();
+		if (isNull(targetType) || isNull(targetType.getEPackage())) {
+			return references;
+		}
+		for (EClassifier classifier : targetType.getEPackage().getEClassifiers()) {
+			if (classifier instanceof EClass candidate) {
+				for (EReference reference : candidate.getEReferences()) {
+					if (!reference.isContainment() && !reference.isContainer() && !reference.isDerived()
+							&& !reference.isTransient() && reference.getEReferenceType().isSuperTypeOf(targetType)) {
+						references.add(reference);
+					}
+				}
+			}
+		}
+		return references;
 	}
 
 	/**

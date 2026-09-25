@@ -119,10 +119,11 @@ public final class JpaFlavorCapabilities {
 	/**
 	 * Store capabilities, identical on every flavor: a relational connection is
 	 * transactional, so the bracket is available wherever this backend runs — unlike the
-	 * mongo side, where it depends on the deployment.
+	 * mongo side, where it depends on the deployment. Deleting clears references on request,
+	 * but never ignores them: the foreign keys forbid a dangling reference (issue #347).
 	 */
 	private static final StoreCapabilities STORE = StoreCapabilitiesBuilder.create()
-			.support(StoreFeature.TRANSACTION_BRACKET)
+			.support(StoreFeature.TRANSACTION_BRACKET, StoreFeature.DELETE_CLEAR_REFERENCES)
 			.build();
 
 	private static final Map<JpaFlavor, QueryCapabilities> BY_FLAVOR = Map.of(

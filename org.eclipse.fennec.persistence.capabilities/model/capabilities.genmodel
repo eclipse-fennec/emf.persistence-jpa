@@ -75,6 +75,8 @@
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//StoreFeature">
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/TRANSACTION_BRACKET"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/SERVER_CURSORS"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/DELETE_IGNORE_REFERENCES"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//StoreFeature/DELETE_CLEAR_REFERENCES"/>
     </genEnums>
   </genPackages>
 </genmodel:GenModel>

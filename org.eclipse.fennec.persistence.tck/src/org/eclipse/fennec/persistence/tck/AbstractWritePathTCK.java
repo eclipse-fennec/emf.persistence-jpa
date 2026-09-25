@@ -14,6 +14,7 @@ package org.eclipse.fennec.persistence.tck;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,6 +45,7 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
@@ -73,10 +76,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public abstract class AbstractWritePathTCK {
 
 	protected EPackage wp;
-	protected EClass owner, profile, item, tag, customer, order, student, course, node, asset, lawn, pool;
+	protected EClass owner, profile, item, tag, badge, customer, order, student, course, node, asset, lawn, pool;
 	protected EReference ownerProfile, ownerItems, ownerFavorite, ownerTags;
 	protected EReference customerOrders, orderCustomer, studentCourses, courseStudents;
-	protected EReference nodeParent, nodeChildren, assetKeeper;
+	protected EReference nodeParent, nodeChildren, assetKeeper, badgeTag;
 
 	private StoreProbe probe;
 
@@ -114,6 +117,7 @@ public abstract class AbstractWritePathTCK {
 		profile = type("WpProfile");
 		item = type("WpItem");
 		tag = type("WpTag");
+		badge = type("WpBadge");
 		customer = type("WpCustomer");
 		order = type("WpOrder");
 		student = type("WpStudent");
@@ -126,6 +130,7 @@ public abstract class AbstractWritePathTCK {
 		ownerItems = ref(owner, "items");
 		ownerFavorite = ref(owner, "favorite");
 		ownerTags = ref(owner, "tags");
+		badgeTag = ref(badge, "tag");
 		customerOrders = ref(customer, "orders");
 		orderCustomer = ref(order, "customer");
 		studentCourses = ref(student, "courses");
@@ -1040,6 +1045,185 @@ public abstract class AbstractWritePathTCK {
 		assertIds(customer);
 	}
 
+	// ---------------------------------------------------------------- delete options (#347)
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_IGNORE_REFERENCES)
+	public void deletingAReferencedCustomerIgnoringReferencesLeavesThemDangling() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2");
+
+		deleteWith(resolve(createBackendResourceSet(), "WpCustomer", "c1"), ignoringReferences());
+
+		assertIds(customer);
+		assertIds(order, "o1", "o2");
+		// no lookup at all: the orders still name the customer that is gone
+		assertThat(probe.reference(order, "o1", orderCustomer)).contains("c1");
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_IGNORE_REFERENCES)
+	public void ignoringReferencesAlsoLeavesTheManyToManyLinks() throws Exception {
+		saveStudentsAndCourses();
+
+		deleteWith(resolve(createBackendResourceSet(), "WpStudent", "s1"), ignoringReferences());
+
+		assertIds(student, "s2");
+		assertThat(probe.references(course, "k1", courseStudents)).contains("s1", "s2");
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_IGNORE_REFERENCES, command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_EQ)
+	public void deletingByCommandIgnoringReferencesLeavesThemDangling() throws Exception {
+		saveCustomerWithOrders("c1", "o1");
+
+		long affected = commandsFor("WpCustomer").execute(deleteById(customer, "c1"), null, ignoringReferences());
+
+		assertThat(affected).isEqualTo(1);
+		assertIds(customer);
+		assertThat(probe.reference(order, "o1", orderCustomer)).contains("c1");
+	}
+
+	/** Where the store enforces referential integrity, ignoring references is refused, not half done. */
+	@Test
+	public void ignoringReferencesWhereItIsNotServedIsRefusedAndChangesNothing() throws Exception {
+		assumeFalse(declaredCapabilities().store().supports(StoreFeature.DELETE_IGNORE_REFERENCES),
+				"the backend serves DELETE_IGNORE_REFERENCES");
+		saveCustomerWithOrders("c1", "o1");
+
+		Resource holder = resolve(createBackendResourceSet(), "WpCustomer", "c1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) holder).delete(ignoringReferences()))
+				.isInstanceOf(IOException.class);
+		assertThat(holder.getErrors()).isNotEmpty();
+
+		assertIds(customer, "c1");
+		assertRef(order, "o1", orderCustomer, "c1");
+	}
+
+	@Test
+	public void askingToIgnoreAndToClearReferencesIsRefusedAndChangesNothing() throws Exception {
+		saveCustomerWithOrders("c1", "o1");
+
+		Resource holder = resolve(createBackendResourceSet(), "WpCustomer", "c1").eResource();
+		Map<String, Object> both = Map.of(Options.OPTION_DELETE_IGNORE_REFERENCES, true,
+				Options.OPTION_DELETE_CLEAR_REFERENCES, true);
+		assertThatThrownBy(() -> ((PersistenceResource) holder).delete(both)).isInstanceOf(IOException.class);
+
+		assertIds(customer, "c1");
+		assertRef(order, "o1", orderCustomer, "c1");
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES)
+	public void deletingAReferencedCustomerClearingReferencesUnsetsTheOrdersCustomer() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2");
+
+		deleteWith(resolve(createBackendResourceSet(), "WpCustomer", "c1"), clearingReferences());
+
+		assertIds(customer);
+		assertIds(order, "o1", "o2");
+		assertRef(order, "o1", orderCustomer, null);
+		assertRef(order, "o2", orderCustomer, null);
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES)
+	public void clearingReferencesRemovesAUnidirectionalReferenceToTheDeletedTag() throws Exception {
+		save("WpTag", obj(tag, "t1"), obj(tag, "t2"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject o = owner("o1");
+		list(o, ownerTags).addAll(List.of(resolve(setup, "WpTag", "t1"), resolve(setup, "WpTag", "t2")));
+		saveIn(setup, "WpOwner", o);
+
+		deleteWith(resolve(createBackendResourceSet(), "WpTag", "t1"), clearingReferences());
+
+		assertIds(tag, "t2");
+		assertRefs(owner, "o1", ownerTags, "t2");
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES)
+	public void clearingReferencesDeletesAnInnerNodeAndDetachesItsChildren() throws Exception {
+		saveTree();
+
+		deleteWith(resolve(createBackendResourceSet(), "WpNode", "n2"), clearingReferences());
+
+		assertIds(node, "n1", "n3", "n4");
+		assertRef(node, "n4", nodeParent, null);
+		assertRefs(node, "n1", nodeChildren, "n3");
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES)
+	public void clearingReferencesOnASetOfCustomersUnsetsEveryOrder() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2");
+		saveCustomerWithOrders("c2", "o3");
+
+		Resource customers = load("WpCustomer");
+		((PersistenceResource) customers).delete(clearingReferences());
+
+		assertIds(customer);
+		assertIds(order, "o1", "o2", "o3");
+		assertRef(order, "o1", orderCustomer, null);
+		assertRef(order, "o3", orderCustomer, null);
+	}
+
+	/** A required reference cannot be cleared without leaving its holder invalid: still refused. */
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES)
+	public void clearingReferencesIsRefusedByARequiredReferenceAndChangesNothing() throws Exception {
+		save("WpTag", obj(tag, "t1"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject b = obj(badge, "b1");
+		b.eSet(badgeTag, resolve(setup, "WpTag", "t1"));
+		EObject o = owner("o1");
+		list(o, ownerTags).add(resolve(setup, "WpTag", "t1"));
+		saveIn(setup, "WpBadge", b);
+		saveIn(setup, "WpOwner", o);
+
+		Resource holder = resolve(createBackendResourceSet(), "WpTag", "t1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) holder).delete(clearingReferences()))
+				.isInstanceOf(IOException.class);
+		assertThat(holder.getErrors()).isNotEmpty();
+
+		assertIds(tag, "t1");
+		assertRef(badge, "b1", badgeTag, "t1");
+		// the optional reference was not cleared either: the refusal comes first
+		assertRefs(owner, "o1", ownerTags, "t1");
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES, command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_EQ)
+	public void deletingByCommandClearingReferencesUnsetsTheOrdersCustomer() throws Exception {
+		saveCustomerWithOrders("c1", "o1", "o2");
+
+		long affected = commandsFor("WpCustomer").execute(deleteById(customer, "c1"), null, clearingReferences());
+
+		assertThat(affected).isEqualTo(1);
+		assertIds(customer);
+		assertRef(order, "o1", orderCustomer, null);
+		assertRef(order, "o2", orderCustomer, null);
+	}
+
+	@Test
+	@RequiresCapabilities(store = StoreFeature.DELETE_CLEAR_REFERENCES, command = CommandFeature.DELETE_BY_SELECTOR,
+			query = QueryFeature.WHERE_EQ)
+	public void deletingByCommandClearingReferencesIsRefusedByARequiredReference() throws Exception {
+		save("WpTag", obj(tag, "t1"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject b = obj(badge, "b1");
+		b.eSet(badgeTag, resolve(setup, "WpTag", "t1"));
+		saveIn(setup, "WpBadge", b);
+
+		CommandResource commands = commandsFor("WpTag");
+		assertThatThrownBy(() -> commands.execute(deleteById(tag, "t1"), null, clearingReferences()))
+				.isInstanceOf(IOException.class);
+
+		assertIds(tag, "t1");
+		assertRef(badge, "b1", badgeTag, "t1");
+	}
+
 	@Test
 	public void deletingALeafNodeKeepsItsParent() throws Exception {
 		saveTree();
@@ -1192,6 +1376,28 @@ public abstract class AbstractWritePathTCK {
 		for (Resource resource : resources) {
 			resource.save(null);
 		}
+	}
+
+	private static Map<String, Object> ignoringReferences() {
+		return Map.of(Options.OPTION_DELETE_IGNORE_REFERENCES, true);
+	}
+
+	private static Map<String, Object> clearingReferences() {
+		return Map.of(Options.OPTION_DELETE_CLEAR_REFERENCES, true);
+	}
+
+	private static void deleteWith(EObject object, Map<String, Object> options) throws IOException {
+		((PersistenceResource) object.eResource()).delete(options);
+	}
+
+	private CommandResource commandsFor(String typeName) {
+		return (CommandResource) createBackendResourceSet().createResource(uriFor(typeName));
+	}
+
+	private DeleteCommand deleteById(EClass type, String id) {
+		DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
+		delete.setSelector(QueryBuilder.from(type).where(Expressions.path(attr(type, "id")).eq(id)).build());
+		return delete;
 	}
 
 	/** A repository over this backend, as its OSGi flavour builds one. */
