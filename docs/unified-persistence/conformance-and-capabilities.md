@@ -303,6 +303,38 @@ route on: it is a client-visible conflict (HTTP 409 for `emf.odata`, not 500), i
 across backends and paths, and the wording stays free to change. Matching message text is not
 a supported way to recognise this refusal.
 
+#### An n:m link is not a dependency (issue #343)
+
+The refusal is about a *dependency* on the deleted object. The many-valued end of a
+bidirectional pair is not one: it is the other half of the deleted object's own association —
+relationally a join row, or the foreign key on the deleted row itself. Deleting an object
+therefore **removes** it from every many-valued end of a bidirectional reference that holds it —
+an n:m link, a customer's list of orders when one order is deleted — on both backends and on
+the resource and the command path alike. Mongo pulls it from the referring documents; JPA
+deletes the join rows, or has nothing to do because the foreign key sits on the deleted row.
+
+A **single-valued** end (the order's customer, either end of a one-to-one) and every
+**unidirectional** reference still refuse the delete, as above. Clearing those ends whenever the
+multiplicity allows — what `EcoreUtil.delete` does in memory — is deliberately not the default;
+it is available on request (below). The lower bound of a many-valued end is not enforced by the
+removal, as no backend enforces it on write.
+
+#### Deleting anyway: two options (issue #347)
+
+The refusal is the default and stays so. Two delete options change it — each honoured by
+`Resource.delete(options)` and by `execute(DeleteCommand, parameters, options)`, each declared as
+a `StoreFeature`, and contradictory together (asking for both is refused):
+
+| Option | Semantics | Declared by |
+|--------|-----------|-------------|
+| `Options.OPTION_DELETE_IGNORE_REFERENCES` | no check, no cleanup, no lookup — the fastest delete; references are left **dangling** and later resolve to nothing | mongo (every flavor). JPA refuses it with a diagnostic: the foreign keys forbid a dangling reference |
+| `Options.OPTION_DELETE_CLEAR_REFERENCES` | every reference to a deleted object is removed first — pulled from a many-valued reference, unset in a single-valued one, a join row deleted — then the delete goes through; integrity is kept, at one lookup per referring reference | both backends |
+
+A **required** single-valued reference (`lowerBound >= 1`) still refuses a clearing delete, on
+both backends and before anything is changed: clearing it would leave its holder invalid. The
+rule follows the model rather than the DDL, so it is the same where no schema exists. JPA clears
+by single key; a composite key is refused.
+
 ### 4d. `resolveProxies="false"` is enforced by EMF, not by the store
 
 Decided 2026-08-21 (issue #195), after trying to enforce it and finding there was nothing to
@@ -321,6 +353,36 @@ that can never run — one was written for this issue and removed again.
 What remains for a backend is the other direction, and it is asserted as a core case: do not
 reconstruct on load what the model ruled out. A `resolveProxies="false"` reference must not
 come back holding a proxy.
+
+### 4e. What one save persists of a bidirectional reference
+
+Decided 2026-09-25 (issue #343), after the write-path suite (#329) found the two backends apart.
+
+**Core: each resource saves what its own objects hold**, as XMI does. EMF maintains the inverse
+of a bidirectional non-containment reference in memory, so changing one end changes both — and
+when the ends live in different resources, both resources are saved. `XMLSaveImpl` writes both
+non-containment ends, each into its object's file; only the container reference of a
+containment is transient. Containment needs only the container saved, since the child is part
+of it (cross-document children aside, §4b).
+
+Both backends store **both ends**: mongo as ordinary references in each end's document, JPA as
+the one foreign key or join row the mapping gives the pair. Neither derives an end on read.
+
+JPA's single storage lets it persist more than the core asks, but not uniformly, which is why
+it is described here and not declared as a capability: saving **either** end of an n:m writes
+the join row, while of a one-to-many only the end holding the foreign key (the order, not the
+customer) writes the link. Portable code saves every resource an end lives in.
+
+**The save refuses what it cannot reference** (issues #342, #349, #352). A reference is stored
+under its target's id. A target in no resource, or a root without an id yet — one whose own
+resource is not saved, so its id is not generated — is refused with an error diagnostic before
+anything is written: the counterpart of XMI's dangling-href error. Mongo used to write EMF's
+positional fragment (`#/0`) and JPA a NULL foreign key, both silently. Within one save the
+resource assigns every id before encoding anything, so a root may reference a later root of the
+same save. The resource is the low-level API: every object takes care of its own resource and
+id. The repository is the convenient one — `saveAll` attaches the given objects, assigns every
+id up front through `PersistenceResource.assignIds` and checks every reference before it saves
+anything (#350).
 
 ### 4b. Residency is form, not semantics — the one documented divergence
 
@@ -405,7 +467,7 @@ The name describes the first third. Split it by role, one name per role:
 | `PersistenceCapabilities` | own bundle `org.eclipse.fennec.persistence.capabilities` | the root a backend answers; query, command and store are views on it |
 | `QueryCapabilities` / `QueryFeature` | moved there unchanged | this really *is* query expression vocabulary — the prefix is correct here |
 | `CommandCapabilities` / `CommandFeature` | moved there, minus one literal | see below |
-| `StoreCapabilities` / `StoreFeature` | new | the home for power outside query and command; today `TRANSACTION_BRACKET` and `SERVER_CURSORS` (below), with `CHANGE_STREAMS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` as the expected neighbours — each added when something declares it, not before |
+| `StoreCapabilities` / `StoreFeature` | new | the home for power outside query and command; today `TRANSACTION_BRACKET`, `SERVER_CURSORS` (below) and the delete options `DELETE_IGNORE_REFERENCES` / `DELETE_CLEAR_REFERENCES` (§4c), with `CHANGE_STREAMS`, `INDEXES`, `FULL_TEXT`, `TIMESERIES` as the expected neighbours — each added when something declares it, not before |
 | `StoreLimits` | **not built yet** | scalars, not flags — identifier length, timestamp precision, LOB bounds, NULL ordering. Waits for the flavor axis, which is what produces them; `maxFeaturePathDepth` stays on `QueryCapabilities` until then, since it limits the translator rather than the store |
 | query / command execution types | stay in the query bundle, `...query.api` and `...command.api` | `CommandResource` is not a query |
 
