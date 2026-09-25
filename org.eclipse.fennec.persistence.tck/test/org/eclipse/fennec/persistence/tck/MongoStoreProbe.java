@@ -36,8 +36,8 @@ import com.mongodb.client.MongoDatabase;
  * The Mongo {@link StoreProbe} (issue #329): the raw BSON documents, read with the driver past the
  * resource layer. A type's objects live in the collection of their type; contained objects are
  * embedded in their container's document; a reference is a {@code {_ref: <uri>}} document or the
- * URI string. A reference the document does not carry but its opposite does is read from the
- * opposite side's documents.
+ * URI string. Each end of a bidirectional reference is read from its own document — the store
+ * keeps both, as XMI does.
  */
 final class MongoStoreProbe implements StoreProbe {
 
@@ -66,9 +66,7 @@ final class MongoStoreProbe implements StoreProbe {
 		}
 		BsonValue value = document.get(reference.getName());
 		if (isNull(value) || value.isNull()) {
-			return reference.isContainment() || isNull(reference.getEOpposite())
-					? Optional.empty()
-					: fromOpposite(reference, id).stream().findFirst();
+			return Optional.empty();
 		}
 		return Optional.ofNullable(targetId(value, reference));
 	}
@@ -81,9 +79,7 @@ final class MongoStoreProbe implements StoreProbe {
 		}
 		BsonValue value = document.get(reference.getName());
 		if (isNull(value) || value.isNull()) {
-			return reference.isContainment() || isNull(reference.getEOpposite())
-					? List.of()
-					: fromOpposite(reference, id);
+			return List.of();
 		}
 		List<String> ids = new ArrayList<>();
 		if (value.isArray()) {
@@ -100,25 +96,6 @@ final class MongoStoreProbe implements StoreProbe {
 	@Override
 	public boolean storesContainedObjectsSeparately() {
 		return false;
-	}
-
-	/** The documents of the opposite type whose opposite reference points at the id. */
-	private List<String> fromOpposite(EReference reference, String id) {
-		EReference opposite = reference.getEOpposite();
-		List<String> ids = new ArrayList<>();
-		for (EClass concrete : concreteTypes(reference.getEReferenceType())) {
-			for (BsonDocument document : database.getCollection(concrete.getName(), BsonDocument.class).find()) {
-				BsonValue value = document.get(opposite.getName());
-				if (isNull(value) || value.isNull()) {
-					continue;
-				}
-				List<BsonValue> values = value.isArray() ? value.asArray().getValues() : List.of(value);
-				if (values.stream().anyMatch(v -> id.equals(targetId(v, opposite)))) {
-					ids.add(idOf(document));
-				}
-			}
-		}
-		return ids;
 	}
 
 	private BsonDocument document(EClass type, String id) {
