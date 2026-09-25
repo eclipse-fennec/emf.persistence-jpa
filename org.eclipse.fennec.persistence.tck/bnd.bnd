@@ -30,6 +30,7 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 
 -testpath: \
 	assertj-core,\
+	org.eclipse.fennec.persistence.tck.generated;version=snapshot,\
 	com.h2database,\
 	org.postgresql.jdbc;version=latest,\
 	mariadb-java-client;version=latest,\

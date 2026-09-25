@@ -12,11 +12,14 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.descriptors;
 
+import java.lang.reflect.Constructor;
+
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
@@ -92,10 +95,28 @@ public class EInstantiationPolicy extends InstantiationPolicy {
         	} catch (Exception e) {
         		throw new DiscoveryException(e.getMessage());
         	}
-        } else if (EObject.class.isAssignableFrom(javaClass) && 
-        		nonNull(eClass) && 
-        		nonNull(eClass.getInstanceClass())) {
-        	return EcoreUtil.create(eClass);
+        } else if (EObject.class.isAssignableFrom(javaClass)) {
+        	// a generated implementation (issue #311): a concrete class through its factory, which
+        	// is what the model's own code creates; a dynamic subtype of a generated class through
+        	// the constructor of its entity class, given its EClass as EMF's factory gives it
+        	if (nonNull(eClass.getInstanceClass()) && !eClass.isAbstract()) {
+        		EObject created = EcoreUtil.create(eClass);
+        		if (javaClass.isInstance(created)) {
+        			return created;
+        		}
+        	}
+        	try {
+        		Constructor<?> constructor = javaClass.getDeclaredConstructor();
+        		constructor.setAccessible(true);
+        		InternalEObject created = (InternalEObject) constructor.newInstance();
+        		if (created.eClass() != eClass) {
+        			created.eSetClass(eClass);
+        		}
+        		return created;
+        	} catch (ReflectiveOperationException | RuntimeException e) {
+        		throw new DiscoveryException("Cannot instantiate " + javaClass.getName() + " for " + eClass.getName()
+        				+ ": " + e.getMessage());
+        	}
         }
         return super.buildNewInstance();
     }

@@ -510,6 +510,21 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 	}
 
+	/**
+	 * The descriptor that manages this very object: the one of its Java class, provided that is
+	 * the descriptor of the object's EClass. EMF instantiates a dynamic subtype of a generated
+	 * class as the generated implementation carrying the dynamic EClass (issue #311), and that
+	 * implementation's descriptor is the supertype's — an object it would file in the wrong table.
+	 */
+	private static ClassDescriptor descriptorOfInstance(Server server, EObject object) {
+		ClassDescriptor descriptor = server.getDescriptor(object.getClass());
+		return nonNull(descriptor) && eClassOf(descriptor) == object.eClass() ? descriptor : null;
+	}
+
+	private static boolean isEntityInstance(Server server, EObject object) {
+		return nonNull(descriptorOfInstance(server, object));
+	}
+
 	private static EClass hierarchyRoot(EClass eClass) {
 		EClass root = eClass;
 		while (!root.getESuperTypes().isEmpty()) {
@@ -669,6 +684,10 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isNull(existing)) {
 			existing = em.find(descriptor.getJavaClass(), id);
 		}
+		if (existing == source) {
+			// registered ahead of its turn by a reference of an earlier root (issue #311)
+			return null;
+		}
 		if (existing instanceof EObject existingEO) {
 			copyStateInto(source, existingEO, server, em);
 			return existingEO;
@@ -787,7 +806,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						EObject handle = managedHandle(element, refDescriptor, server, em);
 						if (nonNull(handle)) {
 							values.add(handle);
-						} else if (nonNull(server.getDescriptor(element.getClass()))) {
+						} else if (isEntityInstance(server, element)) {
 							values.add(element);
 						}
 					}
@@ -850,7 +869,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (isNull(value) || value.eIsProxy()) {
 			return null;
 		}
-		if (nonNull(server.getDescriptor(value.getClass())) && em.contains(value)) {
+		if (isEntityInstance(server, value) && em.contains(value)) {
 			// managed by this entity manager already: the reference is written as it is
 			return null;
 		}
@@ -858,7 +877,23 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		// manage — typically a row resolved through getEObject: handed to the persist cascade
 		// as it is, it would be inserted again (#331); a target that does not exist yet has no
 		// reference, and the cascade inserting it stays correct
-		return referenceHandle(value, refDescriptor, em);
+		EObject handle = referenceHandle(value, refDescriptor, em);
+		if (nonNull(handle) || isNull(server.getDescriptor(value.getClass()))) {
+			return handle;
+		}
+		if (!isEntityInstance(server, value)) {
+			// an entity class carrying another EClass — EMF instantiates a dynamic subtype of a
+			// generated class as the generated implementation (issue #311): converted to its
+			// own entity class, or the cascade would file it under the implementation's type
+			return toEntity(value, server);
+		}
+		// a new instance of the entity class itself, with an id and no row yet — an object of
+		// another resource that is saved later, or a later root of this one. A plain object in
+		// that position is written as its id and inserted by its own save; an entity instance
+		// EclipseLink discovers at commit and refuses as unregistered, so it is registered here,
+		// and its own save then finds the row (issue #311)
+		em.persist(value);
+		return value;
 	}
 
 	/**
@@ -1046,7 +1081,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		if (nonNull(adopted)) {
 			return adopted;
 		}
-		EObject entity = isNull(server.getDescriptor(child.getClass())) ? toEntity(child, server) : child;
+		EObject entity = isEntityInstance(server, child) ? child : toEntity(child, server);
 		sanitizeNonContainmentReferences(entity, child, server, em);
 		adoptExistingContainmentChildren(entity, server, em);
 		return entity;
@@ -3031,8 +3066,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private EObject toManagedEntity(EObject source, Server server,
 			Function<EObject, EObject> entityFactory) {
-		// Fast path: EclipseLink already knows this object's class
-		ClassDescriptor descriptor = server.getDescriptor(source.getClass());
+		// Fast path: EclipseLink already knows this object's class — as the class of ITS type
+		ClassDescriptor descriptor = descriptorOfInstance(server, source);
 		if (nonNull(descriptor)) {
 			return source;
 		}

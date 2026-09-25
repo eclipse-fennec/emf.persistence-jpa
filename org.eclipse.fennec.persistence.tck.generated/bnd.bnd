@@ -1,0 +1,18 @@
+Bundle-Name: Eclipse Fennec Persistence TCK Generated Fixture
+Bundle-Description: The write-path fixture as generated EMF code (issue #311) — the TCK runs \
+	its write-path suite against these classes as it does against the dynamic model, so a \
+	backend has to read generated models back as their generated classes.
+
+src=${^src},src-gen
+
+-workingset: persistence
+
+-library: enableEMF
+
+-generate:\
+	model/writepathgen.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/writepathgen.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model

@@ -97,7 +97,7 @@ public class EObjectBuilder extends ObjectBuilder {
 			// untouched child read as removed-plus-added, and private ownership (#142) turned
 			// the removes into DELETEs of kept children (#143). It also meant the ECopier
 			// below wrote the clone's attributes onto the shared-cache original mid-transaction.
-			EObject backup = (EObject) this.descriptor.getInstantiationPolicy().buildNewInstance();
+			EObject backup = backupInstance(eClone);
 			new ECopier(backup, null).copy(eClone);
 			// EclipseLink's backup contract for references: a snapshot holding the SAME
 			// instances as the clone, so an untouched slot compares as unchanged and a
@@ -124,6 +124,20 @@ public class EObjectBuilder extends ObjectBuilder {
 			return backup;
 		}
 		return super.buildBackupClone(clone, unitOfWork);
+	}
+
+	/**
+	 * The backup of a dynamic entity is one of its class; for a generated implementation
+	 * (issue #311) it is a {@code DynamicEObjectImpl} of the same EClass instead: a generated
+	 * class has no inverse-free write for a single-valued reference, and the backup needs one
+	 * (below). The backup is EclipseLink bookkeeping that never leaves the unit of work and is
+	 * reached through the feature accessors only, which see the EClass and not the Java class.
+	 */
+	private EObject backupInstance(EObject clone) {
+		if (DynamicEObjectImpl.class.isAssignableFrom(this.descriptor.getJavaClass())) {
+			return (EObject) this.descriptor.getInstantiationPolicy().buildNewInstance();
+		}
+		return new DynamicEObjectImpl(clone.eClass());
 	}
 
 	/** The attribute names whose backup is built through their transparent indirection. */
