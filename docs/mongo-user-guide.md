@@ -271,6 +271,8 @@ a version check alone would conclude "real MongoDB".
 |------------|---------|------------|-----------------|
 | Query features (`where`, `sort`, projection, aggregation, pipelines, geo, type/temporal/string functions) | all | all | all |
 | Multi-document transactions (`StoreFeature.TRANSACTION_BRACKET`) | replica set / mongos only | no | yes |
+| Delete ignoring references (`StoreFeature.DELETE_IGNORE_REFERENCES`) | yes | yes | yes |
+| Delete clearing references (`StoreFeature.DELETE_CLEAR_REFERENCES`) | yes | yes | yes |
 | Reports itself in `buildInfo` as | MongoDB (`gitVersion`) | `ferretdb` sub-document | nothing |
 
 <!-- flavor-gaps:ferretdb -->
@@ -628,6 +630,24 @@ Note: `count()` and `exist()` operate on the **whole collection** — they
 ignore an id segment in the URI. `delete` removes exactly the documents
 whose ids match the resource contents, then clears the contents.
 
+What `delete` does about references to the deleted objects
+([contract §4c](unified-persistence/conformance-and-capabilities.md)):
+
+- A reference from a **single-valued** end, or any **unidirectional** reference, refuses the
+  delete with `CODE_REFERENTIAL_INTEGRITY` — nothing is removed.
+- A reference held in the **many-valued end of a bidirectional** reference (an n:m link, a
+  customer's list of orders) is pulled from the referring documents, then the objects go.
+- `Options.OPTION_DELETE_IGNORE_REFERENCES` skips all of it: no lookup, and references may be
+  left dangling. `Options.OPTION_DELETE_CLEAR_REFERENCES` pulls or unsets every reference first;
+  only a required single-valued reference (`lowerBound >= 1`) still refuses.
+
+```java
+persistence.delete(Map.of(Options.OPTION_DELETE_CLEAR_REFERENCES, true));
+```
+
+The lookups run on `<field>._ref` of the referring collections, which the delete path indexes on
+first use (#345).
+
 ### Streaming
 
 Mongo resources implement `StreamingResource`; documents are decoded one by
@@ -756,8 +776,16 @@ contract as the JPA backend and XMI:
   find-by-`_id`, decodes the document, and replaces the proxy. As with the
   JPA backend, resolution requires the resource to live in a `ResourceSet`.
 - Cross-resource references must follow standard EMF rules at save time:
-  the target object must already be in a resource of the same ResourceSet,
-  otherwise no reference URI can be written.
+  the target object must already be in a resource of the same ResourceSet
+  **and have its id**, otherwise no reference URI can be written. A target in no
+  resource, or one whose own resource is not saved yet and so has no id, refuses
+  the save with an error diagnostic before anything is written (#342, #349) —
+  the counterpart of XMI's dangling href. Save the target's resource first, or
+  save through the repository, which assigns every id up front.
+- **Bidirectional references store both ends**, each in its own object's
+  document, as XMI does. EMF keeps the ends consistent in memory; when both ends
+  change and live in different resources, save both resources
+  ([contract §4e](unified-persistence/conformance-and-capabilities.md)).
 
 ```java
 EObject loaded = findByIdInContents(books, "1");

@@ -142,6 +142,12 @@ below):
   its loaded collection resource are not touched; the repository isolates the object for
   the save and restores its attachment afterwards. `saveAll` does the same with one
   backend save per type.
+- **`saveAll` takes new objects that reference each other, in any order** (#350). Before
+  the first backend save it attaches every object to its collection resource, assigns every
+  missing id in the backend's own form (Mongo an ObjectId, JPA a UUID or the next sequence
+  value) and checks every reference: one to an object outside the call that has no resource
+  or no id refuses the call, and nothing is written. The resources themselves are strict —
+  there, every object takes care of its own resource and id, as with XMI.
 - **`delete(object)` deletes exactly the given object** — never the rest of the loaded
   resource.
 
@@ -258,6 +264,16 @@ object is addressed by the URI *fragment*, which carries the id
 ```
 <baseUri>/<EClassName>            the collection resource
 <baseUri>/<EClassName>#<id>       one object
+```
+
+The id in that fragment is the one the repository assigned or you set, so an object saved
+with a generated id is fetched back by it, directly or through a URI:
+
+```java
+repository.saveAll(List.of(order, customer));          // ids assigned up front
+String id = EcoreUtil.getID(customer);
+EObject same = repository.getEObject(customerClass, id);
+EObject viaUri = repository.getEObject(URI.createURI("mongodb://assets/Customer#" + id));
 ```
 
 This is a deliberate departure from the old one-resource-per-object model: the

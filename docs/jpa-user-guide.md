@@ -111,6 +111,15 @@ books.save(null);
   the saved object always carries its id.
 - Non-containment references that are still unresolved proxies are left
   alone — a proxy always represents an existing row and is never re-persisted.
+- A non-containment reference to an object outside the save that is in no
+  resource, or that has no id yet because its own resource is not saved, refuses
+  the save with an error diagnostic before anything is written (#352) — it used
+  to be written as a NULL foreign key. Save the target's resource first, or save
+  through the repository.
+- A bidirectional pair is stored once — one foreign key or one join row. Saving
+  either end of an n:m writes the link; of a one-to-many only the end holding the
+  foreign key does. Portable code saves every resource an end lives in
+  ([contract §4e](unified-persistence/conformance-and-capabilities.md)).
 
 Plain `DynamicEObjectImpl` objects (e.g. loaded from XMI) are converted to
 managed dynamic entities transparently during save.
@@ -125,6 +134,14 @@ books.delete(null);   // removes every entity currently in getContents()
 To delete a subset, load, remove the objects you want to keep from
 `getContents()`, then call `delete`. To delete a single object, resolve it via
 its id fragment into a fresh resource and delete that resource.
+
+An object that a foreign key still points at is refused by the database, reported with
+`CODE_REFERENTIAL_INTEGRITY`; join rows naming the object as the target of an n:m are
+deleted with it. `Options.OPTION_DELETE_CLEAR_REFERENCES` sets the referring foreign keys to
+NULL and deletes the join rows first, in the same transaction — a required single-valued
+reference (`lowerBound >= 1`) still refuses. `OPTION_DELETE_IGNORE_REFERENCES` is not served
+here: the foreign keys forbid a dangling reference, and the option is refused with a diagnostic
+([contract §4c](unified-persistence/conformance-and-capabilities.md)).
 
 ### Count, exist and streaming
 
