@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="writepathmixed" nsURI="https://eclipse.org/fennec/persistence/tck/writepath/mixed/1.0"
+    nsPrefix="wpm">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="documentation" value="Dynamic classes on top of the generated write-path fixture (issue #311): a dynamic subtype of a generated class (EMF instantiates it as the generated implementation, with the dynamic EClass), and single-valued, many-valued and containment references from dynamic to generated classes."/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="WpPond" eSuperTypes="https://eclipse.org/fennec/persistence/tck/writepath/generated/1.0#//WpPool">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fish" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="WpVisit">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="note" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="customer" eType="ecore:EClass https://eclipse.org/fennec/persistence/tck/writepath/generated/1.0#//WpCustomer"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tags" upperBound="-1" eType="ecore:EClass https://eclipse.org/fennec/persistence/tck/writepath/generated/1.0#//WpTag"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="items" upperBound="-1" eType="ecore:EClass https://eclipse.org/fennec/persistence/tck/writepath/generated/1.0#//WpItem"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pond" eType="#//WpPond"/>
+  </eClassifiers>
+</ecore:EPackage>

@@ -353,6 +353,31 @@ Practical consequences:
 Recorded as a deliberate divergence in
 [Conformance and capabilities](unified-persistence/conformance-and-capabilities.md) §4b.
 
+### Generated models — and mixing them with dynamic classes
+
+A generated EMF model is read back as its generated classes (issue #311): every object a
+resource loads or a query returns is an instance of the generated implementation, so a cast
+to the generated interface works and the generated operations and derived features are there.
+The rule per class:
+
+- a concrete class maps onto what its factory creates — the generated implementation;
+- an abstract class onto the implementation the generator emits beside it
+  (`<package>.impl.<Name>Impl`), failing that the closest common superclass of its concrete
+  subtypes' implementations. A generated class is never mapped onto a dynamic class;
+- a dynamic EClass that **extends a generated class** — the mix EMF allows — gets an entity
+  class of its own that extends the generated implementation. EMF instantiates such an object
+  as the generated implementation carrying the dynamic EClass (`EFactoryImpl.create`), and
+  the backend files it under *its* type, not under the implementation's: a `Pond` extending
+  a generated `Pool` lands in the pond's table, wherever the object was created;
+- dynamic classes referencing generated ones, single- or many-valued, containment or not,
+  need nothing special.
+
+The eorm's entity name — the JPQL entity name and the key of every lookup by type — is the
+EClass name, not the implementation class's simple name.
+
+A reference typed to a **subtype of a hierarchy** — one whose id is inherited from the root —
+is mapped like any other (issue #355; it used to be dropped silently, and read back empty).
+
 ### Overriding fetch and batch per reference
 
 Fetch behaviour is recorded on each eorm reference as two attributes — `fetch`

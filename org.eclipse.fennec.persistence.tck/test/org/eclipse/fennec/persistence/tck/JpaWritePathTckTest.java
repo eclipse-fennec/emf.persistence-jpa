@@ -38,7 +38,7 @@ import jakarta.persistence.EntityManagerFactory;
  * {@code -Djpa.test.flavor}. Every case gets a fresh database (h2) or schema (PostgreSQL,
  * MariaDB), and its store probe reads it over JDBC.
  */
-class JpaWritePathTckTest extends AbstractWritePathTCK {
+public class JpaWritePathTckTest extends AbstractWritePathTCK {
 
 	static {
 		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
@@ -58,7 +58,9 @@ class JpaWritePathTckTest extends AbstractWritePathTCK {
 	@Override
 	protected void setUpBackend(EPackage writePathPackage) {
 		List<EClassifier> eClasses = new ArrayList<>();
-		writePathPackage.getEClassifiers().stream().filter(EClass.class::isInstance).forEach(eClasses::add);
+		for (EPackage model : models()) {
+			model.getEClassifiers().stream().filter(EClass.class::isInstance).forEach(eClasses::add);
+		}
 		EntityMappings mappings = new EntityMapper().createMappings(eClasses);
 		jdbcProperties = JpaTestSupport.jdbcProperties(PU_NAME);
 		emf = JpaTckSupport.bootstrap(PU_NAME, mappings, jdbcProperties, "create-or-extend-tables");
@@ -80,7 +82,7 @@ class JpaWritePathTckTest extends AbstractWritePathTCK {
 	@Override
 	protected ResourceSet createBackendResourceSet() {
 		ResourceSet resourceSet = new ResourceSetImpl();
-		resourceSet.getPackageRegistry().put(wp.getNsURI(), wp);
+		models().forEach(model -> resourceSet.getPackageRegistry().put(model.getNsURI(), model));
 		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap().put("jpa", new JPAResourceFactory(emf));
 		return resourceSet;
 	}

@@ -48,7 +48,7 @@ import com.mongodb.client.MongoDatabase;
  * {@code -Dmongo.test.flavor}. Every case gets a fresh database, and its store probe reads the raw
  * documents with the driver.
  */
-class MongoWritePathTckTest extends AbstractWritePathTCK {
+public class MongoWritePathTckTest extends AbstractWritePathTCK {
 
 	private MetadataWhiteboard metadataService;
 	private MongoClient client;
@@ -70,7 +70,7 @@ class MongoWritePathTckTest extends AbstractWritePathTCK {
 		String connectionString = MongoTestSupport.connectionString();
 		assumeTrue(nonNull(connectionString), MongoTestSupport.unavailableMessage());
 		metadataService = MetadataServices.createWhiteboard();
-		metadataService.registerPackage(writePathPackage);
+		models().forEach(metadataService::registerPackage);
 		client = MongoClients.create(connectionString);
 		databaseName = "wp_" + UUID.randomUUID().toString().replace("-", "");
 		database = client.getDatabase(databaseName);
@@ -91,7 +91,7 @@ class MongoWritePathTckTest extends AbstractWritePathTCK {
 	@Override
 	protected ResourceSet createBackendResourceSet() {
 		ResourceSet resourceSet = new ResourceSetImpl();
-		resourceSet.getPackageRegistry().put(wp.getNsURI(), wp);
+		models().forEach(model -> resourceSet.getPackageRegistry().put(model.getNsURI(), model));
 		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
 				.put("mongodb", new MongoResourceFactory(database, metadataService, null, null, client, flavor()));
 		return resourceSet;

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" copyrightText="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"
+    modelDirectory="/org.eclipse.fennec.persistence.tck.generated/src-gen" modelPluginID="org.eclipse.fennec.persistence.tck.generated"
+    modelName="Writepathgen" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true">
+  <foreignModel>writepathgen.ecore</foreignModel>
+  <genPackages prefix="Writepathgen" basePackage="org.eclipse.fennec.persistence.tck.generated" disposableProviderFactory="true"
+      ecorePackage="writepathgen.ecore#/">
+    <genClasses ecoreClass="writepathgen.ecore#//WpOwner">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpOwner/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpOwner/name"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpOwner/profile"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpOwner/items"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpOwner/favorite"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpOwner/tags"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpProfile">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpProfile/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpProfile/text"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpItem">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpItem/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpItem/label"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpTag">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpTag/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpTag/name"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpBadge">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpBadge/id"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpBadge/tag"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpCustomer">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpCustomer/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpCustomer/name"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpCustomer/orders"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpCustomer/lawn"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpCustomer/pools"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpOrder">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpOrder/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpOrder/amount"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpOrder/customer"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpStudent">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpStudent/id"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpStudent/courses"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpCourse">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpCourse/id"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpCourse/students"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpNode">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpNode/id"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpNode/parent"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpNode/children"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpAsset">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpAsset/id"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpAsset/label"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference writepathgen.ecore#//WpAsset/keeper"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpLawn">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpLawn/area"/>
+    </genClasses>
+    <genClasses ecoreClass="writepathgen.ecore#//WpPool">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute writepathgen.ecore#//WpPool/depth"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>
