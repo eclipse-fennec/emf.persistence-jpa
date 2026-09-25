@@ -126,10 +126,6 @@ final class JpaTestSupport {
 		return FLAVOR_MARIADB.equals(FLAVOR);
 	}
 
-	private static boolean isContainerFlavor() {
-		return isPostgres() || isMariaDb();
-	}
-
 	/**
 	 * The JDBC and dialect properties for one persistence unit, isolated from every other unit:
 	 * H2 gets its own in-memory database, PostgreSQL its own schema in the shared container,
