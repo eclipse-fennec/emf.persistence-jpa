@@ -894,6 +894,68 @@ public abstract class AbstractWritePathTCK {
 		assertRef(order, "o1", orderCustomer, "c1");
 	}
 
+	/**
+	 * Issues #349/#352: the referenced customer lives in a resource of its own that is not saved
+	 * yet, so it has no id. The resource is the low-level API and strict, as XMI is with a
+	 * dangling href: the save is refused before anything is written — never a reference under a
+	 * positional fragment, never a silently dropped one. Once the customer's resource is saved,
+	 * the same save goes through and the store names the generated id.
+	 */
+	@Test
+	public void aReferenceToATargetWithoutAnIdIsRefusedAndWritesNothing() throws Exception {
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject c = EcoreUtil.create(customer);
+		EObject o1 = obj(order, "o1");
+		o1.eSet(orderCustomer, c);
+		Resource customers = resourceSet.createResource(uriFor("WpCustomer"));
+		customers.getContents().add(c);
+		Resource orders = resourceSet.createResource(uriFor("WpOrder"));
+		orders.getContents().add(o1);
+
+		assertThatThrownBy(() -> orders.save(null)).isInstanceOf(IOException.class);
+		assertThat(orders.getErrors()).as("the refusal says why").isNotEmpty();
+		assertIds(order);
+		assertIds(customer);
+
+		customers.save(null);
+		orders.save(null);
+		String customerId = EcoreUtil.getID(c);
+		assertThat(customerId).isNotNull();
+		assertRef(order, "o1", orderCustomer, customerId);
+		assertRefs(customer, customerId, customerOrders, "o1");
+	}
+
+	@Test
+	public void aManyValuedReferenceToATargetWithoutAnIdIsRefusedAndWritesNothing() throws Exception {
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject k = EcoreUtil.create(course);
+		EObject s1 = obj(student, "s1");
+		list(s1, studentCourses).add(obj(course, "k1"));
+		list(s1, studentCourses).add(k);
+		Resource courses = resourceSet.createResource(uriFor("WpCourse"));
+		courses.getContents().addAll(list(s1, studentCourses));
+		Resource students = resourceSet.createResource(uriFor("WpStudent"));
+		students.getContents().add(s1);
+
+		assertThatThrownBy(() -> students.save(null)).isInstanceOf(IOException.class);
+		assertIds(student);
+	}
+
+	@Test
+	public void aRootReferencingALaterRootOfTheSameResourceWithoutAnIdStoresItsId() throws Exception {
+		EObject child = obj(node, "n2");
+		EObject parent = EcoreUtil.create(node);
+		child.eSet(nodeParent, parent);
+		// the child comes first, so it is encoded before the parent would get its id
+		save("WpNode", child, parent);
+
+		String parentId = EcoreUtil.getID(parent);
+		assertThat(parentId).as("the resource assigns ids to its own objects").isNotNull();
+		assertIds(node, "n2", parentId);
+		assertRef(node, "n2", nodeParent, parentId);
+		assertRefs(node, parentId, nodeChildren, "n2");
+	}
+
 	@Test
 	public void deletingALeafNodeKeepsItsParent() throws Exception {
 		saveTree();
