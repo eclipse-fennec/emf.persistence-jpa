@@ -129,6 +129,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CountOptions;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.Updates;
@@ -176,6 +177,14 @@ import tools.jackson.databind.json.JsonMapper;
 public class MongoResourceImpl extends CodecResource implements PersistenceResource, StreamingResource, QueryableResource, CommandResource, OwnershipMaintenance {
 
 	private static final Logger LOG = Logger.getLogger(MongoResourceImpl.class.getName());
+
+	/**
+	 * The reference fields the delete path has indexed, as {@code database/collection/field}
+	 * (issue #345) — asked once per runtime, since {@code createIndex} is idempotent but still a
+	 * round trip. A collection dropped behind the runtime's back loses its index until restart:
+	 * a slower lookup, never a wrong one.
+	 */
+	private static final Set<String> REFERENCE_INDEXES = ConcurrentHashMap.newKeySet();
 
 	/**
 	 * Bookkeeping collection for containment ownership across document boundaries (issue #139).
@@ -1662,6 +1671,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			for (EClass holder : concreteTypes(reference.getEReferenceType())) {
 				MongoCollection<BsonDocument> collection = getCollection(holder.getName());
+				ensureReferenceIndex(holder.getName(), opposite.getName() + "." + refKey());
 				for (List<String> batch : chunked(ids, chunkSize)) {
 					List<BsonValue> forms = new ArrayList<>();
 					for (String id : batch) {
@@ -1678,6 +1688,24 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 					}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Indexes a reference field the delete path looks up (issue #345): without it, refusing or
+	 * pulling a reference scans the whole collection on every delete. A flavor that cannot build
+	 * the index still deletes correctly, only slower, so a failure is logged, not raised.
+	 */
+	private void ensureReferenceIndex(String collectionName, String field) {
+		String key = database.getName() + "/" + collectionName + "/" + field;
+		if (!REFERENCE_INDEXES.add(key)) {
+			return;
+		}
+		try {
+			getCollection(collectionName).createIndex(Indexes.ascending(field));
+		} catch (RuntimeException e) {
+			LOG.log(Level.WARNING, "Could not index " + collectionName + "." + field
+					+ " for the delete-path lookup; deletes scan the collection instead", e);
 		}
 	}
 
@@ -1700,6 +1728,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private boolean anyReferenceExists(String collectionName, String fieldName, List<String> refIds,
 			String ownCollection, int chunkSize) {
 		String field = fieldName + "." + refKey();
+		ensureReferenceIndex(collectionName, field);
 		for (List<String> batch : chunked(refIds, chunkSize)) {
 			List<BsonString> bare = batch.stream().map(BsonString::new).toList();
 			List<BsonString> qualified = batch.stream()
