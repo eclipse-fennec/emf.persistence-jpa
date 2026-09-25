@@ -191,6 +191,12 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 						.setParentClass(parentBuilder.getType().getJavaClass());
 				rootDescriptor.getInheritancePolicy()
 						.addClassIndicator(getType().getJavaClass(), discriminatorValue);
+				// EclipseLink hands the child the root's primary key at initialization — too
+				// late for a reference typed to the child, whose foreign key is built against
+				// the target's key fields now (issue #355); the same fields, only earlier
+				if (childDescriptor.getPrimaryKeyFields().isEmpty()) {
+					childDescriptor.setPrimaryKeyFields(new ArrayList<>(rootDescriptor.getPrimaryKeyFields()));
+				}
 			}
 			LOG.log(Level.FINE, "Configured inheritance child: {0} parent={1} root={2}",
 					new Object[]{entity.getName(), parentEClass.getName(),

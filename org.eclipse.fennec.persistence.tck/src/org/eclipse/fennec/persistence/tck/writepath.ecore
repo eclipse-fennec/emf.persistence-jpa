@@ -42,6 +42,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="orders" upperBound="-1"
         eType="#//WpOrder" eOpposite="#//WpOrder/customer"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="lawn" eType="#//WpLawn"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pools" upperBound="-1" eType="#//WpPool"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="WpOrder">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"

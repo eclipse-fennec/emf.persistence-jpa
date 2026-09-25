@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.tck;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,10 +77,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public abstract class AbstractWritePathTCK {
 
 	protected EPackage wp;
+	/** The mixed model on top of {@link #wp}, see {@link #loadMixedModel()}; {@code null} without one. */
+	protected EPackage mixed;
 	protected EClass owner, profile, item, tag, badge, customer, order, student, course, node, asset, lawn, pool;
 	protected EReference ownerProfile, ownerItems, ownerFavorite, ownerTags;
 	protected EReference customerOrders, orderCustomer, studentCourses, courseStudents;
-	protected EReference nodeParent, nodeChildren, assetKeeper, badgeTag;
+	protected EReference nodeParent, nodeChildren, assetKeeper, badgeTag, customerLawn, customerPools;
 
 	private StoreProbe probe;
 
@@ -113,6 +116,7 @@ public abstract class AbstractWritePathTCK {
 	@BeforeEach
 	void setUpWritePath() throws Exception {
 		wp = loadModel();
+		mixed = loadMixedModel();
 		owner = type("WpOwner");
 		profile = type("WpProfile");
 		item = type("WpItem");
@@ -138,6 +142,8 @@ public abstract class AbstractWritePathTCK {
 		nodeParent = ref(node, "parent");
 		nodeChildren = ref(node, "children");
 		assetKeeper = ref(asset, "keeper");
+		customerLawn = ref(customer, "lawn");
+		customerPools = ref(customer, "pools");
 		setUpBackend(wp);
 		probe = storeProbe();
 	}
@@ -147,19 +153,48 @@ public abstract class AbstractWritePathTCK {
 		tearDownBackend();
 	}
 
-	/** Loads {@code writepath.ecore}, re-homed on its nsURI like the TCK model. */
+	/**
+	 * The write-path model: {@code writepath.ecore}, dynamic. A binding returns the generated
+	 * twin instead to run the suite against generated classes (issue #311).
+	 */
 	protected EPackage loadModel() throws IOException {
+		return loadEcore("writepath.ecore");
+	}
+
+	/**
+	 * A dynamic model built on top of {@link #wp}, or {@code null} (the default): with one, the
+	 * mixed cases run — dynamic classes extending and referencing the write-path classes, which
+	 * matters when those are generated (issue #311).
+	 */
+	protected EPackage loadMixedModel() throws IOException {
+		return null;
+	}
+
+	/** Every package the backend has to map: the write-path model and the mixed one, if any. */
+	protected List<EPackage> models() {
+		return mixed == null ? List.of(wp) : List.of(wp, mixed);
+	}
+
+	/**
+	 * Loads an Ecore file next to this class, re-homed on its nsURI like the TCK model; the
+	 * dependencies resolve the cross-package references it makes.
+	 */
+	protected static EPackage loadEcore(String fileName, EPackage... dependencies) throws IOException {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(EcorePackage.eNS_URI, EcorePackage.eINSTANCE);
+		for (EPackage dependency : dependencies) {
+			resourceSet.getPackageRegistry().put(dependency.getNsURI(), dependency);
+		}
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("*", new XMIResourceFactoryImpl());
-		Resource resource = resourceSet.createResource(URI.createURI("writepath.ecore"));
-		try (InputStream stream = AbstractWritePathTCK.class.getResourceAsStream("writepath.ecore")) {
-			assertThat(stream).as("writepath.ecore next to %s", AbstractWritePathTCK.class.getSimpleName()).isNotNull();
+		Resource resource = resourceSet.createResource(URI.createURI(fileName));
+		try (InputStream stream = AbstractWritePathTCK.class.getResourceAsStream(fileName)) {
+			assertThat(stream).as("%s next to %s", fileName, AbstractWritePathTCK.class.getSimpleName()).isNotNull();
 			resource.load(stream, null);
 		}
 		EPackage ePackage = (EPackage) resource.getContents().get(0);
 		resource.setURI(URI.createURI(ePackage.getNsURI()));
 		resourceSet.getPackageRegistry().put(ePackage.getNsURI(), ePackage);
+		EcoreUtil.resolveAll(resourceSet);
 		return ePackage;
 	}
 
@@ -1289,6 +1324,329 @@ public abstract class AbstractWritePathTCK {
 		assertIds(asset, "p1");
 		assertIds(lawn);
 		assertIds(pool, "p1");
+	}
+
+	// ================================================ REFERENCES TO SUBTYPES (#355)
+
+	/**
+	 * Issue #355: a reference typed to a subtype of a hierarchy — one whose id is inherited —
+	 * was mapped nowhere and read back empty, single- and many-valued alike.
+	 */
+	@Test
+	public void referencesToSubtypesOfAHierarchyAreStored() throws Exception {
+		saveCustomerWithAssets();
+
+		assertRef(customer, "c1", customerLawn, "l1");
+		assertRefs(customer, "c1", customerPools, "p1", "p2");
+		EObject read = fresh("WpCustomer", "c1");
+		assertThat(((EObject) read.eGet(customerLawn)).eClass()).isSameAs(lawn);
+		list(read, customerPools).forEach(p -> assertThat(p.eClass()).isSameAs(pool));
+		assertIds(asset, "l1", "l2", "p1", "p2", "p3");
+	}
+
+	@Test
+	public void updatingReferencesToSubtypes() throws Exception {
+		saveCustomerWithAssets();
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject c1 = resolve(resourceSet, "WpCustomer", "c1");
+		c1.eSet(customerLawn, resolve(resourceSet, "WpLawn", "l2"));
+		list(c1, customerPools).removeIf(p -> "p1".equals(id(p)));
+		list(c1, customerPools).add(resolve(resourceSet, "WpPool", "p3"));
+		c1.eResource().save(null);
+
+		assertRef(customer, "c1", customerLawn, "l2");
+		assertRefs(customer, "c1", customerPools, "p2", "p3");
+
+		EObject again = resolve(createBackendResourceSet(), "WpCustomer", "c1");
+		again.eUnset(customerLawn);
+		list(again, customerPools).clear();
+		again.eResource().save(null);
+
+		assertRef(customer, "c1", customerLawn, null);
+		assertRefs(customer, "c1", customerPools);
+		assertIds(asset, "l1", "l2", "p1", "p2", "p3");
+	}
+
+	@Test
+	public void deletingAReferencedSubtypeIsRefusedAndChangesNothing() throws Exception {
+		saveCustomerWithAssets();
+
+		Resource lawnHolder = resolve(createBackendResourceSet(), "WpLawn", "l1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) lawnHolder).delete(null)).isInstanceOf(IOException.class);
+		Resource poolHolder = resolve(createBackendResourceSet(), "WpPool", "p1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) poolHolder).delete(null)).isInstanceOf(IOException.class);
+
+		assertIds(asset, "l1", "l2", "p1", "p2", "p3");
+		assertRef(customer, "c1", customerLawn, "l1");
+		assertRefs(customer, "c1", customerPools, "p1", "p2");
+	}
+
+	@Test
+	public void deletingTheReferrerKeepsTheSubtypes() throws Exception {
+		saveCustomerWithAssets();
+
+		delete(resolve(createBackendResourceSet(), "WpCustomer", "c1"));
+
+		assertIds(customer);
+		assertIds(asset, "l1", "l2", "p1", "p2", "p3");
+		assertIds(lawn, "l1", "l2");
+	}
+
+	/** c1 references lawn l1 and pools p1/p2; l2 and p3 are spare. */
+	private void saveCustomerWithAssets() throws IOException {
+		save("WpLawn", obj(lawn, "l1"), obj(lawn, "l2"));
+		save("WpPool", obj(pool, "p1"), obj(pool, "p2"), obj(pool, "p3"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject c1 = obj(customer, "c1");
+		c1.eSet(customerLawn, resolve(setup, "WpLawn", "l1"));
+		list(c1, customerPools).addAll(List.of(resolve(setup, "WpPool", "p1"), resolve(setup, "WpPool", "p2")));
+		saveIn(setup, "WpCustomer", c1);
+	}
+
+	// ======================================================= MODEL CLASSES (#311)
+
+	/**
+	 * Issue #311: what a backend reads back is an instance of the model's classes — for a
+	 * generated model the generated implementation, castable to the generated interface — for
+	 * roots, contained children, resolved references and subtypes alike.
+	 */
+	@Test
+	public void objectsReadBackAreInstancesOfTheirModelClasses() throws Exception {
+		save("WpTag", obj(tag, "t1"), obj(tag, "t2"));
+		saveCustomerWithOrders("c1", "o1", "o2");
+		ResourceSet setup = createBackendResourceSet();
+		EObject o = owner("o1");
+		o.eSet(ownerProfile, obj(profile, "p1"));
+		items(o).addAll(List.of(obj(item, "i1"), obj(item, "i2")));
+		list(o, ownerTags).addAll(List.of(resolve(setup, "WpTag", "t1"), resolve(setup, "WpTag", "t2")));
+		saveIn(setup, "WpOwner", o);
+		EObject l = obj(lawn, "l1");
+		l.eSet(assetKeeper, resolve(setup, "WpCustomer", "c1"));
+		saveIn(setup, "WpLawn", l);
+
+		ResourceSet readSet = createBackendResourceSet();
+		EObject owner1 = resolve(readSet, "WpOwner", "o1");
+		assertModelClass(owner1);
+		assertModelClass((EObject) owner1.eGet(ownerProfile));
+		items(owner1).forEach(AbstractWritePathTCK::assertModelClass);
+		list(owner1, ownerTags).forEach(AbstractWritePathTCK::assertModelClass);
+		EObject customer1 = resolve(readSet, "WpCustomer", "c1");
+		assertModelClass(customer1);
+		for (EObject order1 : list(customer1, customerOrders)) {
+			assertModelClass(order1);
+			assertThat(order1.eGet(orderCustomer)).isSameAs(customer1);
+		}
+		EObject lawn1 = resolve(readSet, "WpLawn", "l1");
+		assertModelClass(lawn1);
+		assertModelClass((EObject) lawn1.eGet(assetKeeper));
+		load("WpOwner").getContents().forEach(AbstractWritePathTCK::assertModelClass);
+	}
+
+	/**
+	 * A dynamic subtype of a write-path class — of a generated one, with the generated model, so
+	 * its instances are the generated implementation carrying the dynamic EClass — keeps what it
+	 * inherits: stored, read back and deleted without touching its siblings.
+	 */
+	@Test
+	public void mixedDynamicSubtypeKeepsItsInheritedReference() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		EClass pond = mixedType("WpPond");
+		save("WpCustomer", obj(customer, "c1"));
+		save("WpLawn", obj(lawn, "l1"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject p1 = obj(pond, "p1");
+		p1.eSet(attr(pond, "fish"), 12);
+		p1.eSet(assetKeeper, resolve(setup, "WpCustomer", "c1"));
+		saveIn(setup, "WpPond", p1);
+
+		assertIds(pond, "p1");
+		assertRef(pond, "p1", assetKeeper, "c1");
+		EObject read = fresh("WpPond", "p1");
+		assertThat(read.eClass()).isSameAs(pond);
+		assertThat(read.eGet(attr(pond, "fish"))).isEqualTo(12);
+		if (pool.getInstanceClass() != null) {
+			// EMF instantiates a dynamic subtype as its generated supertype's implementation
+			assertThat(read).isInstanceOf(pool.getInstanceClass());
+		}
+		assertModelClass((EObject) read.eGet(assetKeeper));
+
+		delete(resolve(createBackendResourceSet(), "WpPond", "p1"));
+
+		assertIds(pond);
+		assertIds(lawn, "l1");
+		assertIds(customer, "c1");
+	}
+
+	@Test
+	public void mixedSingleAndManyValuedReferencesToWritePathClasses() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		saveMixedVisit();
+
+		assertIds(mixedType("WpVisit"), "v1");
+		assertRef(mixedType("WpVisit"), "v1", visitRef("customer"), "c1");
+		assertRefs(mixedType("WpVisit"), "v1", visitRef("tags"), "t1", "t2");
+		assertRefs(mixedType("WpVisit"), "v1", visitRef("items"), "i1", "i2");
+		assertRef(mixedType("WpVisit"), "v1", visitRef("pond"), "p1");
+		EObject read = fresh("WpVisit", "v1");
+		assertModelClass((EObject) read.eGet(visitRef("customer")));
+		list(read, visitRef("tags")).forEach(AbstractWritePathTCK::assertModelClass);
+		list(read, visitRef("items")).forEach(AbstractWritePathTCK::assertModelClass);
+	}
+
+	@Test
+	public void mixedUpdateOfSingleAndManyValuedReferences() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		saveMixedVisit();
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject v1 = resolve(resourceSet, "WpVisit", "v1");
+		v1.eSet(visitRef("customer"), resolve(resourceSet, "WpCustomer", "c2"));
+		list(v1, visitRef("tags")).removeIf(t -> "t1".equals(id(t)));
+		list(v1, visitRef("tags")).add(resolve(resourceSet, "WpTag", "t3"));
+		list(v1, visitRef("items")).removeIf(i -> "i1".equals(id(i)));
+		list(v1, visitRef("items")).add(obj(item, "i3"));
+		v1.eUnset(visitRef("pond"));
+		v1.eResource().save(null);
+
+		assertRef(mixedType("WpVisit"), "v1", visitRef("customer"), "c2");
+		assertRefs(mixedType("WpVisit"), "v1", visitRef("tags"), "t2", "t3");
+		assertRefs(mixedType("WpVisit"), "v1", visitRef("items"), "i2", "i3");
+		assertRef(mixedType("WpVisit"), "v1", visitRef("pond"), null);
+		assertIds(customer, "c1", "c2");
+		assertIds(tag, "t1", "t2", "t3");
+		assertIds(mixedType("WpPond"), "p1");
+		assertNoOrphans(item, "i2", "i3");
+	}
+
+	@Test
+	public void mixedDeleteRemovesTheContainedChildrenAndKeepsTheReferencedObjects() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		saveMixedVisit();
+
+		delete(resolve(createBackendResourceSet(), "WpVisit", "v1"));
+
+		assertIds(mixedType("WpVisit"));
+		assertNoOrphans(item);
+		assertIds(customer, "c1", "c2");
+		assertIds(tag, "t1", "t2", "t3");
+		assertIds(mixedType("WpPond"), "p1");
+	}
+
+	/** Deleting what a dynamic class still references is refused like any other referenced delete. */
+	@Test
+	public void mixedDeleteOfAReferencedObjectIsRefusedAndChangesNothing() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		saveMixedVisit();
+
+		Resource tagHolder = resolve(createBackendResourceSet(), "WpTag", "t1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) tagHolder).delete(null)).isInstanceOf(IOException.class);
+		Resource customerHolder = resolve(createBackendResourceSet(), "WpCustomer", "c1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) customerHolder).delete(null)).isInstanceOf(IOException.class);
+		Resource pondHolder = resolve(createBackendResourceSet(), "WpPond", "p1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) pondHolder).delete(null)).isInstanceOf(IOException.class);
+
+		assertIds(tag, "t1", "t2", "t3");
+		assertIds(customer, "c1", "c2");
+		assertIds(mixedType("WpPond"), "p1");
+		assertRefs(mixedType("WpVisit"), "v1", visitRef("tags"), "t1", "t2");
+		assertRef(mixedType("WpVisit"), "v1", visitRef("customer"), "c1");
+	}
+
+	/**
+	 * The subtype lives in another package than the reference it inherits: a delete that asks
+	 * "does anything still point here" has to look into that package's collection or table too.
+	 */
+	@Test
+	public void mixedDeleteOfACustomerKeptByADynamicSubtypeIsRefusedAndChangesNothing() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		EClass pond = mixedType("WpPond");
+		save("WpCustomer", obj(customer, "c1"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject p1 = obj(pond, "p1");
+		p1.eSet(assetKeeper, resolve(setup, "WpCustomer", "c1"));
+		saveIn(setup, "WpPond", p1);
+
+		Resource holder = resolve(createBackendResourceSet(), "WpCustomer", "c1").eResource();
+		assertThatThrownBy(() -> ((PersistenceResource) holder).delete(null)).isInstanceOf(IOException.class);
+
+		assertIds(customer, "c1");
+		assertRef(pond, "p1", assetKeeper, "c1");
+	}
+
+	/**
+	 * Both new, both the caller's own instances: the dynamic subtype's object is, as EMF makes
+	 * it, an instance of the generated supertype's implementation — and has to be stored as the
+	 * subtype it is, whichever resource is saved first.
+	 */
+	@Test
+	public void mixedNewObjectsReferencingEachOtherSavedTogether() throws Exception {
+		assumeTrue(mixed != null, "no mixed model");
+		EClass pond = mixedType("WpPond");
+		EObject p1 = obj(pond, "p1");
+		p1.eSet(attr(pond, "fish"), 3);
+		EObject v1 = obj(mixedType("WpVisit"), "v1");
+		v1.eSet(visitRef("pond"), p1);
+		EObject c1 = obj(customer, "c1");
+		v1.eSet(visitRef("customer"), c1);
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		Resource customers = resourceSet.createResource(uriFor("WpCustomer"));
+		customers.getContents().add(c1);
+		Resource ponds = resourceSet.createResource(uriFor("WpPond"));
+		ponds.getContents().add(p1);
+		Resource visits = resourceSet.createResource(uriFor("WpVisit"));
+		visits.getContents().add(v1);
+		customers.save(null);
+		visits.save(null);
+		ponds.save(null);
+
+		assertIds(pond, "p1");
+		// stored as a pond, not as a plain pool — what a polymorphic load of the pools returns
+		// is the backend's form, so only the store is asked
+		assertThat(probe.ids(pool)).as("stored plain WpPool ids").isEmpty();
+		assertIds(mixedType("WpVisit"), "v1");
+		assertRef(mixedType("WpVisit"), "v1", visitRef("pond"), "p1");
+		assertRef(mixedType("WpVisit"), "v1", visitRef("customer"), "c1");
+		assertThat(fresh("WpPond", "p1").eGet(attr(pond, "fish"))).isEqualTo(3);
+	}
+
+	/** v1 references customer c1, tags t1/t2, pond p1 and contains items i1/i2; c2 and t3 are spare. */
+	private void saveMixedVisit() throws IOException {
+		save("WpCustomer", obj(customer, "c1"), obj(customer, "c2"));
+		save("WpTag", obj(tag, "t1"), obj(tag, "t2"), obj(tag, "t3"));
+		save("WpPond", obj(mixedType("WpPond"), "p1"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject v1 = obj(mixedType("WpVisit"), "v1");
+		v1.eSet(visitRef("customer"), resolve(setup, "WpCustomer", "c1"));
+		list(v1, visitRef("tags")).addAll(List.of(resolve(setup, "WpTag", "t1"), resolve(setup, "WpTag", "t2")));
+		list(v1, visitRef("items")).addAll(List.of(obj(item, "i1"), obj(item, "i2")));
+		v1.eSet(visitRef("pond"), resolve(setup, "WpPond", "p1"));
+		saveIn(setup, "WpVisit", v1);
+	}
+
+	private EClass mixedType(String name) {
+		return (EClass) mixed.getEClassifier(name);
+	}
+
+	private EReference visitRef(String name) {
+		return ref(mixedType("WpVisit"), name);
+	}
+
+	/**
+	 * The object is an instance of its EClass's instance class, and — for a generated class — of
+	 * exactly the implementation the model's factory creates. A dynamic class has neither.
+	 */
+	private static void assertModelClass(EObject object) {
+		assertThat(object).isNotNull();
+		assertThat(object.eIsProxy()).as("%s is resolved", object.eClass().getName()).isFalse();
+		Class<?> instanceClass = object.eClass().getInstanceClass();
+		if (instanceClass != null) {
+			assertThat(object).as("%s read back as its model class", object.eClass().getName())
+					.isInstanceOf(instanceClass);
+			assertThat(object.getClass()).as("%s read back as the generated implementation", object.eClass().getName())
+					.isEqualTo(EcoreUtil.create(object.eClass()).getClass());
+		}
 	}
 
 	// ============================================================== ATOMICITY

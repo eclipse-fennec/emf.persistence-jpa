@@ -222,14 +222,32 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 		if (isNull(eClass)) {
 			return null;
 		}
-		Entity idEntity = context.getEntity(eClass);
-		if (nonNull(idEntity) && !idEntity.getAttributes().getId().isEmpty()) {
+		Entity targetEntity = context.getEntity(eClass);
+		// the id may be inherited: a subtype in a hierarchy carries none of its own, and the
+		// reference to it used to be dropped without a word (issue #311)
+		Entity idEntity = idEntityOf(eClass);
+		if (nonNull(targetEntity) && nonNull(idEntity) && nonNull(targetEntity.getTable())) {
 			JoinColumn jc = EORMFactory.eINSTANCE.createJoinColumn();
 			Id id = idEntity.getAttributes().getId().get(0);
-			String defaultFKFieldName = nonNull(defaultColumnName) ? defaultColumnName : idEntity.getName().toUpperCase() + "_" + id.getName().toUpperCase();
-			jc.setReferencedColumnName(idEntity.getTable().getName() + "." + id.getColumn().getName());
+			String defaultFKFieldName = nonNull(defaultColumnName) ? defaultColumnName : targetEntity.getName().toUpperCase() + "_" + id.getName().toUpperCase();
+			jc.setReferencedColumnName(targetEntity.getTable().getName() + "." + id.getColumn().getName());
 			jc.setName(defaultFKFieldName);
 			return jc;
+		}
+		return null;
+	}
+
+	/** The entity of the class, or of the nearest supertype, that declares the id. */
+	private Entity idEntityOf(EClass eClass) {
+		Entity entity = context.getEntity(eClass);
+		if (nonNull(entity) && !entity.getAttributes().getId().isEmpty()) {
+			return entity;
+		}
+		for (EClass superType : eClass.getESuperTypes()) {
+			Entity found = idEntityOf(superType);
+			if (nonNull(found)) {
+				return found;
+			}
 		}
 		return null;
 	}
