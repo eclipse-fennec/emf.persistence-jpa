@@ -325,7 +325,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="StoreFeature">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="A single store-dependent capability that is not query vocabulary and not a command verb (issue #134, contract §5a). This is where power that the store either has or has not belongs - the write path included - so reaching such a statement never requires holding a query or a command role. Literal values are grouped with gaps: transactional 0+, streaming 20+, indexing 40+."/>
+      <details key="documentation" value="A single store-dependent capability that is not query vocabulary and not a command verb (issue #134, contract §5a). This is where power that the store either has or has not belongs - the write path included - so reaching such a statement never requires holding a query or a command role. Literal values are grouped with gaps: transactional 0+, streaming 20+, indexing 40+, deletion 60+."/>
     </eAnnotations>
     <eLiterals name="TRANSACTION_BRACKET">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -335,6 +335,16 @@
     <eLiterals name="SERVER_CURSORS" value="20">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The QueryResult lifetime contract (issue #162). Declared: the streams of a QueryResult remain valid until close() and fetch incrementally out of a live store handle - a server-side cursor, or its embedded analogue like a held searcher lease. Undeclared: results may be fully materialized at call time and close() is a no-op. Both are conforming; the feature only tells the consumer which resource-lifetime contract query(...) hands out. First declarer: the Lucene backend (emf.search), which holds the unit's searcher lease from query(...) to close()."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DELETE_IGNORE_REFERENCES" value="60">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Delete option Options.DELETE_IGNORE_REFERENCES (issue #347): the delete neither checks nor removes the references that still point at the deleted objects - no lookup at all, the fastest delete, and references may be left dangling. Only a store without enforced referential integrity can serve it: mongo declares it; JPA cannot, since the database's foreign keys forbid a dangling reference, and refuses the option with a diagnostic."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="DELETE_CLEAR_REFERENCES" value="61">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Delete option Options.DELETE_CLEAR_REFERENCES (issue #347): every reference that still points at a deleted object is removed first - pulled from a many-valued end, unset in a single-valued one, a join row deleted - and the delete then goes through where it would otherwise be refused. Referential integrity is kept; the cost is one lookup per referring reference. A required single-valued reference (lowerBound &gt;= 1) still refuses the delete, on every backend alike: clearing it would leave its holder invalid."/>
       </eAnnotations>
     </eLiterals>
   </eClassifiers>

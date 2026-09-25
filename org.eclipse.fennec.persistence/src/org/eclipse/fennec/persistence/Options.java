@@ -135,6 +135,59 @@ public interface Options {
 	}
 
 	/**
+	 * Delete option (issue #347): delete even though references still point at the deleted
+	 * objects — no check, no cleanup, no lookup at all. The fastest delete, and the references
+	 * are left dangling: a later resolution of one finds nothing. Not the default; the default
+	 * refuses such a delete (contract §4c).
+	 * <p>
+	 * Served where the store does not enforce referential integrity — declared as
+	 * {@code StoreFeature.DELETE_IGNORE_REFERENCES}. JPA refuses it: the database's foreign keys
+	 * forbid a dangling reference. Honoured by {@code Resource.delete()} and by a
+	 * {@code DeleteCommand} alike. Contradicts {@link #OPTION_DELETE_CLEAR_REFERENCES}.
+	 *
+	 * <pre>{@code
+	 * resource.delete(Map.of(Options.OPTION_DELETE_IGNORE_REFERENCES, true));
+	 * }</pre>
+	 *
+	 * Value type: {@link Boolean} or its {@link String} form
+	 */
+	String OPTION_DELETE_IGNORE_REFERENCES = "fennec.delete.ignore-references";
+
+	/**
+	 * Delete option (issue #347): remove every reference that still points at a deleted object
+	 * first — pulled from a many-valued reference, unset in a single-valued one, a join row
+	 * deleted — then delete. Referential integrity is kept; the cost is one lookup per reference
+	 * that could point at the deleted type. A required single-valued reference
+	 * ({@code lowerBound >= 1}) still refuses the delete: clearing it would leave its holder
+	 * invalid. Not the default.
+	 * <p>
+	 * Declared as {@code StoreFeature.DELETE_CLEAR_REFERENCES}; honoured by
+	 * {@code Resource.delete()} and by a {@code DeleteCommand} alike. Contradicts
+	 * {@link #OPTION_DELETE_IGNORE_REFERENCES}.
+	 *
+	 * Value type: {@link Boolean} or its {@link String} form
+	 */
+	String OPTION_DELETE_CLEAR_REFERENCES = "fennec.delete.clear-references";
+
+	/** Whether {@link #OPTION_DELETE_IGNORE_REFERENCES} is set to {@code true}. */
+	static boolean isDeleteIgnoreReferences(Map<?, ?> options) {
+		return isTrue(options, OPTION_DELETE_IGNORE_REFERENCES);
+	}
+
+	/** Whether {@link #OPTION_DELETE_CLEAR_REFERENCES} is set to {@code true}. */
+	static boolean isDeleteClearReferences(Map<?, ?> options) {
+		return isTrue(options, OPTION_DELETE_CLEAR_REFERENCES);
+	}
+
+	private static boolean isTrue(Map<?, ?> options, String key) {
+		if (isNull(options)) {
+			return false;
+		}
+		Object value = options.get(key);
+		return Boolean.TRUE.equals(value) || (value instanceof String s && Boolean.parseBoolean(s.trim()));
+	}
+
+	/**
 	 * Returns the cache-new-objects setting from the options, or {@code null} if unset.
 	 */
 	static Boolean getCacheNewObjects(Map<?, ?> options) {

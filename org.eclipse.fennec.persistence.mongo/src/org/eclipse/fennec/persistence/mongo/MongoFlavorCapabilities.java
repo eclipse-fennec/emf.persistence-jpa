@@ -181,7 +181,10 @@ public final class MongoFlavorCapabilities {
 	 * probed per resource at runtime and can only narrow this, never exceed it.
 	 */
 	private static StoreCapabilities storeOf(MongoFlavor flavor) {
-		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create();
+		// both delete options on every flavor: no store-side referential integrity to get in the
+		// way of ignoring references, and clearing them is ordinary updates (issue #347)
+		StoreCapabilitiesBuilder store = StoreCapabilitiesBuilder.create()
+				.support(StoreFeature.DELETE_IGNORE_REFERENCES, StoreFeature.DELETE_CLEAR_REFERENCES);
 		if (flavor != MongoFlavor.FERRETDB) {
 			store.support(StoreFeature.TRANSACTION_BRACKET);
 		}

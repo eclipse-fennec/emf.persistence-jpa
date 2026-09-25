@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -115,8 +116,14 @@ import org.eclipse.persistence.config.QueryHints;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicType;
 import org.eclipse.persistence.internal.databaseaccess.DatabasePlatform;
+import org.eclipse.persistence.internal.databaseaccess.DatasourcePlatform;
 import org.eclipse.persistence.internal.databaseaccess.Platform;
+import org.eclipse.persistence.internal.helper.DatabaseField;
 import org.eclipse.persistence.jpa.JpaQuery;
+import org.eclipse.persistence.mappings.DatabaseMapping;
+import org.eclipse.persistence.mappings.ForeignReferenceMapping;
+import org.eclipse.persistence.mappings.ManyToManyMapping;
+import org.eclipse.persistence.mappings.OneToOneMapping;
 import org.eclipse.persistence.queries.DatabaseQuery;
 import org.eclipse.persistence.queries.ScrollableCursor;
 import org.eclipse.persistence.sessions.Session;
@@ -1181,10 +1188,19 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	public void delete(Map<?, ?> options) throws IOException {
 		getErrors().clear();
 		getWarnings().clear();
+		boolean clearReferences = clearReferences(options);
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
+			Server server = serverOf(lease);
+			EList<EObject> contents = writableContents();
+			if (clearReferences) {
+				// the one check that can still refuse, before the transaction and anything in it
+				refuseRequiredReferences(em, server, contents);
+			}
 			em.getTransaction().begin();
 			try {
-				EList<EObject> contents = writableContents();
+				Set<ClassDescriptor> cleared = clearReferences
+						? clearInboundReferences(em, server, contents, Options.getWriteChunkSize(options))
+						: Set.of();
 				List<EObject> opposites = new ArrayList<>();
 				// a copy: merging and removing an object with a bidirectional reference updates
 				// its opposite, which can touch this list while it is iterated
@@ -1197,6 +1213,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				em.getTransaction().commit();
 				evictFromSharedCache(em, opposites);
+				evictCleared(server, cleared);
 				contents.clear();
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
@@ -1207,6 +1224,215 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				throw new IOException("Failed to delete resource: " + getURI(), e);
 			}
 		}
+	}
+
+	/**
+	 * Whether the delete clears the references to the deleted objects first
+	 * ({@link Options#OPTION_DELETE_CLEAR_REFERENCES}, issue #347). Ignoring them is refused: the
+	 * database's foreign keys forbid a dangling reference, so this backend does not declare
+	 * {@code StoreFeature.DELETE_IGNORE_REFERENCES}.
+	 */
+	private boolean clearReferences(Map<?, ?> options) throws IOException {
+		if (Options.isDeleteIgnoreReferences(options)) {
+			String message = "Delete refused: " + Options.OPTION_DELETE_IGNORE_REFERENCES
+					+ " is not served here — the foreign keys forbid a dangling reference; "
+					+ Options.OPTION_DELETE_CLEAR_REFERENCES + " removes the references instead";
+			getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, message, getURI()));
+			throw new IOException(message);
+		}
+		return Options.isDeleteClearReferences(options);
+	}
+
+	/** Refuses the delete while a required single-valued reference points at one of the objects. */
+	private void refuseRequiredReferences(EntityManager em, Server server, List<EObject> objects) throws IOException {
+		String required = findRequiredReference(em, server, objects);
+		if (nonNull(required)) {
+			String message = "Cannot delete: the required reference " + required
+					+ " points at one of these objects, and clearing it would leave its holder invalid";
+			getErrors().add(PersistenceDiagnostic.error(PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY,
+					DIAGNOSTIC_SOURCE, message, getURI(), null));
+			throw new IOException(message);
+		}
+	}
+
+	/**
+	 * The first required single-valued reference ({@code lowerBound >= 1}) whose foreign key
+	 * holds one of the objects' keys, as {@code Type.reference}, or {@code null} (issue #347).
+	 */
+	private static String findRequiredReference(EntityManager em, Server server, List<EObject> objects) {
+		if (isNull(server)) {
+			return null;
+		}
+		DatasourcePlatform platform = (DatasourcePlatform) server.getDatasourcePlatform();
+		for (Map.Entry<ClassDescriptor, List<Object>> target : keysByDescriptor(server, objects).entrySet()) {
+			for (ClassDescriptor holder : server.getDescriptors().values()) {
+				for (DatabaseMapping mapping : holder.getMappings()) {
+					if (mapping instanceof OneToOneMapping reference && reference.isForeignKeyRelationship()
+							&& !reference.isReadOnly() && refersTo(reference, target.getKey())
+							&& isRequired(holder, reference, objects.get(0).eClass())) {
+						for (DatabaseField foreignKey : reference.getForeignKeyFields()) {
+							String sql = "SELECT COUNT(*) FROM "
+									+ holder.getDefaultTable().getQualifiedNameDelimited(platform)
+									+ " WHERE " + foreignKey.getNameDelimited(platform) + " IN ("
+									+ placeholders(target.getValue().size()) + ")";
+							var count = em.createNativeQuery(sql);
+							bind(count::setParameter, target.getValue());
+							if (((Number) count.getSingleResult()).longValue() > 0) {
+								return holder.getAlias() + "." + reference.getAttributeName();
+							}
+						}
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Removes every reference to the objects (issue #347), in the running transaction: a foreign
+	 * key pointing at one of them is set to NULL, a join row naming one of them as target is
+	 * deleted. Returns the descriptors whose rows changed, for the cache.
+	 */
+	private static Set<ClassDescriptor> clearInboundReferences(EntityManager em, Server server, List<EObject> objects,
+			int chunkSize) {
+		Set<ClassDescriptor> changed = new HashSet<>();
+		if (isNull(server)) {
+			return changed;
+		}
+		DatasourcePlatform platform = (DatasourcePlatform) server.getDatasourcePlatform();
+		for (Map.Entry<ClassDescriptor, List<Object>> target : keysByDescriptor(server, objects).entrySet()) {
+			for (ClassDescriptor holder : server.getDescriptors().values()) {
+				for (DatabaseMapping mapping : holder.getMappings()) {
+					if (mapping.isReadOnly()) {
+						continue;
+					}
+					if (mapping instanceof OneToOneMapping reference && reference.isForeignKeyRelationship()
+							&& refersTo(reference, target.getKey())) {
+						for (DatabaseField foreignKey : reference.getForeignKeyFields()) {
+							String column = foreignKey.getNameDelimited(platform);
+							String table = holder.getDefaultTable().getQualifiedNameDelimited(platform);
+							for (List<Object> batch : chunked(target.getValue(), chunkSize)) {
+								var update = em.createNativeQuery("UPDATE " + table + " SET " + column + " = NULL WHERE "
+										+ column + " IN (" + placeholders(batch.size()) + ")");
+								bind(update::setParameter, batch);
+								update.executeUpdate();
+							}
+						}
+						changed.add(holder);
+					} else if (mapping instanceof ManyToManyMapping links && refersTo(links, target.getKey())) {
+						String table = links.getRelationTable().getQualifiedNameDelimited(platform);
+						for (DatabaseField targetKey : links.getTargetRelationKeyFields()) {
+							String column = targetKey.getNameDelimited(platform);
+							for (List<Object> batch : chunked(target.getValue(), chunkSize)) {
+								var delete = em.createNativeQuery("DELETE FROM " + table + " WHERE " + column + " IN ("
+										+ placeholders(batch.size()) + ")");
+								bind(delete::setParameter, batch);
+								delete.executeUpdate();
+							}
+						}
+						changed.add(holder);
+					}
+				}
+			}
+		}
+		return changed;
+	}
+
+	/** The objects' single keys, grouped by their descriptor; a composite key is not cleared by key. */
+	private static Map<ClassDescriptor, List<Object>> keysByDescriptor(Server server, List<EObject> objects) {
+		Map<ClassDescriptor, List<Object>> keys = new LinkedHashMap<>();
+		for (EObject object : objects) {
+			Object key = findKey(object);
+			ClassDescriptor descriptor = server.getDescriptorForAlias(object.eClass().getName());
+			if (key instanceof Object[]) {
+				throw new UnsupportedOperationException(Options.OPTION_DELETE_CLEAR_REFERENCES
+						+ " is not served for the composite key of " + object.eClass().getName());
+			}
+			if (nonNull(key) && nonNull(descriptor)) {
+				keys.computeIfAbsent(descriptor, k -> new ArrayList<>()).add(key);
+			}
+		}
+		return keys;
+	}
+
+	private static boolean refersTo(ForeignReferenceMapping mapping, ClassDescriptor target) {
+		ClassDescriptor referenced = mapping.getReferenceDescriptor();
+		return nonNull(referenced) && referenced.getJavaClass().isAssignableFrom(target.getJavaClass());
+	}
+
+	private static boolean isRequired(ClassDescriptor holder, OneToOneMapping mapping, EClass anyOfTheModel) {
+		if (!(anyOfTheModel.getEPackage().getEClassifier(holder.getAlias()) instanceof EClass holderClass)) {
+			return false;
+		}
+		return holderClass.getEStructuralFeature(mapping.getAttributeName()) instanceof EReference reference
+				&& reference.isRequired();
+	}
+
+	private static String placeholders(int count) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 1; i <= count; i++) {
+			builder.append(i > 1 ? ", ?" : "?").append(i);
+		}
+		return builder.toString();
+	}
+
+	private static void bind(BiConsumer<Integer, Object> parameter, List<Object> values) {
+		for (int i = 0; i < values.size(); i++) {
+			parameter.accept(i + 1, values.get(i));
+		}
+	}
+
+	private static <T> List<List<T>> chunked(List<T> values, int size) {
+		if (values.size() <= size) {
+			return List.of(values);
+		}
+		List<List<T>> chunks = new ArrayList<>();
+		for (int from = 0; from < values.size(); from += size) {
+			chunks.add(values.subList(from, Math.min(values.size(), from + size)));
+		}
+		return chunks;
+	}
+
+	/**
+	 * A delete that clears references refused by a required one, on the command path, where it
+	 * surfaces from inside the match loop (issue #347) — classified like a foreign-key refusal.
+	 */
+	private static final class RequiredReferenceException extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		RequiredReferenceException(String message) {
+			super(message);
+		}
+	}
+
+	/** Drops the rows of the descriptors whose references were cleared from the shared cache. */
+	private static void evictCleared(Server server, Set<ClassDescriptor> cleared) {
+		if (isNull(server)) {
+			return;
+		}
+		for (ClassDescriptor descriptor : cleared) {
+			ClassDescriptor root = descriptor.hasInheritance()
+					? descriptor.getInheritancePolicy().getRootParentDescriptor()
+					: descriptor;
+			server.getIdentityMapAccessor().initializeIdentityMap(root.getJavaClass());
+		}
+	}
+
+	/** After a command cleared references match by match: every descriptor that can hold one. */
+	private static void evictAllReferring(Server server) {
+		if (isNull(server)) {
+			return;
+		}
+		Set<ClassDescriptor> referring = new HashSet<>();
+		for (ClassDescriptor descriptor : server.getDescriptors().values()) {
+			for (DatabaseMapping mapping : descriptor.getMappings()) {
+				if (mapping instanceof OneToOneMapping || mapping instanceof ManyToManyMapping) {
+					referring.add(descriptor);
+				}
+			}
+		}
+		evictCleared(server, referring);
 	}
 
 	/**
@@ -1477,7 +1703,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * transactions or is not a JPA target.
 	 */
 	private static final StoreCapabilities STORE_CAPABILITIES = StoreCapabilitiesBuilder.create()
-			.support(StoreFeature.TRANSACTION_BRACKET)
+			.support(StoreFeature.TRANSACTION_BRACKET, StoreFeature.DELETE_CLEAR_REFERENCES)
 			.build();
 
 	@Override
@@ -1696,10 +1922,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			throw new IOException("Delete selector rejected: " + e.getMessage(), e);
 		}
 		int chunkSize = Options.getWriteChunkSize(options);
+		boolean clearReferences = clearReferences(options);
 		if (nonNull(activeTransaction)) {
 			try {
 				// inside a bracket the EntityManager is the caller's; flush, never clear
-				return deleteCore(plan, activeTransaction.em, chunkSize, false);
+				return deleteCore(plan, activeTransaction.em, chunkSize, false,
+						clearReferences ? serverOf(activeTransaction.lease) : null);
 			} catch (QueryException | RuntimeException e) {
 				getErrors().add(PersistenceDiagnostic.error(refusalCode(e), DIAGNOSTIC_SOURCE,
 						"Delete failed: " + e.getMessage(), getURI(), e));
@@ -1709,8 +1937,12 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
-				long deleted = deleteCore(plan, em, chunkSize, true);
+				Server server = serverOf(lease);
+				long deleted = deleteCore(plan, em, chunkSize, true, clearReferences ? server : null);
 				em.getTransaction().commit();
+				if (clearReferences) {
+					evictAllReferring(server);
+				}
 				return deleted;
 			} catch (QueryException | RuntimeException e) {
 				if (em.getTransaction().isActive()) {
@@ -1732,9 +1964,22 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * {@code getResultList()} materialised every match, so a selector over a large table ran
 	 * out of heap before it could commit.
 	 */
-	private long deleteCore(JpaQueryPlan plan, EntityManager em, int chunkSize, boolean mayClear)
-			throws QueryException {
-		return forEachMatch(plan, em, chunkSize, mayClear, eObject -> removeChildrenFirst(em, eObject));
+	private long deleteCore(JpaQueryPlan plan, EntityManager em, int chunkSize, boolean mayClear,
+			Server clearReferencesWith) throws QueryException {
+		return forEachMatch(plan, em, chunkSize, mayClear, eObject -> {
+			if (nonNull(clearReferencesWith)) {
+				// per match, as the removal is (issue #347); the refusal a required reference
+				// raises rolls the whole command back
+				List<EObject> one = List.of(eObject);
+				String required = findRequiredReference(em, clearReferencesWith, one);
+				if (nonNull(required)) {
+					throw new RequiredReferenceException("Cannot delete " + eObject.eClass().getName() + " '"
+							+ EcoreUtil.getID(eObject) + "': the required reference " + required + " points at it");
+				}
+				clearInboundReferences(em, clearReferencesWith, one, Integer.MAX_VALUE);
+			}
+			removeChildrenFirst(em, eObject);
+		});
 	}
 
 	/** Update = selector + ChangeSet template per match (concept §14, patch-apply engine §18.1). */
@@ -2033,6 +2278,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private static int refusalCode(Throwable failure) {
 		for (Throwable current = failure; nonNull(current); current = current.getCause()) {
+			if (current instanceof RequiredReferenceException) {
+				return PersistenceDiagnostic.CODE_REFERENTIAL_INTEGRITY;
+			}
 			if (current instanceof SQLException sql) {
 				String state = sql.getSQLState();
 				if (nonNull(state) && state.startsWith("23")) {
