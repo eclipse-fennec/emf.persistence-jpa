@@ -23,6 +23,8 @@ import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.persistence.eclipselink.copying.ECopier;
 import org.eclipse.fennec.persistence.eclipselink.mappings.AuthoritativeFill;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EFeatureAccessor;
+import org.eclipse.fennec.persistence.helper.EMFHelper;
 import org.eclipse.persistence.exceptions.DatabaseException;
 import org.eclipse.persistence.internal.queries.JoinedAttributeManager;
 import org.eclipse.persistence.internal.sessions.AbstractRecord;
@@ -50,6 +52,8 @@ public class EObjectBuilder extends ObjectBuilder {
 
 	/** serialVersionUID */
 	private static final long serialVersionUID = 1L;
+	/** The encoded containment mappings (issue #363), see {@link #getContainedObjectMappings()}. */
+	private transient volatile List<DatabaseMapping> containedObjectMappings;
 
 	/**
 	 * Creates a new instance.
@@ -106,7 +110,16 @@ public class EObjectBuilder extends ObjectBuilder {
 			// eOpposite would wire the backup into live objects — hence the raw,
 			// inverse-free writes. Relation-table collections (AP-47) are excluded here:
 			// the mapping loop below snapshots them through their indirection policy.
-			snapshotReferencesInto(eClone, backup, transparentAttributeNames());
+			// An encoded containment column (issue #363) is left out here and backed up through
+			// its mapping below instead: a shared child would compare as unchanged after an
+			// in-place edit, because the column value is computed from the child.
+			Set<String> snapshotted = transparentAttributeNames();
+			List<DatabaseMapping> containedObjects = getContainedObjectMappings();
+			containedObjects.forEach(mapping -> snapshotted.add(mapping.getAttributeName()));
+			snapshotReferencesInto(eClone, backup, snapshotted);
+			for (DatabaseMapping mapping : containedObjects) {
+				mapping.buildBackupClone(clone, backup, unitOfWork);
+			}
 			// ECopier.copy only covers attributes and containments — cross references
 			// stay empty in the backup. For relation-table collections (AP-47) an empty
 			// backup makes commit's change comparison treat every element as newly
@@ -140,6 +153,21 @@ public class EObjectBuilder extends ObjectBuilder {
 		return new DynamicEObjectImpl(clone.eClass());
 	}
 
+	/**
+	 * The mappings that store a containment child encoded in a column of its parent (issue
+	 * #363), resolved once — the descriptor's mappings are fixed by the time objects are cloned.
+	 */
+	private List<DatabaseMapping> getContainedObjectMappings() {
+		List<DatabaseMapping> result = containedObjectMappings;
+		if (result == null) {
+			result = this.descriptor.getMappings().stream()
+					.filter(EFeatureAccessor::isContainedObjectMapping)
+					.toList();
+			containedObjectMappings = result;
+		}
+		return result;
+	}
+
 	/** The attribute names whose backup is built through their transparent indirection. */
 	private Set<String> transparentAttributeNames() {
 		Set<String> names = new HashSet<>();
@@ -161,7 +189,7 @@ public class EObjectBuilder extends ObjectBuilder {
 	private static void snapshotReferencesInto(EObject clone, EObject backup,
 			Set<String> handledByIndirection) {
 		for (EReference ref : clone.eClass().getEAllReferences()) {
-			if (ref.isDerived() || ref.isTransient() || !ref.isChangeable()
+			if (!EMFHelper.isPersisted(ref) || !ref.isChangeable()
 					|| handledByIndirection.contains(ref.getName())) {
 				continue;
 			}
@@ -195,6 +223,10 @@ public class EObjectBuilder extends ObjectBuilder {
 		if (target instanceof EObject teo && source instanceof EObject seo) {
 			if (!isTargetCloneOfOriginal) {
 				new ECopier(teo, null).copy(seo);
+				// the encoded containment columns (issue #363), which the copier does not cover
+				for (DatabaseMapping mapping : getContainedObjectMappings()) {
+					mapping.mergeIntoObject(target, isUnInitialized, source, mergeManager, targetSession);
+				}
 			}
 		}
 		// Merge foreign reference mappings via EclipseLink's standard logic
@@ -230,6 +262,10 @@ public class EObjectBuilder extends ObjectBuilder {
 			AbstractSession cloningSession) {
 		if (clone instanceof EObject teo && original instanceof EObject seo) {
 			new ECopier(teo, null).copy(seo);
+			// the encoded containment columns (issue #363): neither copied nor a relationship
+			for (DatabaseMapping mapping : getContainedObjectMappings()) {
+				mapping.buildClone(original, cacheKey, clone, refreshCascade, cloningSession);
+			}
 			List<DatabaseMapping> mappings = getRelationshipMappings();
 			int size = mappings.size();
 			for (int index = 0; index < size; index++) {

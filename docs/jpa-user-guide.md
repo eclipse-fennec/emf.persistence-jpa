@@ -221,6 +221,26 @@ The generator walks the EClasses through a processor chain and emits:
 | many-valued `EAttribute` | `ElementCollection` | A collection table |
 | single-valued `EReference` | `OneToOne` (or `ManyToOne` for the single side of a bidirectional pair) | FK column |
 | many-valued `EReference` | `OneToMany` / `ManyToMany` | FK in the target table or a join table |
+| containment `EReference` to a class outside the unit | `Basic` + `Lob`, converter `containedObject(s)` | One CLOB column holding the child as XMI — see [A containment child from outside the unit](#a-containment-child-from-outside-the-unit) |
+
+### Which features are stored
+
+The generator maps the persisted form the model itself declares — exactly what XMI writes
+(issue #363). `transient` takes a feature out; nothing else does:
+
+| Feature | Mapped? |
+|---|---|
+| plain feature | yes |
+| `transient` (derived or not) | no |
+| `derived` and/or `volatile`, **not** transient, changeable | **yes** |
+| `derived` and/or `volatile`, not changeable | no — a computed value could never be read back |
+
+The third row is where a model keeps state behind a computed view. The GeoJSON model
+(`org.geojson.model`) stores a geometry's coordinates in the volatile, derived `data`
+attribute and exposes them as the transient `coordinates` objects; the column is `data`.
+The idiom for a purely computed feature — `derived volatile transient`, as the
+[query-backed derived references](unified-persistence/query-derived-references.md) are — is
+not mapped. The MongoDB backend applies the same rule.
 
 ### Id handling
 
@@ -304,6 +324,50 @@ The EMF reference kind drives both cascade and fetch semantics:
 
 The proxy contract for lazy references (single- and many-valued) is described
 in [How references are loaded](getting-started.md#how-references-are-loaded-lazy-by-default).
+
+### A containment child from outside the unit
+
+A unit is derived from the classes of one package (or a configured subset). A containment
+child whose class is not among them — typically from another package, like a GeoJSON
+`Geometry` under a `Shape` of your own model — has no table to go to. It is stored as **one
+value of its parent** instead: a CLOB column named after the reference, holding the child's
+subtree as XMI (issue #363).
+
+```java
+EObject shape = EcoreUtil.create(shapeClass);    // your package
+Point point = GeoJsonFactory.eINSTANCE.createPoint();
+point.setCoordinates(coordinates);
+shape.eSet(geometry, point);                       // containment into org.geojson.model
+
+resource.getContents().add(shape);
+resource.save(null);                               // SHAPE.GEOMETRY holds the Point as XMI
+```
+
+What this gives you:
+
+- **No foreign package in the unit, no key for the child.** The GeoJSON classes need no table,
+  no id and no inheritance mapping (their multiple inheritance could not be mapped anyway).
+- **The model's persisted form.** XMI writes every feature that is not transient, so the
+  geometry keeps its coordinates (`data`) whatever its type. A cross-reference out of the
+  subtree is written as an absolute `href` and reads back as a proxy.
+- **Both cardinalities.** A many-valued reference stores its whole list in the one column
+  (converter `containedObjects`); no child reads back as `null` or an empty list.
+- **Updates by value.** Replacing the child and changing it in place are both written: the
+  column is compared, not the child's identity.
+
+What it does not give you:
+
+- **No query into the child.** The column is an atomic value — a predicate on
+  `geometry.…` has nothing to address and the query fails with an `IOException` rather
+  than answering. `geometry` itself can be tested for `null`.
+- **Subtypes from a third package** decode only if that package is in the global
+  `EPackage.Registry`; the reference's own package and those of its super types are always
+  found.
+
+A child whose class *is* part of the unit keeps its own table, as before. To store such a
+child in another format — GeoJSON text instead of XMI, say — register a converter and name it
+in the `Convert` of the reference's `Basic` through an `EORMMappingCustomizer` or a
+hand-written eorm.
 
 ### Cross-document containment, and its one limitation
 

@@ -40,6 +40,7 @@ import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.eorm.InheritanceType;
 import org.eclipse.fennec.persistence.eorm.Version;
+import org.eclipse.fennec.persistence.helper.EMFHelper;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
@@ -189,9 +190,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		List<EReference> opposites = new ArrayList<>(context.getOppositeReferences());
 		opposites.
 		stream().
-		filter(not(EStructuralFeature::isTransient)).
-		filter(not(EStructuralFeature::isDerived)).
-		filter(not(EStructuralFeature::isVolatile)).
+		filter(EMFHelper::isPersisted).
 		forEach(this::createOppositeMapping);
 	}
 
@@ -206,9 +205,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		EClass eClass = (EClass) entity.getClass_();
 		List<EAttribute> attributes = getEffectiveAttributes(eClass).
 				stream().
-				filter(not(EStructuralFeature::isTransient)).
-				filter(not(EStructuralFeature::isDerived)).
-				filter(not(EStructuralFeature::isVolatile)).
+				filter(EMFHelper::isPersisted).
 				toList();
 		context.setCurrentEntity(entity);
 		try {
@@ -242,6 +239,8 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	 * - One-To-One / One-to-Many: One Person Has Many Skills, a Skill is not reused between Person(s)
 	 * 		- Unidirectional: A Person can directly reference Skills via its Set
 	 * - Many-To-One or Many-To-Many is not possible in containments, because of the parent-child relation.
+	 * - A child whose class is not part of the mapping at all — from another package, typically — has no
+	 *   table to go to; it is stored encoded in a column of its parent instead (issue #363).
 	 * @param entity the {@link Entity}
 	 */
 	private void mapContainmentReferences(Entity entity) {
@@ -250,9 +249,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		// only containment references
 		List<EReference> references = getEffectiveReferences(eClass).
 				stream().
-				filter(not(EStructuralFeature::isTransient)).
-				filter(not(EStructuralFeature::isDerived)).
-				filter(not(EStructuralFeature::isVolatile)).
+				filter(EMFHelper::isPersisted).
 				filter(EReference::isContainment).
 				toList();
 		context.setCurrentEntity(entity);
@@ -261,13 +258,21 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 			references.
 			stream().
 			filter(not(EStructuralFeature::isMany)).
+			filter(this::isTargetMapped).
 			map(this::createO2OProcessor).
 			forEach(Processor::process);
 			// map and set one to many containment references unidirectional
 			references.
 			stream().
 			filter(EStructuralFeature::isMany).
+			filter(this::isTargetMapped).
 			map(this::createO2MProcessor).
+			forEach(Processor::process);
+			// a child outside the mapping travels as an encoded value of its parent
+			references.
+			stream().
+			filter(not(this::isTargetMapped)).
+			map(this::createContainedObjectProcessor).
 			forEach(Processor::process);
 		} finally {
 			context.setCurrentEntity(null);
@@ -287,9 +292,7 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 		// only non-containment references
 		List<EReference> references = getEffectiveReferences(eClass).
 				stream().
-				filter(not(EStructuralFeature::isTransient)).
-				filter(not(EStructuralFeature::isDerived)).
-				filter(not(EStructuralFeature::isVolatile)).
+				filter(EMFHelper::isPersisted).
 				filter(not(EReference::isContainment)).
 				toList();
 		context.setCurrentEntity(entity);
@@ -433,6 +436,18 @@ public class MappingProcessor extends ProcessorImpl<MappingContext, EntityMappin
 	
 	private ManyToOneProcessor createM2OProcessor(EReference reference) {
 		return createProcessor(reference, ManyToOneProcessor.class);
+	}
+
+	private ContainedObjectProcessor createContainedObjectProcessor(EReference reference) {
+		return createProcessor(reference, ContainedObjectProcessor.class);
+	}
+
+	/**
+	 * Whether the reference's target class is part of this mapping, as an entity or a mapped
+	 * superclass. A containment child of any other class cannot become a row (issue #363).
+	 */
+	private boolean isTargetMapped(EReference reference) {
+		return context.getAllEClasses().contains(reference.getEReferenceType());
 	}
 
 	private <P extends ProcessorImpl<MappingContext, T, S>, T extends ENamedBase, S extends EObject> P createProcessor(S source, Class<P> processorType) {

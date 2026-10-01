@@ -48,6 +48,7 @@ import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
+import org.eclipse.fennec.persistence.helper.EMFHelper;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.api.Hit;
 import org.eclipse.fennec.persistence.query.api.QueryProcessor;
@@ -382,7 +383,7 @@ public abstract class AbstractRepository implements Repository {
 	 */
 	private static void copyState(EObject fresh, EObject target) {
 		for (EStructuralFeature feature : target.eClass().getEAllStructuralFeatures()) {
-			if (feature.isDerived() || feature.isTransient() || !feature.isChangeable()) {
+			if (!EMFHelper.isPersisted(feature) || !feature.isChangeable()) {
 				continue;
 			}
 			if (feature instanceof EReference reference && reference.isContainer()) {
@@ -593,8 +594,8 @@ public abstract class AbstractRepository implements Repository {
 		}
 		for (EObject object : tree) {
 			for (EReference reference : object.eClass().getEAllReferences()) {
-				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
-						|| reference.isDerived() || !object.eIsSet(reference)) {
+				if (reference.isContainment() || reference.isContainer()
+						|| !EMFHelper.isPersisted(reference) || !object.eIsSet(reference)) {
 					continue;
 				}
 				Object value = object.eGet(reference, false);

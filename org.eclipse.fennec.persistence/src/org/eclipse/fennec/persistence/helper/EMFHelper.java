@@ -23,6 +23,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.URIConverter;
 
@@ -32,6 +33,28 @@ import org.eclipse.emf.ecore.resource.URIConverter;
  * @since 15.02.2023
  */
 public class EMFHelper {
+
+	/**
+	 * Whether a store keeps the feature: the persisted form EMF itself declares, which is what
+	 * XMI writes (issue #363). {@code transient} alone takes a feature out of it. A
+	 * {@code derived} or {@code volatile} feature that is not transient belongs to it like any
+	 * other: a model may compute its in-memory view from it, but marks it as the form to store
+	 * by leaving it non-transient — the GeoJSON model keeps its coordinates exactly that way, in
+	 * the volatile {@code data} attribute beside a transient object view. Such a feature must
+	 * also be changeable, or a value written could never be read back.
+	 * <p>
+	 * A plain feature that is not changeable stays persisted, as it always was: nothing
+	 * computes it, so the stored value is the only one there is.
+	 *
+	 * @param feature the feature, must not be {@code null}
+	 * @return {@code true} if a store writes and reads the feature
+	 */
+	public static boolean isPersisted(EStructuralFeature feature) {
+		if (feature.isTransient()) {
+			return false;
+		}
+		return feature.isChangeable() || !(feature.isDerived() || feature.isVolatile());
+	}
 
 
 	/**

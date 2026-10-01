@@ -97,6 +97,7 @@ import org.eclipse.fennec.persistence.capabilities.StoreCapabilitiesBuilder;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
+import org.eclipse.fennec.persistence.helper.EMFHelper;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
 import org.eclipse.fennec.persistence.mongo.query.BsonValues;
@@ -262,10 +263,15 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		// DBRefs and demands a `$id` beside it, and every root is saved with a
 		// ReplaceOneModel, which is exactly the write the server validates. One plane for
 		// both directions, so decode reads the key encode wrote.
+		//
+		// The persisted form rides it too (issue #363): a derived or volatile feature that is not
+		// transient is stored, which the codec does only when told so per feature.
 		super(uri, metadataService, ConfigurationResolver.defaults().toBuilder()
 				.resourceProperties(Map.of(
 						ConfigProperty.ECLASS_CONFIG.getKey(), compositeIdConfigs,
-						ConfigProperty.REF_KEY.getKey(), MongoPersistenceConstants.REF_FIELD))
+						ConfigProperty.REF_KEY.getKey(), MongoPersistenceConstants.REF_FIELD,
+						ConfigProperty.EATTRIBUTE_CONFIG.getKey(), new PersistedFormConfig<>(EAttribute.class),
+						ConfigProperty.EREFERENCE_CONFIG.getKey(), new PersistedFormConfig<>(EReference.class)))
 				.build(), valueRegistry, null, null);
 		requireNonNull(database, "MongoDatabase is required");
 		this.database = database;
@@ -446,8 +452,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		for (EObject object : tree) {
 			for (EReference reference : object.eClass().getEAllReferences()) {
-				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
-						|| reference.isDerived() || !object.eIsSet(reference)) {
+				if (reference.isContainment() || reference.isContainer()
+						|| !EMFHelper.isPersisted(reference) || !object.eIsSet(reference)) {
 					continue;
 				}
 				Object value = object.eGet(reference, false);
@@ -854,7 +860,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				continue;
 			}
 			for (EReference reference : candidate.getEAllReferences()) {
-				if (reference.isContainment() || reference.isDerived() || reference.isTransient()
+				if (reference.isContainment() || !EMFHelper.isPersisted(reference)
 						|| isPulledOnDelete(reference)
 						|| !reference.getEReferenceType().isSuperTypeOf(targetType)) {
 					continue;
@@ -1748,8 +1754,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		for (EClass candidate : knownClasses(targetType)) {
 			for (EReference reference : candidate.getEReferences()) {
-				if (!reference.isContainment() && !reference.isContainer() && !reference.isDerived()
-						&& !reference.isTransient() && reference.getEReferenceType().isSuperTypeOf(targetType)) {
+				if (!reference.isContainment() && !reference.isContainer() && EMFHelper.isPersisted(reference)
+						&& reference.getEReferenceType().isSuperTypeOf(targetType)) {
 					references.add(reference);
 				}
 			}
@@ -1768,7 +1774,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private static boolean isPulledOnDelete(EReference reference) {
 		EReference opposite = reference.getEOpposite();
 		return reference.isMany() && nonNull(opposite) && !reference.isContainment() && !reference.isContainer()
-				&& !opposite.isContainment() && !reference.isTransient() && !reference.isDerived();
+				&& !opposite.isContainment() && EMFHelper.isPersisted(reference);
 	}
 
 	/**
@@ -2192,7 +2198,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 */
 	private void collectOwnedDocuments(EObject object, Map<String, Set<BsonValue>> owned) {
 		for (EReference ref : object.eClass().getEAllReferences()) {
-			if (!ref.isContainment() || ref.isDerived() || ref.isTransient()) {
+			if (!ref.isContainment() || !EMFHelper.isPersisted(ref)) {
 				continue;
 			}
 			Object raw = ((InternalEObject) object).eGet(ref, false);

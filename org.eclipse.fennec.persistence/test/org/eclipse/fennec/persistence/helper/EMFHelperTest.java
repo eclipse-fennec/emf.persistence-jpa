@@ -18,9 +18,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EcoreFactory;
+import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.URIConverter;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -31,6 +33,55 @@ import org.junit.jupiter.api.Test;
  * Tests for {@link EMFHelper}
  */
 public class EMFHelperTest {
+
+	/**
+	 * The persisted form (issue #363): what XMI writes. Transient alone takes a feature out; a
+	 * derived or volatile one stays in when it can be read back.
+	 */
+	@Nested
+	class IsPersistedTests {
+
+		private EAttribute attribute(boolean isTransient, boolean derived, boolean isVolatile, boolean changeable) {
+			EAttribute attribute = EcoreFactory.eINSTANCE.createEAttribute();
+			attribute.setName("a");
+			attribute.setEType(EcorePackage.Literals.ESTRING);
+			attribute.setTransient(isTransient);
+			attribute.setDerived(derived);
+			attribute.setVolatile(isVolatile);
+			attribute.setChangeable(changeable);
+			return attribute;
+		}
+
+		@Test
+		void aPlainFeatureIsPersisted() {
+			assertThat(EMFHelper.isPersisted(attribute(false, false, false, true))).isTrue();
+		}
+
+		@Test
+		void aTransientFeatureIsNot() {
+			assertThat(EMFHelper.isPersisted(attribute(true, false, false, true))).isFalse();
+			assertThat(EMFHelper.isPersisted(attribute(true, true, true, true))).isFalse();
+		}
+
+		@Test
+		void aDerivedOrVolatileFeatureThatIsNotTransientIs() {
+			// the GeoJSON model keeps its coordinates exactly so: volatile derived data
+			assertThat(EMFHelper.isPersisted(attribute(false, true, true, true))).isTrue();
+			assertThat(EMFHelper.isPersisted(attribute(false, false, true, true))).isTrue();
+			assertThat(EMFHelper.isPersisted(attribute(false, true, false, true))).isTrue();
+		}
+
+		@Test
+		void aComputedFeatureThatCannotBeSetIsNot() {
+			assertThat(EMFHelper.isPersisted(attribute(false, true, true, false))).isFalse();
+			assertThat(EMFHelper.isPersisted(attribute(false, false, true, false))).isFalse();
+		}
+
+		@Test
+		void aPlainUnchangeableFeatureStaysPersisted() {
+			assertThat(EMFHelper.isPersisted(attribute(false, false, false, false))).isTrue();
+		}
+	}
 
 	@Nested
 	class GetResponseTests {

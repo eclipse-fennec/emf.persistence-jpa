@@ -79,6 +79,31 @@ public class EFeatureAccessor extends ValuesAccessor {
 	}
 
 	/**
+	 * Whether the mapping stores a containment child as one encoded column of its parent
+	 * (issue #363): a direct mapping whose feature is a containment reference. Such a column is
+	 * neither an attribute EMF copies nor a relationship EclipseLink cascades, so the paths that
+	 * clone, back up and merge objects must carry it through the mapping itself — and the value
+	 * they carry is always a fresh decode, never the child instance, which containment would
+	 * move out of its owner.
+	 *
+	 * @param mapping the mapping
+	 * @return {@code true} for an encoded containment column
+	 */
+	public static boolean isContainedObjectMapping(DatabaseMapping mapping) {
+		return mapping.isDirectToFieldMapping()
+				&& mapping.getAttributeAccessor() instanceof EFeatureAccessor accessor
+				&& accessor.feature instanceof EReference reference
+				&& reference.isContainment();
+	}
+
+	/**
+	 * @return the feature this accessor reads and writes
+	 */
+	public EStructuralFeature getFeature() {
+		return feature;
+	}
+
+	/**
 	 * Preserves the pre-{@link ValuesAccessor} behavior ({@code AttributeAccessor} returned
 	 * {@code Object.class}): the mapping-classification-based refinement the superclass offers
 	 * is a deliberate follow-up, not part of the metamodel-marker change.
