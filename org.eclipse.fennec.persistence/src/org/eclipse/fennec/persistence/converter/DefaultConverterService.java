@@ -47,6 +47,9 @@ public class DefaultConverterService implements ConverterService {
 		converters.add(new BigDecimalConverter());
 		converters.add(new BigIntegerConverter());
 		converters.add(new NonContainmentConverter());
+		// addressed by name only (issue #363) — they claim no type, so their place in the list is moot
+		converters.add(new ContainedObjectConverter(false));
+		converters.add(new ContainedObjectConverter(true));
 	}
 
 	/*

@@ -175,11 +175,21 @@ public class DefaultConverterServiceTest {
 			assertThat(service.converters.get(4)).isInstanceOf(BigDecimalConverter.class);
 			assertThat(service.converters.get(5)).isInstanceOf(BigIntegerConverter.class);
 			assertThat(service.converters.get(6)).isInstanceOf(NonContainmentConverter.class);
+			assertThat(service.converters.get(7)).isInstanceOf(ContainedObjectConverter.class);
+			assertThat(service.converters.get(8)).isInstanceOf(ContainedObjectConverter.class);
+		}
+
+		@Test
+		void testContainedObjectConvertersAreFoundByNameOnly() {
+			// issue #363: addressed by the eorm mapping, never by type
+			assertThat(service.getConverter(ContainedObjectConverter.NAME)).isInstanceOf(ContainedObjectConverter.class);
+			assertThat(service.getConverter(ContainedObjectConverter.NAME_MANY)).isInstanceOf(ContainedObjectConverter.class);
+			assertThat(service.getConverter(EcorePackage.Literals.EOBJECT) instanceof ContainedObjectConverter).isFalse();
 		}
 
 		@Test
 		void testTotalDefaultConverterCount() {
-			assertThat(service.converters).hasSize(7);
+			assertThat(service.converters).hasSize(9);
 		}
 	}
 

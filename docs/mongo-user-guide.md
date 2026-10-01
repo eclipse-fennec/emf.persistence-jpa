@@ -719,6 +719,13 @@ What this means for you:
   `MetadataService` from `org.eclipse.fennec.emf.osgi.metadata` — it picks up
   `EPackage` services by itself; in plain Java, call
   `MetadataWhiteboard.registerPackage`).
+- **The model's persisted form is stored.** A `derived` or `volatile` feature that is
+  not `transient` and is changeable is written and read like any other (issue #363) —
+  the rule XMI follows, and the one the JPA backend applies too. The codec skips such
+  features by default, so the resource forces them per feature on its resource plane.
+  This is what keeps a GeoJSON geometry's coordinates: `org.geojson.model` stores them in
+  the volatile `data` attribute next to the transient `coordinates` object view, and the
+  document carries `data`.
 - **Custom value handling** is possible via an optional
   `CodecValueRegistry` passed to the factory (each resource gets its own
   copy).

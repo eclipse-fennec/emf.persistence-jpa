@@ -85,6 +85,7 @@ import org.eclipse.fennec.persistence.eclipselink.descriptors.EClassDescriptor;
 import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPolicy;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
+import org.eclipse.fennec.persistence.eclipselink.mappings.EFeatureAccessor;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueries;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryPlan;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaRepresentativePlan;
@@ -92,6 +93,7 @@ import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit.Lease;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
+import org.eclipse.fennec.persistence.helper.EMFHelper;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
@@ -439,8 +441,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		for (EObject object : tree) {
 			for (EReference reference : object.eClass().getEAllReferences()) {
-				if (reference.isContainment() || reference.isContainer() || reference.isTransient()
-						|| reference.isDerived() || !object.eIsSet(reference)) {
+				if (reference.isContainment() || reference.isContainer()
+						|| !EMFHelper.isPersisted(reference) || !object.eIsSet(reference)) {
 					continue;
 				}
 				Object value = object.eGet(reference, false);
@@ -525,6 +527,19 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		return nonNull(descriptorOfInstance(server, object));
 	}
 
+	/**
+	 * Whether the owner's mapping stores the containment child encoded in a column of the owner
+	 * (issue #363) rather than as a row of its own.
+	 */
+	private static boolean isContainedObject(Server server, EObject owner, EReference reference) {
+		ClassDescriptor descriptor = descriptorOfInstance(server, owner);
+		if (isNull(descriptor)) {
+			descriptor = server.getDescriptorForAlias(owner.eClass().getName());
+		}
+		DatabaseMapping mapping = isNull(descriptor) ? null : descriptor.getMappingForAttributeName(reference.getName());
+		return nonNull(mapping) && EFeatureAccessor.isContainedObjectMapping(mapping);
+	}
+
 	private static EClass hierarchyRoot(EClass eClass) {
 		EClass root = eClass;
 		while (!root.getESuperTypes().isEmpty()) {
@@ -536,12 +551,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	private void saveWithLease(Lease lease, Map<?, ?> options) throws IOException {
 		Server server = serverOf(lease);
 		// Pre-build the entity factory function once for all objects (avoids lambda allocation per object)
-		Function<EObject, EObject> entityFactory = nonNull(server)
-				? src -> {
-					ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
-					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
-				}
-				: null;
+		Function<EObject, EObject> entityFactory = entityFactory(server);
 		try (EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			applyCacheNewObjectsOption(em, options);
@@ -719,7 +729,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return;
 		}
 		for (EReference ref : source.eClass().getEAllReferences()) {
-			if (!ref.isContainment() || !ref.isChangeable() || ref.isDerived() || ref.isTransient()) {
+			if (!ref.isContainment() || !ref.isChangeable() || !EMFHelper.isPersisted(ref)) {
 				continue;
 			}
 			if (ref.isMany()) {
@@ -788,7 +798,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return;
 		}
 		for (EReference ref : source.eClass().getEAllReferences()) {
-			if (!ref.isChangeable() || ref.isDerived() || ref.isTransient() || ref.isContainment()) {
+			if (!ref.isChangeable() || !EMFHelper.isPersisted(ref) || ref.isContainment()) {
 				continue;
 			}
 			ClassDescriptor refDescriptor = server.getDescriptorForAlias(ref.getEReferenceType().getName());
@@ -967,7 +977,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private static void copyStateInto(EObject source, EObject target, Server server, EntityManager em) {
 		for (EAttribute attr : source.eClass().getEAllAttributes()) {
-			if (!attr.isChangeable() || attr.isDerived() || attr.isTransient()) {
+			// the persisted form (issue #363): a derived or volatile attribute that is not transient is
+			// mapped, so an update must carry it as well
+			if (!attr.isChangeable() || !EMFHelper.isPersisted(attr)) {
 				continue;
 			}
 			Object srcValue = source.eGet(attr);
@@ -977,7 +989,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 		}
 		for (EReference ref : source.eClass().getEAllReferences()) {
-			if (!ref.isChangeable() || ref.isDerived() || ref.isTransient()) {
+			if (!ref.isChangeable() || !EMFHelper.isPersisted(ref)) {
+				continue;
+			}
+			if (ref.isContainment() && nonNull(server) && isContainedObject(server, target, ref)) {
+				// an encoded child (issue #363) has no identity to be matched by: the source's
+				// value replaces it as a whole, as copies — the source keeps its own children
+				Object srcValue = ((InternalEObject) source).eGet(ref, false);
+				if (srcValue instanceof Collection<?> children) {
+					target.eSet(ref, EcoreUtil.copyAll(children));
+				} else {
+					target.eSet(ref, srcValue instanceof EObject child ? EcoreUtil.copy(child) : null);
+				}
 				continue;
 			}
 			if (ref.isMany()) {
@@ -1100,10 +1123,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		EObject target = EDynamicHelper.createInstance(descriptor);
 		ECopier copier = new ECopier(target, null);
 		copier.setCopyContainments(true);
-		copier.setCopyFunction(src -> {
-			ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
-			return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
-		});
+		copier.setCopyFunction(entityFactory(server));
 		EObject result = copier.copy(source);
 		copier.copyReferences();
 		return result;
@@ -2244,12 +2264,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		return processed;
 	}
 
-	/** The per-EClass entity factory of the save pipeline, reused by bracketed inserts. */
+	/**
+	 * The per-EClass entity factory of the save pipeline, reused by bracketed inserts. An object
+	 * whose class has no descriptor is copied as a plain EObject rather than dropped: it is a
+	 * containment child stored encoded in a column of its parent (issue #363), and the column is
+	 * read from the copy.
+	 */
 	private static Function<EObject, EObject> entityFactory(Server server) {
 		return nonNull(server)
 				? src -> {
 					ClassDescriptor desc = server.getDescriptorForAlias(src.eClass().getName());
-					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : null;
+					return nonNull(desc) ? EDynamicHelper.createInstance(desc) : EcoreUtil.create(src.eClass());
 				}
 				: null;
 	}

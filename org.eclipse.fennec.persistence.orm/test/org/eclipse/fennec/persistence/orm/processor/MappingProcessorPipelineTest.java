@@ -22,6 +22,8 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.fennec.persistence.converter.ContainedObjectConverter;
+import org.eclipse.fennec.persistence.eorm.Basic;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.junit.jupiter.api.BeforeEach;
@@ -294,20 +296,29 @@ public class MappingProcessorPipelineTest {
 		}
 	}
 
+	/**
+	 * Which derived and volatile features are mapped (issue #363): the persisted form EMF itself
+	 * declares, which is what XMI writes. The idiom for a computed feature — transient, or not
+	 * changeable — stays out; a derived or volatile feature that is neither is where the model
+	 * keeps state to be stored, as the GeoJSON model keeps its coordinates in the volatile
+	 * {@code data} attribute.
+	 */
 	@Nested
-	class DerivedVolatileFeatureTests {
+	class PersistedFormTests {
 
 		@Test
-		void testDerivedAttributeExcluded() {
-			EClass entity = createClassWithId("WithDerived");
+		void testComputedAttributeExcluded() {
+			EClass entity = createClassWithId("WithComputed");
 			addAttribute(entity, "name", EcorePackage.Literals.ESTRING);
-			EAttribute derived = addAttribute(entity, "fullName", EcorePackage.Literals.ESTRING);
-			derived.setDerived(true);
+			EAttribute computed = addAttribute(entity, "fullName", EcorePackage.Literals.ESTRING);
+			computed.setDerived(true);
+			computed.setVolatile(true);
+			computed.setTransient(true);
 
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
 
-			Entity e = findEntity(processor.getTarget(), "WithDerived");
+			Entity e = findEntity(processor.getTarget(), "WithComputed");
 			assertThat(e.getAttributes().getBasic())
 				.extracting("name")
 				.contains("name")
@@ -315,11 +326,27 @@ public class MappingProcessorPipelineTest {
 		}
 
 		@Test
-		void testVolatileAttributeExcluded() {
+		void testUnchangeableDerivedAttributeExcluded() {
+			EClass entity = createClassWithId("WithReadOnly");
+			EAttribute readOnly = addAttribute(entity, "label", EcorePackage.Literals.ESTRING);
+			readOnly.setDerived(true);
+			readOnly.setVolatile(true);
+			readOnly.setChangeable(false);
+
+			MappingProcessor processor = MappingProcessor.create(entity);
+			processor.process();
+
+			Entity e = findEntity(processor.getTarget(), "WithReadOnly");
+			assertThat(e.getAttributes().getBasic())
+				.extracting("name")
+				.doesNotContain("label");
+		}
+
+		@Test
+		void testVolatileAttributeThatIsNotTransientIsMapped() {
 			EClass entity = createClassWithId("WithVolatile");
-			addAttribute(entity, "name", EcorePackage.Literals.ESTRING);
-			EAttribute volatileAttr = addAttribute(entity, "computed", EcorePackage.Literals.ESTRING);
-			volatileAttr.setVolatile(true);
+			EAttribute data = addAttribute(entity, "data", EcorePackage.Literals.ESTRING);
+			data.setVolatile(true);
 
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
@@ -327,17 +354,15 @@ public class MappingProcessorPipelineTest {
 			Entity e = findEntity(processor.getTarget(), "WithVolatile");
 			assertThat(e.getAttributes().getBasic())
 				.extracting("name")
-				.contains("name")
-				.doesNotContain("computed");
+				.contains("data");
 		}
 
 		@Test
-		void testDerivedVolatileAttributeExcluded() {
+		void testDerivedVolatileAttributeThatIsNotTransientIsMapped() {
 			EClass entity = createClassWithId("WithBoth");
-			addAttribute(entity, "name", EcorePackage.Literals.ESTRING);
-			EAttribute derivedVolatile = addAttribute(entity, "label", EcorePackage.Literals.ESTRING);
-			derivedVolatile.setDerived(true);
-			derivedVolatile.setVolatile(true);
+			EAttribute data = addAttribute(entity, "data", EcorePackage.Literals.ESTRING);
+			data.setDerived(true);
+			data.setVolatile(true);
 
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
@@ -345,16 +370,19 @@ public class MappingProcessorPipelineTest {
 			Entity e = findEntity(processor.getTarget(), "WithBoth");
 			assertThat(e.getAttributes().getBasic())
 				.extracting("name")
-				.contains("name")
-				.doesNotContain("label");
+				.contains("data");
 		}
 
 		@Test
-		void testDerivedMultiValuedAttributeExcluded() {
+		void testDerivedMultiValuedAttribute() {
 			EClass entity = createClassWithId("WithDerivedMany");
-			EAttribute derived = addAttribute(entity, "allNames", EcorePackage.Literals.ESTRING);
-			derived.setDerived(true);
-			derived.setUpperBound(-1);
+			EAttribute computed = addAttribute(entity, "allNames", EcorePackage.Literals.ESTRING);
+			computed.setDerived(true);
+			computed.setTransient(true);
+			computed.setUpperBound(-1);
+			EAttribute stored = addAttribute(entity, "values", EcorePackage.Literals.ESTRING);
+			stored.setDerived(true);
+			stored.setUpperBound(-1);
 
 			MappingProcessor processor = MappingProcessor.create(entity);
 			processor.process();
@@ -362,15 +390,17 @@ public class MappingProcessorPipelineTest {
 			Entity e = findEntity(processor.getTarget(), "WithDerivedMany");
 			assertThat(e.getAttributes().getElementCollection())
 				.extracting("name")
+				.contains("values")
 				.doesNotContain("allNames");
 		}
 
 		@Test
-		void testDerivedContainmentReferenceExcluded() {
+		void testComputedContainmentReferenceExcluded() {
 			EClass parent = createClassWithId("Parent");
 			EClass child = createClassWithId("Child");
 			EReference ref = addReference(parent, "derivedChildren", child, true, true);
 			ref.setDerived(true);
+			ref.setTransient(true);
 
 			MappingProcessor processor = MappingProcessor.create(List.of(parent, child));
 			processor.process();
@@ -382,11 +412,12 @@ public class MappingProcessorPipelineTest {
 		}
 
 		@Test
-		void testVolatileNonContainmentReferenceExcluded() {
+		void testComputedNonContainmentReferenceExcluded() {
 			EClass a = createClassWithId("A");
 			EClass b = createClassWithId("B");
 			EReference ref = addReference(a, "volatileRef", b, false, false);
 			ref.setVolatile(true);
+			ref.setTransient(true);
 
 			MappingProcessor processor = MappingProcessor.create(List.of(a, b));
 			processor.process();
@@ -398,23 +429,91 @@ public class MappingProcessorPipelineTest {
 		}
 
 		@Test
-		void testDerivedBidirectionalReferenceExcludedFromOpposites() {
+		void testComputedBidirectionalReferenceExcludedFromOpposites() {
 			EClass parent = createClassWithId("Parent");
 			EClass child = createClassWithId("Child");
 			EReference parentToChild = addReference(parent, "children", child, true, true);
 			EReference childToParent = addReference(child, "parent", parent, false, false);
 			childToParent.setDerived(true);
+			childToParent.setChangeable(false);
 			parentToChild.setEOpposite(childToParent);
 			childToParent.setEOpposite(parentToChild);
 
 			MappingProcessor processor = MappingProcessor.create(List.of(parent, child));
 			processor.process();
 
-			// The derived opposite should not produce a ManyToOne mapping
+			// The computed opposite should not produce a ManyToOne mapping
 			Entity childEntity = findEntity(processor.getTarget(), "Child");
 			assertThat(childEntity.getAttributes().getManyToOne())
 				.extracting("name")
 				.doesNotContain("parent");
+		}
+	}
+
+	/**
+	 * A containment child whose class is not part of the mapping — from another package,
+	 * typically — is one encoded column of its parent (issue #363), not a skipped relationship.
+	 */
+	@Nested
+	class ContainedObjectTests {
+
+		@Test
+		void testChildOutsideTheMappingIsAnEncodedColumn() {
+			EClass shape = createClassWithId("Shape");
+			EClass foreign = EcoreFactory.eINSTANCE.createEClass();
+			foreign.setName("Geometry");
+			EReference single = addReference(shape, "geometry", foreign, false, true);
+			single.setLowerBound(1);
+			addReference(shape, "outlines", foreign, true, true);
+
+			MappingProcessor processor = MappingProcessor.create(shape);
+			processor.process();
+
+			Entity entity = findEntity(processor.getTarget(), "Shape");
+			assertThat(entity.getAttributes().getOneToOne()).isEmpty();
+			assertThat(entity.getAttributes().getOneToMany()).isEmpty();
+			Basic geometry = findBasic(entity, "geometry");
+			assertThat(geometry.getLob()).isNotNull();
+			assertThat(geometry.getConvert().getConverter()).isEqualTo(ContainedObjectConverter.NAME);
+			assertThat(geometry.isOptional()).isFalse();
+			assertThat(geometry.getColumn()).isNotNull();
+			Basic outlines = findBasic(entity, "outlines");
+			assertThat(outlines.getConvert().getConverter()).isEqualTo(ContainedObjectConverter.NAME_MANY);
+			assertThat(processor.getTarget().getEntity()).extracting(Entity::getName).containsExactly("Shape");
+		}
+
+		@Test
+		void testChildInsideTheMappingStaysARelationship() {
+			EClass parent = createClassWithId("Parent");
+			EClass child = createClassWithId("Child");
+			addReference(parent, "child", child, false, true);
+
+			MappingProcessor processor = MappingProcessor.create(List.of(parent, child));
+			processor.process();
+
+			Entity parentEntity = findEntity(processor.getTarget(), "Parent");
+			assertThat(parentEntity.getAttributes().getOneToOne()).extracting("name").contains("child");
+			assertThat(parentEntity.getAttributes().getBasic()).extracting("name").doesNotContain("child");
+		}
+
+		@Test
+		void testNonContainmentReferenceOutsideTheMappingIsNotEncoded() {
+			EClass a = createClassWithId("A");
+			EClass foreign = createClassWithId("Foreign");
+			addReference(a, "link", foreign, false, false);
+
+			MappingProcessor processor = MappingProcessor.create(a);
+			processor.process();
+
+			Entity entity = findEntity(processor.getTarget(), "A");
+			assertThat(entity.getAttributes().getBasic()).extracting("name").doesNotContain("link");
+		}
+
+		private Basic findBasic(Entity entity, String name) {
+			return entity.getAttributes().getBasic().stream()
+				.filter(basic -> name.equals(basic.getName()))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Basic not found: " + name));
 		}
 	}
 
