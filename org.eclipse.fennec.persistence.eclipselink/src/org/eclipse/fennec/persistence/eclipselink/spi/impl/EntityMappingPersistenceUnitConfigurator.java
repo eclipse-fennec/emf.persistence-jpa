@@ -90,6 +90,15 @@ public class EntityMappingPersistenceUnitConfigurator extends AbstractPersistenc
 						+ " last use ends, -1 = keep open until the configuration is deleted.",
 				required = false)
 		long emfIdleTimeout() default DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;
+
+		@AttributeDefinition(name = "Null-order fallback",
+				description = "Whether a null placement in an ordering (NULLS FIRST/LAST) that the"
+						+ " database cannot express natively is sorted through a CASE key, which is"
+						+ " correct but cannot use an index. false refuses such a query with a"
+						+ " Diagnostic instead. Affects MariaDB (null above every value) and"
+						+ " unrecognised databases (both placements).",
+				required = false)
+		boolean nullOrderFallback() default true;
 	}
 
 	@Activate

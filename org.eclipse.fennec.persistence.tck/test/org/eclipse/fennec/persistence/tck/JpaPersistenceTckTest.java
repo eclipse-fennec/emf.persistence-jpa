@@ -139,7 +139,7 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getPackageRegistry().put(tckPackage.getNsURI(), tckPackage);
 		resourceSet.getResourceFactoryRegistry().getProtocolToFactoryMap()
-				.put("jpa", new JPAResourceFactory(emf));
+				.put("jpa", new JPAResourceFactory(emf, null, flavor()));
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put("*", new XMIResourceFactoryImpl());
 		return resourceSet;

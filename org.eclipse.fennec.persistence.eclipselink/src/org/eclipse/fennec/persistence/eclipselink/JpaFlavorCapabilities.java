@@ -57,6 +57,12 @@ public final class JpaFlavorCapabilities {
 	public static final String BACKEND = "jpa";
 
 	/**
+	 * Service property of a unit (and of its declaration) carrying the null-order fallback
+	 * setting as a {@link Boolean} (issue #365); absent means on.
+	 */
+	public static final String NULL_ORDER_FALLBACK_PROPERTY = "persistence.nullOrderFallback";
+
+	/**
 	 * Everything the JPQL translation can express, served by every targeted database.
 	 */
 	public static final QueryCapabilities BASELINE = QueryCapabilitiesBuilder.create()
@@ -72,6 +78,9 @@ public final class JpaFlavorCapabilities {
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR,
 					QueryFeature.LOGICAL_NOT, QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT,
+					// an explicit null placement either way (issue #365): nothing where it is the
+					// database's own, NULLS FIRST/LAST where the platform has it, a CASE key else
+					QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH,
 					QueryFeature.LIMIT, QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT,
 					QueryFeature.PROJECTION, QueryFeature.PROJECTION_NESTED,
 					QueryFeature.PROJECTION_EXPRESSION, QueryFeature.GROUP_BY,
@@ -144,6 +153,43 @@ public final class JpaFlavorCapabilities {
 	}
 
 	/**
+	 * The declaration for {@code flavor} under the unit's null-order fallback setting
+	 * (issue #365). With the fallback on — the default — a null placement the database cannot
+	 * spell is rendered as a {@code CASE} key, which keeps it correct but takes the sort off
+	 * any index. With it off, such a placement is not declared and therefore refused with a
+	 * Diagnostic: on MariaDB {@code SORT_NULLS_HIGH}, on an unprobed database both.
+	 * <p>
+	 * This is configuration, not a measured gap, so it stays out of {@link #gapsOf(JpaFlavor)}.
+	 *
+	 * @param flavor the database flavor; {@code null} means {@link JpaFlavor#UNKNOWN}
+	 * @param nullOrderFallback whether the {@code CASE} key may stand in
+	 * @return the query capability declaration
+	 */
+	public static QueryCapabilities of(JpaFlavor flavor, boolean nullOrderFallback) {
+		QueryCapabilities declared = of(flavor);
+		if (nullOrderFallback) {
+			return declared;
+		}
+		return QueryCapabilitiesBuilder.from(declared).excludeAll(caseKeyPlacements(flavor)).build();
+	}
+
+	/**
+	 * @param flavor the database flavor; {@code null} means {@link JpaFlavor#UNKNOWN}
+	 * @return the null placements {@code flavor} can render only through the {@code CASE} key
+	 */
+	public static Set<QueryFeature> caseKeyPlacements(JpaFlavor flavor) {
+		JpaFlavor resolved = flavor == null ? JpaFlavor.UNKNOWN : flavor;
+		EnumSet<QueryFeature> placements = EnumSet.noneOf(QueryFeature.class);
+		if (resolved.needsNullCaseKey(true)) {
+			placements.add(QueryFeature.SORT_NULLS_LOW);
+		}
+		if (resolved.needsNullCaseKey(false)) {
+			placements.add(QueryFeature.SORT_NULLS_HIGH);
+		}
+		return Collections.unmodifiableSet(placements);
+	}
+
+	/**
 	 * @param flavor the database flavor; {@code null} means {@link JpaFlavor#UNKNOWN}
 	 * @return the features {@code flavor} does not serve, relative to {@link #BASELINE}
 	 */
@@ -161,7 +207,17 @@ public final class JpaFlavorCapabilities {
 	 * @return everything {@code flavor} declares — query, command and store (issue #172)
 	 */
 	public static PersistenceCapabilities persistenceCapabilities(JpaFlavor flavor) {
-		return PersistenceCapabilities.of(of(flavor), COMMANDS, STORE);
+		return persistenceCapabilities(flavor, true);
+	}
+
+	/**
+	 * @param flavor the database flavor; {@code null} means {@link JpaFlavor#UNKNOWN}
+	 * @param nullOrderFallback whether the {@code CASE} key may stand in, see
+	 *        {@link #of(JpaFlavor, boolean)}
+	 * @return everything {@code flavor} declares under that setting
+	 */
+	public static PersistenceCapabilities persistenceCapabilities(JpaFlavor flavor, boolean nullOrderFallback) {
+		return PersistenceCapabilities.of(of(flavor, nullOrderFallback), COMMANDS, STORE);
 	}
 
 	/**
@@ -170,8 +226,19 @@ public final class JpaFlavorCapabilities {
 	 *         or read directly (issue #172)
 	 */
 	public static CapabilityDeclaration declaration(JpaFlavor flavor) {
+		return declaration(flavor, true);
+	}
+
+	/**
+	 * @param flavor the database flavor; {@code null} means {@link JpaFlavor#UNKNOWN}
+	 * @param nullOrderFallback whether the {@code CASE} key may stand in, see
+	 *        {@link #of(JpaFlavor, boolean)}
+	 * @return the declaration of this backend and flavor under that setting
+	 */
+	public static CapabilityDeclaration declaration(JpaFlavor flavor, boolean nullOrderFallback) {
 		JpaFlavor resolved = flavor == null ? JpaFlavor.UNKNOWN : flavor;
-		return CapabilityDeclaration.of(BACKEND, resolved.id(), persistenceCapabilities(resolved));
+		return CapabilityDeclaration.of(BACKEND, resolved.id(),
+				persistenceCapabilities(resolved, nullOrderFallback));
 	}
 
 	private static Set<QueryFeature> gaps(QueryFeature... features) {

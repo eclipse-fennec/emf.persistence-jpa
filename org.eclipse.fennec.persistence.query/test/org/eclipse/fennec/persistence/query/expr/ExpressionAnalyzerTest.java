@@ -15,6 +15,8 @@ package org.eclipse.fennec.persistence.query.expr;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.util.Set;
+
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
@@ -46,11 +48,13 @@ import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.Selection;
+import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
@@ -519,6 +523,40 @@ class ExpressionAnalyzerTest {
 						.build());
 		assertThat(analysis.features()).contains(QueryFeature.SORT, QueryFeature.SORT_EXPRESSION,
 				QueryFeature.ARITHMETIC);
+	}
+
+	/**
+	 * An explicit null placement asks for the capability of its effective order (issue #365):
+	 * FIRST on ASC and LAST on DESC put null lowest, the other two highest. DEFAULT asks for
+	 * neither — and the same holds inside representatives and paged expansions.
+	 */
+	@Test
+	void nullPlacementAsksForItsEffectiveOrder() {
+		assertThat(sortFeatures(SortDirection.ASC, NullPrecedence.FIRST))
+				.contains(QueryFeature.SORT_NULLS_LOW).doesNotContain(QueryFeature.SORT_NULLS_HIGH);
+		assertThat(sortFeatures(SortDirection.DESC, NullPrecedence.LAST))
+				.contains(QueryFeature.SORT_NULLS_LOW).doesNotContain(QueryFeature.SORT_NULLS_HIGH);
+		assertThat(sortFeatures(SortDirection.ASC, NullPrecedence.LAST))
+				.contains(QueryFeature.SORT_NULLS_HIGH).doesNotContain(QueryFeature.SORT_NULLS_LOW);
+		assertThat(sortFeatures(SortDirection.DESC, NullPrecedence.FIRST))
+				.contains(QueryFeature.SORT_NULLS_HIGH).doesNotContain(QueryFeature.SORT_NULLS_LOW);
+		assertThat(sortFeatures(SortDirection.DESC, NullPrecedence.DEFAULT))
+				.contains(QueryFeature.SORT)
+				.doesNotContain(QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH);
+
+		assertThat(ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.groupBy(age).countOf("cnt")
+				.representativesOrderedBy("top", 1, SortDirection.DESC, NullPrecedence.FIRST, name)
+				.build()).features()).contains(QueryFeature.SORT_NULLS_HIGH);
+		assertThat(ExpressionAnalyzer.analyze(QueryBuilder.from(person)
+				.expand(Expands.of(addresses).orderBy(SortDirection.ASC, NullPrecedence.FIRST, street)
+						.top(1).build())
+				.build()).features()).contains(QueryFeature.SORT_NULLS_LOW);
+	}
+
+	private Set<QueryFeature> sortFeatures(SortDirection direction, NullPrecedence nulls) {
+		return ExpressionAnalyzer.analyze(QueryBuilder.from(person).orderBy(direction, nulls, age).build())
+				.features();
 	}
 
 	@Test

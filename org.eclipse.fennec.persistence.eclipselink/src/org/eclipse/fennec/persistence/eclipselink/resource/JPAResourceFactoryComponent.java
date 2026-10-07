@@ -30,6 +30,7 @@ import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.eclipse.fennec.persistence.query.QueryConstants;
@@ -240,10 +241,22 @@ public class JPAResourceFactoryComponent implements Resource.Factory {
 		if (isNull(flavor)) {
 			return bound;
 		}
+		boolean nullOrderFallback = nullOrderFallbackOf(puName);
 		if (bound instanceof JpaQueryProcessor jpa) {
-			return jpa.flavor() == flavor ? jpa : new JpaQueryProcessor(flavor);
+			return jpa.flavor() == flavor && jpa.nullOrderFallback() == nullOrderFallback ? jpa
+					: new JpaQueryProcessor(flavor, nullOrderFallback);
 		}
-		return isNull(bound) ? new JpaQueryProcessor(flavor) : bound;
+		return isNull(bound) ? new JpaQueryProcessor(flavor, nullOrderFallback) : bound;
+	}
+
+	/**
+	 * @param puName the unit name, known to the factory
+	 * @return the unit's null-order fallback setting (issue #365); on unless the unit says off
+	 */
+	private boolean nullOrderFallbackOf(String puName) {
+		ServiceReference<JPAUnit> reference = unitRefs.get(puName);
+		return isNull(reference)
+				|| !Boolean.FALSE.equals(reference.getProperty(JpaFlavorCapabilities.NULL_ORDER_FALLBACK_PROPERTY));
 	}
 
 	/**

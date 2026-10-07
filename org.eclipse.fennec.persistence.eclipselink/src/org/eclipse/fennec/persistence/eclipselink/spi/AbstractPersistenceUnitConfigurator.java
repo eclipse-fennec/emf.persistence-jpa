@@ -75,6 +75,11 @@ public abstract class AbstractPersistenceUnitConfigurator {
 	public static final String CONFIG_EMF_IDLE_TIMEOUT = "emfIdleTimeout";
 	/** Default idle timeout in seconds: close the real factory after 60s without any use. */
 	public static final long DEFAULT_EMF_IDLE_TIMEOUT_SECONDS = 60L;
+	/**
+	 * Config key (unprefixed): may a null placement the database cannot spell be sorted
+	 * through a {@code CASE} key (issue #365)? Default {@code true}; {@code false} refuses it.
+	 */
+	public static final String CONFIG_NULL_ORDER_FALLBACK = "nullOrderFallback";
 
 	private volatile ServiceRegistration<JPAUnit> unitRegistration;
 	private volatile ServiceRegistration<EntityManagerFactory> emfRegistration;
@@ -140,6 +145,7 @@ public abstract class AbstractPersistenceUnitConfigurator {
 			// driver is the only answer that cannot disagree with reality — a configured
 			// flavor could.
 			JpaFlavor flavor = JpaFlavor.detect(getDataSource());
+			boolean nullOrderFallback = readNullOrderFallback(properties);
 			getLogger().info(() -> String.format("Persistence unit '%s' runs on flavor '%s'",
 					getPersistenceUnitName(), flavor.id()));
 			if (flavor == JpaFlavor.H2) {
@@ -151,6 +157,7 @@ public abstract class AbstractPersistenceUnitConfigurator {
 			serviceProps.put("osgi.unit.version", bctx.getBundle().getVersion().toString());
 			serviceProps.put("osgi.unit.provider", PersistenceProvider.class.getName());
 			serviceProps.put(CapabilityDeclaration.FLAVOR_PROPERTY, flavor.id());
+			serviceProps.put(JpaFlavorCapabilities.NULL_ORDER_FALLBACK_PROPERTY, nullOrderFallback);
 			unitRegistration = bctx.registerService(JPAUnit.class, unit, serviceProps);
 			emfRegistration = bctx.registerService(EntityManagerFactory.class,
 					new LeasedEntityManagerFactoryFactory(unit, getLogger()), serviceProps);
@@ -160,9 +167,10 @@ public abstract class AbstractPersistenceUnitConfigurator {
 			Dictionary<String, Object> declarationProps = new Hashtable<>();
 			declarationProps.put(CapabilityDeclaration.BACKEND_PROPERTY, JpaFlavorCapabilities.BACKEND);
 			declarationProps.put(CapabilityDeclaration.FLAVOR_PROPERTY, flavor.id());
+			declarationProps.put(JpaFlavorCapabilities.NULL_ORDER_FALLBACK_PROPERTY, nullOrderFallback);
 			declarationProps.put(JPAUnit.UNIT_NAME, getPersistenceUnitName());
 			declarationRegistration = bctx.registerService(CapabilityDeclaration.class,
-					JpaFlavorCapabilities.declaration(flavor), declarationProps);
+					JpaFlavorCapabilities.declaration(flavor, nullOrderFallback), declarationProps);
 		} catch (Exception e) {
 			throw new IllegalStateException("Error configuring persistence unit", e);
 		}
@@ -198,6 +206,18 @@ public abstract class AbstractPersistenceUnitConfigurator {
 	 * last release, {@code < 0} never auto-close. Defaults to
 	 * {@value #DEFAULT_EMF_IDLE_TIMEOUT_SECONDS}s.
 	 */
+	/** The null-order fallback setting (issue #365): on unless explicitly switched off. */
+	static boolean readNullOrderFallback(Map<String, Object> properties) {
+		Object value = readPrefixedOrPlain(properties, CONFIG_NULL_ORDER_FALLBACK);
+		if (value instanceof Boolean b) {
+			return b;
+		}
+		if (value instanceof String s && !s.isBlank()) {
+			return !"false".equalsIgnoreCase(s.trim());
+		}
+		return true;
+	}
+
 	private static long readIdleTimeoutMillis(Map<String, Object> properties) {
 		Object value = readPrefixedOrPlain(properties, CONFIG_EMF_IDLE_TIMEOUT);
 		long seconds = DEFAULT_EMF_IDLE_TIMEOUT_SECONDS;

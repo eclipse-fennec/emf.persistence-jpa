@@ -30,6 +30,7 @@ import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -168,6 +169,13 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	private EEnum sortDirectionEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum nullPrecedenceEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -427,6 +435,16 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	@Override
 	public EAttribute getOrderBy_Direction() {
 		return (EAttribute)orderByEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getOrderBy_Nulls() {
+		return (EAttribute)orderByEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -905,6 +923,16 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 	 * @generated
 	 */
 	@Override
+	public EEnum getNullPrecedence() {
+		return nullPrecedenceEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getAggregateMethod() {
 		return aggregateMethodEEnum;
 	}
@@ -958,6 +986,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		createEReference(orderByEClass, ORDER_BY__PATH);
 		createEReference(orderByEClass, ORDER_BY__KEY);
 		createEAttribute(orderByEClass, ORDER_BY__DIRECTION);
+		createEAttribute(orderByEClass, ORDER_BY__NULLS);
 
 		expandEClass = createEClass(EXPAND);
 		createEReference(expandEClass, EXPAND__PATH);
@@ -1021,6 +1050,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 
 		// Create enums
 		sortDirectionEEnum = createEEnum(SORT_DIRECTION);
+		nullPrecedenceEEnum = createEEnum(NULL_PRECEDENCE);
 		aggregateMethodEEnum = createEEnum(AGGREGATE_METHOD);
 	}
 
@@ -1082,6 +1112,7 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEReference(getOrderBy_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 0, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getOrderBy_Key(), theExpressionPackage.getExpression(), null, "key", null, 0, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getOrderBy_Direction(), this.getSortDirection(), "direction", "ASC", 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getOrderBy_Nulls(), this.getNullPrecedence(), "nulls", "DEFAULT", 1, 1, OrderBy.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(expandEClass, Expand.class, "Expand", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getExpand_Path(), theExpressionPackage.getPropertyPath(), null, "path", null, 1, 1, Expand.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -1147,6 +1178,11 @@ public class QueryPackageImpl extends EPackageImpl implements QueryPackage {
 		initEEnum(sortDirectionEEnum, SortDirection.class, "SortDirection");
 		addEEnumLiteral(sortDirectionEEnum, SortDirection.ASC);
 		addEEnumLiteral(sortDirectionEEnum, SortDirection.DESC);
+
+		initEEnum(nullPrecedenceEEnum, NullPrecedence.class, "NullPrecedence");
+		addEEnumLiteral(nullPrecedenceEEnum, NullPrecedence.DEFAULT);
+		addEEnumLiteral(nullPrecedenceEEnum, NullPrecedence.FIRST);
+		addEEnumLiteral(nullPrecedenceEEnum, NullPrecedence.LAST);
 
 		initEEnum(aggregateMethodEEnum, AggregateMethod.class, "AggregateMethod");
 		addEEnumLiteral(aggregateMethodEEnum, AggregateMethod.SUM);

@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.eclipselink.query;
 import java.sql.Time;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -67,6 +68,7 @@ import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.RepresentativeSpec;
@@ -126,6 +128,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 	static final String ALIAS = "e";
 
 	private final JpaFlavor flavor;
+	private final boolean nullOrderFallback;
 	private final QueryCapabilities capabilities;
 
 	/**
@@ -139,19 +142,38 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 	/**
 	 * Creates a processor whose capability declaration matches {@code flavor} (issue #172).
-	 * Translation itself is flavor-independent — every targeted database speaks the same
-	 * JPQL — so the flavor only selects what is declared, never how a query is rendered.
+	 * Translation is flavor-independent but for one place: an explicit null placement in an
+	 * ordering, which the databases spell differently or not at all (issue #365).
 	 *
 	 * @param flavor the database flavor; {@code null} is treated as {@link JpaFlavor#UNKNOWN}
 	 */
 	public JpaQueryProcessor(JpaFlavor flavor) {
+		this(flavor, true);
+	}
+
+	/**
+	 * Creates a processor for {@code flavor} that may or may not render a null placement the
+	 * database cannot spell as a {@code CASE} key (issue #365). Without the fallback such a
+	 * placement is not declared, so it is refused with a Diagnostic instead of being sorted
+	 * off the index.
+	 *
+	 * @param flavor the database flavor; {@code null} is treated as {@link JpaFlavor#UNKNOWN}
+	 * @param nullOrderFallback whether the {@code CASE} key may stand in
+	 */
+	public JpaQueryProcessor(JpaFlavor flavor, boolean nullOrderFallback) {
 		this.flavor = flavor == null ? JpaFlavor.UNKNOWN : flavor;
-		this.capabilities = JpaFlavorCapabilities.of(this.flavor);
+		this.nullOrderFallback = nullOrderFallback;
+		this.capabilities = JpaFlavorCapabilities.of(this.flavor, nullOrderFallback);
 	}
 
 	/** @return the database flavor this processor declares capabilities for */
 	public JpaFlavor flavor() {
 		return flavor;
+	}
+
+	/** @return whether a null placement may be rendered as a {@code CASE} key (issue #365) */
+	public boolean nullOrderFallback() {
+		return nullOrderFallback;
 	}
 
 	@Override
@@ -386,10 +408,11 @@ public class JpaQueryProcessor implements QueryProcessor {
 		List<String> orderFragments = new ArrayList<>();
 		List<String> orderArguments = new ArrayList<>();
 		for (OrderBy orderBy : spec.getOrderBy()) {
-			orderArguments.add(orderBy.getKey() != null
+			String rendered = orderBy.getKey() != null
 					? translation.render(orderBy.getKey())
-					: rootPath(orderBy.getPath()));
-			orderFragments.add("?" + (orderBy.getDirection() == SortDirection.DESC ? " DESC" : " ASC"));
+					: rootPath(orderBy.getPath());
+			orderFragments.add(orderItem("?", "?", orderBy));
+			orderArguments.addAll(Collections.nCopies(placeholders(orderBy), rendered));
 		}
 		if (orderFragments.isEmpty()) {
 			// an unspecified window is legal per the model, but a non-deterministic one is not
@@ -400,7 +423,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 		List<String> windowArguments = new ArrayList<>(partition);
 		windowArguments.addAll(orderArguments);
 		String window = "SQL('ROW_NUMBER() OVER (PARTITION BY "
-				+ String.join(", ", java.util.Collections.nCopies(partition.size(), "?"))
+				+ String.join(", ", Collections.nCopies(partition.size(), "?"))
 				+ " ORDER BY " + String.join(", ", orderFragments) + ")', "
 				+ String.join(", ", windowArguments) + ") AS rn";
 
@@ -529,8 +552,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 			if (!order.isEmpty()) {
 				order.append(", ");
 			}
-			order.append('?').append(orderBy.getDirection() == SortDirection.DESC ? " DESC" : " ASC");
-			orderArguments.add(rendered);
+			order.append(orderItem("?", "?", orderBy));
+			orderArguments.addAll(Collections.nCopies(placeholders(orderBy), rendered));
 		}
 		if (order.isEmpty()) {
 			// a window with no ordering is non-deterministic; the id is the stable fallback
@@ -593,6 +616,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					? translation.operand(selection.getKey(), null)
 					: rootPath(selection.getPath());
 			columns.append(rendered).append(" AS ").append(key);
+			translation.projectionExpressions.put(key, rendered);
 		}
 		return columns.toString();
 	}
@@ -682,18 +706,95 @@ public class JpaQueryProcessor implements QueryProcessor {
 							+ "' does not address an output key of the projection/aggregation (keys: "
 							+ rowKeys + ") — alias the column accordingly");
 				}
-				jpql.append(aliasRef.getAlias());
+				jpql.append(orderItem(aliasRef.getAlias(), columnBehind(aliasRef.getAlias(), translation),
+						orderBy));
 			} else if (orderBy.getKey() != null) {
 				// arbitrary sort expressions render inline (issue #84); AliasRef
 				// inside a computed key re-renders the pipeline column
-				jpql.append(translation.operand(orderBy.getKey(), null));
+				String rendered = translation.operand(orderBy.getKey(), null);
+				jpql.append(orderItem(rendered, rendered, orderBy));
 			} else if (shape == QueryShape.OBJECTS) {
-				jpql.append(rootPath(orderBy.getPath()));
+				String rendered = rootPath(orderBy.getPath());
+				jpql.append(orderItem(rendered, rendered, orderBy));
 			} else {
-				jpql.append(rowKey(orderBy.getPath(), rowKeys));
+				String key = rowKey(orderBy.getPath(), rowKeys);
+				jpql.append(orderItem(key, columnBehind(key, translation), orderBy));
 			}
-			jpql.append(orderBy.getDirection() == SortDirection.DESC ? " DESC" : " ASC");
 		}
+	}
+
+	/**
+	 * The expression an output column was rendered from — what a null test has to name, since
+	 * JPQL admits a result variable in ORDER BY only as a bare item (issue #365).
+	 */
+	private static String columnBehind(String key, Translation translation) {
+		String column = translation.columnExpressions.get(key);
+		if (column == null) {
+			column = translation.projectionExpressions.get(key);
+		}
+		return column == null ? key : column;
+	}
+
+	/** How a database is told where null goes in one ordering entry (issue #365). */
+	private enum NullRendering {
+		/** Nothing to add — no placement asked for, or the database places null so anyway. */
+		NONE,
+		/** The standard {@code NULLS FIRST} / {@code NULLS LAST} suffix. */
+		CLAUSE,
+		/** A leading {@code CASE} key that sorts null apart, for a database without the suffix. */
+		CASE_KEY
+	}
+
+	/**
+	 * Decides the rendering of a null placement from what the flavor can spell
+	 * ({@link JpaFlavor#needsNullCaseKey(boolean)}): the standard suffix where the database
+	 * has it, nothing where it places null so by itself, the {@code CASE} key otherwise.
+	 */
+	private NullRendering nullRendering(OrderBy orderBy) {
+		NullPrecedence nulls = orderBy.getNulls();
+		if (nulls == null || nulls == NullPrecedence.DEFAULT) {
+			return NullRendering.NONE;
+		}
+		boolean nullsLow = (nulls == NullPrecedence.FIRST) != (orderBy.getDirection() == SortDirection.DESC);
+		if (flavor.needsNullCaseKey(nullsLow)) {
+			return NullRendering.CASE_KEY;
+		}
+		return flavor.hasNullsClause() ? NullRendering.CLAUSE : NullRendering.NONE;
+	}
+
+	/**
+	 * Renders one ordering entry over {@code key}: the key with its direction, and the null
+	 * placement as {@link #nullRendering(OrderBy)} decides. The {@code CASE} form tests
+	 * {@code nullTest} — the key itself, unless that is a result variable — and so names the
+	 * value twice, see {@link #placeholders(OrderBy)}.
+	 */
+	private String orderItem(String key, String nullTest, OrderBy orderBy) throws QueryException {
+		NullRendering rendering = nullRendering(orderBy);
+		if (rendering == NullRendering.CASE_KEY && !nullOrderFallback) {
+			// backstop — without the fallback the placement is not declared, validation refuses first
+			boolean nullsLow = (orderBy.getNulls() == NullPrecedence.FIRST)
+					!= (orderBy.getDirection() == SortDirection.DESC);
+			throw new QueryException("Null placement " + orderBy.getNulls() + " on " + orderBy.getDirection()
+					+ " needs a CASE sort key on flavor '" + flavor.id()
+					+ "', and the null-order fallback is switched off (feature "
+					+ (nullsLow ? QueryFeature.SORT_NULLS_LOW : QueryFeature.SORT_NULLS_HIGH) + ")");
+		}
+		String direction = orderBy.getDirection() == SortDirection.DESC ? " DESC" : " ASC";
+		boolean nullsFirst = orderBy.getNulls() == NullPrecedence.FIRST;
+		return switch (rendering) {
+			case NONE -> key + direction;
+			case CLAUSE -> key + direction + (nullsFirst ? " NULLS FIRST" : " NULLS LAST");
+			case CASE_KEY -> "CASE WHEN " + nullTest + " IS NULL THEN " + (nullsFirst ? "0 ELSE 1" : "1 ELSE 0")
+					+ " END ASC, " + key + direction;
+		};
+	}
+
+	/**
+	 * How often {@link #orderItem(String, String, OrderBy)} names its value — what a window ordering
+	 * spliced through {@code SQL()} has to pass as arguments for its {@code ?} placeholders.
+	 */
+	private int placeholders(OrderBy orderBy) {
+		return nullRendering(orderBy) == NullRendering.CASE_KEY ? 2 : 1;
 	}
 
 	private String rowKey(PropertyPath path, List<String> rowKeys) throws QueryException {
@@ -784,6 +885,11 @@ public class JpaQueryProcessor implements QueryProcessor {
 
 		/** Pipeline output columns (alias → rendered JPQL) for AliasRef resolution (issue #82). */
 		private final Map<String, String> columnExpressions = new LinkedHashMap<>();
+		/**
+		 * The expression behind each plain projection column, by output key. A result variable
+		 * may stand in ORDER BY only bare, so a null test over it names this instead (issue #365).
+		 */
+		private final Map<String, String> projectionExpressions = new LinkedHashMap<>();
 
 		/**
 		 * Map accesses rendered as joins instead of correlated subselects (issue #190):

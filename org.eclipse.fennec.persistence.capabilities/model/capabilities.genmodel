@@ -65,6 +65,8 @@
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/ROOT_REFERENCE"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/EXPAND_FILTER"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/EXPAND_PAGE"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SORT_NULLS_LOW"/>
+      <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/SORT_NULLS_HIGH"/>
       <genEnumLiterals ecoreEnumLiteral="capabilities.ecore#//QueryFeature/AS_OF"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="capabilities.ecore#//CommandFeature">

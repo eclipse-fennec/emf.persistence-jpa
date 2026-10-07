@@ -26,7 +26,9 @@ import java.util.List;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.fennec.persistence.capabilities.CapabilityDeclaration;
+import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryProcessor;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAUnit;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +85,21 @@ class JPAResourceFactoryComponentTest {
 		// the discovered reference carries the flavor, so the resource must not silently fall
 		// back to the portable baseline
 		assertThat(((JpaQueryProcessor) resource.queryProcessor()).flavor()).isEqualTo(JpaFlavor.POSTGRES);
+	}
+
+	@Test
+	void theNullOrderFallbackOfTheUnitIsHonoured() throws Exception {
+		when(reference.getProperty(JPAUnit.UNIT_NAME)).thenReturn("bath");
+		when(reference.getProperty(CapabilityDeclaration.FLAVOR_PROPERTY)).thenReturn(JpaFlavor.MARIADB.id());
+		when(reference.getProperty(JpaFlavorCapabilities.NULL_ORDER_FALLBACK_PROPERTY)).thenReturn(Boolean.FALSE);
+		when(ctx.getServiceReferences(JPAUnit.class, null)).thenReturn(List.of(reference));
+		when(ctx.getService(reference)).thenReturn(unit);
+
+		JPAResourceImpl resource = (JPAResourceImpl) component.createResource(URI.createURI("jpa://bath/Asset"));
+
+		JpaQueryProcessor processor = (JpaQueryProcessor) resource.queryProcessor();
+		assertThat(processor.nullOrderFallback()).isFalse();
+		assertThat(processor.capabilities().supported()).doesNotContain(QueryFeature.SORT_NULLS_HIGH);
 	}
 
 	@Test

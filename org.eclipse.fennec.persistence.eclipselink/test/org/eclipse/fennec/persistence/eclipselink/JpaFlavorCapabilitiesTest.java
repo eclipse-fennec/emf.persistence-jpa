@@ -115,4 +115,30 @@ class JpaFlavorCapabilitiesTest {
 		assertThatThrownBy(() -> CapabilityDeclaration.of("jpa", "h2", null))
 				.isInstanceOf(NullPointerException.class);
 	}
+
+	/**
+	 * The null-order fallback (issue #365): on, every flavor declares both placements; off,
+	 * exactly the placements that would need the CASE key drop out.
+	 */
+	@Test
+	void theNullOrderFallbackDecidesWhatACaseKeyPlacementDeclares() {
+		for (JpaFlavor flavor : JpaFlavor.values()) {
+			assertThat(JpaFlavorCapabilities.of(flavor, true).supported())
+					.as(flavor.id()).isEqualTo(JpaFlavorCapabilities.of(flavor).supported())
+					.contains(QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH);
+		}
+		assertThat(JpaFlavorCapabilities.of(JpaFlavor.H2, false).supported())
+				.contains(QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH);
+		assertThat(JpaFlavorCapabilities.of(JpaFlavor.POSTGRES, false).supported())
+				.contains(QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH);
+		assertThat(JpaFlavorCapabilities.of(JpaFlavor.MARIADB, false).supported())
+				.contains(QueryFeature.SORT_NULLS_LOW).doesNotContain(QueryFeature.SORT_NULLS_HIGH);
+		assertThat(JpaFlavorCapabilities.of(JpaFlavor.UNKNOWN, false).supported())
+				.doesNotContain(QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH);
+
+		// configuration, not a measured gap
+		assertThat(JpaFlavorCapabilities.gapsOf(JpaFlavor.MARIADB)).doesNotContain(QueryFeature.SORT_NULLS_HIGH);
+		assertThat(JpaFlavorCapabilities.declaration(JpaFlavor.MARIADB, false).capabilities().query().supported())
+				.doesNotContain(QueryFeature.SORT_NULLS_HIGH);
+	}
 }

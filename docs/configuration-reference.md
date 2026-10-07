@@ -28,9 +28,10 @@ declare it as their object class definition prefix. An unprefixed
 | `fennec.jpa.mappingFile` | String | -- | `PersistenceUnitConfigurator` only: URI of an EntityMappings file (required when no `persistenceUnitFile`) |
 | `fennec.jpa.batchWriting` | String | -- | JDBC batch mode -- one of `JDBC`, `BUFFERED`, `OracleJDBC`, or `NONE`. Empty/unset disables explicit batch configuration |
 | `fennec.jpa.batchSize` | int | 0 | Statements per batch. `0` leaves EclipseLink's default |
+| `fennec.jpa.nullOrderFallback` | boolean | true | Whether a null placement in an ordering (`NullPrecedence.FIRST`/`LAST`) that the database cannot express natively is sorted through a `CASE` key — correct, but not index-backed. `false` refuses such a query with a Diagnostic instead. Concerns MariaDB (null above every value) and unrecognised databases (both placements); h2 and PostgreSQL are unaffected. Published as the `persistence.nullOrderFallback` property of the unit and its capability declaration. See [Query user guide](query-user-guide.md#where-null-goes) |
 | `fennec.jpa.emfIdleTimeout` | long | 60 | Seconds without any use after which the lazily-built EclipseLink factory is closed (releasing caches and connections); the next use rebuilds it. `0` = close immediately after the last use, `-1` = keep open until the configuration is deleted. See [OSGi architecture](osgi-architecture.md) |
 
-`batchWriting`, `batchSize` and `emfIdleTimeout` are additionally accepted
+`batchWriting`, `batchSize`, `emfIdleTimeout` and `nullOrderFallback` are additionally accepted
 unprefixed, because they are read from the raw property map rather than through the
 typed configuration. Prefer the prefixed form; it is what the metatype describes.
 

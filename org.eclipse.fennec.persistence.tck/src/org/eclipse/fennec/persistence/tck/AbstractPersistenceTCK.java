@@ -64,6 +64,7 @@ import org.eclipse.fennec.model.expression.IntervalSubject;
 import org.eclipse.fennec.model.query.Aggregate;
 import org.eclipse.fennec.model.query.AggregateMethod;
 import org.eclipse.fennec.model.query.GroupByStage;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -2309,6 +2310,184 @@ public abstract class AbstractPersistenceTCK {
 		}
 	}
 
+	// ------------------------------------------------- null placement (issue #365)
+
+	/**
+	 * Alice and Carol have a birthday, Bob has none. Carol is the older, so ascending by
+	 * birthday reads Carol before Alice — Bob's place is what each case decides.
+	 */
+	private List<EObject> nullOrderCorpus() {
+		EObject alice = newPerson(1, "Alice", 30);
+		alice.eSet(personBirthday, Date.from(ALICE_BIRTHDAY));
+		EObject bob = newPerson(2, "Bob", 40);
+		EObject carol = newPerson(3, "Carol", 50);
+		carol.eSet(personBirthday, Date.from(CAROL_BIRTHDAY));
+		return List.of(alice, bob, carol);
+	}
+
+	/**
+	 * Asserts the names in {@code query}'s order, on the backend and on the memory reference
+	 * alike — one order per query, whichever store answers it.
+	 */
+	private void assertNullOrder(Query query, String... expected) throws Exception {
+		try (QueryResult result = queryable(createBackendResourceSet()).query(EcoreUtil.copy(query))) {
+			assertThat(namesIn(result)).as("backend").containsExactly(expected);
+		}
+		try (QueryResult oracle = MemoryQueries.execute(query, nullOrderCorpus(), null)) {
+			assertThat(namesIn(oracle)).as("memory reference").containsExactly(expected);
+		}
+	}
+
+	private List<Object> namesIn(QueryResult result) {
+		return result.shape() == QueryShape.OBJECTS
+				? result.objects().map(person -> person.eGet(personName)).toList()
+				: result.rows().map(row -> row.get("name")).toList();
+	}
+
+	/**
+	 * Null below every value — the OData {@code $orderby} rule (eclipse-fennec/emf.odata#92).
+	 * The {@code top(1)} case is the one that broke in production: PostgreSQL put the person
+	 * without a value first on {@code DESC}, and the real maximum came after it.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.SORT, QueryFeature.SORT_NULLS_LOW, QueryFeature.LIMIT,
+			QueryFeature.PROJECTION, QueryFeature.GROUP_BY, QueryFeature.AGG_MAX })
+	public void queryOrderPlacesNullBelowEveryValue() throws Exception {
+		save(createBackendResourceSet(), "Person", nullOrderCorpus().toArray(EObject[]::new));
+
+		assertNullOrder(QueryBuilder.from(personClass)
+				.orderBy(SortDirection.ASC, NullPrecedence.FIRST, personBirthday).build(),
+				"Bob", "Carol", "Alice");
+		assertNullOrder(QueryBuilder.from(personClass)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, personBirthday).build(),
+				"Alice", "Carol", "Bob");
+		assertNullOrder(QueryBuilder.from(personClass)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, personBirthday).top(1).build(),
+				"Alice");
+		// row-shaped: the sort addresses an output column instead of the root path
+		assertNullOrder(QueryBuilder.from(personClass)
+				.selectAs("name", personName).selectAs("birthday", personBirthday)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, personBirthday).build(),
+				"Alice", "Carol", "Bob");
+		// grouped: the sort addresses an aggregate by its alias
+		assertNullOrder(QueryBuilder.from(personClass)
+				.groupBy(personName).max("latest", personBirthday)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, Expressions.aliasRef("latest").toExpression())
+				.build(),
+				"Alice", "Carol", "Bob");
+	}
+
+	/** Null above every value — the two combinations Mongo cannot sort natively. */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.SORT, QueryFeature.SORT_NULLS_HIGH, QueryFeature.LIMIT,
+			QueryFeature.PROJECTION, QueryFeature.GROUP_BY, QueryFeature.AGG_MAX })
+	public void queryOrderPlacesNullAboveEveryValue() throws Exception {
+		save(createBackendResourceSet(), "Person", nullOrderCorpus().toArray(EObject[]::new));
+
+		assertNullOrder(QueryBuilder.from(personClass)
+				.orderBy(SortDirection.ASC, NullPrecedence.LAST, personBirthday).build(),
+				"Carol", "Alice", "Bob");
+		assertNullOrder(QueryBuilder.from(personClass)
+				.orderBy(SortDirection.DESC, NullPrecedence.FIRST, personBirthday).build(),
+				"Bob", "Alice", "Carol");
+		assertNullOrder(QueryBuilder.from(personClass)
+				.orderBy(SortDirection.ASC, NullPrecedence.LAST, personBirthday).top(1).build(),
+				"Carol");
+		assertNullOrder(QueryBuilder.from(personClass)
+				.selectAs("name", personName).selectAs("birthday", personBirthday)
+				.orderBy(SortDirection.ASC, NullPrecedence.LAST, personBirthday).build(),
+				"Carol", "Alice", "Bob");
+		assertNullOrder(QueryBuilder.from(personClass)
+				.groupBy(personName).max("latest", personBirthday)
+				.orderBy(SortDirection.DESC, NullPrecedence.FIRST, Expressions.aliasRef("latest").toExpression())
+				.build(),
+				"Bob", "Alice", "Carol");
+	}
+
+	/**
+	 * The within-group order of representatives is a window ordering, rendered apart from the
+	 * envelope's — the placement has to reach it too. All three share one age, so the window
+	 * holds the whole corpus.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+			QueryFeature.AGG_COUNT, QueryFeature.SORT, QueryFeature.SORT_NULLS_LOW })
+	public void groupRepresentativesPlaceNullBelowEveryValue() throws Exception {
+		assertRepresentativeNullOrder(SortDirection.ASC, NullPrecedence.FIRST, "Bob", "Carol");
+		assertRepresentativeNullOrder(SortDirection.DESC, NullPrecedence.LAST, "Alice", "Carol");
+	}
+
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.GROUP_REPRESENTATIVES, QueryFeature.GROUP_BY,
+			QueryFeature.AGG_COUNT, QueryFeature.SORT, QueryFeature.SORT_NULLS_HIGH })
+	public void groupRepresentativesPlaceNullAboveEveryValue() throws Exception {
+		assertRepresentativeNullOrder(SortDirection.ASC, NullPrecedence.LAST, "Carol", "Alice");
+		assertRepresentativeNullOrder(SortDirection.DESC, NullPrecedence.FIRST, "Bob", "Alice");
+	}
+
+	private void assertRepresentativeNullOrder(SortDirection direction, NullPrecedence nulls,
+			String... expected) throws Exception {
+		List<EObject> corpus = nullOrderCorpus();
+		corpus.forEach(person -> person.eSet(personAge, 30));
+		Query query = QueryBuilder.from(personClass)
+				.groupBy(personAge)
+				.countOf("cnt")
+				.representativesOrderedBy("top", 2, direction, nulls, personBirthday)
+				.build();
+		save(createBackendResourceSet(), "Person", corpus.toArray(EObject[]::new));
+		try (QueryResult result = queryable(createBackendResourceSet()).query(EcoreUtil.copy(query))) {
+			assertThat(result.rows().map(row -> namesOf(row.get("top"))))
+					.as("backend, %s nulls %s", direction, nulls)
+					.containsExactly(List.of(expected));
+		}
+		try (QueryResult oracle = MemoryQueries.execute(query, corpus, null)) {
+			assertThat(oracle.rows().map(row -> namesOf(row.get("top"))))
+					.as("memory reference, %s nulls %s", direction, nulls)
+					.containsExactly(List.of(expected));
+		}
+	}
+
+	/**
+	 * A paged expansion orders inside its own window as well: {@code top(1)} resolves exactly
+	 * the child the placement puts first.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.EXPAND_PAGE, QueryFeature.SORT,
+			QueryFeature.SORT_NULLS_LOW, QueryFeature.SORT_NULLS_HIGH })
+	public void queryExpandPagePlacesNullAsAsked() throws Exception {
+		List<EObject> employees = nullOrderCorpus();
+		EObject company = newCompany(21, "One");
+		listOf(company, companyEmployees).addAll(employees);
+		// employees has an eOpposite on Person.employer: both resources get their objects
+		// before either is saved
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource companies = writeSet.createResource(uriFor("Company"));
+		companies.getContents().add(company);
+		Resource persons = writeSet.createResource(uriFor("Person"));
+		persons.getContents().addAll(employees);
+		companies.save(null);
+		persons.save(null);
+
+		assertThat(resolvedEmployee(SortDirection.ASC, NullPrecedence.FIRST)).isEqualTo("Bob");
+		assertThat(resolvedEmployee(SortDirection.DESC, NullPrecedence.LAST)).isEqualTo("Alice");
+		assertThat(resolvedEmployee(SortDirection.ASC, NullPrecedence.LAST)).isEqualTo("Carol");
+		assertThat(resolvedEmployee(SortDirection.DESC, NullPrecedence.FIRST)).isEqualTo("Bob");
+	}
+
+	private Object resolvedEmployee(SortDirection direction, NullPrecedence nulls) throws Exception {
+		Query query = QueryBuilder.from(companyClass)
+				.expand(Expands.of(companyEmployees).orderBy(direction, nulls, personBirthday).top(1).build())
+				.build();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = ((QueryableResource) readSet.createResource(uriFor("Company")))
+				.query(query)) {
+			List<EObject> resolved = listOf(result.objects().findFirst().orElseThrow(), companyEmployees)
+					.stream().filter(employee -> !employee.eIsProxy()).toList();
+			assertThat(resolved).as("%s nulls %s resolves one employee", direction, nulls).hasSize(1);
+			return resolved.get(0).eGet(personName);
+		}
+	}
+
 	@Test
 	@RequiresCapabilities(query = { QueryFeature.PARAMETERS, QueryFeature.WHERE_EQ })
 	public void queryParameterBinding() throws Exception {
@@ -4253,6 +4432,10 @@ public abstract class AbstractPersistenceTCK {
 				.orderByAsc(personName).build());
 		probes.put(QueryFeature.SORT_EXPRESSION, QueryBuilder.from(personClass)
 				.orderByAsc(Expressions.neg(Expressions.path(personAge)).toExpression()).build());
+		probes.put(QueryFeature.SORT_NULLS_LOW, QueryBuilder.from(personClass)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, personBirthday).build());
+		probes.put(QueryFeature.SORT_NULLS_HIGH, QueryBuilder.from(personClass)
+				.orderBy(SortDirection.DESC, NullPrecedence.FIRST, personBirthday).build());
 		probes.put(QueryFeature.LIMIT, QueryBuilder.from(personClass).top(1).build());
 		probes.put(QueryFeature.SKIP, QueryBuilder.from(personClass).skip(1).build());
 		probes.put(QueryFeature.DISTINCT, QueryBuilder.from(personClass).distinct().build());

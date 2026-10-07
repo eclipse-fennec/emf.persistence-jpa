@@ -771,6 +771,32 @@ public enum QueryFeature implements Enumerator {
 	EXPAND_PAGE(88, "EXPAND_PAGE", "EXPAND_PAGE"),
 
 	/**
+	 * The '<em><b>SORT NULLS LOW</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * An explicit null placement that treats null as the smallest value (issue #365): OrderBy.nulls FIRST on ASC, LAST on DESC - the OData $orderby rule. Native on Mongo (BSON order) and on h2/MariaDB, rendered as NULLS FIRST/LAST or a CASE key elsewhere.
+	 * <!-- end-model-doc -->
+	 * @see #SORT_NULLS_LOW_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	SORT_NULLS_LOW(89, "SORT_NULLS_LOW", "SORT_NULLS_LOW"),
+
+	/**
+	 * The '<em><b>SORT NULLS HIGH</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * An explicit null placement that treats null as the largest value (issue #365): OrderBy.nulls LAST on ASC, FIRST on DESC. Native on PostgreSQL; Mongo cannot sort that way without an extra computed key and refuses it.
+	 * <!-- end-model-doc -->
+	 * @see #SORT_NULLS_HIGH_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	SORT_NULLS_HIGH(90, "SORT_NULLS_HIGH", "SORT_NULLS_HIGH"),
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal object.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1576,6 +1602,34 @@ public enum QueryFeature implements Enumerator {
 	public static final int EXPAND_PAGE_VALUE = 88;
 
 	/**
+	 * The '<em><b>SORT NULLS LOW</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * An explicit null placement that treats null as the smallest value (issue #365): OrderBy.nulls FIRST on ASC, LAST on DESC - the OData $orderby rule. Native on Mongo (BSON order) and on h2/MariaDB, rendered as NULLS FIRST/LAST or a CASE key elsewhere.
+	 * <!-- end-model-doc -->
+	 * @see #SORT_NULLS_LOW
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int SORT_NULLS_LOW_VALUE = 89;
+
+	/**
+	 * The '<em><b>SORT NULLS HIGH</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * An explicit null placement that treats null as the largest value (issue #365): OrderBy.nulls LAST on ASC, FIRST on DESC. Native on PostgreSQL; Mongo cannot sort that way without an extra computed key and refuses it.
+	 * <!-- end-model-doc -->
+	 * @see #SORT_NULLS_HIGH
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int SORT_NULLS_HIGH_VALUE = 90;
+
+	/**
 	 * The '<em><b>AS OF</b></em>' literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1653,6 +1707,8 @@ public enum QueryFeature implements Enumerator {
 			ROOT_REFERENCE,
 			EXPAND_FILTER,
 			EXPAND_PAGE,
+			SORT_NULLS_LOW,
+			SORT_NULLS_HIGH,
 			AS_OF,
 		};
 
@@ -1766,6 +1822,8 @@ public enum QueryFeature implements Enumerator {
 			case ROOT_REFERENCE_VALUE: return ROOT_REFERENCE;
 			case EXPAND_FILTER_VALUE: return EXPAND_FILTER;
 			case EXPAND_PAGE_VALUE: return EXPAND_PAGE;
+			case SORT_NULLS_LOW_VALUE: return SORT_NULLS_LOW;
+			case SORT_NULLS_HIGH_VALUE: return SORT_NULLS_HIGH;
 			case AS_OF_VALUE: return AS_OF;
 		}
 		return null;

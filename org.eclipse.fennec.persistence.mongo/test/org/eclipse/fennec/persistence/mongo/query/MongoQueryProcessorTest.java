@@ -54,8 +54,10 @@ import org.eclipse.fennec.model.expression.ComparisonOperator;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.GeoSubject;
 import org.eclipse.fennec.model.query.FilterStage;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
+import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
@@ -515,6 +517,24 @@ class MongoQueryProcessorTest {
 		assertThatThrownBy(() -> translate(query))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("quantifier");
+	}
+
+	/**
+	 * BSON order puts null below every value (issue #365): that placement is the plain sort,
+	 * the opposite one is refused naming its capability rather than sorted differently.
+	 */
+	@Test
+	void nullPlacementIsNativeOneWayAndRefusedTheOther() throws QueryException {
+		MongoQueryPlan low = translate(QueryBuilder.from(person)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, age)
+				.orderBy(SortDirection.ASC, NullPrecedence.FIRST, name)
+				.build());
+		assertThat(render(low.sort())).isEqualTo(BsonDocument.parse("{'age': -1, 'name': 1}"));
+
+		Query high = QueryBuilder.from(person).orderBy(SortDirection.DESC, NullPrecedence.FIRST, age).build();
+		assertThat(processor.validate(high, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThatThrownBy(() -> translate(high)).isInstanceOf(QueryException.class)
+				.hasMessageContaining("SORT_NULLS_HIGH");
 	}
 
 	@Test

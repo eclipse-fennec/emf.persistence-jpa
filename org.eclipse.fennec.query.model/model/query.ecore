@@ -91,6 +91,12 @@
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" lowerBound="1"
         eType="#//SortDirection" defaultValueLiteral="ASC"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nulls" lowerBound="1"
+        eType="#//NullPrecedence" defaultValueLiteral="DEFAULT">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where null values go, independent of the direction (issue #365). DEFAULT keeps the store's own placement, which differs per backend (PostgreSQL and the memory engine sort null largest, h2, MariaDB and Mongo smallest). FIRST and LAST fix it; a backend that cannot render a combination refuses it via capability rather than sorting it differently."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Expand">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -251,6 +257,14 @@
   <eClassifiers xsi:type="ecore:EEnum" name="SortDirection">
     <eLiterals name="ASC"/>
     <eLiterals name="DESC" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="NullPrecedence">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Placement of null values in an ordering (issue #365): DEFAULT = the store's own, FIRST = before every value, LAST = after every value."/>
+    </eAnnotations>
+    <eLiterals name="DEFAULT"/>
+    <eLiterals name="FIRST" value="1"/>
+    <eLiterals name="LAST" value="2"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="AggregateMethod">
     <eLiterals name="SUM"/>

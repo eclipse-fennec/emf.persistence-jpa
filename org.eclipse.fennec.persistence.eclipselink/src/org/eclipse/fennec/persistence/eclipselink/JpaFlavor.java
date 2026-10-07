@@ -74,6 +74,32 @@ public enum JpaFlavor {
 	}
 
 	/**
+	 * Whether this database needs a {@code CASE} key to place null as asked (issue #365).
+	 * h2 and PostgreSQL understand {@code NULLS FIRST} / {@code NULLS LAST}. MariaDB does not
+	 * — EclipseLink prints the suffix on every platform, and MariaDB rejects it — but sorts
+	 * null below every value by itself, so only the opposite placement needs the key. An
+	 * unprobed database is assumed to know neither.
+	 *
+	 * @param nullsLow {@code true} for null below every value (FIRST on ASC, LAST on DESC)
+	 * @return {@code true} when the placement can only be rendered with the {@code CASE} key
+	 */
+	public boolean needsNullCaseKey(boolean nullsLow) {
+		return switch (this) {
+			case H2, POSTGRES -> false;
+			case MARIADB -> !nullsLow;
+			case UNKNOWN -> true;
+		};
+	}
+
+	/**
+	 * @return {@code true} when null placement is rendered with the standard
+	 *         {@code NULLS FIRST} / {@code NULLS LAST} suffix (issue #365)
+	 */
+	public boolean hasNullsClause() {
+		return this == H2 || this == POSTGRES;
+	}
+
+	/**
 	 * Resolves a flavor from its {@link #id()}, case-insensitively.
 	 *
 	 * @param id the id; {@code null} or blank yields {@link #UNKNOWN}

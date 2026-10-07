@@ -24,6 +24,7 @@ import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.QueryPackage;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -39,6 +40,7 @@ import org.eclipse.fennec.model.query.SortDirection;
  *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getPath <em>Path</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getKey <em>Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getDirection <em>Direction</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.impl.OrderByImpl#getNulls <em>Nulls</em>}</li>
  * </ul>
  *
  * @generated
@@ -83,6 +85,26 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 	 * @ordered
 	 */
 	protected SortDirection direction = DIRECTION_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getNulls() <em>Nulls</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getNulls()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final NullPrecedence NULLS_EDEFAULT = NullPrecedence.DEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getNulls() <em>Nulls</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getNulls()
+	 * @generated
+	 * @ordered
+	 */
+	protected NullPrecedence nulls = NULLS_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -222,6 +244,29 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 	 * @generated
 	 */
 	@Override
+	public NullPrecedence getNulls() {
+		return nulls;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setNulls(NullPrecedence newNulls) {
+		NullPrecedence oldNulls = nulls;
+		nulls = newNulls == null ? NULLS_EDEFAULT : newNulls;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, QueryPackage.ORDER_BY__NULLS, oldNulls, nulls));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case QueryPackage.ORDER_BY__PATH:
@@ -246,6 +291,8 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 				return getKey();
 			case QueryPackage.ORDER_BY__DIRECTION:
 				return getDirection();
+			case QueryPackage.ORDER_BY__NULLS:
+				return getNulls();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -266,6 +313,9 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 				return;
 			case QueryPackage.ORDER_BY__DIRECTION:
 				setDirection((SortDirection)newValue);
+				return;
+			case QueryPackage.ORDER_BY__NULLS:
+				setNulls((NullPrecedence)newValue);
 				return;
 		}
 		super.eSet(featureID, newValue);
@@ -288,6 +338,9 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 			case QueryPackage.ORDER_BY__DIRECTION:
 				setDirection(DIRECTION_EDEFAULT);
 				return;
+			case QueryPackage.ORDER_BY__NULLS:
+				setNulls(NULLS_EDEFAULT);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -306,6 +359,8 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 				return key != null;
 			case QueryPackage.ORDER_BY__DIRECTION:
 				return direction != DIRECTION_EDEFAULT;
+			case QueryPackage.ORDER_BY__NULLS:
+				return nulls != NULLS_EDEFAULT;
 		}
 		return super.eIsSet(featureID);
 	}
@@ -322,6 +377,8 @@ public class OrderByImpl extends MinimalEObjectImpl.Container implements OrderBy
 		StringBuilder result = new StringBuilder(super.toString());
 		result.append(" (direction: ");
 		result.append(direction);
+		result.append(", nulls: ");
+		result.append(nulls);
 		result.append(')');
 		return result.toString();
 	}
