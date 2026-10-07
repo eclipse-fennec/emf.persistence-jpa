@@ -484,6 +484,14 @@ with the full `PersistenceCapabilities`, and is plain Java so the TCK can read i
 framework; an implementation may additionally be registered as a service carrying
 `persistence.backend` and `persistence.flavor`.
 
+One relational setting narrows a declaration besides the flavor: the null-order fallback
+(issue #365, `fennec.jpa.nullOrderFallback`). With it on — the default — a null placement the
+database cannot spell is rendered as a `CASE` sort key; with it off, exactly those placements
+(`SORT_NULLS_HIGH` on MariaDB, both on an unknown database) are left undeclared and therefore
+refused. It is a cost decision of whoever runs the database, not a measured gap, so it stays out
+of `JpaFlavorCapabilities.gapsOf` and is published next to the flavor as
+`persistence.nullOrderFallback`.
+
 Both backends derive their per-flavor sets from one baseline by exclusion
 (`MongoFlavorCapabilities`, `JpaFlavorCapabilities`): a newly supported feature is available
 everywhere by default, so a genuine gap has to be discovered and declared deliberately rather

@@ -83,6 +83,8 @@ class QueryFeatureCatalogTest {
 				// Plain EXPAND stays claimed: in memory "these are resolved for you" is
 				// trivially true. The guard did its job twice now; each literal got a decision
 				// instead of a silent claim.
-				.hasSize(57);
+				// 59 since SORT_NULLS_LOW and SORT_NULLS_HIGH (#365): both CLAIMED, the memory
+				// engine places nulls explicitly for either, independent of the direction.
+				.hasSize(59);
 	}
 }

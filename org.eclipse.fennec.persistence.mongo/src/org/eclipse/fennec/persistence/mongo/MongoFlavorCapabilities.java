@@ -73,6 +73,10 @@ public final class MongoFlavorCapabilities {
 					QueryFeature.FIELD_TO_FIELD,
 					QueryFeature.LOGICAL_AND, QueryFeature.LOGICAL_OR, QueryFeature.LOGICAL_NOT,
 					QueryFeature.EXISTS, QueryFeature.FOR_ALL, QueryFeature.SORT, QueryFeature.LIMIT,
+					// null is the smallest value in BSON order, so that placement is the native
+					// one (issue #365). SORT_NULLS_HIGH would need an extra computed sort key and
+					// stays undeclared.
+					QueryFeature.SORT_NULLS_LOW,
 					QueryFeature.SKIP, QueryFeature.DISTINCT, QueryFeature.COUNT, QueryFeature.PROJECTION,
 					QueryFeature.PROJECTION_NESTED, QueryFeature.PROJECTION_EXPRESSION,
 					QueryFeature.GROUP_BY, QueryFeature.PIPELINE,

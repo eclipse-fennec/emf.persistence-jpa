@@ -27,6 +27,7 @@ import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.ParameterDecl;
 import org.eclipse.fennec.model.query.Pipeline;
@@ -114,9 +115,25 @@ public final class QueryBuilder {
 	}
 
 	private QueryBuilder orderBy(SortDirection direction, EStructuralFeature... segments) {
+		return orderBy(direction, NullPrecedence.DEFAULT, segments);
+	}
+
+	/**
+	 * Adds an ordering over the given path with an explicit null placement (issue #365).
+	 * {@link NullPrecedence#DEFAULT} leaves it to the store, which places null differently per
+	 * backend; {@code FIRST} and {@code LAST} fix it regardless of the direction.
+	 *
+	 * @param direction the sort direction
+	 * @param nulls where null values go
+	 * @param segments the path segments, root feature first
+	 * @return this builder
+	 */
+	public QueryBuilder orderBy(SortDirection direction, NullPrecedence nulls,
+			EStructuralFeature... segments) {
 		OrderBy orderBy = factory.createOrderBy();
 		orderBy.setPath(Expressions.propertyPath(segments));
-		orderBy.setDirection(direction);
+		orderBy.setDirection(Objects.requireNonNull(direction, "direction must not be null"));
+		orderBy.setNulls(Objects.requireNonNull(nulls, "null placement must not be null"));
 		query.getOrderBy().add(orderBy);
 		return this;
 	}
@@ -142,9 +159,24 @@ public final class QueryBuilder {
 	}
 
 	private QueryBuilder orderByKey(SortDirection direction, Expression key) {
+		return orderBy(direction, NullPrecedence.DEFAULT, key);
+	}
+
+	/**
+	 * Adds an ordering over an arbitrary value expression with an explicit null placement
+	 * (issues #84, #365).
+	 *
+	 * @param direction the sort direction
+	 * @param nulls where null values go
+	 * @param key the sort expression
+	 * @return this builder
+	 * @see #orderBy(SortDirection, NullPrecedence, EStructuralFeature...)
+	 */
+	public QueryBuilder orderBy(SortDirection direction, NullPrecedence nulls, Expression key) {
 		OrderBy orderBy = factory.createOrderBy();
 		orderBy.setKey(Objects.requireNonNull(key, "sort expression must not be null"));
-		orderBy.setDirection(direction);
+		orderBy.setDirection(Objects.requireNonNull(direction, "direction must not be null"));
+		orderBy.setNulls(Objects.requireNonNull(nulls, "null placement must not be null"));
 		query.getOrderBy().add(orderBy);
 		return this;
 	}
@@ -298,10 +330,28 @@ public final class QueryBuilder {
 	 */
 	public QueryBuilder representativesOrderedBy(String alias, int count, SortDirection direction,
 			EStructuralFeature... segments) {
+		return representativesOrderedBy(alias, count, direction, NullPrecedence.DEFAULT, segments);
+	}
+
+	/**
+	 * Asks for the top-{@code count} documents of each group in an order of their own, with an
+	 * explicit null placement within the group (issue #365).
+	 *
+	 * @param alias the result column alias holding the documents
+	 * @param count how many documents per group, greater than zero
+	 * @param direction the within-group sort direction
+	 * @param nulls where null values go within the group
+	 * @param segments the within-group sort path, root feature first
+	 * @return this builder
+	 * @see #representativesOrderedBy(String, int, SortDirection, EStructuralFeature...)
+	 */
+	public QueryBuilder representativesOrderedBy(String alias, int count, SortDirection direction,
+			NullPrecedence nulls, EStructuralFeature... segments) {
 		RepresentativeSpec spec = representativeSpec(alias, count, 0);
 		OrderBy within = factory.createOrderBy();
 		within.setPath(Expressions.propertyPath(segments));
 		within.setDirection(direction == null ? SortDirection.ASC : direction);
+		within.setNulls(Objects.requireNonNull(nulls, "null placement must not be null"));
 		spec.getOrderBy().add(within);
 		return this;
 	}

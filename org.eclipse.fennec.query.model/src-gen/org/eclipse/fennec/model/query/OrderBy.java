@@ -35,6 +35,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getPath <em>Path</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getKey <em>Key</em>}</li>
  *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getDirection <em>Direction</em>}</li>
+ *   <li>{@link org.eclipse.fennec.model.query.OrderBy#getNulls <em>Nulls</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.model.query.QueryPackage#getOrderBy()
@@ -115,5 +116,34 @@ public interface OrderBy extends EObject {
 	 * @generated
 	 */
 	void setDirection(SortDirection value);
+
+	/**
+	 * Returns the value of the '<em><b>Nulls</b></em>' attribute.
+	 * The default value is <code>"DEFAULT"</code>.
+	 * The literals are from the enumeration {@link org.eclipse.fennec.model.query.NullPrecedence}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Where null values go, independent of the direction (issue #365). DEFAULT keeps the store's own placement, which differs per backend (PostgreSQL and the memory engine sort null largest, h2, MariaDB and Mongo smallest). FIRST and LAST fix it; a backend that cannot render a combination refuses it via capability rather than sorting it differently.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Nulls</em>' attribute.
+	 * @see org.eclipse.fennec.model.query.NullPrecedence
+	 * @see #setNulls(NullPrecedence)
+	 * @see org.eclipse.fennec.model.query.QueryPackage#getOrderBy_Nulls()
+	 * @model default="DEFAULT" required="true"
+	 * @generated
+	 */
+	NullPrecedence getNulls();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.model.query.OrderBy#getNulls <em>Nulls</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Nulls</em>' attribute.
+	 * @see org.eclipse.fennec.model.query.NullPrecedence
+	 * @see #getNulls()
+	 * @generated
+	 */
+	void setNulls(NullPrecedence value);
 
 } // OrderBy

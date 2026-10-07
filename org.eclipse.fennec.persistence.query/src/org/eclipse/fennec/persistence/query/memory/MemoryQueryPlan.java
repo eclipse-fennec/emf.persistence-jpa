@@ -141,12 +141,9 @@ public final class MemoryQueryPlan implements QueryPlan {
 			Comparator<EObject> next = orderBy.getKey() != null
 					// arbitrary sort expressions evaluate per object (issue #84)
 					? Comparator.comparing(object -> predicate.value(orderBy.getKey(), object),
-							MemoryPredicate.VALUE_ORDER)
+							valueOrder(orderBy))
 					: Comparator.comparing(object -> predicate.pathValue(orderBy.getPath(), object),
-							MemoryPredicate.VALUE_ORDER);
-			if (orderBy.getDirection() == SortDirection.DESC) {
-				next = next.reversed();
-			}
+							valueOrder(orderBy));
 			comparator = comparator == null ? next : comparator.thenComparing(next);
 		}
 		return objects.sorted(comparator);
@@ -351,12 +348,9 @@ public final class MemoryQueryPlan implements QueryPlan {
 			}
 			Comparator<EObject> next = orderBy.getKey() != null
 					? Comparator.comparing(object -> predicate.value(orderBy.getKey(), object),
-							MemoryPredicate.VALUE_ORDER)
+							valueOrder(orderBy))
 					: Comparator.comparing(object -> predicate.pathValue(orderBy.getPath(), object),
-							MemoryPredicate.VALUE_ORDER);
-			if (orderBy.getDirection() == SortDirection.DESC) {
-				next = next.reversed();
-			}
+							valueOrder(orderBy));
 			comparator = comparator == null ? next : comparator.thenComparing(next);
 		}
 		return comparator;
@@ -431,17 +425,31 @@ public final class MemoryQueryPlan implements QueryPlan {
 			if (orderBy.getKey() != null) {
 				// arbitrary sort expressions evaluate in row space (issue #84)
 				next = Comparator.comparing(
-						row -> predicate.rowValue(orderBy.getKey(), row), MemoryPredicate.VALUE_ORDER);
+						row -> predicate.rowValue(orderBy.getKey(), row), valueOrder(orderBy));
 			} else {
 				int index = rowIndex(orderBy);
-				next = Comparator.comparing(row -> row.get(index), MemoryPredicate.VALUE_ORDER);
-			}
-			if (orderBy.getDirection() == SortDirection.DESC) {
-				next = next.reversed();
+				next = Comparator.comparing(row -> row.get(index), valueOrder(orderBy));
 			}
 			comparator = comparator == null ? next : comparator.thenComparing(next);
 		}
 		return rows.sorted(comparator);
+	}
+
+	/**
+	 * The value order of one ordering entry. Without a null placement it is the engine's
+	 * own total order turned around for {@code DESC}, so null comes last ascending and first
+	 * descending; an explicit placement (issue #365) puts null first or last regardless of
+	 * the direction.
+	 */
+	static Comparator<Object> valueOrder(OrderBy orderBy) {
+		Comparator<Object> order = orderBy.getDirection() == SortDirection.DESC
+				? MemoryPredicate.VALUE_ORDER.reversed()
+				: MemoryPredicate.VALUE_ORDER;
+		return switch (orderBy.getNulls()) {
+			case FIRST -> Comparator.nullsFirst(order);
+			case LAST -> Comparator.nullsLast(order);
+			default -> order;
+		};
 	}
 
 	private int rowIndex(OrderBy orderBy) {

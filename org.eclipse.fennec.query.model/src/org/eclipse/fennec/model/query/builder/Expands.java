@@ -17,6 +17,7 @@ import java.util.Objects;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.query.Expand;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.SortDirection;
@@ -131,9 +132,25 @@ public final class Expands {
 		}
 
 		private Builder orderBy(SortDirection direction, EStructuralFeature... segments) {
+			return orderBy(direction, NullPrecedence.DEFAULT, segments);
+		}
+
+		/**
+		 * Orders the children before {@code top}/{@code skip} pick from them, with an
+		 * explicit null placement (issue #365).
+		 *
+		 * @param direction the sort direction
+		 * @param nulls where null values go
+		 * @param segments the path to order by, relative to the expanded type
+		 * @return this builder
+		 * @see #orderByAsc(EStructuralFeature...)
+		 */
+		public Builder orderBy(SortDirection direction, NullPrecedence nulls,
+				EStructuralFeature... segments) {
 			OrderBy orderBy = FACTORY.createOrderBy();
 			orderBy.setPath(Expressions.propertyPath(segments));
-			orderBy.setDirection(direction);
+			orderBy.setDirection(Objects.requireNonNull(direction, "direction must not be null"));
+			orderBy.setNulls(Objects.requireNonNull(nulls, "null placement must not be null"));
 			expand.getOrderBy().add(orderBy);
 			return this;
 		}

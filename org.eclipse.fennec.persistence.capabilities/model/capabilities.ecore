@@ -297,6 +297,16 @@
         <details key="documentation" value="Per-parent top/skip inside an expansion, and with it orderBy as the selector that makes them meaningful (issue #238) — OData's $top/$skip/$orderby inside $expand. On JPA ROW_NUMBER() OVER (PARTITION BY parentKey ORDER BY …), the window mechanic issue #214 introduced for group representatives.&#xA;&#xA;orderBy rides on this literal rather than its own because under D1 it cannot be delivered as an order — the list order belongs to the store — and is served only as the selector for top/skip (D3). Standing alone it is refused whatever a backend declares.&#xA;&#xA;There is deliberately no EXPAND_COUNT: $count inside $expand is not served at all (D2), and issue #207 forbids a stock of unserved literals."/>
       </eAnnotations>
     </eLiterals>
+    <eLiterals name="SORT_NULLS_LOW" value="89">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="An explicit null placement that treats null as the smallest value (issue #365): OrderBy.nulls FIRST on ASC, LAST on DESC - the OData $orderby rule. Native on Mongo (BSON order) and on h2/MariaDB, rendered as NULLS FIRST/LAST or a CASE key elsewhere."/>
+      </eAnnotations>
+    </eLiterals>
+    <eLiterals name="SORT_NULLS_HIGH" value="90">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="An explicit null placement that treats null as the largest value (issue #365): OrderBy.nulls LAST on ASC, FIRST on DESC. Native on PostgreSQL; Mongo cannot sort that way without an extra computed key and refuses it."/>
+      </eAnnotations>
+    </eLiterals>
     <eLiterals name="AS_OF" value="100">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Point-in-time reads of the CURRENT STATE: reconstruct an object as of a sequence or timestamp via the latest keyframe plus replay (concept §10, §14). A CHANGELOG-profile operation and deliberately orthogonal to series access (issue #207) — a series query never needs it, because every sample is an absolute value. Keeping them apart is what lets a store declare one without the other. Value 101 is retired and stays unused (SERIES_RANGE, issue #207)."/>

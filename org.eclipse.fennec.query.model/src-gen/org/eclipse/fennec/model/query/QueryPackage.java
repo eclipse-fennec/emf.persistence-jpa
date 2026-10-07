@@ -43,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:cf8c537c55f42c97aa9482a4e803417ef4f89e10c6128b01a65e856826da1c48", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
+@EPackage(uri = QueryPackage.eNS_URI, fingerprint = "fp1:14b171a58403cc307243a870df8f05e45f743e23f019d7310558821c42b22f80", genModel = "/model/query.genmodel", genModelSourceLocations = {"model/query.genmodel","org.eclipse.fennec.query.model/model/query.genmodel"}, ecore = "/model/query.ecore", ecoreSourceLocations = "/model/query.ecore")
 public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -269,13 +269,22 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int ORDER_BY__DIRECTION = 2;
 
 	/**
+	 * The feature id for the '<em><b>Nulls</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int ORDER_BY__NULLS = 3;
+
+	/**
 	 * The number of structural features of the '<em>Order By</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int ORDER_BY_FEATURE_COUNT = 3;
+	int ORDER_BY_FEATURE_COUNT = 4;
 
 	/**
 	 * The number of operations of the '<em>Order By</em>' class.
@@ -977,6 +986,16 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	int SORT_DIRECTION = 16;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.query.NullPrecedence <em>Null Precedence</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.query.NullPrecedence
+	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getNullPrecedence()
+	 * @generated
+	 */
+	int NULL_PRECEDENCE = 17;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -984,7 +1003,7 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getAggregateMethod()
 	 * @generated
 	 */
-	int AGGREGATE_METHOD = 17;
+	int AGGREGATE_METHOD = 18;
 
 
 	/**
@@ -1193,6 +1212,17 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getOrderBy_Direction();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.query.OrderBy#getNulls <em>Nulls</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Nulls</em>'.
+	 * @see org.eclipse.fennec.model.query.OrderBy#getNulls()
+	 * @see #getOrderBy()
+	 * @generated
+	 */
+	EAttribute getOrderBy_Nulls();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.query.Expand <em>Expand</em>}'.
@@ -1697,6 +1727,16 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 	EEnum getSortDirection();
 
 	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.query.NullPrecedence <em>Null Precedence</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Null Precedence</em>'.
+	 * @see org.eclipse.fennec.model.query.NullPrecedence
+	 * @generated
+	 */
+	EEnum getNullPrecedence();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1884,6 +1924,14 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute ORDER_BY__DIRECTION = eINSTANCE.getOrderBy_Direction();
+
+		/**
+		 * The meta object literal for the '<em><b>Nulls</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute ORDER_BY__NULLS = eINSTANCE.getOrderBy_Nulls();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.impl.ExpandImpl <em>Expand</em>}' class.
@@ -2290,6 +2338,16 @@ public interface QueryPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum SORT_DIRECTION = eINSTANCE.getSortDirection();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.NullPrecedence <em>Null Precedence</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.query.NullPrecedence
+		 * @see org.eclipse.fennec.model.query.impl.QueryPackageImpl#getNullPrecedence()
+		 * @generated
+		 */
+		EEnum NULL_PRECEDENCE = eINSTANCE.getNullPrecedence();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.model.query.AggregateMethod <em>Aggregate Method</em>}' enum.

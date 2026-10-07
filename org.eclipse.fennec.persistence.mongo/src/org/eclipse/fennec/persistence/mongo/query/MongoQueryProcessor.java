@@ -73,6 +73,7 @@ import org.eclipse.fennec.model.query.ComputeStage;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.Query;
@@ -1372,10 +1373,25 @@ public class MongoQueryProcessor implements QueryProcessor {
 						+ " (feature SORT_EXPRESSION)");
 			}
 			String field = MongoFieldNames.render(orderBy.getPath());
-			entries[i] = orderBy.getDirection() == SortDirection.DESC ? Sorts.descending(field)
-					: Sorts.ascending(field);
+			entries[i] = sortEntry(orderBy, field);
 		}
 		return entries.length == 1 ? entries[0] : Sorts.orderBy(entries);
+	}
+
+	/**
+	 * One sort entry. BSON order puts null below every value, so a null placement that
+	 * agrees with it needs nothing (issue #365); the opposite one would need an extra computed
+	 * key.
+	 */
+	private static Bson sortEntry(OrderBy orderBy, String field) throws QueryException {
+		boolean descending = orderBy.getDirection() == SortDirection.DESC;
+		NullPrecedence nulls = orderBy.getNulls();
+		if (nulls == NullPrecedence.FIRST && descending || nulls == NullPrecedence.LAST && !descending) {
+			// backstop — SORT_NULLS_HIGH is not declared, validation refuses first
+			throw new QueryException("Sorting null above every value is not supported by the mongo"
+					+ " backend (feature SORT_NULLS_HIGH)");
+		}
+		return descending ? Sorts.descending(field) : Sorts.ascending(field);
 	}
 
 	// -------------------------------------------------- pipeline
@@ -1566,8 +1582,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 				continue;
 			}
 			String field = MongoFieldNames.render(orderBy.getPath());
-			sorts.add(orderBy.getDirection() == SortDirection.DESC ? Sorts.descending(field)
-					: Sorts.ascending(field));
+			sorts.add(sortEntry(orderBy, field));
 		}
 		if (!sorts.isEmpty()) {
 			pipeline.add(Aggregates.sort(sorts.size() == 1 ? sorts.get(0) : Sorts.orderBy(sorts)));
@@ -1630,8 +1645,7 @@ public class MongoQueryProcessor implements QueryProcessor {
 						+ "' does not address an output key of the projection/aggregation (keys: " + rowKeys
 						+ ") — alias the column accordingly");
 			}
-			entries[i] = orderBy.getDirection() == SortDirection.DESC ? Sorts.descending(candidate)
-					: Sorts.ascending(candidate);
+			entries[i] = sortEntry(orderBy, candidate);
 		}
 		return entries.length == 1 ? entries[0] : Sorts.orderBy(entries);
 	}

@@ -36,7 +36,10 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
+import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
@@ -633,6 +636,130 @@ class JpaQueryProcessorTest {
 		assertThat(expand.parameters())
 				.containsEntry("expandSkip", 1)
 				.containsEntry("expandUpper", 3);
+	}
+
+	// ------------------------------------------------- null placement (issue #365)
+
+	private String orderOf(JpaFlavor flavor, SortDirection direction, NullPrecedence nulls)
+			throws QueryException {
+		Query query = QueryBuilder.from(person).orderBy(direction, nulls, age).build();
+		String jpql = ((JpaQueryPlan) new JpaQueryProcessor(flavor)
+				.translate(query, QueryContexts.of(person, null))).jpql();
+		return jpql.substring(jpql.indexOf(" ORDER BY ") + " ORDER BY ".length());
+	}
+
+	/** Without a placement nothing changes, on any flavor: the database decides as before. */
+	@Test
+	void defaultPlacementRendersTheDirectionOnly() throws QueryException {
+		for (JpaFlavor flavor : JpaFlavor.values()) {
+			assertThat(orderOf(flavor, SortDirection.DESC, NullPrecedence.DEFAULT))
+					.as(flavor.id()).isEqualTo("e.age DESC");
+		}
+	}
+
+	/** h2 and PostgreSQL have the standard suffix, for either placement. */
+	@Test
+	void suffixWhereTheDatabaseHasIt() throws QueryException {
+		for (JpaFlavor flavor : new JpaFlavor[] { JpaFlavor.H2, JpaFlavor.POSTGRES }) {
+			assertThat(orderOf(flavor, SortDirection.DESC, NullPrecedence.LAST))
+					.as(flavor.id()).isEqualTo("e.age DESC NULLS LAST");
+			assertThat(orderOf(flavor, SortDirection.ASC, NullPrecedence.LAST))
+					.as(flavor.id()).isEqualTo("e.age ASC NULLS LAST");
+			assertThat(orderOf(flavor, SortDirection.DESC, NullPrecedence.FIRST))
+					.as(flavor.id()).isEqualTo("e.age DESC NULLS FIRST");
+		}
+	}
+
+	/**
+	 * MariaDB rejects the suffix but sorts null below every value: that placement needs
+	 * nothing, the opposite one a leading CASE key.
+	 */
+	@Test
+	void mariadbAddsNothingForItsOwnPlacementAndACaseKeyOtherwise() throws QueryException {
+		assertThat(orderOf(JpaFlavor.MARIADB, SortDirection.ASC, NullPrecedence.FIRST))
+				.isEqualTo("e.age ASC");
+		assertThat(orderOf(JpaFlavor.MARIADB, SortDirection.DESC, NullPrecedence.LAST))
+				.isEqualTo("e.age DESC");
+		assertThat(orderOf(JpaFlavor.MARIADB, SortDirection.ASC, NullPrecedence.LAST))
+				.isEqualTo("CASE WHEN e.age IS NULL THEN 1 ELSE 0 END ASC, e.age ASC");
+		assertThat(orderOf(JpaFlavor.MARIADB, SortDirection.DESC, NullPrecedence.FIRST))
+				.isEqualTo("CASE WHEN e.age IS NULL THEN 0 ELSE 1 END ASC, e.age DESC");
+	}
+
+	/** An unprobed database assumes nothing and gets the form every database understands. */
+	@Test
+	void unknownFlavorAlwaysUsesTheCaseKey() throws QueryException {
+		assertThat(orderOf(JpaFlavor.UNKNOWN, SortDirection.DESC, NullPrecedence.LAST))
+				.isEqualTo("CASE WHEN e.age IS NULL THEN 1 ELSE 0 END ASC, e.age DESC");
+		assertThat(orderOf(JpaFlavor.UNKNOWN, SortDirection.ASC, NullPrecedence.FIRST))
+				.isEqualTo("CASE WHEN e.age IS NULL THEN 0 ELSE 1 END ASC, e.age ASC");
+	}
+
+	/**
+	 * With the fallback off, a placement that needs the CASE key is not declared: validation
+	 * refuses it naming the feature, and the renderer refuses it as a backstop. What the
+	 * database spells by itself is untouched.
+	 */
+	@Test
+	void withoutTheFallbackACaseKeyPlacementIsRefused() throws QueryException {
+		JpaQueryProcessor strict = new JpaQueryProcessor(JpaFlavor.MARIADB, false);
+		Query ownPlacement = QueryBuilder.from(person).orderBy(SortDirection.DESC, NullPrecedence.LAST, age).build();
+		Query caseKey = QueryBuilder.from(person).orderBy(SortDirection.DESC, NullPrecedence.FIRST, age).build();
+
+		assertThat(((JpaQueryPlan) strict.translate(ownPlacement, QueryContexts.of(person, null))).jpql())
+				.endsWith(" ORDER BY e.age DESC");
+		assertThat(strict.validate(caseKey, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+		assertThatThrownBy(() -> strict.translate(caseKey, QueryContexts.of(person, null)))
+				.isInstanceOf(QueryException.class).hasMessageContaining("SORT_NULLS_HIGH");
+
+		JpaQueryProcessor strictUnknown = new JpaQueryProcessor(JpaFlavor.UNKNOWN, false);
+		assertThat(strictUnknown.validate(ownPlacement, person).getSeverity()).isEqualTo(Diagnostic.ERROR);
+		// a flavor with the suffix needs no fallback at all
+		assertThat(new JpaQueryProcessor(JpaFlavor.POSTGRES, false).validate(caseKey, person).getSeverity())
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	/** A row-shaped sort addresses the output column, and the placement follows it there. */
+	@Test
+	void rowShapedSortCarriesThePlacement() throws QueryException {
+		Query query = QueryBuilder.from(person).select(name).select(age)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, age).build();
+		String jpql = ((JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.POSTGRES)
+				.translate(query, QueryContexts.of(person, null))).jpql();
+		assertThat(jpql).endsWith(" ORDER BY age DESC NULLS LAST");
+
+		// JPQL admits a result variable only bare: the CASE key tests the column behind it
+		String portable = ((JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.UNKNOWN)
+				.translate(query, QueryContexts.of(person, null))).jpql();
+		assertThat(portable).endsWith(" ORDER BY CASE WHEN e.age IS NULL THEN 1 ELSE 0 END ASC, age DESC");
+
+		Query grouped = QueryBuilder.from(person).groupBy(name).max("oldest", age)
+				.orderBy(SortDirection.DESC, NullPrecedence.LAST, aliasRef("oldest").toExpression()).build();
+		String aggregated = ((JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.UNKNOWN)
+				.translate(grouped, QueryContexts.of(person, null))).jpql();
+		assertThat(aggregated).endsWith(" ORDER BY CASE WHEN MAX(e.age) IS NULL THEN 1 ELSE 0 END ASC, oldest DESC");
+	}
+
+	/**
+	 * Inside the window spliced through {@code SQL()} the key is a {@code ?} placeholder: the
+	 * CASE form names it twice, so the argument has to be passed twice as well.
+	 */
+	@Test
+	void windowOrderingPassesTheCaseKeyArgumentTwice() throws QueryException {
+		Query paged = QueryBuilder.from(person)
+				.expand(Expands.of(addresses).orderBy(SortDirection.ASC, NullPrecedence.LAST, street)
+						.top(2).build())
+				.build();
+		JpaQueryPlan maria = (JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.MARIADB)
+				.translate(paged, QueryContexts.of(person, null));
+		String window = maria.expandPlans().get(0).jpql();
+		assertThat(window)
+				.contains("ORDER BY CASE WHEN ? IS NULL THEN 1 ELSE 0 END ASC, ? ASC)', p.id, e.street, e.street)");
+
+		JpaQueryPlan postgres = (JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.POSTGRES)
+				.translate(paged, QueryContexts.of(person, null));
+		assertThat(postgres.expandPlans().get(0).jpql())
+				.contains("ORDER BY ? ASC NULLS LAST)', p.id, e.street)");
 	}
 
 	/**

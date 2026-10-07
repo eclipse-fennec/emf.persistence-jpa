@@ -392,6 +392,55 @@ Two things to know:
 Paging an *unordered* query is a request for arbitrary rows — the backends do not impose
 a default order, so always pair `skip`/`top` with an `orderBy…`.
 
+### Where null goes
+
+Without further instruction the store decides where null values land, and the stores
+disagree: PostgreSQL and the in-memory engine treat null as the largest value (last on
+`ASC`, first on `DESC`); h2, MariaDB and MongoDB treat it as the smallest. The same query
+therefore sorts differently per backend — and with `top`, returns different rows.
+
+Name the placement explicitly to make the order backend-independent (issue #365):
+
+```java
+// OData $orderby semantics: null is smaller than any value
+QueryBuilder.from(personClass)
+        .orderBy(SortDirection.DESC, NullPrecedence.LAST, birthday)   // newest first, no-date last
+        .top(4)
+        .build();
+```
+
+`NullPrecedence` is `DEFAULT` (the store decides — what `orderByAsc`/`orderByDesc` give
+you), `FIRST` or `LAST`, independent of the direction. The same overload exists for a sort
+expression (`orderBy(direction, nulls, expression)`), for paged expansions
+(`Expands.of(…).orderBy(direction, nulls, …)`) and for representatives
+(`representativesOrderedBy(alias, count, direction, nulls, …)`).
+
+What a backend has to serve depends on the *effective* order, so the capability is split
+that way:
+
+| Placement | Capability | JPA | MongoDB | memory |
+|---|---|---|---|---|
+| `FIRST` on `ASC`, `LAST` on `DESC` — null below every value | `SORT_NULLS_LOW` | ✅ | ✅ native BSON order | ✅ |
+| `LAST` on `ASC`, `FIRST` on `DESC` — null above every value | `SORT_NULLS_HIGH` | ✅ | ❌ refused | ✅ |
+
+How JPA renders it depends on the database flavor:
+
+- **h2, PostgreSQL** — the standard suffix, `ORDER BY e.birthday DESC NULLS LAST`.
+- **MariaDB** — has no such suffix (EclipseLink passes it through, MariaDB rejects it), but
+  sorts null below every value by itself. `SORT_NULLS_LOW` therefore needs nothing at all;
+  `SORT_NULLS_HIGH` gets a leading key, `ORDER BY CASE WHEN e.birthday IS NULL THEN 1 ELSE 0
+  END ASC, e.birthday ASC`.
+- **An unrecognised database** — the `CASE` key for both, since it is the one form every
+  database understands.
+
+The `CASE` key is correct but has a price: the database sorts by a computed value, so it
+cannot read the order off an index, and a `top(n)` sorts every matching row first. Where
+that is not acceptable, switch the fallback off per persistence unit
+(`fennec.jpa.nullOrderFallback=false`, see the
+[configuration reference](configuration-reference.md)). The placements that would need the
+key are then not declared, and a query using one is refused with a Diagnostic before the
+database is asked — on MariaDB `SORT_NULLS_HIGH`, on an unrecognised database both.
+
 ## Parameters and prepared queries
 
 `param("name")` is a first-class node, not a string convention. Declare it on the builder,
@@ -567,6 +616,7 @@ reports each violation as a `Diagnostic` ERROR before anything runs.
 | Quantifier over a map | ✅ over the entry table | ❌ refused (code 103) | prefer `mapValue` for portability |
 | Sort / top / skip / count | ✅ | ✅ | |
 | Sort by expression | ✅ | ❌ refused | use `aliasRef` on row shapes |
+| Explicit null placement (`NullPrecedence`) | ✅ suffix, or a `CASE` key where the database lacks it | ⚠️ null-below-every-value only | see [Where null goes](#where-null-goes) |
 | DISTINCT | ✅ incl. whole entities | ⚠️ projection only (code 101) | |
 | Projection, grouping, aggregates, COUNT_DISTINCT | ✅ | ✅ | group keys alias-addressable |
 | Projection of an expression | ✅ inline in the select list | ✅ `$project` expression | alias mandatory |

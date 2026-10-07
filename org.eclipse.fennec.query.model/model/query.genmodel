@@ -13,6 +13,11 @@
       <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/ASC"/>
       <genEnumLiterals ecoreEnumLiteral="query.ecore#//SortDirection/DESC"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//NullPrecedence">
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//NullPrecedence/DEFAULT"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//NullPrecedence/FIRST"/>
+      <genEnumLiterals ecoreEnumLiteral="query.ecore#//NullPrecedence/LAST"/>
+    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="query.ecore#//AggregateMethod">
       <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/SUM"/>
       <genEnumLiterals ecoreEnumLiteral="query.ecore#//AggregateMethod/MIN"/>
@@ -41,6 +46,7 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//OrderBy/path"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//OrderBy/key"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//OrderBy/direction"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute query.ecore#//OrderBy/nulls"/>
     </genClasses>
     <genClasses ecoreClass="query.ecore#//Expand">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference query.ecore#//Expand/path"/>

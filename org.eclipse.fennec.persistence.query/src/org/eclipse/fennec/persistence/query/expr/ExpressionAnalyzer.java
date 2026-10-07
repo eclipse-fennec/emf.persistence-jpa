@@ -76,11 +76,13 @@ import org.eclipse.fennec.model.query.Expand;
 import org.eclipse.fennec.model.query.FilterStage;
 import org.eclipse.fennec.model.query.GroupByStage;
 import org.eclipse.fennec.model.query.GroupKey;
+import org.eclipse.fennec.model.query.NullPrecedence;
 import org.eclipse.fennec.model.query.OrderBy;
 import org.eclipse.fennec.model.query.Pipeline;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.RepresentativeSpec;
 import org.eclipse.fennec.model.query.Selection;
+import org.eclipse.fennec.model.query.SortDirection;
 import org.eclipse.fennec.model.query.Stage;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.helper.EMaps;
@@ -125,6 +127,7 @@ public final class ExpressionAnalyzer {
 		String[] invalidSort = { null };
 		for (OrderBy orderBy : query.getOrderBy()) {
 			features.add(QueryFeature.SORT);
+			nullPrecedence(orderBy, features);
 			if (orderBy.getKey() instanceof AliasRef aliasRef) {
 				// a bare AliasRef key is a plain output-column sort (issue #102): no
 				// rendering beyond addressing the column — plain SORT on every backend
@@ -373,6 +376,7 @@ public final class ExpressionAnalyzer {
 						walk(representatives.getOffset(), features, maxDepth, zeroDivision);
 					}
 					for (OrderBy within : representatives.getOrderBy()) {
+						nullPrecedence(within, features);
 						if (within.getPath() != null) {
 							path(within.getPath(), features, maxDepth);
 						}
@@ -878,6 +882,7 @@ public final class ExpressionAnalyzer {
 			features.add(QueryFeature.EXPAND_PAGE);
 		}
 		expand.getOrderBy().forEach(orderBy -> {
+			nullPrecedence(orderBy, features);
 			if (orderBy.getPath() != null) {
 				path(orderBy.getPath(), features, maxDepth);
 			}
@@ -886,6 +891,21 @@ public final class ExpressionAnalyzer {
 			}
 		});
 		expand.getExpand().forEach(nested -> expansion(nested, features, maxDepth, zeroDivision));
+	}
+
+	/**
+	 * An explicit null placement asks for the capability of its effective order (issue #365):
+	 * null as the smallest value (FIRST on ASC, LAST on DESC) or as the largest. The default
+	 * leaves the placement to the store and asks for nothing.
+	 */
+	private static void nullPrecedence(OrderBy orderBy, Set<QueryFeature> features) {
+		NullPrecedence nulls = orderBy.getNulls();
+		if (nulls == null || nulls == NullPrecedence.DEFAULT) {
+			return;
+		}
+		boolean descending = orderBy.getDirection() == SortDirection.DESC;
+		boolean nullsLow = (nulls == NullPrecedence.FIRST) != descending;
+		features.add(nullsLow ? QueryFeature.SORT_NULLS_LOW : QueryFeature.SORT_NULLS_HIGH);
 	}
 
 	private static void track(int depth, Set<QueryFeature> features, int[] maxDepth) {

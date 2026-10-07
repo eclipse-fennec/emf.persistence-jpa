@@ -229,4 +229,17 @@ class AbstractPersistenceUnitConfiguratorTest {
 			return "stub";
 		}
 	}
+
+	@Test
+	void nullOrderFallback_isOnUnlessSwitchedOff() {
+		assertThat(AbstractPersistenceUnitConfigurator.readNullOrderFallback(Map.of())).isTrue();
+		assertThat(AbstractPersistenceUnitConfigurator.readNullOrderFallback(
+				Map.of("nullOrderFallback", false))).isFalse();
+		assertThat(AbstractPersistenceUnitConfigurator.readNullOrderFallback(
+				Map.of("nullOrderFallback", "FALSE"))).isFalse();
+		assertThat(AbstractPersistenceUnitConfigurator.readNullOrderFallback(
+				Map.of("fennec.jpa.nullOrderFallback", "false", "nullOrderFallback", true))).isFalse();
+		assertThat(AbstractPersistenceUnitConfigurator.readNullOrderFallback(
+				Map.of("nullOrderFallback", " "))).isTrue();
+	}
 }

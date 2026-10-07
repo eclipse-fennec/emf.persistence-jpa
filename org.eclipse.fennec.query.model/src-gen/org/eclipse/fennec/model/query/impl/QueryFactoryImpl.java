@@ -97,6 +97,8 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 		switch (eDataType.getClassifierID()) {
 			case QueryPackage.SORT_DIRECTION:
 				return createSortDirectionFromString(eDataType, initialValue);
+			case QueryPackage.NULL_PRECEDENCE:
+				return createNullPrecedenceFromString(eDataType, initialValue);
 			case QueryPackage.AGGREGATE_METHOD:
 				return createAggregateMethodFromString(eDataType, initialValue);
 			default:
@@ -114,6 +116,8 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 		switch (eDataType.getClassifierID()) {
 			case QueryPackage.SORT_DIRECTION:
 				return convertSortDirectionToString(eDataType, instanceValue);
+			case QueryPackage.NULL_PRECEDENCE:
+				return convertNullPrecedenceToString(eDataType, instanceValue);
 			case QueryPackage.AGGREGATE_METHOD:
 				return convertAggregateMethodToString(eDataType, instanceValue);
 			default:
@@ -303,6 +307,26 @@ public class QueryFactoryImpl extends EFactoryImpl implements QueryFactory {
 	 * @generated
 	 */
 	public String convertSortDirectionToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NullPrecedence createNullPrecedenceFromString(EDataType eDataType, String initialValue) {
+		NullPrecedence result = NullPrecedence.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertNullPrecedenceToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 
