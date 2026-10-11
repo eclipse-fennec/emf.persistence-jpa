@@ -50,7 +50,7 @@
 	org.apache.felix.cm.json;version='[2.0.0,2.0.1)',\
 	org.apache.felix.configadmin;version='[1.9.26,1.9.27)',\
 	org.apache.felix.configurator;version='[1.0.18,1.0.19)',\
-	org.apache.felix.scr;version='[2.2.12,2.2.13)',\
+	org.apache.felix.scr;version='[2.2.18,2.2.19)',\
 	org.eclipse.daanse.jdbc.datasource.common;version='[0.0.1,0.0.2)',\
 	org.eclipse.daanse.jdbc.datasource.h2;version='[0.0.1,0.0.2)',\
 	org.eclipse.daanse.jdbc.db.api;version='[0.0.1,0.0.2)',\
