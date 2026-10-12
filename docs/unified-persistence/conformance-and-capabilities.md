@@ -338,6 +338,26 @@ both backends and before anything is changed: clearing it would leave its holder
 rule follows the model rather than the DDL, so it is the same where no schema exists. JPA clears
 by single key; a composite key is refused.
 
+#### What a delete reports (issues #369, #371)
+
+`Resource.delete()` identifies each object by its key, not by the instance — a detached object,
+one loaded elsewhere and a hand-built one carrying only the id delete alike, with or without a
+shared cache (#369). Two outcomes that used to pass as success are reported, with a code to
+route on:
+
+| Outcome | Default | Code |
+|---------|---------|------|
+| an object has no row or document | skipped with a **warning**, the others deleted — a delete is idempotent. `Options.OPTION_DELETE_REQUIRE_EXISTING` makes it an **error**, and nothing is deleted | `CODE_NOT_FOUND` (HTTP 404) |
+| the store kept a row it was asked to delete — a row level security policy for `DELETE` only, a trigger suppressing it | always an **error**, the transaction rolled back | `CODE_DELETE_REFUSED` (HTTP 403) |
+
+A row the principal may not even read is indistinguishable from a missing one, so under row
+level security it is `CODE_NOT_FOUND`, not `CODE_DELETE_REFUSED`. JPA checks for kept rows after
+the flush with one scalar query per type, since EclipseLink does not look at the row count of a
+`DELETE` without a version attribute; mongo has no store-side suppression and reports only
+missing documents. Through a `Repository` the warnings of the default never reach the caller —
+the option is how a caller tells "deleted" from "was not there"; `Repository.delete(URI)` honours
+it for an id that resolves to nothing.
+
 ### 4d. `resolveProxies="false"` is enforced by EMF, not by the store
 
 Decided 2026-08-21 (issue #195), after trying to enforce it and finding there was nothing to

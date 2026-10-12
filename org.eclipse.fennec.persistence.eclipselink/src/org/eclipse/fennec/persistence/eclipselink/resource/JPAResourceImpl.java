@@ -1257,29 +1257,51 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						? clearInboundReferences(em, server, contents, Options.getWriteChunkSize(options))
 						: Set.of();
 				List<EObject> opposites = new ArrayList<>();
+				List<EObject> removed = new ArrayList<>();
+				List<String> missing = new ArrayList<>();
 				// a copy: removing an object with a bidirectional reference updates
 				// its opposite, which can touch this list while it is iterated
 				for (EObject eo : new ArrayList<>(contents)) {
 					Object managed = managedForDelete(em, server, eo);
 					if (isNull(managed)) {
-						getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE,
-								"Nothing to delete for " + eo.eClass().getName() + " " + describeKey(findKey(eo))
-										+ ": no row with this id",
-								getURI()));
+						missing.add(eo.eClass().getName() + " " + describeKey(findKey(eo)));
 						continue;
 					}
 					if (managed instanceof EObject managedEO) {
 						detachFromOpposites(managedEO, opposites);
 					}
 					em.remove(managed);
+					removed.add(eo);
+				}
+				if (!missing.isEmpty() && Options.isDeleteRequireExisting(options)) {
+					throw new DeleteRefusal(PersistenceDiagnostic.CODE_NOT_FOUND,
+							"Nothing to delete for " + String.join(", ", missing) + ": no row with this id");
+				}
+				// a DELETE the store suppresses affects no row and raises no error, and without a
+				// version attribute EclipseLink does not look at the row count (issue #371)
+				em.flush();
+				List<String> kept = stillStored(em, server, removed, Options.getWriteChunkSize(options));
+				if (!kept.isEmpty()) {
+					throw new DeleteRefusal(PersistenceDiagnostic.CODE_DELETE_REFUSED,
+							"The store kept " + String.join(", ", kept)
+									+ " — a row level security policy or a trigger suppressed the delete");
 				}
 				em.getTransaction().commit();
+				missing.forEach(object -> getWarnings().add(PersistenceDiagnostic.warning(
+						PersistenceDiagnostic.CODE_NOT_FOUND, DIAGNOSTIC_SOURCE,
+						"Nothing to delete for " + object + ": no row with this id", getURI())));
 				evictFromSharedCache(em, opposites);
 				evictCleared(server, cleared);
 				contents.clear();
 			} catch (RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
+				}
+				if (e instanceof DeleteRefusal refusal) {
+					// the refusal says what was refused; nothing about it is a failure of the store
+					getErrors().add(PersistenceDiagnostic.error(refusal.code, DIAGNOSTIC_SOURCE, refusal.getMessage(),
+							getURI(), null));
+					throw new IOException(refusal.getMessage());
 				}
 				getErrors().add(PersistenceDiagnostic.error(refusalCode(e), DIAGNOSTIC_SOURCE,
 						"Failed to delete resource: " + e.getMessage(), getURI(), e));
@@ -1307,6 +1329,56 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return null;
 		}
 		return em.find(descriptor.getJavaClass(), key);
+	}
+
+	/**
+	 * The objects among the removed ones whose row is still there after the flush, described
+	 * for the message (issue #371). Asked with a scalar query per type — the ids, never the
+	 * entities, so nothing is built from a row the persistence context already removed. A type
+	 * without an id attribute cannot be asked and is left out.
+	 */
+	private static List<String> stillStored(EntityManager em, Server server, List<EObject> removed, int chunkSize) {
+		List<String> kept = new ArrayList<>();
+		if (isNull(server)) {
+			return kept;
+		}
+		Map<EClass, List<Object>> keysByType = new LinkedHashMap<>();
+		for (EObject eo : removed) {
+			Object key = findKey(eo);
+			if (nonNull(key) && nonNull(server.getDescriptorForAlias(eo.eClass().getName()))) {
+				keysByType.computeIfAbsent(eo.eClass(), type -> new ArrayList<>()).add(key);
+			}
+		}
+		keysByType.forEach((type, keys) -> {
+			String alias = server.getDescriptorForAlias(type.getName()).getAlias();
+			List<EAttribute> ids = CompositeIds.idAttributes(type);
+			if (ids.size() == 1) {
+				String id = ids.get(0).getName();
+				for (List<Object> batch : chunked(keys, chunkSize)) {
+					for (Object found : em.createQuery("SELECT e." + id + " FROM " + alias + " e WHERE e." + id
+							+ " IN :ids").setParameter("ids", batch).getResultList()) {
+						kept.add(type.getName() + " " + describeKey(found));
+					}
+				}
+				return;
+			}
+			StringBuilder where = new StringBuilder();
+			for (int i = 0; i < ids.size(); i++) {
+				where.append(i == 0 ? " WHERE " : " AND ").append("e.").append(ids.get(i).getName()).append(" = :k")
+						.append(i);
+			}
+			for (Object key : keys) {
+				TypedQuery<Long> count = em.createQuery("SELECT COUNT(e) FROM " + alias + " e" + where, Long.class);
+				Object[] components = (Object[]) key;
+				for (int i = 0; i < components.length; i++) {
+					count.setParameter("k" + i, components[i]);
+				}
+				if (count.getSingleResult() > 0) {
+					kept.add(type.getName() + " " + describeKey(key));
+				}
+			}
+		});
+		return kept;
 	}
 
 	private static String describeKey(Object key) {
@@ -1487,6 +1559,19 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * A delete that clears references refused by a required one, on the command path, where it
 	 * surfaces from inside the match loop (issue #347) — classified like a foreign-key refusal.
 	 */
+	/** A delete the outcome check refuses (issue #371), classified for the diagnostic. */
+	private static final class DeleteRefusal extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		private final int code;
+
+		DeleteRefusal(int code, String message) {
+			super(message);
+			this.code = code;
+		}
+	}
+
 	private static final class RequiredReferenceException extends RuntimeException {
 
 		private static final long serialVersionUID = 1L;
