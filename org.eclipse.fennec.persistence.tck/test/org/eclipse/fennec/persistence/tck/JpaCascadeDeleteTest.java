@@ -274,10 +274,7 @@ class JpaCascadeDeleteTest {
 		emf.getCache().evictAll();
 
 		// Load first, then delete — the flow AbstractPersistenceTCK.deleteRemovesPersistedObjects
-		// uses too. delete() runs em.merge on the contents, which requires managed entities;
-		// handing it the hand-built EObjects of the write ResourceSet fails with a bare
-		// IllegalArgumentException, where doSave copes via toManagedEntity. Asymmetry worth
-		// its own issue, out of scope here.
+		// uses too. Hand-built objects work as well since delete looks rows up by key (#369).
 		ResourceSet readSet = resourceSet();
 		Resource libraryResource = readSet.getResource(uriFor("Library"), true);
 		assertThat(libraryResource.getContents()).hasSize(1);
