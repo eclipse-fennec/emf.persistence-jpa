@@ -95,6 +95,7 @@ import org.eclipse.fennec.persistence.query.derived.DerivedReferenceCompiler;
 import org.eclipse.fennec.persistence.query.derived.QueryBackedSettingDelegateFactory;
 import org.eclipse.fennec.persistence.query.memory.MemoryQueries;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
+import org.eclipse.fennec.persistence.repository.spi.AbstractRepository;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.eclipse.fennec.persistence.resource.StreamingResource;
 import org.junit.jupiter.api.AfterEach;
@@ -4157,6 +4158,29 @@ public abstract class AbstractPersistenceTCK {
 					line.eGet(orderLineClass.getEStructuralFeature("quantity"))))
 					.containsExactly(20);
 		}
+	}
+
+	/**
+	 * A repository's {@code exist} takes a composite id in its fragment form and asks the store
+	 * with a keyed count over all components (issue #370).
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.WHERE_EQ, QueryFeature.LOGICAL_AND })
+	public void compositeIdExistsByItsFragment() throws Exception {
+		EClass orderLineClass = (EClass) tckPackage.getEClassifier("OrderLine");
+		save(createBackendResourceSet(), "OrderLine", orderLine("A", 1, 10), orderLine("B", 2, 20));
+		AbstractRepository repository = new AbstractRepository("tck", uriFor("OrderLine").trimSegments(1),
+				this::createBackendResourceSet, null, null, null) {
+			// all behaviour is generic
+		};
+
+		assertThat(repository.exist(orderLineClass, "orderId=A,lineNo=1")).isTrue();
+		assertThat(repository.exist(orderLineClass, "lineNo=2,orderId=B")).as("pair order is free").isTrue();
+		assertThat(repository.exist(orderLineClass, "orderId=A,lineNo=2"))
+				.as("components of two different rows")
+				.isFalse();
+		assertThat(repository.exist(uriFor("OrderLine").appendFragment("orderId=B,lineNo=2"))).isTrue();
+		assertThat(repository.exist(uriFor("OrderLine").appendFragment("orderId=B,lineNo=1"))).isFalse();
 	}
 
 	@Test
