@@ -1257,14 +1257,21 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						? clearInboundReferences(em, server, contents, Options.getWriteChunkSize(options))
 						: Set.of();
 				List<EObject> opposites = new ArrayList<>();
-				// a copy: merging and removing an object with a bidirectional reference updates
+				// a copy: removing an object with a bidirectional reference updates
 				// its opposite, which can touch this list while it is iterated
 				for (EObject eo : new ArrayList<>(contents)) {
-					Object merged = em.merge(eo);
-					if (merged instanceof EObject managed) {
-						detachFromOpposites(managed, opposites);
+					Object managed = managedForDelete(em, server, eo);
+					if (isNull(managed)) {
+						getWarnings().add(PersistenceDiagnostic.warning(DIAGNOSTIC_SOURCE,
+								"Nothing to delete for " + eo.eClass().getName() + " " + describeKey(findKey(eo))
+										+ ": no row with this id",
+								getURI()));
+						continue;
 					}
-					em.remove(merged);
+					if (managed instanceof EObject managedEO) {
+						detachFromOpposites(managedEO, opposites);
+					}
+					em.remove(managed);
 				}
 				em.getTransaction().commit();
 				evictFromSharedCache(em, opposites);
@@ -1279,6 +1286,34 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				throw new IOException("Failed to delete resource: " + getURI(), e);
 			}
 		}
+	}
+
+	/**
+	 * The managed instance {@code delete} removes for an object of its contents, or
+	 * {@code null} when there is no row to remove. Looked up by key rather than merged
+	 * (issue #369): a merge registers an object the persistence context does not know as new,
+	 * and the remove of a new object only unregisters it — no {@code DELETE} is issued. With
+	 * the shared cache off that is every object a reader hands out.
+	 */
+	private static Object managedForDelete(EntityManager em, Server server, EObject eo) {
+		ClassDescriptor descriptor = nonNull(server)
+				? server.getDescriptorForAlias(eo.eClass().getName())
+				: null;
+		if (isNull(descriptor)) {
+			return em.merge(eo);
+		}
+		Object key = findKey(eo);
+		if (isNull(key) || (!(key instanceof Object[]) && isDefaultIdValue(key))) {
+			return null;
+		}
+		return em.find(descriptor.getJavaClass(), key);
+	}
+
+	private static String describeKey(Object key) {
+		if (isNull(key)) {
+			return "without an id";
+		}
+		return "'" + (key instanceof Object[] parts ? Arrays.toString(parts) : key) + "'";
 	}
 
 	/**

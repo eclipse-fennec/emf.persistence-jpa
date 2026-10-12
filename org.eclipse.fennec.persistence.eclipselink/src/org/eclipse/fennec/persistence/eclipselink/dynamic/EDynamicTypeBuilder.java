@@ -315,6 +315,10 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 		requireNonNull(entity, "An Entity is required to create a EClassDescriptor");
 		EClassDescriptor descriptor = new EClassDescriptor(entity);
 		descriptor.convertClassNamesToClasses(context.getClassloader());
+		// the JPA default, which metadata processing sets and this builder bypasses: whether an
+		// object exists is asked of the database, not only of the cache. With the shared cache
+		// off a detached object is in no cache, and a merge registered it as new (issue #369).
+		descriptor.getQueryManager().checkDatabaseForDoesExist();
 		return descriptor;
 	}
 

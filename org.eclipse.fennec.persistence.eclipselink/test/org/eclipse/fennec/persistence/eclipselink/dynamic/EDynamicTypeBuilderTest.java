@@ -97,6 +97,16 @@ class EDynamicTypeBuilderTest {
 
 			assertThat(builder.getType().getJavaClass()).isNotNull();
 		}
+
+		/** The JPA default, not EclipseLink's cache-only check (issue #369). */
+		@Test
+		void testExistenceIsCheckedInTheDatabase() {
+			Entity entity = createEntityWithId("Invoice", "id", EcorePackage.Literals.ESTRING);
+			EDynamicTypeBuilder builder = createBuilder(entity);
+
+			assertThat(builder.getType().getDescriptor().getQueryManager().getDoesExistQuery()
+					.shouldCheckDatabaseForDoesExist()).isTrue();
+		}
 	}
 
 	@Nested
