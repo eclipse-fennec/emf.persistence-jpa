@@ -49,6 +49,7 @@ import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
+import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.helper.EMFHelper;
@@ -703,6 +704,9 @@ public abstract class AbstractRepository implements Repository {
 		EObject object = getEObject(uri, options);
 		if (nonNull(object)) {
 			delete(object, options);
+		} else if (Options.isDeleteRequireExisting(options)) {
+			// the same refusal the backend gives an object without a row (issue #371)
+			throw io("Nothing to delete for " + uri + ": no object with this id", null);
 		}
 	}
 

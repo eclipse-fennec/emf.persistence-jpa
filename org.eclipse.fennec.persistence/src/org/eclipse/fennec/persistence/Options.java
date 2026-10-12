@@ -169,6 +169,23 @@ public interface Options {
 	 */
 	String OPTION_DELETE_CLEAR_REFERENCES = "fennec.delete.clear-references";
 
+	/**
+	 * Delete option (issue #371): an object without a row or document fails the delete instead
+	 * of being skipped with a warning — nothing is deleted, the resource reports an error
+	 * classified {@code PersistenceDiagnostic.CODE_NOT_FOUND}. Not the default: a delete is
+	 * idempotent. For a caller that must tell "deleted" from "was not there", e.g. to answer a
+	 * REST delete with 404; through a repository the warnings of the default never reach the
+	 * caller.
+	 *
+	 * Value type: {@link Boolean} or its {@link String} form
+	 */
+	String OPTION_DELETE_REQUIRE_EXISTING = "fennec.delete.require-existing";
+
+	/** Whether {@link #OPTION_DELETE_REQUIRE_EXISTING} is set to {@code true}. */
+	static boolean isDeleteRequireExisting(Map<?, ?> options) {
+		return isTrue(options, OPTION_DELETE_REQUIRE_EXISTING);
+	}
+
 	/** Whether {@link #OPTION_DELETE_IGNORE_REFERENCES} is set to {@code true}. */
 	static boolean isDeleteIgnoreReferences(Map<?, ?> options) {
 		return isTrue(options, OPTION_DELETE_IGNORE_REFERENCES);

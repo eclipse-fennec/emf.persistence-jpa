@@ -34,6 +34,7 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -221,7 +222,10 @@ class JpaNoSharedCacheDeleteTest {
 		assertThat(probe.ids(noteClass)).isEmpty();
 		assertThat(resource.getWarnings())
 				.singleElement()
-				.satisfies(warning -> assertThat(warning.getMessage()).contains("Note", "missing"));
+				.satisfies(warning -> {
+					assertThat(warning.getMessage()).contains("Note", "missing");
+					assertThat(((PersistenceDiagnostic) warning).code()).isEqualTo(PersistenceDiagnostic.CODE_NOT_FOUND);
+				});
 		assertThat(resource.getContents()).isEmpty();
 	}
 

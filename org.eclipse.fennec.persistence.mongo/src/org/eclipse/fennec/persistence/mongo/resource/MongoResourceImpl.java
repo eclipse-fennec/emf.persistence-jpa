@@ -691,6 +691,13 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 				collectOwnedDocuments(eObject, owned);
 			}
 			int chunkSize = Options.getWriteChunkSize(options);
+			if (Options.isDeleteRequireExisting(options)) {
+				// asked before anything changes, references included (issue #371)
+				List<String> missing = withoutDocument(collection, contents, chunkSize);
+				if (!missing.isEmpty()) {
+					throw refuseNotFound(missing);
+				}
+			}
 			// Nothing may be deleted while something still points at it (issue #195). A
 			// relational store gets this from its foreign keys; here it has to be asked for,
 			// before the first removal — a half-done delete would be worse than a refused one.
@@ -738,8 +745,10 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 			// One deleteMany per chunk rather than a deleteOne per root (issue #225) — the id
 			// list is collected either way, since the ownership bookkeeping below needs it.
+			long deleted = 0;
 			for (List<BsonValue> batch : chunked(deletedIds, chunkSize)) {
-				collection.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, batch));
+				deleted += collection.deleteMany(Filters.in(MongoPersistenceConstants.ID_FIELD, batch))
+						.getDeletedCount();
 			}
 			// Owned children go after their roots: a crash then leaves a recoverable orphan
 			// rather than a root pointing at documents that no longer exist. One deleteMany
@@ -749,6 +758,13 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			removeOwnershipRecords(owned, chunkSize);
 			for (List<BsonValue> batch : chunked(deletedIds, chunkSize)) {
 				removeOwnershipOf(batch, collectionName);
+			}
+			if (deleted < contents.size()) {
+				// a delete is idempotent: what had no document is reported, not refused (issue #371)
+				getWarnings().add(PersistenceDiagnostic.warning(PersistenceDiagnostic.CODE_NOT_FOUND,
+						DIAGNOSTIC_SOURCE, "Nothing to delete for " + (contents.size() - deleted) + " of "
+								+ contents.size() + " " + commonTypeName(contents) + " objects: no document with their id",
+						getURI()));
 			}
 			contents.clear();
 		} catch (RuntimeException e) {
@@ -791,6 +807,46 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * refused anyway. Falls back to the set-level wording if the second pass finds nothing —
 	 * possible if the referrer disappeared in between, and not worth a second refusal shape.
 	 */
+	/** The objects among the contents that have no document, as {@code Type 'id'} (issue #371). */
+	private List<String> withoutDocument(MongoCollection<BsonDocument> collection, List<EObject> contents,
+			int chunkSize) {
+		Map<BsonValue, EObject> byId = new LinkedHashMap<>();
+		List<String> missing = new ArrayList<>();
+		for (EObject eObject : contents) {
+			BsonValue id = extractId(eObject);
+			if (isNull(id)) {
+				missing.add(eObject.eClass().getName() + " without an id");
+			} else {
+				byId.put(id, eObject);
+			}
+		}
+		Set<BsonValue> found = new HashSet<>();
+		for (List<BsonValue> batch : chunked(new ArrayList<>(byId.keySet()), chunkSize)) {
+			collection.find(Filters.in(MongoPersistenceConstants.ID_FIELD, batch))
+					.projection(Projections.include(MongoPersistenceConstants.ID_FIELD))
+					.forEach(document -> found.add(document.get(MongoPersistenceConstants.ID_FIELD)));
+		}
+		byId.forEach((id, eObject) -> {
+			if (!found.contains(id)) {
+				missing.add(eObject.eClass().getName() + " '" + EcoreUtil.getID(eObject) + "'");
+			}
+		});
+		return missing;
+	}
+
+	private IOException refuseNotFound(List<String> missing) {
+		String message = "Nothing to delete for " + String.join(", ", missing) + ": no document with this id";
+		getErrors().add(PersistenceDiagnostic.error(PersistenceDiagnostic.CODE_NOT_FOUND, DIAGNOSTIC_SOURCE,
+				message, getURI(), null));
+		return new IOException(message);
+	}
+
+	private static String commonTypeName(List<EObject> contents) {
+		Set<String> names = new LinkedHashSet<>();
+		contents.forEach(eObject -> names.add(eObject.eClass().getName()));
+		return String.join("/", names);
+	}
+
 	private IOException refuseReferenced(String setLevelReferrer) {
 		String message = null;
 		for (EObject eObject : writableContents()) {

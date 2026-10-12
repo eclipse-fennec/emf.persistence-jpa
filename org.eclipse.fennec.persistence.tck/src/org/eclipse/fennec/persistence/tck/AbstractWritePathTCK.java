@@ -51,6 +51,7 @@ import org.eclipse.fennec.persistence.capabilities.CommandFeature;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
+import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.repository.spi.AbstractRepository;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
@@ -1155,6 +1156,69 @@ public abstract class AbstractWritePathTCK {
 				.allSatisfy(resource -> assertThat(resource.getContents()).isEmpty());
 	}
 
+	// ------------------------------------------------------- delete outcome (issue #371)
+
+	/**
+	 * An object without a row is nothing to delete — a delete is idempotent — but it is reported:
+	 * a warning classified {@link PersistenceDiagnostic#CODE_NOT_FOUND}, the others deleted.
+	 */
+	@Test
+	public void deletingAnObjectWithoutARowWarnsNotFoundAndDeletesTheOthers() throws Exception {
+		saveCustomerWithOrders("c1");
+		Resource resource = createBackendResourceSet().createResource(uriFor("WpCustomer"));
+		resource.getContents().add(obj(customer, "c1"));
+		resource.getContents().add(obj(customer, "missing"));
+
+		((PersistenceResource) resource).delete(null);
+
+		assertIds(customer);
+		assertThat(resource.getWarnings())
+				.singleElement()
+				.satisfies(warning -> {
+					assertThat(warning).isInstanceOf(PersistenceDiagnostic.class);
+					assertThat(((PersistenceDiagnostic) warning).code()).isEqualTo(PersistenceDiagnostic.CODE_NOT_FOUND);
+				});
+	}
+
+	/** With {@link Options#OPTION_DELETE_REQUIRE_EXISTING} it is an error, and nothing is deleted. */
+	@Test
+	public void requiringExistingRefusesADeleteWithAMissingObjectAndDeletesNothing() throws Exception {
+		saveCustomerWithOrders("c1");
+		Resource resource = createBackendResourceSet().createResource(uriFor("WpCustomer"));
+		resource.getContents().add(obj(customer, "c1"));
+		resource.getContents().add(obj(customer, "missing"));
+
+		assertThatThrownBy(() -> ((PersistenceResource) resource).delete(requiringExisting()))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("missing");
+
+		assertIds(customer, "c1");
+		assertThat(resource.getErrors())
+				.singleElement()
+				.satisfies(error -> assertThat(((PersistenceDiagnostic) error).code())
+						.isEqualTo(PersistenceDiagnostic.CODE_NOT_FOUND));
+		assertThat(resource.getContents()).hasSize(2);
+	}
+
+	/**
+	 * Through a repository the warning of the default never reaches the caller, so the option is
+	 * how a caller learns the object was already gone — by URI and by a stale loaded object.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
+	public void requiringExistingThroughTheRepositoryRefusesAnObjectAlreadyGone() throws Exception {
+		saveCustomerWithOrders("c1");
+		AbstractRepository repository = repository();
+		EObject loaded = repository.getEObject(customer, "c1");
+		assertThat(repository.execute(deleteById(customer, "c1"))).isEqualTo(1);
+
+		assertThatThrownBy(() -> repository.delete(loaded, requiringExisting())).isInstanceOf(IOException.class);
+		assertThatThrownBy(() -> repository.delete(uriFor("WpCustomer").appendFragment("never"), requiringExisting()))
+				.isInstanceOf(IOException.class);
+		// the default stays idempotent
+		repository.delete(uriFor("WpCustomer").appendFragment("never"));
+	}
+
 	/** Where the store enforces referential integrity, ignoring references is refused, not half done. */
 	@Test
 	public void ignoringReferencesWhereItIsNotServedIsRefusedAndChangesNothing() throws Exception {
@@ -1774,6 +1838,10 @@ public abstract class AbstractWritePathTCK {
 
 	private static Map<String, Object> ignoringReferences() {
 		return Map.of(Options.OPTION_DELETE_IGNORE_REFERENCES, true);
+	}
+
+	private static Map<String, Object> requiringExisting() {
+		return Map.of(Options.OPTION_DELETE_REQUIRE_EXISTING, true);
 	}
 
 	private static Map<String, Object> clearingReferences() {

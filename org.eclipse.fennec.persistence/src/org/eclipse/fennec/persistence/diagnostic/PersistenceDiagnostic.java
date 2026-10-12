@@ -58,6 +58,23 @@ public final class PersistenceDiagnostic implements Resource.Diagnostic {
 	 */
 	public static final int CODE_REFERENTIAL_INTEGRITY = 1;
 
+	/**
+	 * An object to delete has no row or document (issue #371). A warning by default — a delete
+	 * is idempotent — and an error with {@code Options.OPTION_DELETE_REQUIRE_EXISTING}. A
+	 * store-side policy that hides a row from the principal (PostgreSQL row level security)
+	 * reports this too: the row cannot be told apart from one that does not exist. Consumers
+	 * mapping onto HTTP answer 404.
+	 */
+	public static final int CODE_NOT_FOUND = 2;
+
+	/**
+	 * The store kept a row the delete was issued for (issue #371): the principal may read it
+	 * but not delete it — a row level security policy for {@code DELETE} only, or a trigger
+	 * that suppresses the delete. Always an error; nothing of the delete is applied. Consumers
+	 * mapping onto HTTP answer 403.
+	 */
+	public static final int CODE_DELETE_REFUSED = 3;
+
 	private final int severity;
 	private final int code;
 	private final String source;
@@ -142,6 +159,20 @@ public final class PersistenceDiagnostic implements Resource.Diagnostic {
 	 */
 	public static PersistenceDiagnostic warning(String source, String message, URI location) {
 		return new PersistenceDiagnostic(Diagnostic.WARNING, CODE_NONE, source, message, location, null);
+	}
+
+	/**
+	 * Creates a classified warning diagnostic (issue #371) — same as
+	 * {@link #warning(String, String, URI)} plus a code consumers can route on.
+	 *
+	 * @param code one of the {@code CODE_*} constants
+	 * @param source the reporting bundle's namespace
+	 * @param message the problem description
+	 * @param location the resource URI; may be {@code null}
+	 * @return the diagnostic
+	 */
+	public static PersistenceDiagnostic warning(int code, String source, String message, URI location) {
+		return new PersistenceDiagnostic(Diagnostic.WARNING, code, source, message, location, null);
 	}
 
 	/**
