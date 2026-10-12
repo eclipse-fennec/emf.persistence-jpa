@@ -1119,6 +1119,42 @@ public abstract class AbstractWritePathTCK {
 		assertThat(probe.reference(order, "o1", orderCustomer)).contains("c1");
 	}
 
+	/**
+	 * {@code exist} asks the store, not the repository's resources (issue #370): an object the
+	 * repository has loaded and that is then deleted through another path no longer exists.
+	 */
+	@Test
+	@RequiresCapabilities(command = CommandFeature.DELETE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
+	public void repositoryExistAnswersFromTheStoreAfterADeleteByCommand() throws Exception {
+		saveCustomerWithOrders("c1");
+		AbstractRepository repository = repository();
+		URI uri = uriFor("WpCustomer").appendFragment("c1");
+		assertThat(repository.getEObject(customer, "c1")).as("loaded into the repository").isNotNull();
+		assertThat(repository.exist(customer, "c1")).isTrue();
+		assertThat(repository.exist(uri)).isTrue();
+
+		assertThat(repository.execute(deleteById(customer, "c1"))).isEqualTo(1);
+
+		assertIds(customer);
+		assertThat(repository.exist(customer, "c1")).as("exist by type and id").isFalse();
+		assertThat(repository.exist(uri)).as("exist by URI").isFalse();
+	}
+
+	/** {@code exist} by type and id answers without loading the object into the repository. */
+	@Test
+	@RequiresCapabilities(query = QueryFeature.WHERE_EQ)
+	public void repositoryExistByIdDoesNotLoadTheObject() throws Exception {
+		saveCustomerWithOrders("c1");
+		AbstractRepository repository = repository();
+
+		assertThat(repository.exist(customer, "c1")).isTrue();
+		assertThat(repository.exist(customer, "missing")).isFalse();
+
+		assertThat(repository.getResourceSet().getResources())
+				.as("nothing loaded")
+				.allSatisfy(resource -> assertThat(resource.getContents()).isEmpty());
+	}
+
 	/** Where the store enforces referential integrity, ignoring references is refused, not half done. */
 	@Test
 	public void ignoringReferencesWhereItIsNotServedIsRefusedAndChangesNothing() throws Exception {

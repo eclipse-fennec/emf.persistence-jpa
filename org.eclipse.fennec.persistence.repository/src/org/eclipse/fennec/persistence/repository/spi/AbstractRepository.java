@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.common.util.WrappedException;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
@@ -44,7 +45,9 @@ import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
@@ -339,7 +342,15 @@ public abstract class AbstractRepository implements Repository {
 		checkNotDisposed();
 		requireNonNull(uri, "uri must not be null");
 		if (nonNull(uri.fragment())) {
-			return nonNull(getEObject(uri));
+			// asked of the store, not of this repository's resources: an object they already
+			// hold may have been deleted since through another path (issue #370)
+			try {
+				Resource resource = getOrCreate(createResourceSet(), uri.trimFragment());
+				applyOptions(resource, null, ActionType.LOAD);
+				return nonNull(resource.getEObject(uri.fragment()));
+			} catch (RuntimeException e) {
+				throw io("Failed to check existence of " + uri, e);
+			}
 		}
 		Resource resource = getOrCreate(getResourceSet(), uri);
 		return persistence(resource, "exist").exist(effective(null, defaultLoadOptions));
@@ -347,7 +358,45 @@ public abstract class AbstractRepository implements Repository {
 
 	@Override
 	public boolean exist(EClass eClass, Object id) throws IOException {
-		return exist(createUri(eClass, id));
+		checkNotDisposed();
+		requireNonNull(eClass, "eClass must not be null");
+		requireNonNull(id, "id must not be null");
+		Expression selector = idSelector(eClass, id);
+		if (isNull(selector) || !(getOrCreate(getResourceSet(), collectionUri(eClass)) instanceof QueryableResource)) {
+			// no id attribute to select on (a synthetic id), or a backend without queries:
+			// the store is asked by URI
+			return exist(createUri(eClass, id));
+		}
+		// a keyed count, without loading the object (issue #370)
+		return count(QueryBuilder.from(eClass).where(selector).build()) > 0;
+	}
+
+	/**
+	 * The selector of the object with the given id, or {@code null} when the type has no id
+	 * attribute. An id given as text — the fragment form — is converted to the attribute
+	 * types; a composite id is given in its {@code k1=v1,k2=v2} fragment form.
+	 */
+	private static Expression idSelector(EClass eClass, Object id) {
+		List<EAttribute> ids = CompositeIds.idAttributes(eClass);
+		if (ids.isEmpty()) {
+			return null;
+		}
+		if (ids.size() == 1) {
+			return Expressions.path(ids.get(0)).eq(idValue(ids.get(0), id));
+		}
+		List<String> values = CompositeIds.parse(eClass, String.valueOf(id));
+		Expression[] components = new Expression[ids.size()];
+		for (int i = 0; i < ids.size(); i++) {
+			components[i] = Expressions.path(ids.get(i)).eq(idValue(ids.get(i), values.get(i)));
+		}
+		return Expressions.and(components);
+	}
+
+	private static Object idValue(EAttribute attribute, Object value) {
+		if (value instanceof String text && String.class != attribute.getEAttributeType().getInstanceClass()) {
+			return EcoreUtil.createFromString(attribute.getEAttributeType(), text);
+		}
+		return value;
 	}
 
 	@Override
