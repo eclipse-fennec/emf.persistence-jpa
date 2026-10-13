@@ -122,10 +122,10 @@ public class EFeatureAccessor extends ValuesAccessor {
 	public Object getAttributeValueFromObject(Object object) throws DescriptorException {
 		if (object instanceof EObject eo && nonNull(feature)) {
 			Object value = eo.eGet(feature);
-			if (isEEnumFeature()) {
-				if (value instanceof Enumerator enumerator) {
-					return enumerator.getLiteral();
-				}
+			if (isEEnumFeature() && value instanceof Enumerator enumerator) {
+				// the literal is the stored form of an enum; the converter still sees it
+				// (issue #373) — returning here left an enum attribute unconvertible
+				value = enumerator.getLiteral();
 			}
 			if (nonNull(converter)) {
 				EClassifier type = feature instanceof EReference ? 
@@ -165,20 +165,31 @@ public class EFeatureAccessor extends ValuesAccessor {
 
 	/**
 	 * Converts a value read from the database into the attribute's data type: through the
-	 * converter when it serves the type, otherwise a String through the EMF data type
-	 * conversion. The converter goes first (issue #308): a dynamic data type has no generated
-	 * factory, and {@code createFromString} cannot build a type without a String constructor
-	 * or {@code valueOf(String)} — {@code UUID} has only {@code fromString}.
+	 * converter, then — for a value still a String — through the EMF data type conversion.
+	 * The converter goes first (issue #308): a dynamic data type has no generated factory, and
+	 * {@code createFromString} cannot build a type without a String constructor or
+	 * {@code valueOf(String)} — {@code UUID} has only {@code fromString}.
+	 *
+	 * <p>The converter is used whenever the accessor has one, without asking it again whether
+	 * it serves the data type (issue #373). An accessor has a converter because the eorm
+	 * mapping named it for this attribute, or because the converter service offered it for the
+	 * attribute's type — and the service resolves by {@code isConverterForType}, so for the
+	 * type-discovered converter the question was already answered at lookup. For the named one
+	 * it was never ours to ask: the mapping is the binding, and re-asking made the attribute
+	 * write converted values and read them back unconverted. A converter can therefore claim no
+	 * type at all and serve one column only, which is the right shape for a transform that is a
+	 * property of the column rather than of the type — claiming the type instead would convert
+	 * the query literals of every attribute of that type in the unit.
 	 * @param value the value to convert
 	 * @param dataType the data type
 	 * @return the converted value or the original one
 	 */
 	private Object dataTypeConvert(Object value, EDataType dataType) {
-		if (nonNull(converter) && converter.isConverterForType(dataType)) {
+		if (nonNull(converter)) {
 			value = converter.convertValueToEMF(dataType, value);
-		} else if (value instanceof String &&
-				EcorePackage.Literals.ESTRING != dataType) {
-			value = EcoreUtil.createFromString(dataType, value.toString());
+		}
+		if (value instanceof String string && EcorePackage.Literals.ESTRING != dataType) {
+			value = EcoreUtil.createFromString(dataType, string);
 		}
 		return value;
 	}

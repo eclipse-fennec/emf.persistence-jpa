@@ -258,17 +258,22 @@ class AccessorIndirectionTest {
 		}
 
 		@Test
-		void testSetEAttributeSkipsConverterWhenNotApplicable() {
+		void testSetEAttributeUsesTheConverterItWasGivenThoughItClaimsNoType() {
+			// The accessor has this converter because the eorm mapping named it for this
+			// attribute, so it is authoritative for it (issue #373): asking the converter a
+			// second time whether it serves the type discarded that and read the column back
+			// unconverted. A converter claiming no type at all serves this one column only.
 			TypeConverter converter = mock(TypeConverter.class);
 			when(converter.isConverterForType(any())).thenReturn(false);
+			when(converter.convertValueToEMF(eq(EcorePackage.Literals.ESTRING), eq("enc:Alice")))
+					.thenReturn("Alice");
 
 			EObject person = EcoreUtil.create(personClass);
 			AttributeAccessor accessor = featureAccessor(nameAttr, converter);
-			accessor.setAttributeValueInObject(person, "Alice");
+			accessor.setAttributeValueInObject(person, "enc:Alice");
 
-			// Fast path: String + ESTRING dataType → not converted, set as-is
 			assertThat(person.eGet(nameAttr)).isEqualTo("Alice");
-			verify(converter, never()).convertValueToEMF(any(), any());
+			verify(converter).convertValueToEMF(eq(EcorePackage.Literals.ESTRING), eq("enc:Alice"));
 		}
 
 		@Test
