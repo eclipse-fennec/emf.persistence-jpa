@@ -552,6 +552,35 @@ service property. In the non-OSGi path, extend `DefaultConverterService` and
 add your converter to the protected `converters` list before wiring it into
 the bootstrap.
 
+### Binding a converter to one attribute
+
+A converter does not have to be found by type. An eorm mapping can name one for
+a single attribute, which is the right shape for a transform that is a property
+of the column rather than of the type — field-level encryption, say:
+
+```xml
+<basic name="detail">
+  <feature xsi:type="ecore:EAttribute" href="…#//AbsenceReason/detail"/>
+  <convert converter="tt-encrypt"/>
+</basic>
+```
+
+The name is the one the converter's `getName()` returns. The binding is
+authoritative and symmetric (issue #373): the named converter is applied to
+that attribute in both directions, whether or not its `isConverterForType`
+claims the attribute's `EDataType`, and an enum attribute is converted too —
+the converter sees the literal the enum is stored as. A name that resolves to
+no registered converter is a mapping error and fails loudly (issue #164),
+rather than silently leaving the column unconverted.
+
+A converter bound this way should normally claim **no** type at all
+(`isConverterForType` returning `false`): claiming one would also make it the
+type-discovered converter for every attribute of that type, and query literals
+and parameters are converted by type — so claiming `EString` would transform the
+comparison values of every String attribute in the unit, where a
+non-deterministic transform never matches and a deterministic one survives only
+in equality, never in `LIKE`, ranges or ordering.
+
 ## The persistence-unit lifecycle from a consumer's view
 
 In OSGi a configured persistence unit follows a strict pay-per-use lifecycle
