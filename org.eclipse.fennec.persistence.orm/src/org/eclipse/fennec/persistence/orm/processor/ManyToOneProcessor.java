@@ -16,6 +16,7 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.eclipse.fennec.persistence.orm.helper.MappingHelper.isOppositeRelation;
 
+import java.util.List;
 
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
@@ -99,8 +100,9 @@ public class ManyToOneProcessor extends BaseReferenceProcessor<ManyToOne> {
 			// own (blank) mapping; the owning mapping was created in stage 4.
 			setDelegate(true);
 		} else {
-			JoinColumn jc = createJoinColumn(source.getEReferenceType());
-			if (nonNull(jc)) {
+			// one column per id column of the target — a composite key needs all of them (issue #379)
+			List<JoinColumn> joinColumns = createJoinColumns(source.getEReferenceType());
+			if (!joinColumns.isEmpty()) {
 				/*
 				 * Create a join column in the source table with a foreign key to the target/referenced 
 				 * table id-column.
@@ -110,9 +112,9 @@ public class ManyToOneProcessor extends BaseReferenceProcessor<ManyToOne> {
 				 * it acts as owning side, where the target side then uses the mappedBy setting, that is 
 				 * done when you are in an opposite mapping (see above)
 				 */
-				jc.setTable(source.getEReferenceType().getName());
-				target.setForeignKey(createForeignKey(jc.getName()));
-				target.getJoinColumn().add(jc);
+				joinColumns.forEach(jc -> jc.setTable(source.getEReferenceType().getName()));
+				target.setForeignKey(createForeignKey(joinColumns.get(0).getName()));
+				target.getJoinColumn().addAll(joinColumns);
 			}
 		}
 		setNeedMappedBy(false);

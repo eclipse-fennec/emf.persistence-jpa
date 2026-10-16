@@ -273,8 +273,9 @@ as written. Every derived name is emitted unquoted:
 | column of an attribute | feature name, verbatim | `id`, `firstName` |
 | `@Version` column | attribute name, upper-cased | `VERSION` |
 | many-valued attribute | table `<ECLASS>__<FEATURE>`, value column `VAL_<FEATURE>` | `PERSON__NICKNAMES`, `VAL_NICKNAMES` |
-| foreign key of a single-valued reference | `<TARGET>_<ID>`, upper-cased (the feature name in `strict` mode) | `ADDRESS_ID` |
-| join table of a many-to-many reference | `<OWNER>__<TARGET>`, upper-cased | `PERSON__TAG` |
+| foreign key of a single-valued reference | `<TARGET>_<ID>`, upper-cased, one per key column of the target (the feature name in `strict` mode) | `ADDRESS_ID`; `LOT_PLANT`, `LOT_LOTNO` for a composite key |
+| join table of a many-valued reference | `<OWNER>__<TARGET>`, upper-cased | `PERSON__TAG` |
+| columns of a join table | the key columns of both sides; the target's prefixed with `<TargetClass>_` where the name is taken | `id`, `Tag_id` |
 | list order column | `<FEATURE>_ORDER`, upper-cased | `TAGS_ORDER` |
 | synthetic key of a class without id | column `PK_<CLASSNAME>` | `PK_LOGBOOK` |
 | sequence of a generated id | `SEQ_<CLASS>_<ID>_ID` | `SEQ_PERSON_ID_ID` |
@@ -291,7 +292,37 @@ CREATE TABLE person (id VARCHAR(255) PRIMARY KEY, firstname VARCHAR(255), lastna
 A schema whose names do not follow this derivation is mapped with a pre-serialized `.eorm` that
 names its tables and columns (see
 [Mapping strategies](getting-started.md#mapping-strategies--generate-or-pre-serialize)), not
-by adjusting the model.
+by adjusting the model. The relation columns are read from it too:
+
+- `joinColumn` on a single-valued reference names the foreign key columns — several of them for a
+  composite key of the target, paired with the key columns by `referencedColumnName` (bare or
+  `TABLE.column`), or by position where that is missing;
+- `joinTable` names the join table, `joinColumn` and `inverseJoinColumn` its two sides the same
+  way.
+
+Join columns that do not cover the key they refer to — one column too few, or a
+`referencedColumnName` that is no key column — fail the deployment with an error diagnostic
+naming the reference: such a mapping would store a partial key. Without join columns the derived
+names above apply.
+
+A `.eorm` serialized by an earlier generator differs in two places, and both now take effect:
+
+- its join tables name columns the runtime never used (`PERSON_ID`, `TAG_ID` instead of the key
+  columns `id`, `Tag_id`) — they are honoured now, so the unit expects columns the existing join
+  table does not have;
+- a reference to a class with a composite key carries a join column for the first key column only,
+  which now fails the deployment.
+
+Regenerate such a file, or rename its join columns to what the table actually holds. Mappings
+derived at runtime — the default — keep their columns, with one exception: a reference to a class
+with a composite key gains the key columns it was missing. Rows written before hold only the
+first key column, which never identified the target; such references have to be set and saved
+again.
+
+The provider does not read every construct of the eorm vocabulary. What it does not read is
+reported rather than ignored: an `embedded-id` or an `id-class` changes what the key is and fails
+the deployment with an error (declare one `id` per key attribute instead); an `index` or a
+`table-generator` leaves the stored values alone and is reported as a warning.
 
 `ExtendedMetaData` `name` annotations are **not** used for table and column names unless
 `useNamesFromExtendedMetaData` is enabled (`EntityMapper.setUseNamesFromExtendedMetaData(true)`,
