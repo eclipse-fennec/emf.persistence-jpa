@@ -242,6 +242,39 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 	}
 
 	/**
+	 * Creates the join columns of a single-valued reference to the given {@link EClass}: one per
+	 * id column of the target, in key order (issue #379). A single id keeps the one column
+	 * {@link #createJoinColumn(EClass)} names; a composite id gets {@code <TARGET>_<ID>} per
+	 * component, so the foreign key covers the whole key instead of its first component.
+	 * @param eClass the target {@link EClass}
+	 * @return the join columns, empty if the target has no entity or no id
+	 */
+	List<JoinColumn> createJoinColumns(EClass eClass) {
+		String defaultColumnName = isStrict()
+				? MappingHelper.getColumnName(source, context.isUseNamesFromExtendedMetaData()) : null;
+		Entity targetEntity = isNull(eClass) ? null : context.getEntity(eClass);
+		Entity idEntity = isNull(eClass) ? null : idEntityOf(eClass);
+		if (isNull(targetEntity) || isNull(idEntity) || isNull(targetEntity.getTable())) {
+			return List.of();
+		}
+		List<Id> ids = idEntity.getAttributes().getId();
+		List<JoinColumn> joinColumns = new ArrayList<>(ids.size());
+		for (Id id : ids) {
+			String name;
+			if (nonNull(defaultColumnName)) {
+				name = ids.size() == 1 ? defaultColumnName : defaultColumnName + "_" + id.getColumn().getName();
+			} else {
+				name = targetEntity.getName().toUpperCase() + "_" + id.getName().toUpperCase();
+			}
+			JoinColumn jc = EORMFactory.eINSTANCE.createJoinColumn();
+			jc.setName(name);
+			jc.setReferencedColumnName(targetEntity.getTable().getName() + "." + id.getColumn().getName());
+			joinColumns.add(jc);
+		}
+		return joinColumns;
+	}
+
+	/**
 	 * The join columns of one side of a join table: one per id column, named like the key
 	 * column itself, and prefixed with the class name where the name is already taken by the
 	 * other side — a self-reference, or two ids of the same name (issue #297). These are the
