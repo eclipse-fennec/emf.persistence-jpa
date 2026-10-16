@@ -134,10 +134,22 @@ class ReferenceConfigurator {
 				mapping.setTargetToSourceKeyFields(owningO2O.getSourceToTargetKeyFields());
 			}
 			mapping.setMappedBy(mappedBy);
-		} else {
-			if (nonNull(fk)) {
-				mapping = ops.addOneToOneMapping(name, refTypeBuilder.getType(), fk.getName());
+		} else if (!oneToOne.getJoinColumn().isEmpty()) {
+			// the mapping names the columns: one per key column of the target (issue #297)
+			mapping = new EOneToOneMapping();
+			mapping.setAttributeName(name);
+			mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
+			List<DatabaseField> keys = refTypeBuilder.getType().getDescriptor().getPrimaryKeyFields();
+			List<JoinColumn> joinColumns = oneToOne.getJoinColumn();
+			if (coversKey(joinColumns, keys, reference)) {
+				for (int i = 0; i < joinColumns.size(); i++) {
+					mapping.addForeignKeyFieldName(joinColumns.get(i).getName(),
+							referencedKey(keys, joinColumns.get(i), i).getName());
+				}
 			}
+			ops.addMapping(mapping);
+		} else if (nonNull(fk)) {
+			mapping = ops.addOneToOneMapping(name, refTypeBuilder.getType(), fk.getName());
 		}
 		if (isNull(mapping)) {
 			return;
@@ -188,7 +200,7 @@ class ReferenceConfigurator {
 				m2mMapping.setAttributeName(name);
 				ops.addMapping(m2mMapping);
 				m2mMapping.setDefinedAsOneToManyMapping(true);
-				mapping = createM2MJoinTable(m2mMapping, jt, refTypeBuilder.getType());
+				mapping = createM2MJoinTable(m2mMapping, jt, refTypeBuilder.getType(), reference);
 			} else if (nonNull(joinColumns) && !joinColumns.isEmpty()) {
 				mapping = createOneToManyWithJoinColumns(name, refTypeBuilder.getType(), joinColumns);
 			} else if (nonNull(fk)) {
@@ -269,7 +281,25 @@ class ReferenceConfigurator {
 		mapping.setAttributeName(name);
 		mapping.setReferenceClass(refTypeBuilder.getType().getJavaClass());
 		ForeignKey fk = manyToOne.getForeignKey();
-		if (nonNull(fk)) {
+		List<JoinColumn> joinColumns = manyToOne.getJoinColumn();
+		if (!joinColumns.isEmpty()) {
+			// the mapping names the columns: one per key column of the target (issue #297)
+			List<DatabaseField> keys = refTypeBuilder.getType().getDescriptor().getPrimaryKeyFields();
+			if (coversKey(joinColumns, keys, reference)) {
+				DatabaseTable pkTable = refTypeBuilder.getType().getDescriptor().getDefaultTable();
+				DatabaseTable fkTable = ops.getType().getDescriptor().getDefaultTable();
+				for (int i = 0; i < joinColumns.size(); i++) {
+					DatabaseField pkField = referencedKey(keys, joinColumns.get(i), i);
+					pkField.setTableName(pkTable.getName());
+					String column = joinColumns.get(i).getName();
+					DatabaseField fkField = new DatabaseField(column);
+					fkField.setNameForComparisons(column.toUpperCase());
+					fkField.setTable(fkTable);
+					mapping.addForeignKeyField(fkField, pkField);
+				}
+				mapping.setIsReadOnly(false);
+			}
+		} else if (nonNull(fk)) {
 			DatabaseField pkField = refTypeBuilder.getType().getDescriptor().getPrimaryKeyFields().stream()
 					.findFirst()
 					.orElseThrow(() -> new IllegalStateException(
@@ -318,27 +348,92 @@ class ReferenceConfigurator {
 			mapping.setMappedBy(mappedBy);
 			mapping.setIsReadOnly(true);
 		} else {
-			createM2MJoinTable(mapping, jt, refTypeBuilder.getType());
+			createM2MJoinTable(mapping, jt, refTypeBuilder.getType(), reference);
 		}
 		setOptional(mapping, manyToMany);
 		setCascade(mapping, reference, manyToMany.getCascade());
 		configureEMF(mapping, reference, manyToMany);
 	}
 
-	ManyToManyMapping createM2MJoinTable(ManyToManyMapping mapping, JoinTable joinTable, EDynamicType refType) {
+	ManyToManyMapping createM2MJoinTable(ManyToManyMapping mapping, JoinTable joinTable, EDynamicType refType,
+			EReference reference) {
 		mapping.setRelationTableName(joinTable.getName().toUpperCase());
-		for (DatabaseField sourcePK : ops.getType().getDescriptor().getPrimaryKeyFields()) {
-			mapping.addSourceRelationKeyFieldName(sourcePK.getName(), sourcePK.getQualifiedName());
-		}
-		for (DatabaseField targetPK : refType.getDescriptor().getPrimaryKeyFields()) {
-			String relField = targetPK.getName();
-			if (mapping.getSourceRelationKeyFieldNames().contains(relField)) {
-				relField = refType.getEClass().getName() + "_" + relField;
+		List<DatabaseField> sourceKeys = ops.getType().getDescriptor().getPrimaryKeyFields();
+		List<DatabaseField> targetKeys = refType.getDescriptor().getPrimaryKeyFields();
+		List<JoinColumn> joinColumns = joinTable.getJoinColumn();
+		List<JoinColumn> inverseJoinColumns = joinTable.getInverseJoinColumn();
+		// the mapping names the relation columns (issue #297); without join columns they are
+		// named after the key columns, the target's prefixed with its class name on a clash
+		if (!joinColumns.isEmpty()) {
+			if (coversKey(joinColumns, sourceKeys, reference)) {
+				for (int i = 0; i < joinColumns.size(); i++) {
+					mapping.addSourceRelationKeyFieldName(joinColumns.get(i).getName(),
+							referencedKey(sourceKeys, joinColumns.get(i), i).getQualifiedName());
+				}
 			}
-			mapping.addTargetRelationKeyFieldName(relField, targetPK.getQualifiedName());
+		} else {
+			for (DatabaseField sourcePK : sourceKeys) {
+				mapping.addSourceRelationKeyFieldName(sourcePK.getName(), sourcePK.getQualifiedName());
+			}
+		}
+		if (!inverseJoinColumns.isEmpty()) {
+			if (coversKey(inverseJoinColumns, targetKeys, reference)) {
+				for (int i = 0; i < inverseJoinColumns.size(); i++) {
+					mapping.addTargetRelationKeyFieldName(inverseJoinColumns.get(i).getName(),
+							referencedKey(targetKeys, inverseJoinColumns.get(i), i).getQualifiedName());
+				}
+			}
+		} else {
+			for (DatabaseField targetPK : targetKeys) {
+				String relField = targetPK.getName();
+				if (mapping.getSourceRelationKeyFieldNames().contains(relField)) {
+					relField = refType.getEClass().getName() + "_" + relField;
+				}
+				mapping.addTargetRelationKeyFieldName(relField, targetPK.getQualifiedName());
+			}
 		}
 		mapping.setShouldExtendPessimisticLockScope(true);
 		return mapping;
+	}
+
+	/**
+	 * Whether the join columns cover the key they refer to — one column per key column, each
+	 * naming an existing one (issue #297). A mapping that covers only part of a key would store
+	 * a partial key, so it is an error, reported with the reference, and the columns are not used.
+	 */
+	private boolean coversKey(List<JoinColumn> joinColumns, List<DatabaseField> keys, EReference reference) {
+		if (joinColumns.size() != keys.size()) {
+			context.error(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+					"Reference '%s' of '%s' declares %d join column(s) for a key of %d column(s) %s",
+					reference.getName(), reference.getEContainingClass().getName(), joinColumns.size(),
+					keys.size(), keys.stream().map(DatabaseField::getName).toList()), reference);
+			return false;
+		}
+		for (int i = 0; i < joinColumns.size(); i++) {
+			if (isNull(referencedKey(keys, joinColumns.get(i), i))) {
+				context.error(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+						"Join column '%s' of reference '%s' of '%s' refers to '%s', which is no key column of %s",
+						joinColumns.get(i).getName(), reference.getName(),
+						reference.getEContainingClass().getName(), joinColumns.get(i).getReferencedColumnName(),
+						keys.stream().map(DatabaseField::getName).toList()), reference);
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * The key column a join column refers to: the one its {@code referencedColumnName} names —
+	 * bare or table-qualified, compared case-insensitively since the database folds unquoted
+	 * names — or, without a name, the key column at the same position.
+	 */
+	private static DatabaseField referencedKey(List<DatabaseField> keys, JoinColumn joinColumn, int index) {
+		String referenced = joinColumn.getReferencedColumnName();
+		if (isNull(referenced) || referenced.isBlank()) {
+			return keys.get(index);
+		}
+		String column = referenced.substring(referenced.lastIndexOf('.') + 1);
+		return keys.stream().filter(key -> key.getName().equalsIgnoreCase(column)).findFirst().orElse(null);
 	}
 
 	/**
