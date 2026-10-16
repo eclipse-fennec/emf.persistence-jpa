@@ -423,6 +423,10 @@ alongside the Ecore, and reuse it on every boot.
   types, fetch modes, or discriminator strategies that the generator
   picked differently. The runtime does not care where the decision came
   from.
+- **An existing schema.** A database whose table and column names do not
+  follow the derivation — upper-cased tables, columns named after the
+  features, see [Table and column names](jpa-user-guide.md#table-and-column-names)
+  — is mapped by a `.eorm` that names them, not by changing the model.
 - **Audit/immutability.** Schema migrations become easier to reason about
   when the mapping is an artefact, not a derivation.
 
