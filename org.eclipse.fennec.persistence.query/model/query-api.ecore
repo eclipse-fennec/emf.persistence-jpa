@@ -128,7 +128,7 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A backend-typed, executable translation of a canonical Query. Concrete plans live in the backend bundles and carry the native payload (e.g. a MongoDB aggregation pipeline or a JPA CriteriaQuery). Only the backend that produced a plan handles its concrete type; callers stay on this generic surface."/>
     </eAnnotations>
-    <eOperations name="source" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query">
+    <eOperations name="source" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The canonical query this plan was translated from."/>
       </eAnnotations>
@@ -182,14 +182,14 @@
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Validates a query against the declared capabilities for the given root type. The result never contains a silent fallback: any construct this backend cannot serve natively yields a Diagnostic ERROR entry naming the offending QueryFeature and model element. Returns Diagnostic OK if the query translates natively."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
       <eParameters name="rootEClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
     </eOperations>
     <eOperations name="translate" eType="#//QueryPlan" eExceptions="#//QueryException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Translates a validated query into an executable, backend-typed plan. Callers must validate first; a processor may assume a validated query and throw QueryException when it encounters an unsupported construct."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
       <eParameters name="context" lowerBound="1" eType="#//QueryContext"/>
     </eOperations>
   </eClassifiers>
@@ -264,13 +264,13 @@
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes a query with no parameters and no extra options. The result must be closed by the caller."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
     </eOperations>
     <eOperations name="query" eType="#//QueryResult" eExceptions="#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes a query with bound parameters and backend options (both may be null). The result must be closed by the caller. If the query carries saveQuery=true and a name, it is persisted (upsert by name) in the backend's query catalog before execution — see the named-query overload."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
       <eParameters name="parameters" eType="#//ParameterMap"/>
       <eParameters name="options" eType="#//OptionsMap"/>
     </eOperations>
@@ -292,14 +292,14 @@
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes the command and returns the number of affected objects (inserted or deleted). Inside an open transaction bracket the command joins the bracket instead of committing on its own."/>
       </eAnnotations>
-      <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
+      <eParameters name="command" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/command/1.0.0#//Command"/>
     </eOperations>
     <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
         eExceptions="#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes the command with bound parameters (issue #202) - the write-side counterpart of the query overload, and what a prepared command needs: a selector may use ParameterRef nodes, and this is where their values come from. Without bindings such a selector cannot be served by any backend, which is why the parameterless overload refuses it. Options behave as on the parameterless form; both maps may be null."/>
       </eAnnotations>
-      <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
+      <eParameters name="command" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/command/1.0.0#//Command"/>
       <eParameters name="parameters" eType="#//ParameterMap"/>
       <eParameters name="options" eType="#//OptionsMap"/>
     </eOperations>

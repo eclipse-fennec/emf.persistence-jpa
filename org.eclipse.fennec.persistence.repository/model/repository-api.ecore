@@ -29,7 +29,7 @@
     </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="RepositoryService" abstract="true" interface="true"
-      eSuperTypes="../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//AutoCloseable">
+      eSuperTypes="https://eclipse.org/fennec/persistence/query/api/1.0.0#//AutoCloseable">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Base contract of every repository: identity, lifecycle, capabilities and the URI/resource machinery (formerly EMFRepositoryHelper). A repository owns a ResourceSet configured for its backend; all URIs it creates are rooted at its base URI. Registered as an OSGi service; the configuration surface (repository id, base URI, default options) lives in the hand-written RepositoryConstants. AutoCloseable: close() is equivalent to dispose()."/>
     </eAnnotations>
@@ -79,7 +79,7 @@
         <details key="documentation" value="Creates the URI for the given EObject against the base URI, honoring the given options (e.g. an id override or type hints)."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="createUri" eType="#//Uri">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -112,7 +112,7 @@
         <details key="documentation" value="Attaches the given EObject to a Resource with its proper repository URI without saving it, honoring the given options."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="detach" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -127,7 +127,7 @@
       <details key="documentation" value="Read side of the repository: resolve objects by URI or EClass+id, enumerate, count, test existence, reload — and execute canonical queries (query.ecore) first-class, delegating to the backend's QueryableResource. All data-touching operations throw IOException on backend failure, consistent with the EMF Resource load/save contract; a plain miss answers null (or false/0) instead. A deployment may expose only this interface for read-only views."/>
     </eAnnotations>
     <eOperations name="getResource" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EResource"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The Resource for the given URI from the owned ResourceSet, loaded on demand when the flag is set. Null if it does not exist and loadOnDemand is false."/>
       </eAnnotations>
@@ -135,22 +135,22 @@
       <eParameters name="loadOnDemand" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     </eOperations>
     <eOperations name="getEObject" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Loads the EObject with the given URI, or null if it does not exist."/>
       </eAnnotations>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
     </eOperations>
     <eOperations name="getEObject" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Loads the EObject with the given URI using the given load options, or null if it does not exist."/>
       </eAnnotations>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="getEObject" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Loads the EObject of the given EClass with the given id, or null if it does not exist. The URI is built via createUri(eClass, id)."/>
       </eAnnotations>
@@ -158,104 +158,104 @@
       <eParameters name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject"/>
     </eOperations>
     <eOperations name="getEObject" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Loads the EObject of the given EClass with the given id using the given load options, or null if it does not exist."/>
       </eAnnotations>
       <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
       <eParameters name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
-    <eOperations name="getAllEObjects" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//EObjectStream"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="getAllEObjects" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//EObjectStream"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="All objects of the given EClass as a lazy stream — the successor of the old List-returning getAllEObjects. The stream holds backend resources and must be closed by the caller (try-with-resources)."/>
       </eAnnotations>
       <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
     </eOperations>
-    <eOperations name="getAllEObjects" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//EObjectStream"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="getAllEObjects" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//EObjectStream"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="All objects of the given EClass as a lazy stream, using the given load options. The stream must be closed by the caller."/>
       </eAnnotations>
       <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="count" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Counts all objects of the given EClass."/>
       </eAnnotations>
       <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
     </eOperations>
     <eOperations name="count" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Counts all objects of the given EClass, using the given options."/>
       </eAnnotations>
       <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="exist" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Whether an object exists at the given URI — without loading it."/>
       </eAnnotations>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
     </eOperations>
     <eOperations name="exist" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Whether an object of the given EClass with the given id exists — without loading it."/>
       </eAnnotations>
       <eParameters name="eClass" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClass"/>
       <eParameters name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject"/>
     </eOperations>
-    <eOperations name="reload" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="reload" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Re-reads the object's state from the backend via a keyed read and replaces the in-memory state of the given instance in place — its resource attachment stays untouched. Refused with an IOException when the object has no determinable id or no longer exists in the backend."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
     </eOperations>
-    <eOperations name="find" eType="ecore:EClass ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//QueryResult"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="find" eType="ecore:EClass https://eclipse.org/fennec/persistence/query/api/1.0.0#//QueryResult"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes a canonical query against the bound backend, delegating to its QueryableResource. Same contract: capability violations fail with an IOException carrying the validation Diagnostic — never a silent in-memory fallback. The result must be closed by the caller."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
     </eOperations>
-    <eOperations name="find" eType="ecore:EClass ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//QueryResult"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="find" eType="ecore:EClass https://eclipse.org/fennec/persistence/query/api/1.0.0#//QueryResult"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes a canonical query with bound parameters and backend options (both may be null). The result must be closed by the caller."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
-      <eParameters name="parameters" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//ParameterMap"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
+      <eParameters name="parameters" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//ParameterMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
-    <eOperations name="find" eType="ecore:EClass ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//QueryResult"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="find" eType="ecore:EClass https://eclipse.org/fennec/persistence/query/api/1.0.0#//QueryResult"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Loads the query persisted under the given name (saveQuery) and executes it with bound parameters and backend options (both may be null). An unknown name is refused with an IOException carrying a Diagnostic. The result must be closed by the caller."/>
       </eAnnotations>
       <eParameters name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-      <eParameters name="parameters" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//ParameterMap"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="parameters" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//ParameterMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="count" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Convenience for COUNT-shaped queries: executes the query and answers the cardinality directly, closing the underlying result."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
     </eOperations>
-    <eOperations name="prepare" eType="#//PreparedQuery" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="prepare" eType="#//PreparedQuery" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Prepares the given canonical query for repeated parameterized execution — the createNamedQuery analogue. Validation against the backend's QueryProcessor happens here, once: a query the backend cannot serve natively is refused with an IOException carrying the Diagnostic, never at first execute."/>
       </eAnnotations>
-      <eParameters name="query" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query"/>
+      <eParameters name="query" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"/>
     </eOperations>
-    <eOperations name="prepare" eType="#//PreparedQuery" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="prepare" eType="#//PreparedQuery" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Loads the query persisted under the given name (saveQuery) from the backend's query catalog and prepares it. An unknown name is refused with an IOException carrying a Diagnostic."/>
       </eAnnotations>
@@ -271,30 +271,30 @@
         <details key="documentation" value="The query's name (Query.name), or null for an unnamed ad-hoc prepared query."/>
       </eAnnotations>
     </eOperations>
-    <eOperations name="query" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//Query">
+    <eOperations name="query" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The canonical query this handle was prepared from. Treat as read-only — mutating it does not affect this handle."/>
       </eAnnotations>
     </eOperations>
-    <eOperations name="parameterDeclarations" upperBound="-1" eType="ecore:EClass ../../org.eclipse.fennec.query.model/model/query.ecore#//ParameterDecl">
+    <eOperations name="parameterDeclarations" upperBound="-1" eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//ParameterDecl">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The declared parameters of the prepared query (Query.parameters) — name and optional type hint, for callers and tooling to know what execute expects."/>
       </eAnnotations>
     </eOperations>
-    <eOperations name="execute" eType="ecore:EClass ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//QueryResult"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="execute" eType="ecore:EClass https://eclipse.org/fennec/persistence/query/api/1.0.0#//QueryResult"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes the prepared query with the given parameter bindings. A declared ParameterRef without a binding fails translation with a diagnostic. The result must be closed by the caller."/>
       </eAnnotations>
-      <eParameters name="parameters" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//ParameterMap"/>
+      <eParameters name="parameters" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//ParameterMap"/>
     </eOperations>
-    <eOperations name="execute" eType="ecore:EClass ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//QueryResult"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="execute" eType="ecore:EClass https://eclipse.org/fennec/persistence/query/api/1.0.0#//QueryResult"
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes the prepared query with the given parameter bindings and backend options (both may be null). The result must be closed by the caller."/>
       </eAnnotations>
-      <eParameters name="parameters" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//ParameterMap"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="parameters" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//ParameterMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="WriteRepository" abstract="true" interface="true"
@@ -302,88 +302,88 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Write side of the repository: save and delete EObjects — the repository takes care of attaching them to properly-URI'd Resources — and execute canonical write commands (command.ecore) first-class, delegating to the backend's CommandResource. All operations throw IOException on backend failure. A deployment may withhold this interface for read-only views."/>
     </eAnnotations>
-    <eOperations name="save" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="save" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Saves exactly the given EObject under its repository URI — the old one-resource-per-object save semantics on top of the collection-resource mechanic. Objects sharing a loaded collection resource are not written: the repository isolates the object for the save and restores its attachment afterwards; an unattached object is attached to its collection resource after saving."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
     </eOperations>
-    <eOperations name="save" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="save" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Saves exactly the given EObject using the given save options — same isolation contract as save(object)."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
-    <eOperations name="save" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="save" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Saves the given EObject at the given explicit URI instead of its derived repository URI."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
     </eOperations>
-    <eOperations name="save" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="save" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Saves the given EObject at the given explicit URI using the given save options."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
-    <eOperations name="saveAll" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="saveAll" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Saves exactly the given EObjects — one backend save per type, replacing the old save(Collection)/save(EObject...) overload family. Unrelated objects sharing a loaded collection resource are not written; the same isolation contract as save(object) applies."/>
       </eAnnotations>
       <eParameters name="objects" lowerBound="1" eType="#//EObjectCollection"/>
     </eOperations>
-    <eOperations name="saveAll" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="saveAll" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Saves all given EObjects using the given save options."/>
       </eAnnotations>
       <eParameters name="objects" lowerBound="1" eType="#//EObjectCollection"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
-    <eOperations name="delete" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="delete" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Deletes the given EObject from the backend and detaches it from its Resource."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
     </eOperations>
-    <eOperations name="delete" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="delete" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Deletes the given EObject using the given options."/>
       </eAnnotations>
       <eParameters name="object" lowerBound="1" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EObject"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
-    <eOperations name="delete" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="delete" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Deletes the object at the given URI without loading it first."/>
       </eAnnotations>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
     </eOperations>
-    <eOperations name="delete" eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+    <eOperations name="delete" eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Deletes the object at the given URI without loading it first, using the given options."/>
       </eAnnotations>
       <eParameters name="uri" lowerBound="1" eType="#//Uri"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
     <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes a canonical write command (Insert/Delete/Update), delegating to the backend's CommandResource, and answers the number of affected objects. Same refusal contract as CommandResource.execute."/>
       </eAnnotations>
-      <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
+      <eParameters name="command" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/command/1.0.0#//Command"/>
     </eOperations>
     <eOperations name="execute" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
-        eExceptions="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//IOException">
+        eExceptions="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//IOException">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Executes a write command with bound parameters (issue #202) - the write-side counterpart of find(query, parameters, options). A selector may use ParameterRef nodes; this is where their values come from. Both maps may be null."/>
       </eAnnotations>
-      <eParameters name="command" lowerBound="1" eType="ecore:EClass ../../org.eclipse.fennec.command.model/model/command.ecore#//Command"/>
-      <eParameters name="parameters" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//ParameterMap"/>
-      <eParameters name="options" eType="ecore:EDataType ../../org.eclipse.fennec.persistence.query/model/query-api.ecore#//OptionsMap"/>
+      <eParameters name="command" lowerBound="1" eType="ecore:EClass https://eclipse.org/fennec/command/1.0.0#//Command"/>
+      <eParameters name="parameters" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//ParameterMap"/>
+      <eParameters name="options" eType="ecore:EDataType https://eclipse.org/fennec/persistence/query/api/1.0.0#//OptionsMap"/>
     </eOperations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Repository" abstract="true" interface="true"
