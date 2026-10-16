@@ -31,8 +31,10 @@ import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.eorm.Entity;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
+import org.eclipse.fennec.persistence.eorm.Id;
 import org.eclipse.fennec.persistence.eorm.PersistenceUnitDefaults;
 import org.eclipse.fennec.persistence.eorm.PersistenceUnitMetadata;
+import org.eclipse.fennec.persistence.eorm.TableGenerator;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicClassLoader;
@@ -113,6 +115,53 @@ public class EDynamicTypeGenerator {
 	}
 
 	/**
+	 * Reports the eorm constructs this provider does not read (issue #297). Ignoring them
+	 * silently would run the unit on a mapping other than the one written down. An embedded
+	 * id or an id class changes what the key is, so it is an error; an index or a table
+	 * generator leaves the stored values alone, so it is a warning.
+	 */
+	private void reportUnserved(EntityMappings mapping) {
+		if (!mapping.getTableGenerator().isEmpty()) {
+			context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE,
+					"The mapping declares table generators, which are not supported and ignored: "
+							+ mapping.getTableGenerator().stream().map(TableGenerator::getName).toList());
+		}
+		for (Entity entity : mapping.getEntity()) {
+			Object eClass = entity.getClass_();
+			String name = entity.getName();
+			if (nonNull(entity.getAttributes()) && nonNull(entity.getAttributes().getEmbeddedId())) {
+				context.error(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+						"Entity '%s' declares an embedded id, which is not supported. Declare one id per key"
+								+ " attribute instead.", name), eClass);
+			}
+			if (nonNull(entity.getIdClass())) {
+				context.error(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+						"Entity '%s' declares an id class, which is not supported. Declare one id per key"
+								+ " attribute instead.", name), eClass);
+			}
+			if (nonNull(entity.getTable()) && !entity.getTable().getIndex().isEmpty()) {
+				context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+						"Entity '%s' declares indexes on table '%s', which are not supported and ignored",
+						name, entity.getTable().getName()), eClass);
+			}
+			if (nonNull(entity.getTableGenerator())) {
+				context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+						"Entity '%s' declares a table generator, which is not supported and ignored", name),
+						eClass);
+			}
+			if (nonNull(entity.getAttributes())) {
+				for (Id id : entity.getAttributes().getId()) {
+					if (nonNull(id.getTableGenerator())) {
+						context.warning(EDynamicTypeContext.DIAGNOSTIC_SOURCE, String.format(
+								"Id '%s' of entity '%s' declares a table generator, which is not supported and"
+										+ " ignored", id.getName(), name), eClass);
+					}
+				}
+			}
+		}
+	}
+
+	/**
 	 * @return {@code true} if {@code mapping} declares
 	 *         {@code persistenceUnitMetadata/persistenceUnitDefaults/delimitedIdentifiers}.
 	 */
@@ -134,6 +183,7 @@ public class EDynamicTypeGenerator {
 		if (isNull(mapping) || mapping.getEntity().isEmpty()) {
 			return Collections.emptyList();
 		}
+		reportUnserved(mapping);
 		/*
 		 * Create all entities and id's, attribute mappings
 		 */

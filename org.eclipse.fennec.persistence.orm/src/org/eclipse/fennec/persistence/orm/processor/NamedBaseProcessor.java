@@ -15,6 +15,10 @@ package org.eclipse.fennec.persistence.orm.processor;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
@@ -237,6 +241,33 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 		return null;
 	}
 
+	/**
+	 * The join columns of one side of a join table: one per id column, named like the key
+	 * column itself, and prefixed with the class name where the name is already taken by the
+	 * other side — a self-reference, or two ids of the same name (issue #297). These are the
+	 * names the runtime has always given the relation columns; the mapping now states them
+	 * instead of naming columns nobody used.
+	 * @param eClass the class whose key the columns carry
+	 * @param taken the column names the other side already uses
+	 * @return the join columns, empty if the class has no entity or no id
+	 */
+	private List<JoinColumn> createRelationKeyColumns(EClass eClass, Set<String> taken) {
+		Entity entity = context.getEntity(eClass);
+		Entity idEntity = idEntityOf(eClass);
+		if (isNull(entity) || isNull(idEntity) || isNull(entity.getTable())) {
+			return List.of();
+		}
+		List<JoinColumn> joinColumns = new ArrayList<>();
+		for (Id id : idEntity.getAttributes().getId()) {
+			String column = id.getColumn().getName();
+			JoinColumn jc = EORMFactory.eINSTANCE.createJoinColumn();
+			jc.setName(taken.contains(column) ? eClass.getName() + "_" + column : column);
+			jc.setReferencedColumnName(entity.getTable().getName() + "." + column);
+			joinColumns.add(jc);
+		}
+		return joinColumns;
+	}
+
 	/** The entity of the class, or of the nearest supertype, that declares the id. */
 	private Entity idEntityOf(EClass eClass) {
 		Entity entity = context.getEntity(eClass);
@@ -259,18 +290,20 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 	 */
 	JoinTable createJoinTable(EReference reference) {
 		EClass c = reference.getEContainingClass();
-		JoinColumn jc = createJoinColumn(c);
-		JoinColumn ijc = createJoinColumn(reference.getEReferenceType());
+		List<JoinColumn> joinColumns = createRelationKeyColumns(c, Set.of());
+		Set<String> taken = new HashSet<>();
+		joinColumns.forEach(jc -> taken.add(jc.getName()));
+		List<JoinColumn> inverseJoinColumns = createRelationKeyColumns(reference.getEReferenceType(), taken);
 		JoinTable jt = EORMFactory.eINSTANCE.createJoinTable();
 		String joinTableName = c.getName().toUpperCase() + "__" + reference.getEReferenceType().getName().toUpperCase();
 		jt.setName(joinTableName);
-		if (nonNull(jc)) {
-			jt.getJoinColumn().add(jc);
-			jt.setForeignKey(createForeignKey(jc.getName()));
+		if (!joinColumns.isEmpty()) {
+			jt.getJoinColumn().addAll(joinColumns);
+			jt.setForeignKey(createForeignKey(joinColumns.get(0).getName()));
 		}
-		if (nonNull(ijc)) {
-			jt.getInverseJoinColumn().add(ijc);
-			jt.setInverseForeignKey(createForeignKey(ijc.getName()));
+		if (!inverseJoinColumns.isEmpty()) {
+			jt.getInverseJoinColumn().addAll(inverseJoinColumns);
+			jt.setInverseForeignKey(createForeignKey(inverseJoinColumns.get(0).getName()));
 		}
 		return jt;
 	}
