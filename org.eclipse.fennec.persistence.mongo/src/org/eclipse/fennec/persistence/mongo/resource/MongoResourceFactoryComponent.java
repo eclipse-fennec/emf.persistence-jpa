@@ -31,6 +31,7 @@ import org.eclipse.fennec.emf.osgi.annotation.ConfiguratorType;
 import org.eclipse.fennec.emf.osgi.annotation.provide.EMFConfigurator;
 import org.eclipse.fennec.emf.osgi.metadata.MetadataService;
 import org.eclipse.fennec.persistence.api.ConverterService;
+import org.eclipse.fennec.persistence.mongo.CollectionNames;
 import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
@@ -194,6 +195,16 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 		}
 	}
 
+	/**
+	 * The collection mapping declared by the aliased database service (issue #290),
+	 * propagated there from the database configuration, which already refused a malformed one.
+	 */
+	private CollectionNames collectionNames(String alias) {
+		ServiceReference<MongoDatabase> reference = databaseRefs.get(alias);
+		Object entries = isNull(reference) ? null : reference.getProperty(MongoPersistenceConstants.COLLECTIONS);
+		return entries instanceof String[] array ? CollectionNames.parse(array) : CollectionNames.NONE;
+	}
+
 	private static String alias(ServiceReference<MongoDatabase> reference) {
 		return reference.getProperty(MongoPersistenceConstants.DATABASE_ALIAS) instanceof String s ? s : null;
 	}
@@ -209,15 +220,15 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 		if (isNull(alias) || alias.isEmpty()) {
 			return newResource(uri, unavailable(
 					"URI '" + uri + "' does not name a database alias (expected mongodb://<alias>/<collection>)"),
-					MongoFlavor.MONGO);
+					MongoFlavor.MONGO, CollectionNames.NONE);
 		}
 		MongoDatabase database = resolveDatabase(alias);
 		if (isNull(database)) {
 			return newResource(uri, unavailable(
 					"No MongoDB database with alias '" + alias + "' is available for URI '" + uri + "'"),
-					MongoFlavor.MONGO);
+					MongoFlavor.MONGO, CollectionNames.NONE);
 		}
-		return newResource(uri, database, flavor(alias));
+		return newResource(uri, database, flavor(alias), collectionNames(alias));
 	}
 
 	/**
@@ -237,9 +248,10 @@ public class MongoResourceFactoryComponent implements Resource.Factory {
 		namedOperations.compareAndSet(operations, null);
 	}
 
-	private Resource newResource(URI uri, MongoDatabase database, MongoFlavor flavor) {
+	private Resource newResource(URI uri, MongoDatabase database, MongoFlavor flavor,
+			CollectionNames collectionNames) {
 		Resource resource = new MongoResourceFactory(database, metadataService, valueRegistry.get(),
-				queryProcessor.get(), null, flavor, converterService.get()).createResource(uri);
+				queryProcessor.get(), null, flavor, converterService.get(), collectionNames).createResource(uri);
 		NamedOperations catalog = namedOperations.get();
 		if (nonNull(catalog) && resource instanceof MongoResourceImpl mongo) {
 			mongo.setNamedOperations(catalog);

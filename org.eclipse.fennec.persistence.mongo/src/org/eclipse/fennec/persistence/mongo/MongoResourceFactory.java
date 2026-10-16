@@ -53,6 +53,7 @@ public class MongoResourceFactory implements Resource.Factory {
 	private final MongoClient client;
 	private final MongoFlavor flavor;
 	private final ConverterService converterService;
+	private final CollectionNames collectionNames;
 
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry) {
@@ -106,6 +107,20 @@ public class MongoResourceFactory implements Resource.Factory {
 	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
 			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client,
 			MongoFlavor flavor, ConverterService converterService) {
+		this(database, metadataService, valueRegistry, queryProcessor, client, flavor, converterService,
+				CollectionNames.NONE);
+	}
+
+	/**
+	 * Variant naming the collection of each type that is not stored under its own name
+	 * (issue #290) — for collections written outside this backend. URIs keep the type name
+	 * ({@code mongodb://<db>/BikeParking}); only the collection opened behind it changes.
+	 *
+	 * @param collectionNames the mapping; {@code null} means {@link CollectionNames#NONE}
+	 */
+	public MongoResourceFactory(MongoDatabase database, MetadataService metadataService,
+			CodecValueRegistry valueRegistry, QueryProcessor queryProcessor, MongoClient client,
+			MongoFlavor flavor, ConverterService converterService, CollectionNames collectionNames) {
 		requireNonNull(database, "MongoDatabase is required");
 		requireNonNull(metadataService, "MetadataService is required");
 		this.database = database;
@@ -115,6 +130,7 @@ public class MongoResourceFactory implements Resource.Factory {
 		this.flavor = flavor == null ? MongoFlavor.MONGO : flavor;
 		this.queryProcessor = processorFor(queryProcessor, this.flavor);
 		this.converterService = converterService;
+		this.collectionNames = collectionNames == null ? CollectionNames.NONE : collectionNames;
 	}
 
 	/** The processor handed to created resources after flavor reconciliation; may be null. */
@@ -167,6 +183,7 @@ public class MongoResourceFactory implements Resource.Factory {
 		if (converterService != null) {
 			resource.setConverterService(converterService);
 		}
+		resource.setCollectionNames(collectionNames);
 		return resource;
 	}
 }

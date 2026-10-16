@@ -266,6 +266,10 @@ object is addressed by the URI *fragment*, which carries the id
 <baseUri>/<EClassName>#<id>       one object
 ```
 
+The segment is always the type name, even where the data lives under another name: a JPA
+table is named by the eorm mapping, a Mongo collection by the database's `collections`
+mapping ([Mongo User Guide](mongo-user-guide.md#collections-not-named-after-their-type)).
+
 The id in that fragment is the one the repository assigned or you set, so an object saved
 with a generated id is fetched back by it, directly or through a URI:
 

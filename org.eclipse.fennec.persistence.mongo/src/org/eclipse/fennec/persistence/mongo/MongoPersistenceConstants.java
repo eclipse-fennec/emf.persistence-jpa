@@ -44,6 +44,15 @@ public interface MongoPersistenceConstants {
 	 */
 	String FLAVOR = "mongo.flavor";
 
+	/**
+	 * Configuration key and service property carrying the collection each type is stored in,
+	 * where it is not named after the type (issue #290): {@code String[]} of
+	 * {@code <EClassName>=<collection>}, see {@link CollectionNames}. Configured on the
+	 * database and propagated on its service, like {@link #FLAVOR}. Absent means every
+	 * collection is named after its type.
+	 */
+	String COLLECTIONS = "mongo.collections";
+
 	/** The MongoDB document identifier field. */
 	String ID_FIELD = "_id";
 
