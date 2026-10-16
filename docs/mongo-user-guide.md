@@ -18,22 +18,25 @@ is all the mapping the backend needs.
 2. [Configuring the backend (OSGi)](#configuring-the-backend-osgi)
 3. [Connection liveness](#connection-liveness)
 4. [Server flavors: MongoDB, FerretDB, DocumentDB](#server-flavors-mongodb-ferretdb-documentdb)
-6. [Plain-Java setup (non-OSGi)](#plain-java-setup-non-osgi)
-5. [The `mongodb://` URI scheme](#the-mongodb-uri-scheme)
+5. [Plain-Java setup (non-OSGi)](#plain-java-setup-non-osgi)
+6. [The `mongodb://` URI scheme](#the-mongodb-uri-scheme)
 7. [CRUD through an EMF Resource](#crud-through-an-emf-resource)
-8. [Identity: EMF ids and `_id`](#identity-emf-ids-and-_id)
-9. [How the codec maps EObjects to BSON](#how-the-codec-maps-eobjects-to-bson)
-10. [References and proxies](#references-and-proxies)
-11. [Mixing JPA and MongoDB in one ResourceSet](#mixing-jpa-and-mongodb-in-one-resourceset)
-12. [Error handling and diagnostics](#error-handling-and-diagnostics)
-13. [What is not (yet) supported](#what-is-not-yet-supported)
+8. [Queries](#queries)
+9. [Identity: EMF ids and `_id`](#identity-emf-ids-and-_id)
+10. [How the codec maps EObjects to BSON](#how-the-codec-maps-eobjects-to-bson)
+11. [References and proxies](#references-and-proxies)
+12. [Mixing JPA and MongoDB in one ResourceSet](#mixing-jpa-and-mongodb-in-one-resourceset)
+13. [Error handling and diagnostics](#error-handling-and-diagnostics)
+14. [What is not (yet) supported](#what-is-not-yet-supported)
 
 ## Prerequisites
 
 - Java 21 or newer
 - A reachable MongoDB server (the tests use a plain `mongo:7` container)
-- An Ecore model whose persistent EClasses each have exactly one EID
-  attribute (`iD="true"`) — it becomes the document `_id`
+- An Ecore model whose persistent EClasses each have an identity — either one
+  EID attribute (`iD="true"`) or a declared composite id (`idFeatures`, see
+  [Composite identity](unified-persistence/composite-identity.md)); it becomes
+  the document `_id`
 - Bundles: `org.eclipse.fennec.persistence.mongo` plus its codec
   dependencies (`org.eclipse.fennec.codec`, `org.eclipse.fennec.codec.bson`),
   the metadata service (`org.eclipse.fennec.emf.osgi.metadata` plus
@@ -678,6 +681,35 @@ try (PushStream<EObject> stream = PersistencePushStreams.createPushStream(
 }
 ```
 
+## Queries
+
+Mongo resources implement `QueryableResource` and run the same canonical
+queries as the JPA backend. The `QueryProcessor` with
+`persistence.query.backend=mongo` (`MongoQueryProcessor`) translates a query
+into a filter or an aggregation pipeline and is handed to every resource of
+the whiteboard (see [Resources through the `mongodb://`
+whiteboard](#3-resources-through-the-mongodb-whiteboard)).
+
+```java
+import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryableResource;
+
+Resource resource = resourceSet.createResource(URI.createURI("mongodb://library/Book"));
+try (QueryResult result = ((QueryableResource) resource).query(query)) {
+    result.objects().forEach(book -> process(book));
+}
+```
+
+The normal route is the repository facade (factory PID
+`fennec.repository.mongo`), whose `prepare` validates a query against this
+processor before it is ever executed — see the
+[Repository User Guide](repository-user-guide.md). How to build queries,
+and which features exist, is the [Query User Guide](query-user-guide.md).
+
+What a flavor serves is in the [capability matrix](#capability-matrix). A
+query that uses a feature the flavor does not declare is refused with a
+`Diagnostic` instead of being filtered in memory.
+
 ## Identity: EMF ids and `_id`
 
 The EMF ID attribute (`eClass().getEIDAttribute()`) maps to the MongoDB
@@ -685,8 +717,16 @@ The EMF ID attribute (`eClass().getEIDAttribute()`) maps to the MongoDB
 
 - `int`/`Integer` and `long`/`Long` ids are stored as native BSON int32 /
   int64; everything else is stored as a string.
-- An EClass **without** an EID attribute cannot be saved — `save` fails with
-  an `IOException`.
+- A **composite id** — declared with the `idFeatures` annotation, see
+  [Composite identity](unified-persistence/composite-identity.md) — is stored
+  as a structured `_id` sub-document with one field per id attribute, in
+  declaration order (`{"_id": {"orderId": "o1", "lineNo": 2}}`). Its
+  components are assigned by the application, never generated; an unset one
+  fails the save. Keyed access uses the fragment form `#orderId=o1,lineNo=2`.
+  This storage form is the backend's policy and overrides codec annotations
+  in the model unless `OPTION_ID_CONFIG_FROM_MODEL` is set.
+- An EClass with **neither** an EID attribute nor a composite id cannot be
+  saved — `save` fails with an `IOException`.
 - **Id generation** works for String-typed id attributes only: when the id
   is unset at save time, the backend generates a MongoDB `ObjectId` hex
   string and **writes it back** into the EObject. For numeric id attributes
@@ -932,12 +972,11 @@ operation.
 Honest gap list compared to the JPA backend, based on what the TCK actually
 verifies:
 
-- **No query support.** A resource can load a whole collection or a single
-  document by id — there is no filter/query API yet (the JPA backend's
-  `READ_FILTER_ECLASS` option does not apply, and there is no equivalent of
-  JPQL access). A query model is on the roadmap.
-- **No transactions.** Each `save` is one `bulkWrite` of upserts; there is
-  no unit-of-work or rollback spanning multiple resources.
+- **`save` is not transactional.** Each `save` is one `bulkWrite` of
+  upserts, without rollback across documents or resources. Multi-document
+  transactions exist only as a command bracket (`begin()`, see the
+  [capability matrix](#capability-matrix)), on a replica set or mongos —
+  FerretDB and a standalone MongoDB refuse it with a `Diagnostic`.
 - **Id generation only for String ids** (`ObjectId` hex). Numeric ids must
   be assigned by the application.
 - **`count()`/`exist()` are collection-wide** and ignore the URI id segment.
