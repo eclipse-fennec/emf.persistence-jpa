@@ -69,10 +69,6 @@ import jakarta.persistence.EntityManagerFactory;
  * nothing. A reference to a class with a composite id stores the whole key. And a mapping
  * written for an existing schema is read and written through the columns it names, not
  * through derived ones.
- * <p>
- * The writes save a list target before the object that lists it. A unidirectional list
- * pointing at an object not yet in the store fails the save ("not a known Entity type"),
- * with or without named join columns — a write-path defect of its own, not part of this.
  *
  * @since 16.10.2026
  */
@@ -237,10 +233,9 @@ class JpaJoinColumnsTest {
 		EObject eve = create(eClass("Student"), "code", "s1", "name", "Eve");
 		EObject math = create(eClass("Course"), "code", "m1", "title", "Math");
 		((List<EObject>) eve.eGet(eClass("Student").getEStructuralFeature("courses"))).add(math);
-		// every object in its resource first: a save refuses a reference into no resource. A
-		// list target goes before its referrer — see the note on the class
+		// every object in its resource first: a save refuses a reference into no resource
 		ResourceSet writeSet = resourceSet();
-		List<Resource> resources = List.of(attach(writeSet, "Client", bob, ada), attach(writeSet, "Site", north),
+		List<Resource> resources = List.of(attach(writeSet, "Client", ada, bob), attach(writeSet, "Site", north),
 				attach(writeSet, "Course", math), attach(writeSet, "Contract", lease),
 				attach(writeSet, "Invoice", invoice), attach(writeSet, "Visit", visit),
 				attach(writeSet, "Student", eve));

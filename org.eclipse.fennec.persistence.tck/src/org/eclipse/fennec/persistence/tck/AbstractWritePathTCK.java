@@ -460,6 +460,52 @@ public abstract class AbstractWritePathTCK {
 		assertIds(tag, "t1", "t2", "t3");
 	}
 
+	/**
+	 * List targets that are new and saved only after the object listing them (issue #381). The
+	 * owner's save must neither fail on them nor drop the links; the tags' own save then finds
+	 * their rows and writes their state, without a second row.
+	 */
+	@Test
+	public void listTargetsSavedAfterTheirReferrerAreLinked() throws Exception {
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject t1 = tag("t1");
+		EObject t2 = tag("t2");
+		EObject o = owner("o1");
+		list(o, ownerTags).addAll(List.of(t1, t2));
+		saveAll(resourceSet, "WpOwner", List.of(o), "WpTag", List.of(t1, t2));
+
+		assertRefs(owner, "o1", ownerTags, "t1", "t2");
+		assertIds(tag, "t1", "t2");
+		assertThat(fresh("WpTag", "t2").eGet(attr(tag, "name"))).isEqualTo("tag t2");
+	}
+
+	/**
+	 * A new target added to the list of a stored object (issue #381). The update path matched
+	 * added targets against existing rows only, so a target without one was dropped from the
+	 * list — no error, and no link.
+	 */
+	@Test
+	public void aNewTargetAddedToAStoredListIsLinked() throws Exception {
+		save("WpTag", tag("t1"));
+		ResourceSet setup = createBackendResourceSet();
+		EObject o = owner("o1");
+		list(o, ownerTags).add(resolve(setup, "WpTag", "t1"));
+		saveIn(setup, "WpOwner", o);
+
+		ResourceSet resourceSet = createBackendResourceSet();
+		EObject stored = resolve(resourceSet, "WpOwner", "o1");
+		EObject t9 = tag("t9");
+		Resource tags = resourceSet.createResource(uriFor("WpTag"));
+		tags.getContents().add(t9);
+		list(stored, ownerTags).add(t9);
+		stored.eResource().save(null);
+		tags.save(null);
+
+		assertRefs(owner, "o1", ownerTags, "t1", "t9");
+		assertIds(tag, "t1", "t9");
+		assertThat(fresh("WpTag", "t9").eGet(attr(tag, "name"))).isEqualTo("tag t9");
+	}
+
 	@Test
 	public void removingAManyToManyLinkKeepsBothSides() throws Exception {
 		saveStudentsAndCourses();
@@ -1786,6 +1832,12 @@ public abstract class AbstractWritePathTCK {
 		EObject object = EcoreUtil.create(eClass);
 		object.eSet(eClass.getEIDAttribute(), id);
 		return object;
+	}
+
+	private EObject tag(String id) {
+		EObject t = obj(tag, id);
+		t.eSet(attr(tag, "name"), "tag " + id);
+		return t;
 	}
 
 	private EObject owner(String id) {

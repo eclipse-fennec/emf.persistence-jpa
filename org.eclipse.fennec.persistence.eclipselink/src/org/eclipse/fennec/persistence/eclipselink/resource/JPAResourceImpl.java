@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -195,6 +196,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * raw contents of a not yet populated resource — see {@link #writableContents()}.
 	 */
 	private boolean resolvedByFragment;
+	/**
+	 * The entity instances a save created ahead of their own turn, by the plain object they stand
+	 * for (issue #381): a new root, and a new list target reached from it. A target is persisted
+	 * by the cascade of the object that lists it; a second reference to it, or a reference back
+	 * from it, must find that instance rather than convert the object again. Lives for one save.
+	 */
+	private final Map<EObject, EObject> aheadOfTurn = new IdentityHashMap<>();
 
 	/**
 	 * Creates a resource backed by a {@link JPAUnit} — the narrow capability that hands out
@@ -552,6 +560,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		Server server = serverOf(lease);
 		// Pre-build the entity factory function once for all objects (avoids lambda allocation per object)
 		Function<EObject, EObject> entityFactory = entityFactory(server);
+		aheadOfTurn.clear();
 		try (EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			applyCacheNewObjectsOption(em, options);
@@ -584,6 +593,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						"Failed to save resource: " + e.getMessage(), getURI(), e));
 				throw new IOException("Failed to save resource: " + getURI(), e);
 			}
+		} finally {
+			aheadOfTurn.clear();
 		}
 	}
 
@@ -681,6 +692,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 		Object id = findKey(source);
 		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
+			aheadOfTurn.put(original, source);
 			sanitizeNonContainmentReferences(source, original, server, em);
 			adoptExistingContainmentChildren(source, server, em);
 			em.persist(source);
@@ -702,6 +714,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			copyStateInto(source, existingEO, server, em);
 			return existingEO;
 		}
+		// a new root: a list target reached from it that refers back finds this instance (#381)
+		aheadOfTurn.put(original, source);
 		sanitizeNonContainmentReferences(source, original, server, em);
 		adoptExistingContainmentChildren(source, server, em);
 		em.persist(source);
@@ -724,7 +738,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * it is correct.
 	 */
 	@SuppressWarnings("unchecked")
-	private static void adoptExistingContainmentChildren(EObject source, Server server, EntityManager em) {
+	private void adoptExistingContainmentChildren(EObject source, Server server, EntityManager em) {
 		if (isNull(server)) {
 			return;
 		}
@@ -757,7 +771,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * or {@code null} when the child should stay as it is. Recurses either way, so ownership
 	 * deeper in the tree is adopted too.
 	 */
-	private static EObject adoptChild(EObject child, Server server, EntityManager em) {
+	private EObject adoptChild(EObject child, Server server, EntityManager em) {
 		if (isNull(child) || child.eIsProxy()) {
 			return null;
 		}
@@ -792,7 +806,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * Values without a usable id are left alone.
 	 */
 	@SuppressWarnings("unchecked")
-	private static void sanitizeNonContainmentReferences(EObject source, EObject original, Server server,
+	private void sanitizeNonContainmentReferences(EObject source, EObject original, Server server,
 			EntityManager em) {
 		if (isNull(server)) {
 			return;
@@ -823,6 +837,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				for (int i = 0; i < values.size(); i++) {
 					EObject managed = managedHandle(values.get(i), refDescriptor, server, em);
+					if (isNull(managed)) {
+						managed = entityAheadOfTurn(values.get(i), server, em);
+					}
 					if (nonNull(managed) && managed != values.get(i)) {
 						values.set(i, managed);
 					}
@@ -907,6 +924,44 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/**
+	 * The entity instance standing for a plain list target that has no row yet (issue #381).
+	 * <p>
+	 * A single-valued reference to such an object is written as its id, and the object is
+	 * inserted by its own save. A list goes through its join table, and the persist cascade
+	 * hands every element to EclipseLink, which refuses a plain object as no known entity — so
+	 * the target is converted to its entity class here and inserted along with the object that
+	 * lists it. Its own save, later in this one or in another resource, then finds the row and
+	 * updates it, as for the entity instances of issue #311.
+	 * <p>
+	 * The conversion is remembered for the save: a target listed twice, or a cycle back to a
+	 * new root, reuses the instance instead of producing a second one with the same key.
+	 *
+	 * @return the entity instance, or {@code null} for a proxy, an entity instance, an object
+	 *         without a usable id or of a type without a descriptor — those stay as they are
+	 */
+	private EObject entityAheadOfTurn(EObject value, Server server, EntityManager em) {
+		if (isNull(value) || value.eIsProxy()) {
+			return null;
+		}
+		EObject known = aheadOfTurn.get(value);
+		if (nonNull(known)) {
+			return known;
+		}
+		if (isEntityInstance(server, value) || isNull(server.getDescriptorForAlias(value.eClass().getName()))) {
+			return null;
+		}
+		Object id = findKey(value);
+		if (isNull(id) || (!(id instanceof Object[]) && isDefaultIdValue(id))) {
+			return null;
+		}
+		EObject entity = toEntity(value, server);
+		aheadOfTurn.put(value, entity);
+		sanitizeNonContainmentReferences(entity, value, server, em);
+		adoptExistingContainmentChildren(entity, server, em);
+		return entity;
+	}
+
+	/**
 	 * Returns the {@code em.getReference} handle of an object with a persisted id, whatever its
 	 * class, or {@code null} for a proxy or an object without a usable id.
 	 */
@@ -975,7 +1030,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * differs from the id currently held by {@code target}; otherwise the existing
 	 * managed state is left alone, avoiding spurious dirty-tracking.
 	 */
-	private static void copyStateInto(EObject source, EObject target, Server server, EntityManager em) {
+	private void copyStateInto(EObject source, EObject target, Server server, EntityManager em) {
 		for (EAttribute attr : source.eClass().getEAllAttributes()) {
 			// the persisted form (issue #363): a derived or volatile attribute that is not transient is
 			// mapped, so an update must carry it as well
@@ -1048,7 +1103,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * private-owned discovery (#142) that turns dropped containment into DELETEs.
 	 */
 	@SuppressWarnings("unchecked")
-	private static void syncContainmentList(EObject source, EObject target, EReference ref,
+	private void syncContainmentList(EObject source, EObject target, EReference ref,
 			Server server, EntityManager em) {
 		List<EObject> sourceChildren = (List<EObject>) source.eGet(ref);
 		List<EObject> targetChildren = (List<EObject>) target.eGet(ref);
@@ -1096,7 +1151,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * instance of its entity class, which EclipseLink needs to persist it at all; either way its
 	 * references and deeper children are prepared like on the insert path.
 	 */
-	private static EObject prepareChild(EObject child, Server server, EntityManager em) {
+	private EObject prepareChild(EObject child, Server server, EntityManager em) {
 		if (isNull(server) || child.eIsProxy()) {
 			return child;
 		}
@@ -1136,7 +1191,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * leave the list (their rows stay), added ones join it as managed instances.
 	 */
 	@SuppressWarnings("unchecked")
-	private static void syncReferenceList(EObject source, EObject target, EReference ref,
+	private void syncReferenceList(EObject source, EObject target, EReference ref,
 			Server server, EntityManager em) {
 		ClassDescriptor refDescriptor = nonNull(server)
 				? server.getDescriptorForAlias(ref.getEReferenceType().getName())
@@ -1175,6 +1230,18 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			Object managed = isNull(id) ? null : em.find(refDescriptor.getJavaClass(), id);
 			if (managed instanceof EObject managedElement) {
 				targetElements.add(managedElement);
+			} else {
+				// a target without a row: it used to be dropped here, link and all (#381). An
+				// instance of its entity class is inserted as it is, like on the insert path (#311)
+				EObject ahead = isEntityInstance(server, element) && !element.eIsProxy() && nonNull(id)
+						? element
+						: entityAheadOfTurn(element, server, em);
+				if (nonNull(ahead)) {
+					targetElements.add(ahead);
+					if (!em.contains(ahead)) {
+						em.persist(ahead);
+					}
+				}
 			}
 		}
 	}
@@ -2051,6 +2118,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				ChangeTemplates.bindInsertReferences(copier, insertBindingResolver(em));
 				Server server = serverOf(activeTransaction.lease);
 				Function<EObject, EObject> entityFactory = entityFactory(server);
+				aheadOfTurn.clear();
 				for (EObject copy : copies) {
 					EObject source = nonNull(server) ? toManagedEntity(copy, server, entityFactory) : copy;
 					// no preload here: a bracketed insert carries the payload it was handed,
@@ -2061,6 +2129,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			} catch (QueryException | RuntimeException e) {
 				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Insert rejected: " + e.getMessage(), getURI(), e));
 				throw new IOException("Insert rejected: " + e.getMessage(), e);
+			} finally {
+				aheadOfTurn.clear();
 			}
 		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
