@@ -62,4 +62,5 @@ javac.target: 21
 	"No translation";is:=ignore,\
 	"No metadata for revision";is:=warning,\
 	"jpms.jarname calculated module names from file name";is:=ignore,\
-	"The .classpath";is:=ignore
+	"The .classpath";is:=ignore,\
+	"[Include Override]:";is:=ignore
