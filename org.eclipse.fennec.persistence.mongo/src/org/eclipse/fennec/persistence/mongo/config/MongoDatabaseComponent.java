@@ -18,6 +18,7 @@ import static java.util.Objects.nonNull;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
+import org.eclipse.fennec.persistence.mongo.CollectionNames;
 import org.eclipse.fennec.persistence.mongo.MongoFlavor;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.osgi.framework.BundleContext;
@@ -61,6 +62,11 @@ public class MongoDatabaseComponent {
 		@AttributeDefinition(name = "Database",
 				description = "Name of the MongoDB database")
 		String database();
+
+		@AttributeDefinition(name = "Collections",
+				description = "Collections not named after their type, as <EClassName>=<collection>"
+						+ " — for data written outside this backend (issue #290)")
+		String[] collections() default {};
 	}
 
 	private final BundleContext context;
@@ -84,10 +90,16 @@ public class MongoDatabaseComponent {
 			throw new IllegalStateException("MongoClient service for database alias '" + config.alias()
 					+ "' vanished before the database could be resolved");
 		}
+		// parsed here so a wrong mapping fails the configuration, loudly, instead of every
+		// resource of the alias reading an empty collection
+		CollectionNames collections = CollectionNames.parse(config.collections());
 		MongoDatabase database = client.getDatabase(config.database());
 		Dictionary<String, Object> properties = new Hashtable<>();
 		properties.put(MongoPersistenceConstants.DATABASE_ALIAS, config.alias());
 		properties.put(MongoPersistenceConstants.FLAVOR, flavorOf(clientReference));
+		if (!collections.isEmpty()) {
+			properties.put(MongoPersistenceConstants.COLLECTIONS, collections.toEntries());
+		}
 		registration = context.registerService(MongoDatabase.class, database, properties);
 	}
 

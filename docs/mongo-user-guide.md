@@ -88,6 +88,41 @@ client.target=(mongo.client.ident=main)
 | `alias` | yes | Logical name; becomes the service property `mongo.database.alias` |
 | `database` | yes | Name of the MongoDB database |
 | `client.target` | no | OSGi filter selecting the `MongoClient` service (recommended when more than one client exists) |
+| `collections` | no | Types stored in a collection not named after them, as `<EClassName>=<collection>` entries; see below |
+
+#### Collections not named after their type
+
+Every type is stored in the collection of its name — `BikeParking` in `BikeParking`. Data
+written outside this backend rarely follows that, so the database can name the collection
+per type:
+
+```json
+"persistence.mongo.database~parking": {
+  "alias": "parking",
+  "database": "city",
+  "collections": ["BikeParking=bikeparking", "Station=stations"]
+}
+```
+
+`collections` is a `String[]`; the example uses the OSGi Configurator format, which can
+express one. A plain `.cfg` holds strings only — a single entry works there
+(`collections=BikeParking=bikeparking`), several do not.
+
+The mapping changes only which collection is opened. URIs keep the type name
+(`mongodb://parking/BikeParking#b1`), and so do the references stored in documents
+(`/BikeParking#b1`) — so a reference stays valid if the mapping changes, and reads, keyed
+reads, queries, `count`/`exist`, saves and the reference checks of a delete all reach the
+mapped collection. The repository facade needs nothing of its own.
+
+A malformed entry, a type mapped twice, two types mapped onto one collection, or a mapping
+naming one of the backend's own collections (`_fennec_ownership`, `fennec.queries`) fails
+the configuration: the database service does not register. The mapping is per database, so
+two repositories on one database share it.
+
+A read of a collection that does not exist answers empty, which looks like an empty
+collection. The resource therefore reports it once per runtime: as a warning when the
+collection was mapped (a configuration error), at INFO otherwise (it may simply not have
+been written yet), naming the `collections` key as the remedy.
 
 ### 3. Resources through the `mongodb://` whiteboard
 
@@ -563,12 +598,13 @@ mongodb://<db>/<collection>[/<id>]
   connection is the `MongoDatabase` injected into the factory. Use a stable
   name (the database alias is a good choice) and keep it consistent within a
   ResourceSet — reference URIs written into documents are built from it.
-- `<collection>` — the MongoDB collection, by convention the EClass name.
-  The backend resolves the EClass for decoding by looking the collection
-  name up as a classifier in the ResourceSet's package registry (falling
-  back to the global registry). To use a different collection name, pass
-  `Options.OPTION_TABLE_NAME` with an EClass value in the load/save options
-  — it overrides both the collection name and the type hint.
+- `<collection>` — the type name, which is also the collection unless the
+  database maps the type to another one (`collections`, see
+  [the database configuration](#2-the-database--factory-pid-persistencemongodatabase)).
+  The backend resolves the EClass for decoding by looking the segment up as
+  a classifier in the ResourceSet's package registry (falling back to the
+  global registry). `Options.OPTION_TABLE_NAME` with an EClass value in the
+  load/save options overrides both the segment and the type hint.
 - `<id>` — optional. With an id segment, `load` fetches exactly the one
   document with that `_id`; without it, the whole collection is loaded.
 

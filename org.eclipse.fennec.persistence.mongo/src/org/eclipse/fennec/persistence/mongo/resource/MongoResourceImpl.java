@@ -98,6 +98,7 @@ import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
 import org.eclipse.fennec.persistence.helper.EMFHelper;
+import org.eclipse.fennec.persistence.mongo.CollectionNames;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.OwnershipMaintenance;
 import org.eclipse.fennec.persistence.mongo.query.BsonValues;
@@ -189,6 +190,12 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private static final Set<String> REFERENCE_INDEXES = ConcurrentHashMap.newKeySet();
 
 	/**
+	 * Collections already checked for existence on a read ({@code <database>/<collection>}),
+	 * so the absence of one is reported once per runtime, not on every read (issue #290).
+	 */
+	private static final Set<String> PRESENCE_CHECKED = ConcurrentHashMap.newKeySet();
+
+	/**
 	 * Bookkeeping collection for containment ownership across document boundaries (issue #139).
 	 * Deliberately a collection of its own rather than a field inside the child documents: the
 	 * codec owns their shape, and an injected key would read as an unknown feature there
@@ -219,6 +226,8 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	private volatile ConverterService converters = DEFAULT_CONVERTERS;
 	/** Session-capable client for command transactions (issue #112); optional. */
 	private volatile MongoClient client;
+	/** The collection each type is stored in where it is not its name (issue #290). */
+	private volatile CollectionNames collectionNames = CollectionNames.NONE;
 	/** The open command bracket (issue #112); resources are single-threaded per EMF semantics. */
 	private MongoCommandTransaction activeTransaction;
 	/** Options captured by {@link #load(Map)} for the deferred population (issue #146). */
@@ -543,6 +552,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 			}
 		}
 		try {
+			reportIfAbsent(collectionName);
 			MongoCollection<BsonDocument> collection = getCollection(collectionName);
 			FindIterable<BsonDocument> find = collection.find();
 			String id = getIdSegment();
@@ -1117,6 +1127,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	private QueryResult execute(MongoQueryPlan plan, String collectionName, EClass eClass, Map<?, ?> options) {
+		reportIfAbsent(collectionName);
 		MongoCollection<BsonDocument> collection = getCollection(collectionName);
 		Bson filter = plan.filter() == null ? Filters.empty() : plan.filter();
 		if (plan.shape() == QueryShape.COUNT) {
@@ -1409,6 +1420,16 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	/** Injects the session-capable client — wired by the {@code MongoResourceFactory} (issue #112). */
 	public void setClient(MongoClient client) {
 		this.client = client;
+	}
+
+	/**
+	 * Sets the collection each type is stored in where it is not named after it (issue #290) —
+	 * wired by the {@code MongoResourceFactory} from the database configuration.
+	 *
+	 * @param collectionNames the mapping; {@code null} means {@link CollectionNames#NONE}
+	 */
+	public void setCollectionNames(CollectionNames collectionNames) {
+		this.collectionNames = isNull(collectionNames) ? CollectionNames.NONE : collectionNames;
 	}
 
 	/**
@@ -1882,7 +1903,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	 * the index still deletes correctly, only slower, so a failure is logged, not raised.
 	 */
 	private void ensureReferenceIndex(String collectionName, String field) {
-		String key = database.getName() + "/" + collectionName + "/" + field;
+		String key = database.getName() + "/" + collectionNames.collection(collectionName) + "/" + field;
 		if (!REFERENCE_INDEXES.add(key)) {
 			return;
 		}
@@ -2186,6 +2207,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		}
 		EClass eClass = resolveEClass(collectionName, options);
 		try {
+			reportIfAbsent(collectionName);
 			FindIterable<BsonDocument> find = getCollection(collectionName).find();
 			int pageSize = Options.getPageSize(options);
 			if (pageSize > 0) {
@@ -3113,8 +3135,49 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 		return null;
 	}
 
+	/**
+	 * Opens the collection behind a logical name. URIs, stored references and ownership records
+	 * all speak in logical names — the type name — and this is the one place they become the
+	 * name of a collection (issue #290).
+	 */
 	protected MongoCollection<BsonDocument> getCollection(String collectionName) {
-		return database.getCollection(collectionName, BsonDocument.class);
+		return database.getCollection(collectionNames.collection(collectionName), BsonDocument.class);
+	}
+
+	/**
+	 * Reports, once per runtime, a read of a collection that does not exist (issue #290). The
+	 * read itself answers empty, which is indistinguishable from an empty collection — and the
+	 * usual cause is a name: a collection created under another spelling than the type's. A
+	 * mapped collection that is missing is a configuration error and warned about; an unmapped
+	 * one may simply not have been written yet, so it is reported at INFO with the remedy.
+	 * The check must never fail the read: a gateway or a user without the right to list
+	 * collections only loses the hint.
+	 */
+	private void reportIfAbsent(String collectionName) {
+		String collection = collectionNames.collection(collectionName);
+		if (!PRESENCE_CHECKED.add(database.getName() + "/" + collection)) {
+			return;
+		}
+		try {
+			for (String existing : database.listCollectionNames()) {
+				if (existing.equals(collection)) {
+					return;
+				}
+			}
+		} catch (RuntimeException e) {
+			LOG.log(Level.FINE, "Cannot list the collections of " + database.getName(), e);
+			return;
+		}
+		if (collectionNames.isMapped(collectionName)) {
+			LOG.log(Level.WARNING, "Collection ''{0}'', configured for type ''{1}'', does not exist in"
+					+ " database ''{2}'' — reads of this type return nothing",
+					new Object[] { collection, collectionName, database.getName() });
+		} else {
+			LOG.log(Level.INFO, "Collection ''{0}'' does not exist in database ''{1}'' — reads return"
+					+ " nothing until it is written. If the data lives in a collection of another name,"
+					+ " map the type to it with the database property ''{2}''",
+					new Object[] { collection, database.getName(), MongoPersistenceConstants.COLLECTIONS });
+		}
 	}
 
 	protected MongoDatabase getDatabase() {

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.bson.BsonDocument;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.fennec.codec.value.CodecValueRegistry;
@@ -39,6 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 
 /**
@@ -159,6 +161,37 @@ class MongoResourceFactoryComponentTest {
 
 		assertThat(resource).isInstanceOf(MongoResourceImpl.class);
 		verify(registry).copy();
+	}
+
+	/**
+	 * The collection mapping configured on the database (issue #290) reaches every resource
+	 * of its alias: the resource stays addressed by the type name and opens the mapped
+	 * collection behind it.
+	 */
+	@Test
+	void collectionMappingOfTheDatabaseReachesTheResource(@Mock MongoCollection<BsonDocument> people) throws Exception {
+		when(reference.getProperty(MongoPersistenceConstants.FLAVOR)).thenReturn(MongoFlavor.MONGO.id());
+		when(reference.getProperty(MongoPersistenceConstants.COLLECTIONS))
+				.thenReturn(new String[] { "Person=people" });
+		when(database.getCollection("people", BsonDocument.class)).thenReturn(people);
+		when(people.countDocuments()).thenReturn(7L);
+		bindDatabase("app", reference, database);
+
+		Resource resource = component.createResource(URI.createURI("mongodb://app/Person"));
+
+		assertThat(((MongoResourceImpl) resource).count()).isEqualTo(7L);
+		verify(database, never()).getCollection("Person", BsonDocument.class);
+	}
+
+	@Test
+	void withoutAMappingTheCollectionIsTheTypeName(@Mock MongoCollection<BsonDocument> persons) throws Exception {
+		when(database.getCollection("Person", BsonDocument.class)).thenReturn(persons);
+		when(persons.countDocuments()).thenReturn(3L);
+		bindDatabase("app", reference, database);
+
+		Resource resource = component.createResource(URI.createURI("mongodb://app/Person"));
+
+		assertThat(((MongoResourceImpl) resource).count()).isEqualTo(3L);
 	}
 
 	@Test
