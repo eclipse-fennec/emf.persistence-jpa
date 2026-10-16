@@ -264,6 +264,35 @@ In `strict` mode no generators are invented — names and ids are taken as-is
 A table is named after its EClass, a column after its feature. The JPA attribute name is always
 the feature name.
 
+The two are **not cased alike**: table names are upper-cased, column names keep the feature name
+as written. Every derived name is emitted unquoted:
+
+| Element | Derived name | `Person` with `id`, `firstName` |
+|---|---|---|
+| table | EClass name, upper-cased | `PERSON` |
+| column of an attribute | feature name, verbatim | `id`, `firstName` |
+| `@Version` column | attribute name, upper-cased | `VERSION` |
+| many-valued attribute | table `<ECLASS>__<FEATURE>`, value column `VAL_<FEATURE>` | `PERSON__NICKNAMES`, `VAL_NICKNAMES` |
+| foreign key of a single-valued reference | `<TARGET>_<ID>`, upper-cased (the feature name in `strict` mode) | `ADDRESS_ID` |
+| join table of a many-to-many reference | `<OWNER>__<TARGET>`, upper-cased | `PERSON__TAG` |
+| list order column | `<FEATURE>_ORDER`, upper-cased | `TAGS_ORDER` |
+| synthetic key of a class without id | column `PK_<CLASSNAME>` | `PK_LOGBOOK` |
+| sequence of a generated id | `SEQ_<CLASS>_<ID>_ID` | `SEQ_PERSON_ID_ID` |
+
+Since nothing is quoted, the database folds the names by its own rule — H2 and Oracle to upper
+case, PostgreSQL to lower case, MariaDB keeps them. `firstName` is therefore the column
+`FIRSTNAME` on H2 and `firstname` on PostgreSQL. A schema created outside the unit
+(`ddl-generation=none`) matches the derived mapping when it is written unquoted too:
+
+```sql
+CREATE TABLE person (id VARCHAR(255) PRIMARY KEY, firstname VARCHAR(255), lastname VARCHAR(255));
+```
+
+A schema whose names do not follow this derivation is mapped with a pre-serialized `.eorm` that
+names its tables and columns (see
+[Mapping strategies](getting-started.md#mapping-strategies--generate-or-pre-serialize)), not
+by adjusting the model.
+
 `ExtendedMetaData` `name` annotations are **not** used for table and column names unless
 `useNamesFromExtendedMetaData` is enabled (`EntityMapper.setUseNamesFromExtendedMetaData(true)`,
 or `fennec.jpa.eorm.useNamesFromExtendedMetaData=true` on the mapping configuration). Such a name
@@ -277,6 +306,8 @@ The ways to give a column a name of its own:
 - an explicit `Column.name` in the eorm mapping,
 - `useNamesFromExtendedMetaData` for models whose annotated names are database names,
 - `delimited-identifiers` in the eorm `persistence-unit-defaults`, which quotes every identifier.
+  The names then keep their case exactly as derived — `PERSON` and `firstName` — so a schema
+  created outside the unit has to quote them the same way.
 
 A table or column name that is no regular identifier (a letter or `_`, then letters, digits, `_`,
 `$`) and is not delimited fails the deployment of the unit with an error diagnostic naming entity,
