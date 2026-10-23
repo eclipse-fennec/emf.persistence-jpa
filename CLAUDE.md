@@ -61,7 +61,7 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 ## Configuration
 
 - `cnf/build.bnd`: the whole workspace bnd config in one file — `-library` (fennec, fennecTest,
-  fennecJacoco, fennecEMF, fennecEMFModels, fennecCodec), the `-plugin.*` repositories,
+  fennecJacoco, fennecEMF, fennecEMFCommonModels, fennecCodec), the `-plugin.*` repositories,
   `-groupid`, `base-version` and `javac.source/target`. There is **no `cnf/ext/`**; the libraries
   themselves are expanded into `cnf/cache/<bnd-version>/` from `org.eclipse.fennec.bnd.library`.
 - `cnf/central.mvn`: Maven Central dependency index (versions of EclipseLink, the Mongo driver, …)
