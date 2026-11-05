@@ -13,6 +13,7 @@ src=${^src},src-gen
 	model/writepathgen.genmodel;\
 		generate=fennecEMF;\
 		genmodel=model/writepathgen.genmodel;\
+		lineEndings=lf;\
 		output=src-gen
 
 -includeresource.model: model=model
