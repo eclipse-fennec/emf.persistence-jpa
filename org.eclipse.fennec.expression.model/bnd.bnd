@@ -13,6 +13,7 @@ src=${^src},src-gen
 	model/expression.ecore;\
 		generate=fennecEMF;\
 		genmodel=model/expression.genmodel;\
+		lineEndings=lf;\
 		output=src-gen
 
 -includeresource.model: model=model

@@ -11,6 +11,7 @@ src=${^src},src-gen
 	model/capabilities.ecore;\
 		generate=fennecEMF;\
 		genmodel=model/capabilities.genmodel;\
+		lineEndings=lf;\
 		output=src-gen
 
 -includeresource.model: model=model

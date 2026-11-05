@@ -12,6 +12,7 @@ src=${^src},src-gen
 	model/command.genmodel;\
 		generate=fennecEMF;\
 		genmodel=model/command.genmodel;\
+		lineEndings=lf;\
 		output=src-gen
 
 -includeresource.model: model=model
