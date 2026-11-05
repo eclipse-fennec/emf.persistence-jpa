@@ -146,6 +146,7 @@ class ReferenceConfigurator {
 					mapping.addForeignKeyFieldName(joinColumns.get(i).getName(),
 							referencedKey(keys, joinColumns.get(i), i).getName());
 				}
+				mapping.setIsReadOnly(readOnly(joinColumns));
 			}
 			ops.addMapping(mapping);
 		} else if (nonNull(fk)) {
@@ -297,7 +298,7 @@ class ReferenceConfigurator {
 					fkField.setTable(fkTable);
 					mapping.addForeignKeyField(fkField, pkField);
 				}
-				mapping.setIsReadOnly(false);
+				mapping.setIsReadOnly(readOnly(joinColumns));
 			}
 		} else if (nonNull(fk)) {
 			DatabaseField pkField = refTypeBuilder.getType().getDescriptor().getPrimaryKeyFields().stream()
@@ -357,7 +358,9 @@ class ReferenceConfigurator {
 
 	ManyToManyMapping createM2MJoinTable(ManyToManyMapping mapping, JoinTable joinTable, EDynamicType refType,
 			EReference reference) {
-		mapping.setRelationTableName(joinTable.getName().toUpperCase());
+		// the name as the mapping states it, like an entity table — a derived one is upper-cased
+		// already, one of an existing schema must stay exact (issue #296)
+		mapping.setRelationTableName(joinTable.getName());
 		List<DatabaseField> sourceKeys = ops.getType().getDescriptor().getPrimaryKeyFields();
 		List<DatabaseField> targetKeys = refType.getDescriptor().getPrimaryKeyFields();
 		List<JoinColumn> joinColumns = joinTable.getJoinColumn();
@@ -394,6 +397,16 @@ class ReferenceConfigurator {
 		}
 		mapping.setShouldExtendPessimisticLockScope(true);
 		return mapping;
+	}
+
+	/**
+	 * Whether a reference only reads its join columns: when none of them is insertable or
+	 * updatable — another mapping of the type writes them, the key attribute of an identifying
+	 * relationship (issue #296). A reference that writes only some of its columns is not
+	 * expressible and stays writable, so EclipseLink names the column mapped twice.
+	 */
+	private static boolean readOnly(List<JoinColumn> joinColumns) {
+		return joinColumns.stream().allMatch(jc -> !jc.isInsertable() && !jc.isUpdatable());
 	}
 
 	/**

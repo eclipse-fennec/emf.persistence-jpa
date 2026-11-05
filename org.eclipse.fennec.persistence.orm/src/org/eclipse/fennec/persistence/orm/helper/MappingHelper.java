@@ -36,6 +36,7 @@ import org.eclipse.fennec.persistence.eorm.AccessType;
 import org.eclipse.fennec.persistence.eorm.Base;
 import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.Column;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.EFeatureObject;
 import org.eclipse.fennec.persistence.eorm.ENamedBase;
@@ -214,10 +215,10 @@ public class MappingHelper {
 	public static <T extends Base> T createBase(T base, EStructuralFeature feature, boolean strict, ProcessingContext diagnostics) {
 		base = createNamedBase(base, feature, diagnostics);
 		Column column = EORMFactory.eINSTANCE.createColumn();
-		String name = mapEntryColumnName(feature);
-		if (isNull(name)) {
-			String columnName = getColumnName(feature, useNamesFromExtendedMetaData(diagnostics));
-			name = strict ? columnName : checkReservedName(columnName, "Column", diagnostics, feature);
+		String name = getBaseColumnName(feature, diagnostics);
+		if (isNull(mapEntryColumnName(feature)) && isNull(DatabaseAnnotations.columnName(feature)) && !strict) {
+			// a derived name may be a reserved word; a fixed or declared one is taken as it is
+			name = checkReservedName(name, "Column", diagnostics, feature);
 		}
 		column.setName(name);
 		column.setNullable(!feature.isRequired());
@@ -228,6 +229,22 @@ public class MappingHelper {
 		return base;
 	}
 	
+	/**
+	 * The column a feature of a {@link Base} mapping is stored in: the fixed name of a map entry's
+	 * {@code key}/{@code value}, the name an existing schema declares for it
+	 * ({@link DatabaseAnnotations#COLUMN_NAME}, issue #296), or the derived one.
+	 * @param feature the {@link EStructuralFeature}
+	 * @param context the mapping run, decides about {@code ExtendedMetaData} names; may be {@code null}
+	 * @return the column name, never {@code null}
+	 */
+	public static String getBaseColumnName(EStructuralFeature feature, ProcessingContext context) {
+		String name = mapEntryColumnName(feature);
+		if (isNull(name)) {
+			name = DatabaseAnnotations.columnName(feature);
+		}
+		return isNull(name) ? getColumnName(feature, useNamesFromExtendedMetaData(context)) : name;
+	}
+
 	/**
 	 * The column name for a map entry's {@code key}/{@code value} feature, or {@code null} for
 	 * anything else (issue #185).

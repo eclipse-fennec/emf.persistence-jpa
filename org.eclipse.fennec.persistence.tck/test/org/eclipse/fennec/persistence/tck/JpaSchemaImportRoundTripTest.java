@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,6 +50,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -62,6 +64,7 @@ import org.eclipse.fennec.persistence.ecore.ParserSettings;
 import org.eclipse.fennec.persistence.ecore.TableFacts;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.junit.jupiter.api.AfterAll;
@@ -96,30 +99,10 @@ class JpaSchemaImportRoundTripTest {
 		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 	}
 
-	private static final String TWO_FKS = "#296: both references get the default join column ACCOUNT_ID"
-			+ " — the unit refuses to start (multiple writable mappings)";
-	private static final String SELF_REFERENCE = "#296: default join column EMPLOYEE_ID instead of MANAGER_ID";
-	private static final String COMPOSITE_KEY = "#296/#297: default join columns LOT_PLANT, LOT_LOTNO instead of"
-			+ " PLANT, LOTNO; a composite many-to-one binds only the first key field";
-	private static final String IDENTIFYING_FK = "#296: table INVOICELINE instead of INVOICE_LINE";
-	private static final String JUNCTION = "#296/#297: default join table <OWNER>__<TARGET> instead of the"
-			+ " junction table; join and inverse join columns are ignored";
-
 	/** Case aspect ({@code case/aspect}) → the issue and the concrete gap that keeps it red. */
 	private static final Map<String, String> KNOWN_GAPS = Map.ofEntries(
-			entry("naming/read", "#296: columns are named after the features (FIRSTNAME), not FIRST_NAME"),
-			entry("two-fks/parse", TWO_FKS), entry("two-fks/read", TWO_FKS), entry("two-fks/navigate", TWO_FKS),
-			entry("two-fks/schema-unchanged", TWO_FKS),
-			entry("self-reference/read", SELF_REFERENCE), entry("self-reference/navigate", SELF_REFERENCE),
-			entry("composite-key/read", COMPOSITE_KEY), entry("composite-key/navigate", COMPOSITE_KEY),
-			entry("identifying-fk/read", IDENTIFYING_FK), entry("identifying-fk/navigate", IDENTIFYING_FK),
-			entry("junction/read", JUNCTION), entry("junction/navigate", JUNCTION), entry("junction/write", JUNCTION),
-			entry("self-junction/read", JUNCTION), entry("self-junction/navigate", JUNCTION),
-			entry("auto-increment/write", "#296: a sequence generator (table SEQUENCE) instead of IDENTITY"),
 			entry("no-primary-key/read", "#296: synthetic id PK_LOGBOOK — decide the mapping of a table without key"),
-			entry("view/read", "#296: table CHEAPITEM instead of CHEAP_ITEM; a view has no primary key"));
-
-
+			entry("view/read", "#296: a view has no primary key — synthetic id PK_CHEAPITEM"));
 
 	/** Flavor-specific gaps, keyed {@code flavor:case/aspect}. */
 	private static final Map<String, String> KNOWN_FLAVOR_GAPS = Map.of();
@@ -240,6 +223,13 @@ class JpaSchemaImportRoundTripTest {
 		cases.add(new Case("no-primary-key", List.of(
 				"CREATE TABLE LOGBOOK (MSG VARCHAR(100))",
 				"INSERT INTO LOGBOOK VALUES ('started'), ('stopped')"), false, null));
+		// a schema without foreign keys: the import states no reference, the user adds it by hand
+		cases.add(new Case("hand-made-reference", List.of(
+				"CREATE TABLE LOCATIONS (ID BIGINT PRIMARY KEY, NAME VARCHAR(20))",
+				"CREATE TABLE COMPUTERS (ID BIGINT PRIMARY KEY, NAME VARCHAR(20), LOCATIONS_ID BIGINT)",
+				"INSERT INTO LOCATIONS VALUES (1, 'hall'), (2, 'lab')",
+				"INSERT INTO COMPUTERS VALUES (10, 'pc1', 1), (11, 'pc2', 1), (12, 'pc3', NULL)"), false,
+				JpaSchemaImportRoundTripTest::writeHandMadeReference, JpaSchemaImportRoundTripTest::addLocationReference));
 		cases.add(new Case("view", List.of(
 				"CREATE TABLE ITEM (ID BIGINT PRIMARY KEY, NAME VARCHAR(20), PRICE DECIMAL(10,2))",
 				"CREATE VIEW CHEAP_ITEM AS SELECT ID, NAME FROM ITEM WHERE PRICE < 10",
@@ -338,9 +328,64 @@ class JpaSchemaImportRoundTripTest {
 		assertThat(trip.sql("SELECT MODE, PRIO FROM SETTING WHERE ID = 2")).containsExactly(List.of("auto", "3"));
 	}
 
+	/**
+	 * The edit a user makes to an imported model whose schema declares no foreign key: the id
+	 * attribute {@code locationsId} becomes the reference {@code location}, mapped onto the same
+	 * column through {@link DatabaseAnnotations#JOIN_COLUMNS}, with a reverse side.
+	 */
+	private static void addLocationReference(EPackage ePackage) {
+		EClass computers = (EClass) ePackage.getEClassifier("Computers");
+		EClass locations = (EClass) ePackage.getEClassifier("Locations");
+		EAttribute locationsId = (EAttribute) computers.getEStructuralFeature("locationsId");
+		String column = DatabaseAnnotations.columnName(locationsId);
+		computers.getEStructuralFeatures().remove(locationsId);
+
+		EReference location = EcoreFactory.eINSTANCE.createEReference();
+		location.setName("location");
+		location.setEType(locations);
+		DatabaseAnnotations.set(location, DatabaseAnnotations.JOIN_COLUMNS, column);
+		computers.getEStructuralFeatures().add(location);
+		EReference computersOf = EcoreFactory.eINSTANCE.createEReference();
+		computersOf.setName("computers");
+		computersOf.setEType(computers);
+		computersOf.setUpperBound(-1);
+		locations.getEStructuralFeatures().add(computersOf);
+		location.setEOpposite(computersOf);
+		computersOf.setEOpposite(location);
+	}
+
+	private static void writeHandMadeReference(RoundTrip trip) throws Exception {
+		EClass computers = trip.eClass("Computers");
+		EClass locations = trip.eClass("Locations");
+		EObject hall = trip.byId("Locations", "1");
+		@SuppressWarnings("unchecked")
+		List<EObject> inHall = (List<EObject>) hall.eGet(locations.getEStructuralFeature("computers"));
+		assertThat(inHall).extracting(o -> o.eGet(computers.getEStructuralFeature("name")))
+				.containsExactlyInAnyOrder("pc1", "pc2");
+
+		trip.fresh();
+		Resource all = trip.load("Computers");
+		EObject pc3 = all.getContents().stream()
+				.filter(o -> Long.valueOf(12).equals(o.eGet(computers.getEStructuralFeature("id")))).findFirst()
+				.orElseThrow();
+		assertThat(pc3.eGet(computers.getEStructuralFeature("location"))).isNull();
+		pc3.eSet(computers.getEStructuralFeature("location"), trip.byId("Locations", "2"));
+		all.save(null);
+		assertThat(trip.sql("SELECT LOCATIONS_ID FROM COMPUTERS WHERE ID = 12")).containsExactly(List.of("2"));
+	}
+
 	// --- One case: schema, parse, unit ---
 
-	record Case(String name, List<String> fixture, boolean views, ThrowingConsumer<RoundTrip> write) {
+	/**
+	 * One case; {@code edit} is what a user changes in the imported model before it is mapped,
+	 * {@code null} for none.
+	 */
+	record Case(String name, List<String> fixture, boolean views, ThrowingConsumer<RoundTrip> write,
+			Consumer<EPackage> edit) {
+
+		Case(String name, List<String> fixture, boolean views, ThrowingConsumer<RoundTrip> write) {
+			this(name, fixture, views, write, null);
+		}
 	}
 
 	@FunctionalInterface
@@ -415,6 +460,9 @@ class JpaSchemaImportRoundTripTest {
 				throw new IllegalStateException("parsing case '" + c.name() + "' failed: " + e.getMessage(), e);
 			}
 			s.ePackage = s.result.ePackages().get(0);
+			if (nonNull(c.edit())) {
+				c.edit().accept(s.ePackage);
+			}
 			s.emf = JpaTckSupport.bootstrap(puName, mappings(s.ePackage), props, "none");
 			return s;
 		}
@@ -594,7 +642,14 @@ class JpaSchemaImportRoundTripTest {
 			List<String> row = new ArrayList<>();
 			for (TableFacts.Column column : table.columns()) {
 				EStructuralFeature feature = column.feature();
-				if (feature instanceof EAttribute) {
+				if (feature instanceof EAttribute && isNull(feature.getEContainingClass())) {
+					// edited out by hand: the column is carried by the reference declaring it
+					EReference reference = object.eClass().getEAllReferences().stream()
+							.filter(r -> DatabaseAnnotations.joinColumns(r).equals(List.of(column.name()))).findFirst()
+							.orElseThrow();
+					EObject target = (EObject) object.eGet(reference);
+					row.add(isNull(target) ? null : normalize(EcoreUtil.getID(target)));
+				} else if (feature instanceof EAttribute) {
 					row.add(normalize(object.eGet(feature)));
 				} else if (feature instanceof EReference reference) {
 					EObject target = (EObject) object.eGet(reference);

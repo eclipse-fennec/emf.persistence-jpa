@@ -12,6 +12,8 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.orm.processor;
 
+import static java.util.Objects.isNull;
+
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,6 +27,7 @@ import org.eclipse.fennec.persistence.eorm.GeneratedValue;
 import org.eclipse.fennec.persistence.eorm.GenerationType;
 import org.eclipse.fennec.persistence.eorm.Id;
 import org.eclipse.fennec.persistence.eorm.SequenceGenerator;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.orm.CompositeIdAnalyzer;
 import org.eclipse.fennec.persistence.orm.IdConfiguration;
 import org.eclipse.fennec.persistence.orm.MappingContext;
@@ -82,12 +85,18 @@ public class CompositeIdProcessor {
     private Id createSingleId(EAttribute idAttribute, MappingContext context) {
         Id id = EORMFactory.eINSTANCE.createId();
         MappingHelper.createBase(id, idAttribute, strict, context);
-        
-        // Add generation strategy if not strict mode
-        if (!strict) {
+
+        // a key of an existing schema is generated as the schema says, never by an invented
+        // sequence (issue #296); otherwise by type, unless strict
+        String generated = DatabaseAnnotations.generated(idAttribute);
+        if (DatabaseAnnotations.GENERATED_IDENTITY.equals(generated)) {
+            GeneratedValue gv = EORMFactory.eINSTANCE.createGeneratedValue();
+            gv.setStrategy(GenerationType.IDENTITY);
+            id.setGeneratedValue(gv);
+        } else if (isNull(generated) && !strict) {
             addGenerationStrategy(id, idAttribute);
         }
-        
+
         return id;
     }
     

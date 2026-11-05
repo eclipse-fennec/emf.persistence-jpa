@@ -24,6 +24,7 @@ import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.AccessType;
 import org.eclipse.fennec.persistence.eorm.Attributes;
@@ -119,11 +120,13 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		// name — each concrete subclass owns an independent table with all
 		// inherited columns.
 		boolean independentTable = childOwnsTable();
-		if (hasMappedSuperType() && !independentTable) {
-			EClass root = getMappedRoot();
-			tableName = root.getName();
+		EClass tableOwner = hasMappedSuperType() && !independentTable ? getMappedRoot() : source;
+		if (tableOwner != source) {
+			tableName = tableOwner.getName();
 		}
-		table.setName(tableName.toUpperCase());
+		// a table of an existing schema is named exactly (issue #296)
+		String databaseName = DatabaseAnnotations.tableName(tableOwner);
+		table.setName(nonNull(databaseName) ? databaseName : tableName.toUpperCase());
 		target.setTable(table);
 		reportUnusedExtendedMetaDataNames();
 		Attributes attrs = EORMFactory.eINSTANCE.createAttributes();

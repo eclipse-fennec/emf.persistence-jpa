@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.util.Diagnostician;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -638,6 +639,24 @@ class DatabaseEcoreParserIntegrationTest {
 			// the original name also travels with the serialized model
 			assertThat(customer.getEStructuralFeature("email").getEAnnotation(DatabaseEcoreParser.ANNOTATION_SOURCE)
 					.getDetails().get(DatabaseEcoreParser.ANNOTATION_COLUMN_NAME)).isEqualTo("EMAIL");
+			// who assigns the key is stated, so the mapping invents no sequence (issue #296)
+			assertThat(DatabaseAnnotations.generated((EAttribute) customer.getEStructuralFeature("id")))
+					.isEqualTo(DatabaseAnnotations.GENERATED_IDENTITY);
+			assertThat(DatabaseAnnotations.generated((EAttribute) customer.getEStructuralFeature("email"))).isNull();
+		}
+
+		@Test void testAssignedKeyIsStatedAndCompositeKeyIsNot() throws SQLException {
+			executeSql("CREATE TABLE TAG (ID BIGINT PRIMARY KEY)",
+					"CREATE TABLE LOT (PLANT INT, LOTNO INT, PRIMARY KEY (PLANT, LOTNO))");
+			activateDefault();
+			EPackage pkg = parser.parseAllWithDiagnostics().ePackages().get(0);
+
+			assertThat(DatabaseAnnotations.generated((EAttribute) findClass(pkg, "Tag").getEStructuralFeature("id")))
+					.isEqualTo(DatabaseAnnotations.GENERATED_NONE);
+			// a composite key is never generated, so nothing needs to be said
+			EClass lot = findClass(pkg, "Lot");
+			assertThat(DatabaseAnnotations.generated((EAttribute) lot.getEStructuralFeature("plant"))).isNull();
+			assertThat(DatabaseAnnotations.generated((EAttribute) lot.getEStructuralFeature("lotno"))).isNull();
 		}
 
 		@Test void testForeignKeyAndJunctionFacts() throws SQLException {
@@ -666,6 +685,7 @@ class DatabaseEcoreParserIntegrationTest {
 			assertThat(table.column("LINE_NO").feature()).isSameAs(fk.reference());
 			assertThat(fk.reference().getEAnnotation(DatabaseEcoreParser.ANNOTATION_SOURCE).getDetails()
 					.get(DatabaseEcoreParser.ANNOTATION_JOIN_COLUMNS)).isEqualTo("ORDER_NO,LINE_NO");
+			assertThat(DatabaseAnnotations.referencedColumns(fk.reference())).containsExactly("ORDER_NO", "LINE_NO");
 
 			assertThat(result.junctions()).hasSize(1);
 			JunctionFacts junction = result.junctions().get(0);
@@ -675,6 +695,15 @@ class DatabaseEcoreParserIntegrationTest {
 			assertThat(junction.targetKey().targetTable()).isEqualTo("TAG");
 			assertThat(junction.reference()).isSameAs(findReference(findClass(pkg, "Orders"), "tags"));
 			assertThat(junction.opposite()).isSameAs(junction.reference().getEOpposite());
+			// each side names the junction from its own point of view
+			EReference tags = junction.reference();
+			assertThat(DatabaseAnnotations.joinTable(tags)).isEqualTo("ORDER_TAG");
+			assertThat(DatabaseAnnotations.joinColumns(tags)).containsExactly("ORDER_ID");
+			assertThat(DatabaseAnnotations.inverseJoinColumns(tags)).containsExactly("TAG_ID");
+			EReference orders = junction.opposite();
+			assertThat(DatabaseAnnotations.joinTable(orders)).isEqualTo("ORDER_TAG");
+			assertThat(DatabaseAnnotations.joinColumns(orders)).containsExactly("TAG_ID");
+			assertThat(DatabaseAnnotations.inverseJoinColumns(orders)).containsExactly("ORDER_ID");
 			assertThat(result.table(findClass(pkg, "Orders"))).isNotNull();
 			assertThat(result.tables()).noneMatch(t -> t.name().equals("ORDER_TAG"));
 		}
