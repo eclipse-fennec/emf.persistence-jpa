@@ -35,6 +35,7 @@ import org.eclipse.fennec.persistence.eorm.UniqueConstraint;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.descriptors.InheritancePolicy;
 import org.eclipse.persistence.descriptors.TablePerClassPolicy;
+import org.eclipse.persistence.internal.databaseaccess.DatasourcePlatform;
 import org.eclipse.persistence.internal.databaseaccess.Platform;
 import org.eclipse.persistence.internal.helper.DatabaseField;
 import org.eclipse.persistence.dynamic.DynamicType;
@@ -49,6 +50,7 @@ import org.eclipse.persistence.mappings.OneToManyMapping;
 import org.eclipse.persistence.mappings.DirectCollectionMapping;
 import org.eclipse.persistence.mappings.DirectToFieldMapping;
 import org.eclipse.persistence.mappings.OneToOneMapping;
+import org.eclipse.persistence.sequencing.NativeSequence;
 import org.eclipse.persistence.sequencing.Sequence;
 
 /**
@@ -416,5 +418,21 @@ public class EDynamicTypeBuilder extends JPADynamicTypeBuilder implements Builde
 	@Override
 	public void configureSequencing(Sequence sequence, String seqName, String fieldName) {
 		super.configureSequencing(sequence, seqName, fieldName);
+	}
+
+	@Override
+	public void configureOwnSequencing(Sequence sequence, String fieldName) {
+		super.configureSequencing(sequence, sequence.getName(), fieldName);
+		if (nonNull(context.getSession())) {
+			DatasourcePlatform platform = (DatasourcePlatform) context.getSession().getDatasourcePlatform();
+			if (platform.isH2() && sequence instanceof NativeSequence nativeSequence
+					&& nativeSequence.shouldUseIdentityIfPlatformSupports()) {
+				// EclipseLink reads an H2 identity with CALL IDENTITY(), which H2 2.x no longer
+				// has; the JDBC generated keys work on every H2 version. Only inserts whose
+				// sequence asks for generated keys use them — identity sequences alone.
+				platform.setSupportsReturnGeneratedKeys(true);
+			}
+			platform.addSequence(sequence, context.getSession().isConnected());
+		}
 	}
 }

@@ -58,6 +58,7 @@ import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.persistence.diagnostic.Diagnostics;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Reference;
@@ -99,16 +100,17 @@ public class DatabaseEcoreParser {
 	/** Diagnostic source of this parser (issue #19): the bundle namespace. */
 	public static final String DIAGNOSTIC_SOURCE = "org.eclipse.fennec.persistence.ecore";
 
-	static final String ANNOTATION_SOURCE = "http://eclipse.org/fennec/persistence/database";
-	static final String ANNOTATION_READ_ONLY = "readOnly";
-	static final String ANNOTATION_TABLE_NAME = "tableName";
-	static final String ANNOTATION_SCHEMA = "schema";
+	// the database names are a contract with the relational mapping (issue #296)
+	static final String ANNOTATION_SOURCE = DatabaseAnnotations.ANNOTATION_SOURCE;
+	static final String ANNOTATION_READ_ONLY = DatabaseAnnotations.READ_ONLY;
+	static final String ANNOTATION_TABLE_NAME = DatabaseAnnotations.TABLE_NAME;
+	static final String ANNOTATION_SCHEMA = DatabaseAnnotations.SCHEMA;
 	/** The package's namespace on a catalog database (MariaDB/MySQL: the database). */
-	static final String ANNOTATION_CATALOG = "catalog";
+	static final String ANNOTATION_CATALOG = DatabaseAnnotations.CATALOG;
 	/** Original column name of an attribute. */
-	static final String ANNOTATION_COLUMN_NAME = "columnName";
+	static final String ANNOTATION_COLUMN_NAME = DatabaseAnnotations.COLUMN_NAME;
 	/** Comma-separated FK columns of a forward reference, in key order. */
-	static final String ANNOTATION_JOIN_COLUMNS = "joinColumns";
+	static final String ANNOTATION_JOIN_COLUMNS = DatabaseAnnotations.JOIN_COLUMNS;
 
 	static final String GENMODEL_SOURCE = "http://www.eclipse.org/emf/2002/GenModel";
 	static final String GENMODEL_DOCUMENTATION = "documentation";
@@ -433,6 +435,11 @@ public class DatabaseEcoreParser {
 			EClassifier type = resolveType(ePackage, ti, column, diagnostics);
 			EAttribute attribute = addAttribute(ti.eClass(), name, type, isPK && !compositeId, !column.nullable());
 			addAnnotation(attribute, ANNOTATION_COLUMN_NAME, column.name());
+			if (isPK && !compositeId) {
+				// who assigns the key is a schema fact — the mapping must not invent a sequence
+				DatabaseAnnotations.set(attribute, DatabaseAnnotations.GENERATED, column.autoIncrement()
+						? DatabaseAnnotations.GENERATED_IDENTITY : DatabaseAnnotations.GENERATED_NONE);
+			}
 			addDocumentation(attribute, column.remarks());
 			applyDefault(attribute, ti, column, diagnostics);
 			features.put(column.name(), attribute);
@@ -454,6 +461,7 @@ public class DatabaseEcoreParser {
 					diagnostics);
 			EReference forward = addReference(ti.eClass(), name, targets.get(i));
 			addAnnotation(forward, ANNOTATION_JOIN_COLUMNS, String.join(",", fk.fkColumns()));
+			DatabaseAnnotations.set(forward, DatabaseAnnotations.REFERENCED_COLUMNS, fk.pkColumns());
 			if (fk.fkColumns().size() == 1) {
 				ti.columns().stream().filter(c -> c.name().equals(fk.fkColumns().get(0))).findFirst()
 						.ifPresent(c -> addDocumentation(forward, c.remarks()));
@@ -538,7 +546,18 @@ public class DatabaseEcoreParser {
 				qualifier(fkA), diagnostics);
 		EReference refBA = addManyReference(classB, nameBA, classA);
 		setOpposite(refAB, refBA);
+		// each side states the junction from its own point of view: whichever side the mapping
+		// makes the owner, its join columns are the ones referring to it
+		annotateJunction(refAB, ti.tableName(), fkA, fkB);
+		annotateJunction(refBA, ti.tableName(), fkB, fkA);
 		return new JunctionFacts(ns.catalog(), ns.schema(), ti.tableName(), toFacts(fkA, null), toFacts(fkB, null), refAB, refBA);
+	}
+
+	private static void annotateJunction(EReference reference, String junction, ForeignKeyInfo toOwner,
+			ForeignKeyInfo toTarget) {
+		DatabaseAnnotations.set(reference, DatabaseAnnotations.JOIN_TABLE, junction);
+		DatabaseAnnotations.set(reference, DatabaseAnnotations.JOIN_COLUMNS, toOwner.fkColumns());
+		DatabaseAnnotations.set(reference, DatabaseAnnotations.INVERSE_JOIN_COLUMNS, toTarget.fkColumns());
 	}
 
 	// --- Metadata loading ---

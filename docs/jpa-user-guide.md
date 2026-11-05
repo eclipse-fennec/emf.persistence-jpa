@@ -257,7 +257,9 @@ order:
   generator is added.
 
 In `strict` mode no generators are invented — names and ids are taken as-is
-(useful when mapping onto an existing schema).
+(useful when mapping onto an existing schema). An id attribute that declares how its key is
+assigned — the `generated` detail of the
+[database names](#mapping-onto-an-existing-schema) — is mapped as declared in either mode.
 
 ### Table and column names
 
@@ -289,10 +291,11 @@ case, PostgreSQL to lower case, MariaDB keeps them. `firstName` is therefore the
 CREATE TABLE person (id VARCHAR(255) PRIMARY KEY, firstname VARCHAR(255), lastname VARCHAR(255));
 ```
 
-A schema whose names do not follow this derivation is mapped with a pre-serialized `.eorm` that
-names its tables and columns (see
-[Mapping strategies](getting-started.md#mapping-strategies--generate-or-pre-serialize)), not
-by adjusting the model. The relation columns are read from it too:
+A schema whose names do not follow this derivation is mapped either with database names declared
+on the model (see [Mapping onto an existing schema](#mapping-onto-an-existing-schema)) — what the
+schema import writes — or with a pre-serialized `.eorm` that names its tables and columns (see
+[Mapping strategies](getting-started.md#mapping-strategies--generate-or-pre-serialize)). The
+relation columns are read from such an `.eorm` too:
 
 - `joinColumn` on a single-valued reference names the foreign key columns — several of them for a
   composite key of the target, paired with the key columns by `referencedColumnName` (bare or
@@ -335,10 +338,69 @@ per EClass; as a warning when the annotation reads as an escape from a reserved 
 The ways to give a column a name of its own:
 
 - an explicit `Column.name` in the eorm mapping,
+- the `columnName` of the [database names](#mapping-onto-an-existing-schema), taken literally,
 - `useNamesFromExtendedMetaData` for models whose annotated names are database names,
 - `delimited-identifiers` in the eorm `persistence-unit-defaults`, which quotes every identifier.
   The names then keep their case exactly as derived — `PERSON` and `firstName` — so a schema
   created outside the unit has to quote them the same way.
+
+### Mapping onto an existing schema
+
+A model can state where it lives in an existing schema. The derived mapping takes these
+**database names** literally — no case change, no reserved-word escape — and keeps deriving
+everything the model does not state. The schema import (`DatabaseEcoreParser`) writes them, so an
+imported model maps back onto its database with `ddl-generation=none`; a hand-written model can
+carry them just as well. The names are EAnnotation details, source
+`http://eclipse.org/fennec/persistence/database` (constants and accessors in
+`org.eclipse.fennec.persistence.helper.DatabaseAnnotations`):
+
+| Element | Detail | Meaning |
+|---|---|---|
+| EClass | `tableName` | the table or view |
+| EAttribute | `columnName` | the column |
+| id EAttribute | `generated` | `identity`: the database assigns the key on insert and the mapping reads it back; `none`: the application assigns it. Either way no sequence is invented. |
+| single-valued EReference | `joinColumns` | the foreign key columns in the owner's table, comma-separated in key order |
+| single-valued EReference | `referencedColumns` | the target columns they refer to, same order — the target's key columns when absent |
+| many-valued EReference | `joinTable`, `joinColumns`, `inverseJoinColumns` | the junction table, its columns referring to the reference's owner, and those referring to its target |
+| EClass | `readOnly` | `true` for a view |
+| EPackage | `schema` / `catalog` | the namespace the package was read from — informational |
+
+Join columns that do not pair up with the referenced key — two columns for a key of one — are an
+error diagnostic of the mapping, and the reference gets no join columns. A join column that an
+attribute of the same class maps as well — the key column of an identifying relationship, where
+`INVOICE_LINE.INVOICE_ID` is part of the key and refers to the invoice — is read through the
+reference and written through the attribute. With `generated=identity` H2 hands the key back via
+JDBC generated keys, since EclipseLink's `CALL IDENTITY()` no longer exists in H2 2.x.
+
+The import states only what the schema declares. A schema without foreign key constraints — common
+for applications that keep relations by naming convention — yields no references, only the key
+columns as attributes. Turning such an attribute into a reference is an edit of the model, and the
+database names keep it on the same column:
+
+```xml
+<!-- imported: the column LOCATIONS_ID as a plain attribute -->
+<eStructuralFeatures xsi:type="ecore:EAttribute" name="locationsId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELongObject">
+  <eAnnotations source="http://eclipse.org/fennec/persistence/database">
+    <details key="columnName" value="LOCATIONS_ID"/>
+  </eAnnotations>
+</eStructuralFeatures>
+
+<!-- edited: a reference on the same column -->
+<eStructuralFeatures xsi:type="ecore:EReference" name="location" eType="#//Locations">
+  <eAnnotations source="http://eclipse.org/fennec/persistence/database">
+    <details key="joinColumns" value="LOCATIONS_ID"/>
+  </eAnnotations>
+</eStructuralFeatures>
+```
+
+Remove the attribute: two writable mappings of one column fail the deployment. A reverse side
+(`eOpposite`, many-valued) needs no names of its own. A table without a primary key, and a view, has
+no identity the mapping could use yet; it still gets the synthetic key described above.
+
+A join table is used by the name the mapping gives it, like an entity table. Derived join tables
+are upper-cased already; a hand-written `.eorm` whose join table is named in lower case now
+addresses that name instead of its upper-cased form — the same table on H2 and PostgreSQL, which
+fold unquoted names, and the right one on MariaDB.
 
 A table or column name that is no regular identifier (a letter or `_`, then letters, digits, `_`,
 `$`) and is not delimited fails the deployment of the unit with an error diagnostic naming entity,

@@ -25,6 +25,7 @@ import org.eclipse.fennec.persistence.eorm.GenerationType;
 import org.eclipse.fennec.persistence.eorm.Id;
 import org.eclipse.fennec.persistence.eclipselink.mappings.ESyntheticKeyAccessor;
 import org.eclipse.persistence.mappings.DirectToFieldMapping;
+import org.eclipse.persistence.sequencing.NativeSequence;
 import org.eclipse.persistence.sequencing.Sequence;
 import org.eclipse.persistence.sequencing.UUIDSequence;
 
@@ -123,6 +124,13 @@ class IdConfigurator {
 
 		configureSyntheticKey(eDynamicType, id, idName);
 		ops.setPrimaryKeyFields(idName);
+		if (nonNull(id.getGeneratedValue()) && GenerationType.IDENTITY.equals(id.getGeneratedValue().getStrategy())) {
+			// the database assigns the key on insert and hands it back (issue #296) — no
+			// sequence table, which a schema that uses identity columns does not have
+			ops.configureOwnSequencing(new NativeSequence(seqName + "_IDENTITY", 1, true), idName);
+			LOG.log(Level.FINE, "Configured identity ID: {0} for entity {1}", new Object[]{idName, eClass.getName()});
+			return;
+		}
 		ops.configureSequencing("SEQ_GEN", idName);
 		if (nonNull(seqGenName)) {
 			ops.configureSequencing(seqGenName, idName);

@@ -24,6 +24,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.persistence.eorm.ConstraintMode;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.eorm.ENamedBase;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.Entity;
@@ -258,6 +259,23 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 			return List.of();
 		}
 		List<Id> ids = idEntity.getAttributes().getId();
+		if (source instanceof EReference reference && !DatabaseAnnotations.joinColumns(reference).isEmpty()) {
+			List<String> referenced = DatabaseAnnotations.referencedColumns(reference);
+			List<JoinColumn> declared = declaredJoinColumns(DatabaseAnnotations.joinColumns(reference),
+					referenced.isEmpty() ? idColumns(ids) : referenced, targetEntity, reference);
+			// a column an attribute of the owner writes already — the key of an identifying
+			// relationship — is only read through the reference
+			Set<String> attributeColumns = new HashSet<>();
+			reference.getEContainingClass().getEAllAttributes()
+					.forEach(a -> attributeColumns.add(MappingHelper.getBaseColumnName(a, context)));
+			for (JoinColumn jc : declared) {
+				if (attributeColumns.contains(jc.getName())) {
+					jc.setInsertable(false);
+					jc.setUpdatable(false);
+				}
+			}
+			return declared;
+		}
 		List<JoinColumn> joinColumns = new ArrayList<>(ids.size());
 		for (Id id : ids) {
 			String name;
@@ -322,6 +340,10 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 	 * @return the {@link JoinTable}
 	 */
 	JoinTable createJoinTable(EReference reference) {
+		String declaredTable = DatabaseAnnotations.joinTable(reference);
+		if (nonNull(declaredTable)) {
+			return declaredJoinTable(reference, declaredTable);
+		}
 		EClass c = reference.getEContainingClass();
 		List<JoinColumn> joinColumns = createRelationKeyColumns(c, Set.of());
 		Set<String> taken = new HashSet<>();
@@ -339,6 +361,67 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 			jt.setInverseForeignKey(createForeignKey(inverseJoinColumns.get(0).getName()));
 		}
 		return jt;
+	}
+
+	/**
+	 * The join table of an existing schema, as the reference declares it (issue #296): its
+	 * columns referring to the owner and to the target, each paired with the id columns of its
+	 * side in key order.
+	 */
+	private JoinTable declaredJoinTable(EReference reference, String tableName) {
+		JoinTable jt = EORMFactory.eINSTANCE.createJoinTable();
+		jt.setName(tableName);
+		List<JoinColumn> joinColumns = declaredJoinColumns(DatabaseAnnotations.joinColumns(reference),
+				reference.getEContainingClass(), reference);
+		List<JoinColumn> inverseJoinColumns = declaredJoinColumns(DatabaseAnnotations.inverseJoinColumns(reference),
+				reference.getEReferenceType(), reference);
+		if (!joinColumns.isEmpty()) {
+			jt.getJoinColumn().addAll(joinColumns);
+			jt.setForeignKey(createForeignKey(joinColumns.get(0).getName()));
+		}
+		if (!inverseJoinColumns.isEmpty()) {
+			jt.getInverseJoinColumn().addAll(inverseJoinColumns);
+			jt.setInverseForeignKey(createForeignKey(inverseJoinColumns.get(0).getName()));
+		}
+		return jt;
+	}
+
+	/** The declared join columns referring to the id columns of the given class. */
+	private List<JoinColumn> declaredJoinColumns(List<String> columns, EClass eClass, EReference reference) {
+		Entity entity = context.getEntity(eClass);
+		Entity idEntity = idEntityOf(eClass);
+		if (columns.isEmpty() || isNull(entity) || isNull(idEntity) || isNull(entity.getTable())) {
+			return List.of();
+		}
+		return declaredJoinColumns(columns, idColumns(idEntity.getAttributes().getId()), entity, reference);
+	}
+
+	/**
+	 * The join columns a reference declares, each paired with the referenced column at its
+	 * position. A count that does not match is an error diagnostic of the mapping and declares
+	 * nothing: pairing the columns by guess could store a partial key.
+	 */
+	private List<JoinColumn> declaredJoinColumns(List<String> columns, List<String> referenced, Entity target,
+			EReference reference) {
+		if (columns.size() != referenced.size()) {
+			context.error(MappingContext.DIAGNOSTIC_SOURCE, String.format(
+					"Reference '%s' of '%s' declares the join columns %s for the key columns %s of '%s' (%s)",
+					reference.getName(), reference.getEContainingClass().getName(), columns, referenced,
+					target.getTable().getName(), DatabaseAnnotations.ANNOTATION_SOURCE), reference);
+			return List.of();
+		}
+		List<JoinColumn> joinColumns = new ArrayList<>(columns.size());
+		for (int i = 0; i < columns.size(); i++) {
+			JoinColumn jc = EORMFactory.eINSTANCE.createJoinColumn();
+			jc.setName(columns.get(i));
+			jc.setReferencedColumnName(target.getTable().getName() + "." + referenced.get(i));
+			joinColumns.add(jc);
+		}
+		return joinColumns;
+	}
+
+	private static List<String> idColumns(List<Id> ids) {
+		return ids.stream().map(id -> id.getColumn().getName()).toList();
 	}
 
 	/**

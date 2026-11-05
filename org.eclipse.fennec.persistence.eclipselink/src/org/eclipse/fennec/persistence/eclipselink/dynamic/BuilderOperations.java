@@ -54,4 +54,11 @@ interface BuilderOperations {
 	void configureSequencing(String seqName, String fieldName);
 
 	void configureSequencing(Sequence sequence, String seqName, String fieldName);
+
+	/**
+	 * Sequencing with a sequence of its own, registered under its name: EclipseLink looks the
+	 * sequence of a descriptor up by name when it connects, and falls back to the default table
+	 * sequence for a name it does not know.
+	 */
+	void configureOwnSequencing(Sequence sequence, String fieldName);
 }
