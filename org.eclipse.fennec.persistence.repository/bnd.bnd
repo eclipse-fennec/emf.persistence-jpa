@@ -11,6 +11,7 @@ src=${^src},src-gen
 	model/repository-api.ecore;\
 		generate=fennecEMF;\
 		genmodel=model/repository-api.genmodel;\
+		lineEndings=lf;\
 		output=src-gen
 
 -includeresource.model: model=model

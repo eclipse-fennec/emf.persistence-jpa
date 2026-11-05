@@ -12,6 +12,7 @@ src=${^src},src-gen
 	model/query.ecore;\
 		generate=fennecEMF;\
 		genmodel=model/query.genmodel;\
+		lineEndings=lf;\
 		output=src-gen
 
 -includeresource.model: model=model
