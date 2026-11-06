@@ -2048,11 +2048,6 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 			try {
 				em.getTransaction().commit();
-				for (Class<?> type : referencePatchedTypes) {
-					// see executeUpdate: collection merges accumulate, removals need a
-					// fresh build from the database (issue #107)
-					getServer().getIdentityMapAccessor().initializeIdentityMap(type);
-				}
 			} catch (RuntimeException e) {
 				rollbackQuietly();
 				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE,
@@ -2061,6 +2056,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			} finally {
 				cleanup();
 			}
+			// see executeUpdate: collection merges accumulate, removals need a fresh build
+			// from the database (issue #107) — and the commit is through by now (issue #395)
+			dropIdentityMaps(getServer(), referencePatchedTypes);
 		}
 
 		@Override
@@ -2252,21 +2250,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						+ e.getMessage(), e);
 			}
 		}
+		Set<Class<?>> patchedTypes = new HashSet<>();
+		long applied;
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
 			em.getTransaction().begin();
 			try {
-				Set<Class<?>> patchedTypes = new HashSet<>();
-				long applied = updateCore(update, plan, em, patchedTypes::add, chunkSize, true);
+				applied = updateCore(update, plan, em, patchedTypes::add, chunkSize, true);
 				em.getTransaction().commit();
-				for (Class<?> type : patchedTypes) {
-					// the accessor's collection writes accumulate by design (AP-47 proxy
-					// rebuild paths), so member REMOVALS can never reach the shared-cache
-					// original — and invalidation alone refreshes IN PLACE through the
-					// same accumulating accessor. Drop the cached instances entirely; the
-					// next read builds fresh objects from the database.
-					getServer().getIdentityMapAccessor().initializeIdentityMap(type);
-				}
-				return applied;
 			} catch (QueryException | RuntimeException e) {
 				if (em.getTransaction().isActive()) {
 					em.getTransaction().rollback();
@@ -2274,6 +2264,47 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				getErrors().add(PersistenceDiagnostic.error(DIAGNOSTIC_SOURCE, "Update failed: " + e.getMessage(), getURI(), e));
 				throw new IOException("Update failed for selector on '" + plan.jpql() + "': "
 						+ e.getMessage(), e);
+			}
+		}
+		// the accessor's collection writes accumulate by design (AP-47 proxy rebuild paths),
+		// so member REMOVALS can never reach the shared-cache original — and invalidation
+		// alone refreshes IN PLACE through the same accumulating accessor. Drop the cached
+		// instances entirely; the next read builds fresh objects from the database. Outside
+		// the try on purpose: the commit is through, nothing here may report it as failed
+		// (issue #395).
+		dropIdentityMaps(getServer(), patchedTypes);
+		return applied;
+	}
+
+	/**
+	 * Drops the shared-cache identity maps of the given entity classes after a commit
+	 * (issues #107, #395).
+	 * <p>
+	 * A child descriptor of an inheritance hierarchy has no identity map of its own — it shares
+	 * the one of its root, and EclipseLink refuses {@code initializeIdentityMap} on the child
+	 * (EclipseLink-7017). So the drop goes to the root, which also takes the sibling types'
+	 * entries with it; that is the price of sharing one map and harmless, the next read
+	 * rebuilds them.
+	 * <p>
+	 * Runs after the commit, so it never throws: if a map cannot be dropped, every map is,
+	 * because a stale cache is the one outcome this exists to prevent.
+	 */
+	private static void dropIdentityMaps(Server server, Collection<Class<?>> types) {
+		if (isNull(server) || types.isEmpty()) {
+			return;
+		}
+		for (Class<?> type : types) {
+			try {
+				ClassDescriptor descriptor = server.getDescriptor(type);
+				Class<?> owning = nonNull(descriptor) && descriptor.isChildDescriptor()
+						? descriptor.getInheritancePolicy().getRootParentDescriptor().getJavaClass()
+						: type;
+				server.getIdentityMapAccessor().initializeIdentityMap(owning);
+			} catch (RuntimeException e) {
+				LOG.log(Level.WARNING, e, () -> "Cannot drop the shared-cache identity map of " + type.getName()
+						+ " after commit — dropping all identity maps instead");
+				server.getIdentityMapAccessor().initializeAllIdentityMaps();
+				return;
 			}
 		}
 	}
