@@ -89,6 +89,13 @@ A repository instance owns a `ResourceSet`, and EMF ResourceSets are **not threa
 The services are therefore registered with prototype scope: every consumer gets its own
 instance (own ResourceSet, shared backend), and a released instance is disposed.
 
+An instance is used by **one thread at a time** — that covers every call, `query` and
+`execute` included, not only those that obviously touch the ResourceSet. Commands run through
+the collection resources of the owned ResourceSet, and those resources keep per-call state
+(their `getErrors()` list among it); two threads executing on one instance corrupt it
+(issue #395). Concurrent writers take one instance each, as below — the backend underneath is
+shared and safe for that.
+
 ```java
 @Reference(target = "(persistence.repository.id=shop)")
 private Repository repository;   // this component's own instance
