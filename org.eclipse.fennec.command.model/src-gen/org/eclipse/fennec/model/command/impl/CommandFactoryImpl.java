@@ -13,6 +13,7 @@
 package org.eclipse.fennec.model.command.impl;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EDataType;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 
@@ -69,8 +70,40 @@ public class CommandFactoryImpl extends EFactoryImpl implements CommandFactory {
 			case CommandPackage.INSERT_COMMAND: return createInsertCommand();
 			case CommandPackage.DELETE_COMMAND: return createDeleteCommand();
 			case CommandPackage.UPDATE_COMMAND: return createUpdateCommand();
+			case CommandPackage.UPDATE_TEMPLATE: return createUpdateTemplate();
+			case CommandPackage.UPDATE_ENTRY: return createUpdateEntry();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
+		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Object createFromString(EDataType eDataType, String initialValue) {
+		switch (eDataType.getClassifierID()) {
+			case CommandPackage.UPDATE_KIND:
+				return createUpdateKindFromString(eDataType, initialValue);
+			default:
+				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
+		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public String convertToString(EDataType eDataType, Object instanceValue) {
+		switch (eDataType.getClassifierID()) {
+			case CommandPackage.UPDATE_KIND:
+				return convertUpdateKindToString(eDataType, instanceValue);
+			default:
+				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
 	}
 
@@ -105,6 +138,48 @@ public class CommandFactoryImpl extends EFactoryImpl implements CommandFactory {
 	public UpdateCommand createUpdateCommand() {
 		UpdateCommandImpl updateCommand = new UpdateCommandImpl();
 		return updateCommand;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public UpdateTemplate createUpdateTemplate() {
+		UpdateTemplateImpl updateTemplate = new UpdateTemplateImpl();
+		return updateTemplate;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public UpdateEntry createUpdateEntry() {
+		UpdateEntryImpl updateEntry = new UpdateEntryImpl();
+		return updateEntry;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public UpdateKind createUpdateKindFromString(EDataType eDataType, String initialValue) {
+		UpdateKind result = UpdateKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertUpdateKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
 	}
 
 	/**

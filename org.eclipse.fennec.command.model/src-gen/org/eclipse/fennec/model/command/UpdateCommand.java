@@ -14,8 +14,6 @@ package org.eclipse.fennec.model.command;
 
 import org.eclipse.fennec.model.query.Query;
 
-import org.eclipse.fennec.model.stream.ChangeSet;
-
 import org.osgi.annotation.versioning.ProviderType;
 
 /**
@@ -24,7 +22,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Updates every object the selector matches by applying the ChangeSet template (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executed by the patch-apply engine (ChangeTemplates): entry coordinates address features of the selector's root type, values travel as EMF string literals; unsupported entries are refused with a diagnostic.
+ * Updates every object the selector matches by applying the UpdateTemplate (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executed by the patch-apply engine (ChangeTemplates): entry coordinates address features of the selector's root type, values travel as EMF string literals; unsupported entries are refused with a diagnostic.
  * <!-- end-model-doc -->
  *
  * <p>
@@ -68,15 +66,15 @@ public interface UpdateCommand extends Command {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * The change template applied per matched object. Entry coordinates address features of the selector's root type; objectId is resolved per match.
+	 * The template applied per matched object. Its entries address features of the selector's root type.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Template</em>' containment reference.
-	 * @see #setTemplate(ChangeSet)
+	 * @see #setTemplate(UpdateTemplate)
 	 * @see org.eclipse.fennec.model.command.CommandPackage#getUpdateCommand_Template()
 	 * @model containment="true" required="true"
 	 * @generated
 	 */
-	ChangeSet getTemplate();
+	UpdateTemplate getTemplate();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.model.command.UpdateCommand#getTemplate <em>Template</em>}' containment reference.
@@ -86,6 +84,6 @@ public interface UpdateCommand extends Command {
 	 * @see #getTemplate()
 	 * @generated
 	 */
-	void setTemplate(ChangeSet value);
+	void setTemplate(UpdateTemplate value);
 
 } // UpdateCommand

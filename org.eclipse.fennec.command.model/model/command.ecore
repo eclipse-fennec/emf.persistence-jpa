@@ -9,7 +9,7 @@
     <details key="oSGiCompatible" value="true"/>
     <details key="basePackage" value="org.eclipse.fennec.model"/>
     <details key="copyrightText" value="Copyright (c) 2026 Contributors to the Eclipse Foundation.&#xA;&#xA;This program and the accompanying materials are made&#xA;available under the terms of the Eclipse Public License 2.0&#xA;which is available at https://www.eclipse.org/legal/epl-2.0/&#xA;&#xA;SPDX-License-Identifier: EPL-2.0&#xA;&#xA;Contributors:&#xA;  Data In Motion Consulting - initial implementation"/>
-    <details key="documentation" value="Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus a ChangeSet template from the stream model, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding)."/>
+    <details key="documentation" value="Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus an UpdateTemplate, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding)."/>
   </eAnnotations>
   <eClassifiers xsi:type="ecore:EClass" name="Command" abstract="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -44,17 +44,67 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="UpdateCommand" eSuperTypes="#//Command">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Updates every object the selector matches by applying the ChangeSet template (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executed by the patch-apply engine (ChangeTemplates): entry coordinates address features of the selector's root type, values travel as EMF string literals; unsupported entries are refused with a diagnostic."/>
+      <details key="documentation" value="Updates every object the selector matches by applying the UpdateTemplate (concept §14: Update = selector + patch; the query language needs no update vocabulary of its own). Executed by the patch-apply engine (ChangeTemplates): entry coordinates address features of the selector's root type, values travel as EMF string literals; unsupported entries are refused with a diagnostic."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="selector" lowerBound="1"
         eType="ecore:EClass https://eclipse.org/fennec/query/2.0.0#//Query"
         containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="template" lowerBound="1"
-        eType="ecore:EClass https://org.eclipse/fennec/stream/1.0.0#//ChangeSet"
-        containment="true">
+        eType="#//UpdateTemplate" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="The change template applied per matched object. Entry coordinates address features of the selector's root type; objectId is resolved per match."/>
+        <details key="documentation" value="The template applied per matched object. Its entries address features of the selector's root type."/>
       </eAnnotations>
     </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UpdateTemplate">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The patch an UpdateCommand applies to every match, entry by entry in order (issue #397). Deliberately not the stream model's ChangeSet: a template carries no header, no object id and no fingerprint, only what the patch-apply engine (ChangeTemplates) evaluates. An empty template is refused, not treated as a no-op."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="entries" upperBound="-1"
+        eType="#//UpdateEntry" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UpdateEntry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One patch step on one feature of the matched object. Values travel as EMF string literals, decoded through the attribute type's factory; on a non-containment reference they carry the target's id, resolved through the backend's keyed find (issue #107)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//UpdateKind"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="feature" lowerBound="1"
+        eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EStructuralFeature">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The patched feature. It must be a feature of the selector's root type (own or inherited); anything else is refused. Containment references are object lifecycle and refused as well."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Position for ADD (insert at), REMOVE (remove at, attributes only) and MOVE (from). -1 = not given: ADD appends, REMOVE removes by oldValue."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="toIndex" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="-1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Target position, MOVE only."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The new value for SET and ADD: an encoded literal, or the target's id on a reference. null on SET clears the feature."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="oldValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The member REMOVE takes out when no index is given: an encoded literal, or the member's id on a reference (references are removed by id only). Not an optimistic guard: a template applies to many matches whose current values differ by design."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="UpdateKind">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="What an UpdateEntry does to its feature. SET/UNSET address single-valued features, ADD/REMOVE many-valued ones, MOVE many-valued attributes."/>
+    </eAnnotations>
+    <eLiterals name="SET"/>
+    <eLiterals name="UNSET" value="1"/>
+    <eLiterals name="ADD" value="2"/>
+    <eLiterals name="REMOVE" value="3"/>
+    <eLiterals name="MOVE" value="4"/>
   </eClassifiers>
 </ecore:EPackage>

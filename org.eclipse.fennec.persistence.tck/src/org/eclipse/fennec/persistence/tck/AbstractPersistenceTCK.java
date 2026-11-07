@@ -53,6 +53,9 @@ import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.model.expression.Between;
 import org.eclipse.fennec.model.expression.ExpressionFactory;
 import org.eclipse.fennec.model.expression.GeoBox;
@@ -73,10 +76,6 @@ import org.eclipse.fennec.model.query.TopStage;
 import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
-import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.capabilities.CommandCapabilities;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
@@ -3086,8 +3085,8 @@ public abstract class AbstractPersistenceTCK {
 		}
 		save(createBackendResourceSet(), "Person", people);
 
-		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
-		setAge.setValueNew("99");
+		UpdateEntry setAge = changeEntry(UpdateKind.SET, personAge);
+		setAge.setValue("99");
 		UpdateCommand update = updateCommand(
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personAge).lt(50))
@@ -3138,10 +3137,10 @@ public abstract class AbstractPersistenceTCK {
 			query = QueryFeature.WHERE_COMPARISON)
 	public void aSetBasedTemplateStoresWhatTheLoadPathWouldStore() throws Exception {
 		saveQueryFixture();
-		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
-		setName.setValueNew("Renamed");
-		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
-		setAge.setValueNew("77");
+		UpdateEntry setName = changeEntry(UpdateKind.SET, personName);
+		setName.setValue("Renamed");
+		UpdateEntry setAge = changeEntry(UpdateKind.SET, personAge);
+		setAge.setValue("77");
 		UpdateCommand update = updateCommand(
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personAge).ge(40))
@@ -3177,8 +3176,8 @@ public abstract class AbstractPersistenceTCK {
 	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void aSetBasedUpdateCountsMatchesEvenWhenNothingChanges() throws Exception {
 		saveQueryFixture();
-		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
-		setName.setValueNew("Alice");
+		UpdateEntry setName = changeEntry(UpdateKind.SET, personName);
+		setName.setValue("Alice");
 		UpdateCommand update = updateCommand(
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personName).eq("Alice"))
@@ -3208,7 +3207,7 @@ public abstract class AbstractPersistenceTCK {
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personName).eq("Alice"))
 						.build(),
-				changeEntry(DeltaKind.UNSET, personAge));
+				changeEntry(UpdateKind.UNSET, personAge));
 
 		assertThat(commands(createBackendResourceSet()).execute(update)).isEqualTo(1);
 
@@ -3235,7 +3234,7 @@ public abstract class AbstractPersistenceTCK {
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personAge).ge(50))
 						.build(),
-				changeEntry(DeltaKind.UNSET, personName));
+				changeEntry(UpdateKind.UNSET, personName));
 
 		assertThat(commands(createBackendResourceSet()).execute(update)).isEqualTo(1);
 
@@ -3368,18 +3367,18 @@ public abstract class AbstractPersistenceTCK {
 				.isInstanceOf(IOException.class);
 	}
 
-	private ChangeEntry changeEntry(DeltaKind kind, EStructuralFeature feature) {
-		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
+	private UpdateEntry changeEntry(UpdateKind kind, EStructuralFeature feature) {
+		UpdateEntry entry = CommandFactory.eINSTANCE.createUpdateEntry();
 		entry.setKind(kind);
-		entry.setFeatureId(personClass.getFeatureID(feature));
+		entry.setFeature(feature);
 		return entry;
 	}
 
-	private UpdateCommand updateCommand(Query selector, ChangeEntry... entries) {
+	private UpdateCommand updateCommand(Query selector, UpdateEntry... entries) {
 		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
 		update.setSelector(selector);
-		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
-		for (ChangeEntry entry : entries) {
+		UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
+		for (UpdateEntry entry : entries) {
 			template.getEntries().add(entry);
 		}
 		update.setTemplate(template);
@@ -3390,10 +3389,10 @@ public abstract class AbstractPersistenceTCK {
 	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void commandUpdateAppliesTheTemplatePerMatch() throws Exception {
 		saveQueryFixture();
-		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
-		setName.setValueNew("Robert");
-		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
-		setAge.setValueNew("41");
+		UpdateEntry setName = changeEntry(UpdateKind.SET, personName);
+		setName.setValue("Robert");
+		UpdateEntry setAge = changeEntry(UpdateKind.SET, personAge);
+		setAge.setValue("41");
 		UpdateCommand update = updateCommand(
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personName).eq("Bob"))
@@ -3415,8 +3414,8 @@ public abstract class AbstractPersistenceTCK {
 	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR)
 	public void commandUpdateMatchesEveryObjectOnEmptySelector() throws Exception {
 		saveQueryFixture();
-		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
-		setAge.setValueNew("18");
+		UpdateEntry setAge = changeEntry(UpdateKind.SET, personAge);
+		setAge.setValue("18");
 		UpdateCommand update = updateCommand(QueryBuilder.from(personClass).build(), setAge);
 
 		long affected = commands(createBackendResourceSet()).execute(update);
@@ -3435,7 +3434,7 @@ public abstract class AbstractPersistenceTCK {
 				QueryBuilder.from(personClass)
 						.where(Expressions.path(personAge).eq(50))
 						.build(),
-				changeEntry(DeltaKind.UNSET, personName));
+				changeEntry(UpdateKind.UNSET, personName));
 
 		long affected = commands(createBackendResourceSet()).execute(update);
 		assertThat(affected).isEqualTo(1);
@@ -3453,14 +3452,15 @@ public abstract class AbstractPersistenceTCK {
 		Query all = QueryBuilder.from(personClass).build();
 		CommandResource resource = commands(createBackendResourceSet());
 
-		// lifecycle kinds belong to Insert/Delete commands, not templates
-		ChangeEntry create = changeEntry(DeltaKind.CREATE, personName);
-		assertThatThrownBy(() -> resource.execute(updateCommand(all, create)))
+		// a feature of another type is refused, never looked up by name or position
+		UpdateEntry foreign = changeEntry(UpdateKind.SET, addressStreet);
+		foreign.setValue("Elsewhere");
+		assertThatThrownBy(() -> resource.execute(updateCommand(all, foreign)))
 				.isInstanceOf(IOException.class)
-				.hasMessageContaining("Unsupported template kind");
+				.hasMessageContaining("is not a feature of type 'Person'");
 
 		// containment references are object lifecycle, not patchable state (issue #107)
-		ChangeEntry onContainment = changeEntry(DeltaKind.SET, personAddresses);
+		UpdateEntry onContainment = changeEntry(UpdateKind.SET, personAddresses);
 		assertThatThrownBy(() -> resource.execute(updateCommand(all, onContainment)))
 				.isInstanceOf(IOException.class)
 				.hasMessageContaining("containment");
@@ -3480,8 +3480,8 @@ public abstract class AbstractPersistenceTCK {
 	public void commandUpdateSetsAndUnsetsSingleReferencesById() throws Exception {
 		saveQueryFixture();
 		// OData link semantics (issue #107): SET binds the target resolved by id
-		ChangeEntry link = changeEntry(DeltaKind.SET, personBestFriend);
-		link.setValueNew(id(1));
+		UpdateEntry link = changeEntry(UpdateKind.SET, personBestFriend);
+		link.setValue(id(1));
 		long affected = commands(createBackendResourceSet()).execute(updateCommand(
 				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
 				link));
@@ -3495,14 +3495,14 @@ public abstract class AbstractPersistenceTCK {
 		// unlink = UNSET
 		long cleared = commands(createBackendResourceSet()).execute(updateCommand(
 				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
-				changeEntry(DeltaKind.UNSET, personBestFriend)));
+				changeEntry(UpdateKind.UNSET, personBestFriend)));
 		assertThat(cleared).isEqualTo(1);
 		EObject reloaded = findById(loadAll(createBackendResourceSet(), "Person"), "2");
 		assertThat(reloaded.eGet(personBestFriend)).isNull();
 
 		// dangling target → refusal, not a silent null bind
-		ChangeEntry dangling = changeEntry(DeltaKind.SET, personBestFriend);
-		dangling.setValueNew("99");
+		UpdateEntry dangling = changeEntry(UpdateKind.SET, personBestFriend);
+		dangling.setValue("99");
 		CommandResource resource = commands(createBackendResourceSet());
 		UpdateCommand broken = updateCommand(
 				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
@@ -3516,10 +3516,10 @@ public abstract class AbstractPersistenceTCK {
 	@RequiresCapabilities(command = CommandFeature.UPDATE_BY_SELECTOR, query = QueryFeature.WHERE_EQ)
 	public void commandUpdateAddsAndRemovesManyReferenceMembersById() throws Exception {
 		saveQueryFixture();
-		ChangeEntry addAlice = changeEntry(DeltaKind.ADD, personFriends);
-		addAlice.setValueNew(id(1));
-		ChangeEntry addCarol = changeEntry(DeltaKind.ADD, personFriends);
-		addCarol.setValueNew(id(3));
+		UpdateEntry addAlice = changeEntry(UpdateKind.ADD, personFriends);
+		addAlice.setValue(id(1));
+		UpdateEntry addCarol = changeEntry(UpdateKind.ADD, personFriends);
+		addCarol.setValue(id(3));
 		long added = commands(createBackendResourceSet()).execute(updateCommand(
 				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
 				addAlice, addCarol));
@@ -3533,8 +3533,8 @@ public abstract class AbstractPersistenceTCK {
 				.containsExactlyInAnyOrder("Alice", "Carol");
 
 		// REMOVE is by member id (valueOld), robust against reordering (issue #107)
-		ChangeEntry removeAlice = changeEntry(DeltaKind.REMOVE, personFriends);
-		removeAlice.setValueOld(id(1));
+		UpdateEntry removeAlice = changeEntry(UpdateKind.REMOVE, personFriends);
+		removeAlice.setOldValue(id(1));
 		long removed = commands(createBackendResourceSet()).execute(updateCommand(
 				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Bob")).build(),
 				removeAlice));
@@ -4045,8 +4045,8 @@ public abstract class AbstractPersistenceTCK {
 		CommandResource resource = commands(createBackendResourceSet());
 		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
 		insert.getObjects().add(newPerson(4, "Dave", 25));
-		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
-		setAge.setValueNew("26");
+		UpdateEntry setAge = changeEntry(UpdateKind.SET, personAge);
+		setAge.setValue("26");
 		UpdateCommand update = updateCommand(
 				QueryBuilder.from(personClass).where(Expressions.path(personName).eq("Dave")).build(),
 				setAge);
@@ -4074,8 +4074,8 @@ public abstract class AbstractPersistenceTCK {
 
 		InsertCommand insert = CommandFactory.eINSTANCE.createInsertCommand();
 		insert.getObjects().add(newPerson(4, "Dave", 25));
-		ChangeEntry setAge = changeEntry(DeltaKind.SET, personAge);
-		setAge.setValueNew("99");
+		UpdateEntry setAge = changeEntry(UpdateKind.SET, personAge);
+		setAge.setValue("99");
 		UpdateCommand update = updateCommand(QueryBuilder.from(personClass).build(), setAge);
 
 		// close() without commit rolls back — the try-with-resources contract
@@ -4359,8 +4359,8 @@ public abstract class AbstractPersistenceTCK {
 			delete.setSelector(selector);
 			return delete;
 		}
-		ChangeEntry setName = changeEntry(DeltaKind.SET, personName);
-		setName.setValueNew("patched");
+		UpdateEntry setName = changeEntry(UpdateKind.SET, personName);
+		setName.setValue("patched");
 		return updateCommand(selector, setName);
 	}
 

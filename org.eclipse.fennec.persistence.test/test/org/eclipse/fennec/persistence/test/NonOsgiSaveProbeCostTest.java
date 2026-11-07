@@ -29,11 +29,10 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
-import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.sessions.SessionEvent;
@@ -172,11 +171,11 @@ class NonOsgiSaveProbeCostTest extends NonOsgiPersistenceTestBase {
 		}
 		resource.save(null);
 
-		ChangeEntry rename = StreamFactory.eINSTANCE.createChangeEntry();
-		rename.setKind(DeltaKind.SET);
-		rename.setFeatureId(personEClass.getFeatureID(nameFeature));
-		rename.setValueNew("Renamed");
-		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+		UpdateEntry rename = CommandFactory.eINSTANCE.createUpdateEntry();
+		rename.setKind(UpdateKind.SET);
+		rename.setFeature(nameFeature);
+		rename.setValue("Renamed");
+		UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
 		template.getEntries().add(rename);
 		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
 		update.setSelector(QueryBuilder.from(personEClass).build());

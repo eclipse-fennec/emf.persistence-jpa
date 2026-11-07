@@ -42,10 +42,9 @@ import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.model.command.UpdateCommand;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
-import org.eclipse.fennec.model.stream.StreamFactory;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.persistence.Options;
 import org.eclipse.fennec.persistence.mongo.MongoPersistenceConstants;
 import org.eclipse.fennec.persistence.mongo.MongoResourceFactory;
@@ -602,13 +601,13 @@ class MongoDeleteWalkCostTest {
 			wireWrites.clear();
 		}
 
-		ChangeEntry rename = StreamFactory.eINSTANCE.createChangeEntry();
-		rename.setKind(DeltaKind.SET);
-		rename.setFeatureId(libraryClass.getFeatureID(libraryClass.getEStructuralFeature("name")));
-		rename.setValueNew("Renamed");
+		UpdateEntry rename = CommandFactory.eINSTANCE.createUpdateEntry();
+		rename.setKind(UpdateKind.SET);
+		rename.setFeature(libraryClass.getEStructuralFeature("name"));
+		rename.setValue("Renamed");
 		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
 		update.setSelector(QueryBuilder.from(libraryClass).build());
-		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+		UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
 		template.getEntries().add(rename);
 		update.setTemplate(template);
 

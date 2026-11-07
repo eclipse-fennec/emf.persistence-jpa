@@ -27,7 +27,7 @@ import org.eclipse.fennec.model.command.CommandPackage;
  * The package will be registered into a OSGi base model registry.
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus a ChangeSet template from the stream model, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding).
+ * Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus an UpdateTemplate, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding).
  * <!-- end-model-doc -->
  * @see EPackageConfigurator
  * @generated
@@ -40,7 +40,7 @@ public class CommandEPackageConfigurator implements EPackageConfigurator {
 	 * service property.
 	 * @generated
 	 */
-	public static final String FINGERPRINT = "fp1:70a97c518570c62223f2828fb24af875242d655c5adbae077e5a311ec444cc5d";
+	public static final String FINGERPRINT = "fp1:8613a813bf7c68c670c603ad8fcacc1d65fbabfe587fdf454470376814bf5bc9";
 
 	private CommandPackage ePackage;
 

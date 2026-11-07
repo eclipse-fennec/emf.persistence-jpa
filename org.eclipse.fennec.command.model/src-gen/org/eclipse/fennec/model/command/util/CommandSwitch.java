@@ -103,6 +103,18 @@ public class CommandSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case CommandPackage.UPDATE_TEMPLATE: {
+				UpdateTemplate updateTemplate = (UpdateTemplate)theEObject;
+				T result = caseUpdateTemplate(updateTemplate);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case CommandPackage.UPDATE_ENTRY: {
+				UpdateEntry updateEntry = (UpdateEntry)theEObject;
+				T result = caseUpdateEntry(updateEntry);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			default: return defaultCase(theEObject);
 		}
 	}
@@ -164,6 +176,36 @@ public class CommandSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseUpdateCommand(UpdateCommand object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Update Template</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Update Template</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseUpdateTemplate(UpdateTemplate object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Update Entry</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Update Entry</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseUpdateEntry(UpdateEntry object) {
 		return null;
 	}
 

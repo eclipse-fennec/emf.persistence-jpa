@@ -65,7 +65,7 @@ public enum CommandFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * UpdateCommand: apply the ChangeSet template to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract.
+	 * UpdateCommand: apply the UpdateTemplate to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract.
 	 * <!-- end-model-doc -->
 	 * @see #UPDATE_BY_SELECTOR_VALUE
 	 * @generated
@@ -106,7 +106,7 @@ public enum CommandFeature implements Enumerator {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * UpdateCommand: apply the ChangeSet template to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract.
+	 * UpdateCommand: apply the UpdateTemplate to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract.
 	 * <!-- end-model-doc -->
 	 * @see #UPDATE_BY_SELECTOR
 	 * @model

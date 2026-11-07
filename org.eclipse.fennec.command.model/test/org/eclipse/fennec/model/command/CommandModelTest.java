@@ -15,10 +15,7 @@ package org.eclipse.fennec.model.command;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.emf.ecore.EcoreFactory;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
-import org.eclipse.fennec.model.stream.StreamFactory;
+import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.QueryFactory;
 import org.eclipse.fennec.model.query.QueryPackage;
@@ -90,19 +87,23 @@ class CommandModelTest {
 	}
 
 	@Test
-	void updateIsSelectorPlusChangeSetTemplate() {
+	void updateIsSelectorPlusUpdateTemplate() {
 		UpdateCommand update = factory.createUpdateCommand();
 		update.setSelector(QueryFactory.eINSTANCE.createQuery());
 
-		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
-		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
-		entry.setKind(DeltaKind.SET);
-		entry.setFeatureId(1);
-		entry.setValueNew("42");
+		UpdateTemplate template = factory.createUpdateTemplate();
+		UpdateEntry entry = factory.createUpdateEntry();
+		entry.setKind(UpdateKind.SET);
+		entry.setFeature(EcorePackage.Literals.ENAMED_ELEMENT__NAME);
+		entry.setValue("42");
 		template.getEntries().add(entry);
 		update.setTemplate(template);
 
 		assertThat(update.getTemplate().getEntries()).hasSize(1);
+		assertThat(entry.getIndex()).as("no position given").isEqualTo(-1);
+		assertThat(entry.getToIndex()).isEqualTo(-1);
+		assertThat(entry.getFeature()).as("a reference, not a copy")
+				.isSameAs(EcorePackage.Literals.ENAMED_ELEMENT__NAME);
 		assertThat(template.eContainer()).isSameAs(update);
 	}
 }

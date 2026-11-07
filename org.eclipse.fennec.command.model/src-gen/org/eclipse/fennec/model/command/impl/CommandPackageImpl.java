@@ -14,6 +14,7 @@ package org.eclipse.fennec.model.command.impl;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 
@@ -25,12 +26,13 @@ import org.eclipse.fennec.model.command.CommandPackage;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 
 import org.eclipse.fennec.model.query.QueryPackage;
-
-import org.eclipse.fennec.model.stream.StreamPackage;
 
 /**
  * <!-- begin-user-doc -->
@@ -66,6 +68,27 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 	 * @generated
 	 */
 	private EClass updateCommandEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass updateTemplateEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass updateEntryEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum updateKindEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -116,7 +139,6 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 		// Initialize simple dependencies
 		QueryPackage.eINSTANCE.eClass();
 		ExpressionPackage.eINSTANCE.eClass();
-		StreamPackage.eINSTANCE.eClass();
 
 		// Create package meta-data objects
 		theCommandPackage.createPackageContents();
@@ -228,6 +250,106 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 	 * @generated
 	 */
 	@Override
+	public EClass getUpdateTemplate() {
+		return updateTemplateEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getUpdateTemplate_Entries() {
+		return (EReference)updateTemplateEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getUpdateEntry() {
+		return updateEntryEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getUpdateEntry_Kind() {
+		return (EAttribute)updateEntryEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getUpdateEntry_Feature() {
+		return (EReference)updateEntryEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getUpdateEntry_Index() {
+		return (EAttribute)updateEntryEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getUpdateEntry_ToIndex() {
+		return (EAttribute)updateEntryEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getUpdateEntry_Value() {
+		return (EAttribute)updateEntryEClass.getEStructuralFeatures().get(4);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getUpdateEntry_OldValue() {
+		return (EAttribute)updateEntryEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getUpdateKind() {
+		return updateKindEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public CommandFactory getCommandFactory() {
 		return (CommandFactory)getEFactoryInstance();
 	}
@@ -263,6 +385,20 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 		updateCommandEClass = createEClass(UPDATE_COMMAND);
 		createEReference(updateCommandEClass, UPDATE_COMMAND__SELECTOR);
 		createEReference(updateCommandEClass, UPDATE_COMMAND__TEMPLATE);
+
+		updateTemplateEClass = createEClass(UPDATE_TEMPLATE);
+		createEReference(updateTemplateEClass, UPDATE_TEMPLATE__ENTRIES);
+
+		updateEntryEClass = createEClass(UPDATE_ENTRY);
+		createEAttribute(updateEntryEClass, UPDATE_ENTRY__KIND);
+		createEReference(updateEntryEClass, UPDATE_ENTRY__FEATURE);
+		createEAttribute(updateEntryEClass, UPDATE_ENTRY__INDEX);
+		createEAttribute(updateEntryEClass, UPDATE_ENTRY__TO_INDEX);
+		createEAttribute(updateEntryEClass, UPDATE_ENTRY__VALUE);
+		createEAttribute(updateEntryEClass, UPDATE_ENTRY__OLD_VALUE);
+
+		// Create enums
+		updateKindEEnum = createEEnum(UPDATE_KIND);
 	}
 
 	/**
@@ -290,7 +426,6 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 
 		// Obtain other dependent packages
 		QueryPackage theQueryPackage = (QueryPackage)EPackage.Registry.INSTANCE.getEPackage(QueryPackage.eNS_URI);
-		StreamPackage theStreamPackage = (StreamPackage)EPackage.Registry.INSTANCE.getEPackage(StreamPackage.eNS_URI);
 
 		// Create type parameters
 
@@ -313,7 +448,26 @@ public class CommandPackageImpl extends EPackageImpl implements CommandPackage {
 
 		initEClass(updateCommandEClass, UpdateCommand.class, "UpdateCommand", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getUpdateCommand_Selector(), theQueryPackage.getQuery(), null, "selector", null, 1, 1, UpdateCommand.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getUpdateCommand_Template(), theStreamPackage.getChangeSet(), null, "template", null, 1, 1, UpdateCommand.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getUpdateCommand_Template(), this.getUpdateTemplate(), null, "template", null, 1, 1, UpdateCommand.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(updateTemplateEClass, UpdateTemplate.class, "UpdateTemplate", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getUpdateTemplate_Entries(), this.getUpdateEntry(), null, "entries", null, 0, -1, UpdateTemplate.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(updateEntryEClass, UpdateEntry.class, "UpdateEntry", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getUpdateEntry_Kind(), this.getUpdateKind(), "kind", null, 1, 1, UpdateEntry.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getUpdateEntry_Feature(), ecorePackage.getEStructuralFeature(), null, "feature", null, 1, 1, UpdateEntry.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getUpdateEntry_Index(), ecorePackage.getEInt(), "index", "-1", 0, 1, UpdateEntry.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getUpdateEntry_ToIndex(), ecorePackage.getEInt(), "toIndex", "-1", 0, 1, UpdateEntry.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getUpdateEntry_Value(), ecorePackage.getEString(), "value", null, 0, 1, UpdateEntry.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getUpdateEntry_OldValue(), ecorePackage.getEString(), "oldValue", null, 0, 1, UpdateEntry.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		// Initialize enums and add enum literals
+		initEEnum(updateKindEEnum, UpdateKind.class, "UpdateKind");
+		addEEnumLiteral(updateKindEEnum, UpdateKind.SET);
+		addEEnumLiteral(updateKindEEnum, UpdateKind.UNSET);
+		addEEnumLiteral(updateKindEEnum, UpdateKind.ADD);
+		addEEnumLiteral(updateKindEEnum, UpdateKind.REMOVE);
+		addEEnumLiteral(updateKindEEnum, UpdateKind.MOVE);
 
 		// Create resource
 		createResource(eNS_URI);

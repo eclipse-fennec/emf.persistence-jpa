@@ -22,10 +22,9 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
 
 import org.eclipse.fennec.model.command.CommandPackage;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 
 import org.eclipse.fennec.model.query.Query;
-
-import org.eclipse.fennec.model.stream.ChangeSet;
 
 /**
  * <!-- begin-user-doc -->
@@ -60,7 +59,7 @@ public class UpdateCommandImpl extends CommandImpl implements UpdateCommand {
 	 * @generated
 	 * @ordered
 	 */
-	protected ChangeSet template;
+	protected UpdateTemplate template;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -132,7 +131,7 @@ public class UpdateCommandImpl extends CommandImpl implements UpdateCommand {
 	 * @generated
 	 */
 	@Override
-	public ChangeSet getTemplate() {
+	public UpdateTemplate getTemplate() {
 		return template;
 	}
 
@@ -141,8 +140,8 @@ public class UpdateCommandImpl extends CommandImpl implements UpdateCommand {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public NotificationChain basicSetTemplate(ChangeSet newTemplate, NotificationChain msgs) {
-		ChangeSet oldTemplate = template;
+	public NotificationChain basicSetTemplate(UpdateTemplate newTemplate, NotificationChain msgs) {
+		UpdateTemplate oldTemplate = template;
 		template = newTemplate;
 		if (eNotificationRequired()) {
 			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, CommandPackage.UPDATE_COMMAND__TEMPLATE, oldTemplate, newTemplate);
@@ -157,7 +156,7 @@ public class UpdateCommandImpl extends CommandImpl implements UpdateCommand {
 	 * @generated
 	 */
 	@Override
-	public void setTemplate(ChangeSet newTemplate) {
+	public void setTemplate(UpdateTemplate newTemplate) {
 		if (newTemplate != template) {
 			NotificationChain msgs = null;
 			if (template != null)
@@ -215,7 +214,7 @@ public class UpdateCommandImpl extends CommandImpl implements UpdateCommand {
 				setSelector((Query)newValue);
 				return;
 			case CommandPackage.UPDATE_COMMAND__TEMPLATE:
-				setTemplate((ChangeSet)newValue);
+				setTemplate((UpdateTemplate)newValue);
 				return;
 		}
 		super.eSet(featureID, newValue);
@@ -233,7 +232,7 @@ public class UpdateCommandImpl extends CommandImpl implements UpdateCommand {
 				setSelector((Query)null);
 				return;
 			case CommandPackage.UPDATE_COMMAND__TEMPLATE:
-				setTemplate((ChangeSet)null);
+				setTemplate((UpdateTemplate)null);
 				return;
 		}
 		super.eUnset(featureID);

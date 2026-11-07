@@ -1,6 +1,6 @@
 Bundle-Name: Eclipse Fennec Command Model
 Bundle-Description: Write commands for the unified persistence layer (concept §14): \
-	Insert with payload, Delete = query selector, Update = selector + ChangeSet template.
+	Insert with payload, Delete = query selector, Update = selector + UpdateTemplate.
 
 src=${^src},src-gen
 
@@ -20,8 +20,7 @@ src=${^src},src-gen
 -buildpath: \
 	org.osgi.service.condition;version=latest,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
-	org.eclipse.fennec.query.model;version=snapshot,\
-	org.eclipse.fennec.stream.model;version=snapshot
+	org.eclipse.fennec.query.model;version=snapshot
 
 -testpath: \
 	assertj-core

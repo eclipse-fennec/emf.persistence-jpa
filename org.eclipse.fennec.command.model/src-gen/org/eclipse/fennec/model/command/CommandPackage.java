@@ -15,6 +15,7 @@ package org.eclipse.fennec.model.command;
 
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EReference;
 
 import org.eclipse.fennec.emf.osgi.annotation.provide.EPackage;
@@ -34,7 +35,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus a ChangeSet template from the stream model, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding).
+ * Write commands for the unified persistence layer — CUD deliberately lives here, not in the query language (docs/unified-persistence/concept.md §14): Delete is a query selector, Update is a selector plus an UpdateTemplate, Insert carries payload objects. Commands are EMF objects and persist/travel like everything else (dogfooding).
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.model.command.CommandFactory
  * @model kind="package"
@@ -42,7 +43,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = CommandPackage.eNS_URI, fingerprint = "fp1:70a97c518570c62223f2828fb24af875242d655c5adbae077e5a311ec444cc5d", genModel = "/model/command.genmodel", genModelSourceLocations = {"model/command.genmodel","org.eclipse.fennec.command.model/model/command.genmodel"}, ecore = "/model/command.ecore", ecoreSourceLocations = "/model/command.ecore")
+@EPackage(uri = CommandPackage.eNS_URI, fingerprint = "fp1:8613a813bf7c68c670c603ad8fcacc1d65fbabfe587fdf454470376814bf5bc9", genModel = "/model/command.genmodel", genModelSourceLocations = {"model/command.genmodel","org.eclipse.fennec.command.model/model/command.genmodel"}, ecore = "/model/command.ecore", ecoreSourceLocations = "/model/command.ecore")
 public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -260,6 +261,135 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	 */
 	int UPDATE_COMMAND_OPERATION_COUNT = COMMAND_OPERATION_COUNT + 0;
 
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.command.impl.UpdateTemplateImpl <em>Update Template</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.command.impl.UpdateTemplateImpl
+	 * @see org.eclipse.fennec.model.command.impl.CommandPackageImpl#getUpdateTemplate()
+	 * @generated
+	 */
+	int UPDATE_TEMPLATE = 4;
+
+	/**
+	 * The feature id for the '<em><b>Entries</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_TEMPLATE__ENTRIES = 0;
+
+	/**
+	 * The number of structural features of the '<em>Update Template</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_TEMPLATE_FEATURE_COUNT = 1;
+
+	/**
+	 * The number of operations of the '<em>Update Template</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_TEMPLATE_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.command.impl.UpdateEntryImpl <em>Update Entry</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.command.impl.UpdateEntryImpl
+	 * @see org.eclipse.fennec.model.command.impl.CommandPackageImpl#getUpdateEntry()
+	 * @generated
+	 */
+	int UPDATE_ENTRY = 5;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY__KIND = 0;
+
+	/**
+	 * The feature id for the '<em><b>Feature</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY__FEATURE = 1;
+
+	/**
+	 * The feature id for the '<em><b>Index</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY__INDEX = 2;
+
+	/**
+	 * The feature id for the '<em><b>To Index</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY__TO_INDEX = 3;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY__VALUE = 4;
+
+	/**
+	 * The feature id for the '<em><b>Old Value</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY__OLD_VALUE = 5;
+
+	/**
+	 * The number of structural features of the '<em>Update Entry</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY_FEATURE_COUNT = 6;
+
+	/**
+	 * The number of operations of the '<em>Update Entry</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int UPDATE_ENTRY_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.model.command.UpdateKind <em>Update Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.model.command.UpdateKind
+	 * @see org.eclipse.fennec.model.command.impl.CommandPackageImpl#getUpdateKind()
+	 * @generated
+	 */
+	int UPDATE_KIND = 6;
+
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.model.command.Command <em>Command</em>}'.
@@ -355,6 +485,113 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getUpdateCommand_Template();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.command.UpdateTemplate <em>Update Template</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Update Template</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateTemplate
+	 * @generated
+	 */
+	EClass getUpdateTemplate();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.model.command.UpdateTemplate#getEntries <em>Entries</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Entries</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateTemplate#getEntries()
+	 * @see #getUpdateTemplate()
+	 * @generated
+	 */
+	EReference getUpdateTemplate_Entries();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.model.command.UpdateEntry <em>Update Entry</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Update Entry</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry
+	 * @generated
+	 */
+	EClass getUpdateEntry();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.command.UpdateEntry#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry#getKind()
+	 * @see #getUpdateEntry()
+	 * @generated
+	 */
+	EAttribute getUpdateEntry_Kind();
+
+	/**
+	 * Returns the meta object for the reference '{@link org.eclipse.fennec.model.command.UpdateEntry#getFeature <em>Feature</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference '<em>Feature</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry#getFeature()
+	 * @see #getUpdateEntry()
+	 * @generated
+	 */
+	EReference getUpdateEntry_Feature();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.command.UpdateEntry#getIndex <em>Index</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Index</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry#getIndex()
+	 * @see #getUpdateEntry()
+	 * @generated
+	 */
+	EAttribute getUpdateEntry_Index();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.command.UpdateEntry#getToIndex <em>To Index</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>To Index</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry#getToIndex()
+	 * @see #getUpdateEntry()
+	 * @generated
+	 */
+	EAttribute getUpdateEntry_ToIndex();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.command.UpdateEntry#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Value</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry#getValue()
+	 * @see #getUpdateEntry()
+	 * @generated
+	 */
+	EAttribute getUpdateEntry_Value();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.model.command.UpdateEntry#getOldValue <em>Old Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Old Value</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry#getOldValue()
+	 * @see #getUpdateEntry()
+	 * @generated
+	 */
+	EAttribute getUpdateEntry_OldValue();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.model.command.UpdateKind <em>Update Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Update Kind</em>'.
+	 * @see org.eclipse.fennec.model.command.UpdateKind
+	 * @generated
+	 */
+	EEnum getUpdateKind();
 
 	/**
 	 * Returns the factory that creates the instances of the model.
@@ -458,6 +695,92 @@ public interface CommandPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference UPDATE_COMMAND__TEMPLATE = eINSTANCE.getUpdateCommand_Template();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.command.impl.UpdateTemplateImpl <em>Update Template</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.command.impl.UpdateTemplateImpl
+		 * @see org.eclipse.fennec.model.command.impl.CommandPackageImpl#getUpdateTemplate()
+		 * @generated
+		 */
+		EClass UPDATE_TEMPLATE = eINSTANCE.getUpdateTemplate();
+
+		/**
+		 * The meta object literal for the '<em><b>Entries</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference UPDATE_TEMPLATE__ENTRIES = eINSTANCE.getUpdateTemplate_Entries();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.command.impl.UpdateEntryImpl <em>Update Entry</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.command.impl.UpdateEntryImpl
+		 * @see org.eclipse.fennec.model.command.impl.CommandPackageImpl#getUpdateEntry()
+		 * @generated
+		 */
+		EClass UPDATE_ENTRY = eINSTANCE.getUpdateEntry();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute UPDATE_ENTRY__KIND = eINSTANCE.getUpdateEntry_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Feature</b></em>' reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference UPDATE_ENTRY__FEATURE = eINSTANCE.getUpdateEntry_Feature();
+
+		/**
+		 * The meta object literal for the '<em><b>Index</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute UPDATE_ENTRY__INDEX = eINSTANCE.getUpdateEntry_Index();
+
+		/**
+		 * The meta object literal for the '<em><b>To Index</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute UPDATE_ENTRY__TO_INDEX = eINSTANCE.getUpdateEntry_ToIndex();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute UPDATE_ENTRY__VALUE = eINSTANCE.getUpdateEntry_Value();
+
+		/**
+		 * The meta object literal for the '<em><b>Old Value</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute UPDATE_ENTRY__OLD_VALUE = eINSTANCE.getUpdateEntry_OldValue();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.model.command.UpdateKind <em>Update Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.model.command.UpdateKind
+		 * @see org.eclipse.fennec.model.command.impl.CommandPackageImpl#getUpdateKind()
+		 * @generated
+		 */
+		EEnum UPDATE_KIND = eINSTANCE.getUpdateKind();
 
 	}
 

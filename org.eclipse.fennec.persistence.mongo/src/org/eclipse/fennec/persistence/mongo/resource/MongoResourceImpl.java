@@ -2077,7 +2077,7 @@ public class MongoResourceImpl extends CodecResource implements PersistenceResou
 	}
 
 	/**
-	 * Update = selector + ChangeSet template per match (concept §14, patch-apply engine
+	 * Update = selector + UpdateTemplate per match (concept §14, patch-apply engine
 	 * §18.1): decode each matched document, patch it, replace it under its {@code _id}.
 	 */
 	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters, Map<?, ?> options)
