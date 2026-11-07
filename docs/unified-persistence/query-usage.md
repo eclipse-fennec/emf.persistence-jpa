@@ -182,11 +182,11 @@ long deleted = ((CommandResource) resource).execute(delete);
 UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
 update.setSelector(QueryBuilder.from(personClass)
     .where(path(name).eq("Bob")).build());
-ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
-ChangeEntry setAge = StreamFactory.eINSTANCE.createChangeEntry();
-setAge.setKind(DeltaKind.SET);
-setAge.setFeatureId(personClass.getFeatureID(age));   // EMF feature id of the root type
-setAge.setValueNew("41");                             // EMF string literal
+UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
+UpdateEntry setAge = CommandFactory.eINSTANCE.createUpdateEntry();
+setAge.setKind(UpdateKind.SET);
+setAge.setFeature(age);                               // a feature of the selector's type
+setAge.setValue("41");                                // EMF string literal
 template.getEntries().add(setAge);
 update.setTemplate(template);
 long updated = ((CommandResource) resource).execute(update);
@@ -196,12 +196,13 @@ long updated = ((CommandResource) resource).execute(update);
 - Delete = selector-scoped removal; JPA removes matches **children-first** (containment
   FK safety), Mongo uses `deleteMany(filter)`.
 - Update = the template is applied **per match** by the patch-apply engine
-  (`ChangeTemplates` in `org.eclipse.fennec.persistence.query.support`): entry
-  coordinates address features of the selector's root type (`featureId` = EMF feature
-  id, values as EMF string literals). Supported kinds: `SET`/`UNSET` on single-valued
-  attributes, `ADD`/`REMOVE`/`MOVE` on many-valued attributes. Reference patching and
-  map/array kinds are refused with a precise diagnostic; `valueOld` is not evaluated as
-  an optimistic guard. JPA patches the managed entities in one transaction; Mongo
+  (`ChangeTemplates` in `org.eclipse.fennec.persistence.query.support`): each
+  `UpdateEntry` names its feature, which must belong to the selector's type (own or
+  inherited); values are EMF string literals. Supported kinds: `SET`/`UNSET` on
+  single-valued features, `ADD`/`REMOVE` on many-valued ones, `MOVE` on many-valued
+  attributes. Non-containment references take the target's id and are removed by id;
+  containment references are refused with a precise diagnostic; `oldValue` is not
+  evaluated as an optimistic guard. JPA patches the managed entities in one transaction; Mongo
   decodes, patches and replaces each document under its `_id`.
 - Command selectors must be **plain filters** — projection/aggregation/ordering/paging
   on a selector are refused.

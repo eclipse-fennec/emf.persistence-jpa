@@ -555,14 +555,14 @@ DeleteCommand delete = CommandFactory.eINSTANCE.createDeleteCommand();
 delete.setSelector(QueryBuilder.from(personClass).where(path(age).ge(40)).build());
 long deleted = repository.execute(delete);
 
-// update by selector: a ChangeSet template applied per match
+// update by selector: an UpdateTemplate applied per match
 UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
 update.setSelector(QueryBuilder.from(personClass).where(path(name).eq("Bob")).build());
-ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
-ChangeEntry setAge = StreamFactory.eINSTANCE.createChangeEntry();
-setAge.setKind(DeltaKind.SET);
-setAge.setFeatureId(personClass.getFeatureID(age));   // EMF feature id of the root type
-setAge.setValueNew("41");                             // EMF string literal
+UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
+UpdateEntry setAge = CommandFactory.eINSTANCE.createUpdateEntry();
+setAge.setKind(UpdateKind.SET);
+setAge.setFeature(age);                               // a feature of the selector's type
+setAge.setValue("41");                                // EMF string literal
 template.getEntries().add(setAge);
 update.setTemplate(template);
 long updated = repository.execute(update);
@@ -571,11 +571,13 @@ long updated = repository.execute(update);
 - **Insert** is the resource's save semantics over copies of the payload.
 - **Delete** is selector-scoped. JPA removes matches children-first, for containment FK
   safety; Mongo uses `deleteMany(filter)`.
-- **Update** applies the template per match. Entry coordinates address features of the
-  selector's root type (`featureId` = the EMF feature id, values as EMF string literals).
-  Supported kinds are `SET`/`UNSET` on single-valued attributes and `ADD`/`REMOVE`/`MOVE`
-  on many-valued ones. Reference patching and map kinds are refused with a diagnostic,
-  and `valueOld` is *not* evaluated as an optimistic guard.
+- **Update** applies the `UpdateTemplate` per match. Each entry names its feature, which
+  must belong to the selector's type (own or inherited); values are EMF string literals.
+  Supported kinds are `SET`/`UNSET` on single-valued features and `ADD`/`REMOVE` on
+  many-valued ones, plus `MOVE` on many-valued attributes. On a non-containment reference
+  the value is the target's id, and `REMOVE` takes the member out by id (`oldValue`).
+  Containment references are refused — that is Insert/Delete — and `oldValue` is *not*
+  evaluated as an optimistic guard.
 - **Selectors must be plain filters.** Projection, aggregation, ordering or paging on a
   selector is refused.
 - **A selector may use parameters**, and the values come with the call:

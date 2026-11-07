@@ -5,7 +5,7 @@ persistence-side prerequisites are settled (discussion 2026-08-05); the task bre
 in §7 is the proposed issue set for `eclipse-fennec/emf.search` — to be turned into
 issues there, refined per issue. Companions: `query-ir-redesign.md` (Expression IR,
 capability discipline), `query-processor-spi.md` (per-backend translation),
-`timeseries-access.md` (stream store — the v2 index feed), `geo-vocabulary.md`
+emf.streaming `docs/source/timeseries-access.md` (stream store — the v2 index feed; moved there with issue #397), `geo-vocabulary.md`
 (issue #101, concept round pending), `interval-and-representatives.md` (the #215/#214
 round for S15 and S19). Prerequisites landed here: #99 (TCK as consumable
 API), #100 (SCORE vocabulary).
@@ -31,7 +31,7 @@ Two usage roles, both first-class:
   the index directly. Honest contract limits: NRT visibility instead of
   read-your-writes transactions, reference contracts largely refused.
 - **Secondary index** next to JPA/Mongo (the dominant case): v2, fed by the CHANGELOG
-  stream of the timeseries/stream stack (`timeseries-access.md` cut 1) — `append` →
+  stream of the timeseries/stream stack (emf.streaming, `timeseries-access.md` cut 1) — `append` →
   incremental index update, `replay` → rebuild from scratch; query routing sends
   full-text predicates to Lucene and materializes hits via keyed finds in the primary
   store.
@@ -90,7 +90,7 @@ Declarative EClass→index mapping, processed by a pipeline in the style of
   no joins — queries over non-embedded references are capability-refused exactly like
   Mongo's cross-document paths, diagnostic code analog `CODE_NON_EMBEDDED_PATH`).
 - Registration on the metadata/aspect plane per EPackage (the pattern shared with
-  TrackingConfig/IngestMapping in `timeseries-access.md` §6 — one registry plane).
+  TrackingConfig/IngestMapping in emf.streaming `timeseries-access.md` §6 — one registry plane).
 
 ## 5. Query translation — capability profile
 
@@ -158,7 +158,7 @@ TCK/unit coverage as definition of done:
 8. **S8 — suggest** (`search.suggest`): §6 API + mapping-model extension + impl.
 9. **S9 — geo** (after #101 settles here): `GeoWithin`/`GeoDistance` translation over
    `LatLonPoint` — G-P3 of `geo-vocabulary.md`.
-10. **S10 — v2 secondary index** (`search.index`, after `timeseries-access.md` P1):
+10. **S10 — v2 secondary index** (`search.index`, after emf.streaming `timeseries-access.md` P1):
     stream-fed maintenance (append→update, replay→rebuild), query routing full-text →
     Lucene → keyed finds, consistency notes (index lag is visible and documented).
 
