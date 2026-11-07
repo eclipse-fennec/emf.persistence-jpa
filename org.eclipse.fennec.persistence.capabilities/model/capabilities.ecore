@@ -329,7 +329,7 @@
     </eLiterals>
     <eLiterals name="UPDATE_BY_SELECTOR" value="2">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="UpdateCommand: apply the ChangeSet template to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract."/>
+        <details key="documentation" value="UpdateCommand: apply the UpdateTemplate to every object the selector matches. Backends without partial writes (e.g. a search index that must rewrite whole documents) may serve this per EClass only — see the two-level supports contract."/>
       </eAnnotations>
     </eLiterals>
   </eClassifiers>

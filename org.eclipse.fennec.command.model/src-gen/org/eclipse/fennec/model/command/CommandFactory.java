@@ -62,6 +62,24 @@ public interface CommandFactory extends EFactory {
 	UpdateCommand createUpdateCommand();
 
 	/**
+	 * Returns a new object of class '<em>Update Template</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Update Template</em>'.
+	 * @generated
+	 */
+	UpdateTemplate createUpdateTemplate();
+
+	/**
+	 * Returns a new object of class '<em>Update Entry</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Update Entry</em>'.
+	 * @generated
+	 */
+	UpdateEntry createUpdateEntry();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

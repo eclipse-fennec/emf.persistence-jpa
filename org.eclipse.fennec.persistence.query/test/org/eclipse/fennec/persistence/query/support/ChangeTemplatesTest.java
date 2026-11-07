@@ -15,20 +15,24 @@ package org.eclipse.fennec.persistence.query.support;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcorePackage;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
-import org.eclipse.fennec.model.stream.StreamFactory;
+import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.fennec.model.command.CommandFactory;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.persistence.query.QueryException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -114,66 +118,63 @@ class ChangeTemplatesTest {
 		return (reference, id) -> universe.get(id);
 	}
 
-	private ChangeEntry refEntry(DeltaKind kind, EReference reference) {
-		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
-		entry.setKind(kind);
-		entry.setFeatureId(personClass.getFeatureID(reference));
-		return entry;
+	private UpdateEntry refEntry(UpdateKind kind, EReference reference) {
+		return entry(kind, reference);
 	}
 
-	private ChangeSet template(ChangeEntry... entries) {
-		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
-		for (ChangeEntry entry : entries) {
+	private UpdateTemplate template(UpdateEntry... entries) {
+		UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
+		for (UpdateEntry entry : entries) {
 			template.getEntries().add(entry);
 		}
 		return template;
 	}
 
-	private ChangeEntry entry(DeltaKind kind, EAttribute feature) {
-		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
+	private UpdateEntry entry(UpdateKind kind, EStructuralFeature feature) {
+		UpdateEntry entry = CommandFactory.eINSTANCE.createUpdateEntry();
 		entry.setKind(kind);
-		entry.setFeatureId(personClass.getFeatureID(feature));
+		entry.setFeature(feature);
 		return entry;
 	}
 
 	@Test
 	void setDecodesTheLiteralIntoTheAttributeType() throws QueryException {
-		ChangeEntry set = entry(DeltaKind.SET, age);
-		set.setValueNew("31");
+		UpdateEntry set = entry(UpdateKind.SET, age);
+		set.setValue("31");
 		ChangeTemplates.apply(template(set), person);
 		assertThat(person.eGet(age)).isEqualTo(31);
 	}
 
 	@Test
 	void setWithNullLiteralClearsTheValue() throws QueryException {
-		ChangeEntry set = entry(DeltaKind.SET, name);
+		UpdateEntry set = entry(UpdateKind.SET, name);
 		ChangeTemplates.apply(template(set), person);
 		assertThat(person.eGet(name)).isNull();
 	}
 
 	@Test
 	void unsetRestoresTheDefault() throws QueryException {
-		ChangeTemplates.apply(template(entry(DeltaKind.UNSET, age)), person);
+		ChangeTemplates.apply(template(entry(UpdateKind.UNSET, age)), person);
 		assertThat(person.eGet(age)).isEqualTo(0);
 		assertThat(person.eIsSet(age)).isFalse();
 	}
 
 	@Test
 	void entriesApplyInTemplateOrder() throws QueryException {
-		ChangeEntry first = entry(DeltaKind.SET, name);
-		first.setValueNew("Bob");
-		ChangeEntry second = entry(DeltaKind.SET, name);
-		second.setValueNew("Carol");
+		UpdateEntry first = entry(UpdateKind.SET, name);
+		first.setValue("Bob");
+		UpdateEntry second = entry(UpdateKind.SET, name);
+		second.setValue("Carol");
 		ChangeTemplates.apply(template(first, second), person);
 		assertThat(person.eGet(name)).isEqualTo("Carol");
 	}
 
 	@Test
 	void addAppendsAndInsertsIntoManyValued() throws QueryException {
-		ChangeEntry append = entry(DeltaKind.ADD, nicknames);
-		append.setValueNew("Ally");
-		ChangeEntry insert = entry(DeltaKind.ADD, nicknames);
-		insert.setValueNew("Al");
+		UpdateEntry append = entry(UpdateKind.ADD, nicknames);
+		append.setValue("Ally");
+		UpdateEntry insert = entry(UpdateKind.ADD, nicknames);
+		insert.setValue("Al");
 		insert.setIndex(0);
 		ChangeTemplates.apply(template(append, insert), person);
 		assertThat(person.eGet(nicknames)).isEqualTo(List.of("Al", "Ally"));
@@ -182,15 +183,15 @@ class ChangeTemplatesTest {
 	@Test
 	void removeByIndexAndByValue() throws QueryException {
 		listOf(nicknames).addAll(List.of("Al", "Ally", "Lissy"));
-		ChangeEntry byIndex = entry(DeltaKind.REMOVE, nicknames);
+		UpdateEntry byIndex = entry(UpdateKind.REMOVE, nicknames);
 		byIndex.setIndex(0);
-		ChangeEntry byValue = entry(DeltaKind.REMOVE, nicknames);
-		byValue.setValueOld("Lissy");
+		UpdateEntry byValue = entry(UpdateKind.REMOVE, nicknames);
+		byValue.setOldValue("Lissy");
 		ChangeTemplates.apply(template(byIndex, byValue), person);
 		assertThat(person.eGet(nicknames)).isEqualTo(List.of("Ally"));
 
-		ChangeEntry missing = entry(DeltaKind.REMOVE, nicknames);
-		missing.setValueOld("Nobody");
+		UpdateEntry missing = entry(UpdateKind.REMOVE, nicknames);
+		missing.setOldValue("Nobody");
 		assertThatThrownBy(() -> ChangeTemplates.apply(template(missing), person))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("not present");
@@ -199,7 +200,7 @@ class ChangeTemplatesTest {
 	@Test
 	void moveReordersTheList() throws QueryException {
 		listOf(nicknames).addAll(List.of("Al", "Ally", "Lissy"));
-		ChangeEntry move = entry(DeltaKind.MOVE, nicknames);
+		UpdateEntry move = entry(UpdateKind.MOVE, nicknames);
 		move.setIndex(2);
 		move.setToIndex(0);
 		ChangeTemplates.apply(template(move), person);
@@ -208,58 +209,113 @@ class ChangeTemplatesTest {
 
 	@Test
 	void multiplicityMismatchesAreRefused() {
-		ChangeEntry setOnMany = entry(DeltaKind.SET, nicknames);
+		UpdateEntry setOnMany = entry(UpdateKind.SET, nicknames);
 		assertThatThrownBy(() -> ChangeTemplates.validate(template(setOnMany), personClass))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("many-valued");
 
-		ChangeEntry addOnSingle = entry(DeltaKind.ADD, age);
+		UpdateEntry addOnSingle = entry(UpdateKind.ADD, age);
 		assertThatThrownBy(() -> ChangeTemplates.validate(template(addOnSingle), personClass))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("single-valued");
 	}
 
 	@Test
-	void lifecycleAndAddressedKindsAreRefused() {
-		for (DeltaKind kind : List.of(DeltaKind.CREATE, DeltaKind.DELETE, DeltaKind.PUT,
-				DeltaKind.SET_AT, DeltaKind.KEYFRAME)) {
-			ChangeEntry entry = entry(kind, age);
-			assertThatThrownBy(() -> ChangeTemplates.validate(template(entry), personClass))
-					.as("kind %s", kind)
-					.isInstanceOf(QueryException.class)
-					.hasMessageContaining("Unsupported template kind");
-		}
+	void entriesWithoutAFeatureAreRefused() {
+		UpdateEntry missing = CommandFactory.eINSTANCE.createUpdateEntry();
+		missing.setKind(UpdateKind.SET);
+		missing.setValue("x");
+		assertThatThrownBy(() -> ChangeTemplates.validate(template(missing), personClass))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("names no feature");
 	}
 
 	@Test
-	void unknownFeaturesAreRefused() {
-		ChangeEntry unknown = StreamFactory.eINSTANCE.createChangeEntry();
-		unknown.setKind(DeltaKind.SET);
-		unknown.setFeatureId(999);
-		assertThatThrownBy(() -> ChangeTemplates.validate(template(unknown), personClass))
+	void featuresOfAnotherTypeAreRefused() {
+		// same name and position as Person.name, but a different feature — never matched by name
+		EClass dogClass = EcoreFactory.eINSTANCE.createEClass();
+		dogClass.setName("Dog");
+		EAttribute dogPid = EcoreFactory.eINSTANCE.createEAttribute();
+		dogPid.setName("pid");
+		dogPid.setEType(EcorePackage.Literals.ESTRING);
+		EAttribute dogName = EcoreFactory.eINSTANCE.createEAttribute();
+		dogName.setName("name");
+		dogName.setEType(EcorePackage.Literals.ESTRING);
+		dogClass.getEStructuralFeatures().add(dogPid);
+		dogClass.getEStructuralFeatures().add(dogName);
+
+		UpdateEntry foreign = entry(UpdateKind.SET, dogName);
+		foreign.setValue("Rex");
+		assertThatThrownBy(() -> ChangeTemplates.validate(template(foreign), personClass))
 				.isInstanceOf(QueryException.class)
-				.hasMessageContaining("Unknown feature id");
+				.hasMessageContaining("'Dog.name' is not a feature of type 'Person'");
+		assertThatThrownBy(() -> ChangeTemplates.apply(template(foreign), person))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("not a feature of type 'Person'");
+		assertThat(person.eGet(name)).isEqualTo("Alice");
+	}
+
+	@Test
+	void inheritedFeaturesApplyToASubtype() throws QueryException {
+		EClass employeeClass = EcoreFactory.eINSTANCE.createEClass();
+		employeeClass.setName("Employee");
+		employeeClass.getESuperTypes().add(personClass);
+		EAttribute salary = EcoreFactory.eINSTANCE.createEAttribute();
+		salary.setName("salary");
+		salary.setEType(EcorePackage.Literals.EINT);
+		employeeClass.getEStructuralFeatures().add(salary);
+		personClass.getEPackage().getEClassifiers().add(employeeClass);
+		EObject employee = personClass.getEPackage().getEFactoryInstance().create(employeeClass);
+
+		// a feature declared on the supertype addresses the subtype as well
+		UpdateEntry rename = entry(UpdateKind.SET, name);
+		rename.setValue("Dora");
+		UpdateEntry raise = entry(UpdateKind.SET, salary);
+		raise.setValue("5000");
+		ChangeTemplates.validate(template(rename, raise), employeeClass);
+		ChangeTemplates.apply(template(rename, raise), employee);
+		assertThat(employee.eGet(name)).isEqualTo("Dora");
+		assertThat(employee.eGet(salary)).isEqualTo(5000);
+
+		// a subtype's own feature does not belong to the supertype a selector names
+		UpdateEntry onSubtype = entry(UpdateKind.SET, salary);
+		onSubtype.setValue("1");
+		assertThatThrownBy(() -> ChangeTemplates.validate(template(onSubtype), personClass))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("'Employee.salary' is not a feature of type 'Person'");
+	}
+
+	@Test
+	void anUnresolvedFeatureIsRefused() {
+		// a command read back without its model carries the feature as a proxy
+		EAttribute proxy = EcoreFactory.eINSTANCE.createEAttribute();
+		((InternalEObject) proxy).eSetProxyURI(URI.createURI("urn:missing#//Person/name"));
+		UpdateEntry unresolved = entry(UpdateKind.SET, proxy);
+		unresolved.setValue("x");
+		assertThatThrownBy(() -> ChangeTemplates.validate(template(unresolved), personClass))
+				.isInstanceOf(QueryException.class)
+				.hasMessageContaining("unresolved feature urn:missing#//Person/name");
 	}
 
 	@Test
 	void referenceSetBindsTheResolvedTarget() throws QueryException {
 		// reference values are target ids, resolved via the keyed-find contract (issue #107)
-		ChangeEntry set = refEntry(DeltaKind.SET, friend);
-		set.setValueNew("2");
+		UpdateEntry set = refEntry(UpdateKind.SET, friend);
+		set.setValue("2");
 		ChangeTemplates.validate(template(set), personClass);
 		ChangeTemplates.apply(template(set), person, resolver());
 		assertThat(person.eGet(friend)).isSameAs(bob);
 
-		// a null valueNew clears without touching the resolver
-		ChangeEntry clear = refEntry(DeltaKind.SET, friend);
+		// a null value clears without touching the resolver
+		UpdateEntry clear = refEntry(UpdateKind.SET, friend);
 		ChangeTemplates.apply(template(clear), person, resolver());
 		assertThat(person.eGet(friend)).isNull();
 	}
 
 	@Test
 	void referenceSetWithDanglingTargetIsRefused() {
-		ChangeEntry set = refEntry(DeltaKind.SET, friend);
-		set.setValueNew("99");
+		UpdateEntry set = refEntry(UpdateKind.SET, friend);
+		set.setValue("99");
 		assertThatThrownBy(() -> ChangeTemplates.apply(template(set), person, resolver()))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("no Person with id '99'");
@@ -268,34 +324,34 @@ class ChangeTemplatesTest {
 	@Test
 	void referenceUnsetClears() throws QueryException {
 		person.eSet(friend, bob);
-		ChangeTemplates.apply(template(refEntry(DeltaKind.UNSET, friend)), person, resolver());
+		ChangeTemplates.apply(template(refEntry(UpdateKind.UNSET, friend)), person, resolver());
 		assertThat(person.eGet(friend)).isNull();
 	}
 
 	@Test
 	void manyReferenceAddsAndRemovesById() throws QueryException {
-		ChangeEntry add = refEntry(DeltaKind.ADD, friends);
-		add.setValueNew("2");
-		ChangeEntry addMore = refEntry(DeltaKind.ADD, friends);
-		addMore.setValueNew("3");
+		UpdateEntry add = refEntry(UpdateKind.ADD, friends);
+		add.setValue("2");
+		UpdateEntry addMore = refEntry(UpdateKind.ADD, friends);
+		addMore.setValue("3");
 		ChangeTemplates.apply(template(add, addMore), person, resolver());
 		assertThat(person.eGet(friends)).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
 				.containsExactly(bob, carl);
 
 		// REMOVE is by id identity, never by index (issue #107)
-		ChangeEntry remove = refEntry(DeltaKind.REMOVE, friends);
-		remove.setValueOld("2");
+		UpdateEntry remove = refEntry(UpdateKind.REMOVE, friends);
+		remove.setOldValue("2");
 		ChangeTemplates.apply(template(remove), person, resolver());
 		assertThat(person.eGet(friends)).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST)
 				.containsExactly(carl);
 
-		ChangeEntry missing = refEntry(DeltaKind.REMOVE, friends);
-		missing.setValueOld("2");
+		UpdateEntry missing = refEntry(UpdateKind.REMOVE, friends);
+		missing.setOldValue("2");
 		assertThatThrownBy(() -> ChangeTemplates.apply(template(missing), person, resolver()))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("no member with id '2'");
 
-		ChangeEntry byIndex = refEntry(DeltaKind.REMOVE, friends);
+		UpdateEntry byIndex = refEntry(UpdateKind.REMOVE, friends);
 		byIndex.setIndex(0);
 		assertThatThrownBy(() -> ChangeTemplates.apply(template(byIndex), person, resolver()))
 				.isInstanceOf(QueryException.class)
@@ -304,13 +360,13 @@ class ChangeTemplatesTest {
 
 	@Test
 	void containmentAndMoveOnReferencesStayRefused() {
-		ChangeEntry containment = refEntry(DeltaKind.SET, home);
-		containment.setValueNew("2");
+		UpdateEntry containment = refEntry(UpdateKind.SET, home);
+		containment.setValue("2");
 		assertThatThrownBy(() -> ChangeTemplates.validate(template(containment), personClass))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("containment");
 
-		ChangeEntry move = refEntry(DeltaKind.MOVE, friends);
+		UpdateEntry move = refEntry(UpdateKind.MOVE, friends);
 		move.setIndex(0);
 		move.setToIndex(1);
 		assertThatThrownBy(() -> ChangeTemplates.validate(template(move), personClass))
@@ -329,7 +385,7 @@ class ChangeTemplatesTest {
 		((List<Object>) person.eGet(friends)).add(carl);
 
 		org.eclipse.emf.ecore.util.EcoreUtil.Copier copier = new org.eclipse.emf.ecore.util.EcoreUtil.Copier();
-		List<EObject> copies = new java.util.ArrayList<>(copier.copyAll(List.of(person, pal)));
+		List<EObject> copies = new ArrayList<>(copier.copyAll(List.of(person, pal)));
 		copier.copyReferences();
 		ChangeTemplates.bindInsertReferences(copier, resolver());
 
@@ -364,8 +420,8 @@ class ChangeTemplatesTest {
 
 	@Test
 	void referenceEntriesWithoutResolverAreRefused() {
-		ChangeEntry set = refEntry(DeltaKind.SET, friend);
-		set.setValueNew("2");
+		UpdateEntry set = refEntry(UpdateKind.SET, friend);
+		set.setValue("2");
 		assertThatThrownBy(() -> ChangeTemplates.apply(template(set), person))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("ReferenceResolver");
@@ -373,8 +429,8 @@ class ChangeTemplatesTest {
 
 	@Test
 	void undecodableLiteralsAndEmptyTemplatesAreRefused() {
-		ChangeEntry bad = entry(DeltaKind.SET, age);
-		bad.setValueNew("not-a-number");
+		UpdateEntry bad = entry(UpdateKind.SET, age);
+		bad.setValue("not-a-number");
 		assertThatThrownBy(() -> ChangeTemplates.apply(template(bad), person))
 				.isInstanceOf(QueryException.class)
 				.hasMessageContaining("Cannot decode");

@@ -94,6 +94,14 @@ public class CommandAdapterFactory extends AdapterFactoryImpl {
 				return createUpdateCommandAdapter();
 			}
 			@Override
+			public Adapter caseUpdateTemplate(UpdateTemplate object) {
+				return createUpdateTemplateAdapter();
+			}
+			@Override
+			public Adapter caseUpdateEntry(UpdateEntry object) {
+				return createUpdateEntryAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -166,6 +174,34 @@ public class CommandAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createUpdateCommandAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.command.UpdateTemplate <em>Update Template</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.command.UpdateTemplate
+	 * @generated
+	 */
+	public Adapter createUpdateTemplateAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.model.command.UpdateEntry <em>Update Entry</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.model.command.UpdateEntry
+	 * @generated
+	 */
+	public Adapter createUpdateEntryAdapter() {
 		return null;
 	}
 

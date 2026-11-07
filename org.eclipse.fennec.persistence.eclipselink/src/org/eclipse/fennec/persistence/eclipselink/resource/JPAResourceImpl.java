@@ -66,6 +66,7 @@ import org.eclipse.fennec.model.command.Command;
 import org.eclipse.fennec.model.command.DeleteCommand;
 import org.eclipse.fennec.model.command.InsertCommand;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.model.expression.Expression;
 import org.eclipse.fennec.model.expression.PropertyPath;
 import org.eclipse.fennec.model.query.Query;
@@ -2225,7 +2226,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		});
 	}
 
-	/** Update = selector + ChangeSet template per match (concept §14, patch-apply engine §18.1). */
+	/** Update = selector + UpdateTemplate per match (concept §14, patch-apply engine §18.1). */
 	private long executeUpdate(UpdateCommand update, Map<String, Object> parameters, Map<?, ?> options)
 			throws IOException {
 		JpaQueryPlan plan;
@@ -2339,7 +2340,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 			ChangeTemplates.apply(update.getTemplate(), eObject, resolver);
 		});
-		if (applied > 0 && hasReferenceEntries(update.getTemplate(), update.getSelector().getFrom())) {
+		if (applied > 0 && hasReferenceEntries(update.getTemplate())) {
 			referencePatched.accept(firstType[0]);
 		}
 		return applied;
@@ -2501,9 +2502,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	}
 
 	/** Whether any template entry addresses an {@link EReference} of the type (issue #107). */
-	private static boolean hasReferenceEntries(org.eclipse.fennec.model.stream.ChangeSet template, EClass type) {
-		return template.getEntries().stream()
-				.anyMatch(entry -> type.getEStructuralFeature(entry.getFeatureId()) instanceof EReference);
+	private static boolean hasReferenceEntries(UpdateTemplate template) {
+		return template.getEntries().stream().anyMatch(entry -> entry.getFeature() instanceof EReference);
 	}
 
 	/**

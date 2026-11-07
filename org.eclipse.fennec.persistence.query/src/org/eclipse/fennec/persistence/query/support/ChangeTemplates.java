@@ -26,37 +26,35 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.persistence.helper.CompositeIds;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
 import org.eclipse.fennec.persistence.query.QueryException;
 
 /**
- * The patch-apply engine behind {@code UpdateCommand} (concept §14, §18.1): applies a
- * {@link ChangeSet} <em>template</em> to one matched {@link EObject}.
+ * The patch-apply engine behind {@code UpdateCommand} (concept §14, §18.1): applies an
+ * {@link UpdateTemplate} to one matched {@link EObject}.
  * <p>
- * Template semantics differ from change-stream replay: entry coordinates address
- * features of the <em>matched object's</em> type — {@code objectId} is resolved per
- * match and therefore ignored here, {@code featureId} is the EMF feature id within the
- * target's {@link EClass} (see {@link EClass#getFeatureID(EStructuralFeature)}), and
- * values travel as EMF string literals decoded through the type's
- * {@code EFactory#createFromString}.
+ * Each {@link UpdateEntry} names its {@link UpdateEntry#getFeature() feature} directly; the
+ * feature must belong to the selector's root type (own or inherited), anything else is
+ * refused. Values travel as EMF string literals decoded through the type's
+ * {@code EFactory#createFromString}. The template is the command model's own type, not the
+ * stream model's {@code ChangeSet} (issue #397): a template is a patch, not a recorded change.
  * <p>
- * Supported kinds: {@link DeltaKind#SET SET} / {@link DeltaKind#UNSET UNSET} on
- * single-valued features, {@link DeltaKind#ADD ADD} / {@link DeltaKind#REMOVE REMOVE}
- * on many-valued features, {@link DeltaKind#MOVE MOVE} on many-valued attributes.
+ * Supported kinds: {@link UpdateKind#SET SET} / {@link UpdateKind#UNSET UNSET} on
+ * single-valued features, {@link UpdateKind#ADD ADD} / {@link UpdateKind#REMOVE REMOVE}
+ * on many-valued features, {@link UpdateKind#MOVE MOVE} on many-valued attributes.
  * <p>
  * <b>Reference patching (issue #107):</b> entries addressing a non-containment
- * {@link EReference} carry the <em>target's id</em> as their value — the stream model's
- * values are "encoded literals or object IDs" by design — and resolve through the
+ * {@link EReference} carry the <em>target's id</em> as their value and resolve through the
  * backend's {@link ReferenceResolver}: SET binds the resolved target (unresolvable id →
  * refusal), ADD appends the resolved member, REMOVE removes <em>by id identity</em>
- * ({@code valueOld}), never by index — robust against concurrent reordering. Containment
- * references are object lifecycle and stay refused (Insert/Delete commands), as do MOVE
- * on references and the map/array kinds — never silently skipped. {@code valueOld} is
- * <em>not</em> evaluated as an optimistic guard: a template applies to many matches
- * whose current values differ by design.
+ * ({@code oldValue}), never by index — robust against concurrent reordering. Containment
+ * references are object lifecycle and stay refused (Insert/Delete commands), as does MOVE
+ * on references — never silently skipped. {@code oldValue} is <em>not</em> evaluated as an
+ * optimistic guard: a template applies to many matches whose current values differ by
+ * design.
  *
  * @author Mark Hoffmann
  * @since 24.07.2026
@@ -74,13 +72,13 @@ public final class ChangeTemplates {
 	 * @param type the root type the selector matches, must not be {@code null}
 	 * @throws QueryException if any entry is not applicable to {@code type}
 	 */
-	public static void validate(ChangeSet template, EClass type) throws QueryException {
+	public static void validate(UpdateTemplate template, EClass type) throws QueryException {
 		requireNonNull(template, "template must not be null");
 		requireNonNull(type, "type must not be null");
 		if (template.getEntries().isEmpty()) {
 			throw new QueryException("Update template has no entries — nothing to apply");
 		}
-		for (ChangeEntry entry : template.getEntries()) {
+		for (UpdateEntry entry : template.getEntries()) {
 			checkEntry(entry, type);
 		}
 	}
@@ -88,14 +86,14 @@ public final class ChangeTemplates {
 	/**
 	 * Applies every entry of the template to the target, in template order. Templates
 	 * containing reference entries need the resolver overload
-	 * ({@link #apply(ChangeSet, EObject, ReferenceResolver)}).
+	 * ({@link #apply(UpdateTemplate, EObject, ReferenceResolver)}).
 	 *
 	 * @param template the change template, must not be {@code null}
 	 * @param target the matched object to patch, must not be {@code null}
 	 * @throws QueryException if an entry is not applicable to the target's type or a
 	 *         value literal cannot be decoded
 	 */
-	public static void apply(ChangeSet template, EObject target) throws QueryException {
+	public static void apply(UpdateTemplate template, EObject target) throws QueryException {
 		apply(template, target, (reference, id) -> {
 			throw new QueryException("Reference '" + reference.getName()
 					+ "' needs id resolution, but no ReferenceResolver is available"
@@ -113,17 +111,17 @@ public final class ChangeTemplates {
 	 * @throws QueryException if an entry is not applicable to the target's type, a value
 	 *         literal cannot be decoded or a reference target cannot be resolved
 	 */
-	public static void apply(ChangeSet template, EObject target, ReferenceResolver resolver)
+	public static void apply(UpdateTemplate template, EObject target, ReferenceResolver resolver)
 			throws QueryException {
 		requireNonNull(template, "template must not be null");
 		requireNonNull(target, "target must not be null");
 		requireNonNull(resolver, "resolver must not be null");
-		for (ChangeEntry entry : template.getEntries()) {
+		for (UpdateEntry entry : template.getEntries()) {
 			applyEntry(entry, target, resolver);
 		}
 	}
 
-	private static void applyEntry(ChangeEntry entry, EObject target, ReferenceResolver resolver)
+	private static void applyEntry(UpdateEntry entry, EObject target, ReferenceResolver resolver)
 			throws QueryException {
 		EStructuralFeature feature = checkEntry(entry, target.eClass());
 		if (feature instanceof EReference reference) {
@@ -132,11 +130,11 @@ public final class ChangeTemplates {
 		}
 		EAttribute attribute = (EAttribute) feature;
 		switch (entry.getKind()) {
-		case SET -> target.eSet(attribute, decode(attribute, entry.getValueNew()));
+		case SET -> target.eSet(attribute, decode(attribute, entry.getValue()));
 		case UNSET -> target.eUnset(attribute);
 		case ADD -> {
 			List<Object> values = manyValues(target, attribute);
-			Object value = decode(attribute, entry.getValueNew());
+			Object value = decode(attribute, entry.getValue());
 			if (entry.getIndex() >= 0) {
 				values.add(entry.getIndex(), value);
 			} else {
@@ -147,9 +145,9 @@ public final class ChangeTemplates {
 			List<Object> values = manyValues(target, attribute);
 			if (entry.getIndex() >= 0) {
 				values.remove(entry.getIndex());
-			} else if (!values.remove(decode(attribute, entry.getValueOld()))) {
+			} else if (!values.remove(decode(attribute, entry.getOldValue()))) {
 				throw new QueryException("REMOVE on '" + attribute.getName() + "': value '"
-						+ entry.getValueOld() + "' is not present");
+						+ entry.getOldValue() + "' is not present");
 			}
 		}
 		case MOVE -> {
@@ -165,24 +163,24 @@ public final class ChangeTemplates {
 	}
 
 	/** Reference entries carry target ids and bind via the resolver (issue #107). */
-	private static void applyReferenceEntry(ChangeEntry entry, EObject target, EReference reference,
+	private static void applyReferenceEntry(UpdateEntry entry, EObject target, EReference reference,
 			ReferenceResolver resolver) throws QueryException {
 		switch (entry.getKind()) {
 		case SET -> {
-			if (entry.getValueNew() == null) {
+			if (entry.getValue() == null) {
 				target.eSet(reference, null);
 			} else {
-				target.eSet(reference, resolve(reference, entry.getValueNew(), resolver));
+				target.eSet(reference, resolve(reference, entry.getValue(), resolver));
 			}
 		}
 		case UNSET -> target.eUnset(reference);
 		case ADD -> {
 			List<Object> members = manyValues(target, reference);
-			if (entry.getValueNew() == null) {
+			if (entry.getValue() == null) {
 				throw new QueryException("ADD on reference '" + reference.getName()
-						+ "' requires the member's id as valueNew");
+						+ "' requires the member's id as value");
 			}
-			EObject member = resolve(reference, entry.getValueNew(), resolver);
+			EObject member = resolve(reference, entry.getValue(), resolver);
 			if (entry.getIndex() >= 0) {
 				members.add(entry.getIndex(), member);
 			} else {
@@ -191,17 +189,17 @@ public final class ChangeTemplates {
 		}
 		case REMOVE -> {
 			// by id identity, never by index — robust against concurrent reordering
-			if (entry.getValueOld() == null) {
+			if (entry.getOldValue() == null) {
 				throw new QueryException("REMOVE on reference '" + reference.getName()
-						+ "' is by id — set the member's id as valueOld (index removal is"
+						+ "' is by id — set the member's id as oldValue (index removal is"
 						+ " not supported for references)");
 			}
 			List<Object> members = manyValues(target, reference);
 			boolean removed = members.removeIf(member -> member instanceof EObject object
-					&& entry.getValueOld().equals(idOf(object)));
+					&& entry.getOldValue().equals(idOf(object)));
 			if (!removed) {
 				throw new QueryException("REMOVE on '" + reference.getName() + "': no member with id '"
-						+ entry.getValueOld() + "'");
+						+ entry.getOldValue() + "'");
 			}
 		}
 		default -> throw new QueryException("Unsupported template kind " + entry.getKind()
@@ -270,7 +268,7 @@ public final class ChangeTemplates {
 	 * {@code eUnset} leaves behind, and for a primitive type the default is {@code 0}/{@code false}
 	 * rather than {@code null}. Mapping it to {@code null} would have stored something the load
 	 * path never stores — and on a strict database it does not even round-trip.
-	 * Entries are validated exactly as {@link #apply(ChangeSet, EObject)} validates them, and
+	 * Entries are validated exactly as {@link #apply(UpdateTemplate, EObject)} validates them, and
 	 * values are decoded with the same decoder, so a qualifying template produces the same
 	 * result on either path. That equality is the whole promise; if it cannot be kept for a
 	 * template, the template must not qualify.
@@ -281,45 +279,48 @@ public final class ChangeTemplates {
 	 *         {@code null} when the template does not qualify
 	 * @throws QueryException if the template is invalid, or a literal cannot be decoded
 	 */
-	public static Map<EAttribute, Object> setBasedAssignments(ChangeSet template, EClass type)
+	public static Map<EAttribute, Object> setBasedAssignments(UpdateTemplate template, EClass type)
 			throws QueryException {
 		if (template == null || template.getEntries().isEmpty()) {
 			return null;
 		}
 		Map<EAttribute, Object> assignments = new LinkedHashMap<>();
-		for (ChangeEntry entry : template.getEntries()) {
-			if (entry.getKind() != DeltaKind.SET && entry.getKind() != DeltaKind.UNSET) {
+		for (UpdateEntry entry : template.getEntries()) {
+			if (entry.getKind() != UpdateKind.SET && entry.getKind() != UpdateKind.UNSET) {
 				return null;
 			}
 			EStructuralFeature feature = checkEntry(entry, type);
 			if (!(feature instanceof EAttribute attribute) || attribute.isID() || attribute.isUnsettable()) {
 				return null;
 			}
-			assignments.put(attribute, entry.getKind() == DeltaKind.UNSET
+			assignments.put(attribute, entry.getKind() == UpdateKind.UNSET
 					? attribute.getDefaultValue()
-					: decode(attribute, entry.getValueNew()));
+					: decode(attribute, entry.getValue()));
 		}
 		return assignments;
 	}
 
-	private static EStructuralFeature checkEntry(ChangeEntry entry, EClass type) throws QueryException {
-		DeltaKind kind = entry.getKind();
-		switch (kind) {
-		case SET, UNSET, ADD, REMOVE, MOVE -> { /* supported below */ }
-		default -> throw new QueryException("Unsupported template kind " + kind
-				+ " — templates patch features; object lifecycle belongs to Insert/Delete commands");
-		}
-		EStructuralFeature feature = type.getEStructuralFeature(entry.getFeatureId());
+	private static EStructuralFeature checkEntry(UpdateEntry entry, EClass type) throws QueryException {
+		UpdateKind kind = entry.getKind();
+		EStructuralFeature feature = entry.getFeature();
 		if (feature == null) {
-			throw new QueryException("Unknown feature id " + entry.getFeatureId()
-					+ " for type '" + type.getName() + "'");
+			throw new QueryException("Update entry " + kind + " names no feature");
+		}
+		if (feature.eIsProxy()) {
+			throw new QueryException("Update entry " + kind + " names an unresolved feature "
+					+ EcoreUtil.getURI(feature) + " — its model is not available");
+		}
+		if (!type.getEAllStructuralFeatures().contains(feature)) {
+			EClass owner = feature.getEContainingClass();
+			throw new QueryException("Feature '" + (owner == null ? "" : owner.getName() + ".")
+					+ feature.getName() + "' is not a feature of type '" + type.getName() + "'");
 		}
 		if (feature instanceof EReference reference) {
 			if (reference.isContainment()) {
 				throw new QueryException("Reference '" + reference.getName() + "' of '" + type.getName()
 						+ "' is a containment — contained objects are lifecycle, use Insert/Delete commands");
 			}
-			if (kind == DeltaKind.MOVE) {
+			if (kind == UpdateKind.MOVE) {
 				throw new QueryException("MOVE is not supported on reference '" + reference.getName()
 						+ "' — reference membership is patched by id (ADD/REMOVE), not by position");
 			}
@@ -329,11 +330,11 @@ public final class ChangeTemplates {
 					+ "' is not changeable");
 		}
 		boolean many = feature.isMany();
-		if (many && (kind == DeltaKind.SET || kind == DeltaKind.UNSET)) {
+		if (many && (kind == UpdateKind.SET || kind == UpdateKind.UNSET)) {
 			throw new QueryException(kind + " addresses the many-valued feature '"
 					+ feature.getName() + "' — use ADD/REMOVE" + (feature instanceof EAttribute ? "/MOVE" : ""));
 		}
-		if (!many && (kind == DeltaKind.ADD || kind == DeltaKind.REMOVE || kind == DeltaKind.MOVE)) {
+		if (!many && (kind == UpdateKind.ADD || kind == UpdateKind.REMOVE || kind == UpdateKind.MOVE)) {
 			throw new QueryException(kind + " addresses the single-valued feature '"
 					+ feature.getName() + "' — use SET/UNSET");
 		}

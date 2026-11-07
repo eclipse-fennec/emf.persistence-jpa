@@ -37,8 +37,6 @@ import org.eclipse.fennec.model.expression.ExpressionPackage;
 
 import org.eclipse.fennec.model.query.QueryPackage;
 
-import org.eclipse.fennec.model.stream.StreamPackage;
-
 import org.eclipse.fennec.persistence.api.ConverterService;
 
 import org.eclipse.fennec.persistence.capabilities.QueryCapabilities;
@@ -277,7 +275,6 @@ public class QueryApiPackageImpl extends EPackageImpl implements QueryApiPackage
 		QueryPackage.eINSTANCE.eClass();
 		ExpressionPackage.eINSTANCE.eClass();
 		CommandPackage.eINSTANCE.eClass();
-		StreamPackage.eINSTANCE.eClass();
 
 		// Create package meta-data objects
 		theQueryApiPackage.createPackageContents();

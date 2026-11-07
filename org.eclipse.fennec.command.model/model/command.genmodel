@@ -4,7 +4,7 @@
     modelDirectory="/org.eclipse.fennec.command.model/src-gen" modelPluginID="org.eclipse.fennec.command.model"
     modelName="Command" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="21.0" copyrightFields="false"
-    operationReflection="true" importOrganizing="true" oSGiCompatible="true" usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream">
+    operationReflection="true" importOrganizing="true" oSGiCompatible="true" usedGenPackages="../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression">
   <foreignModel>command.ecore</foreignModel>
   <genPackages prefix="Command" basePackage="org.eclipse.fennec.model" disposableProviderFactory="true"
       ecorePackage="command.ecore#/">
@@ -21,5 +21,23 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference command.ecore#//UpdateCommand/selector"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference command.ecore#//UpdateCommand/template"/>
     </genClasses>
+    <genClasses ecoreClass="command.ecore#//UpdateTemplate">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference command.ecore#//UpdateTemplate/entries"/>
+    </genClasses>
+    <genClasses ecoreClass="command.ecore#//UpdateEntry">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute command.ecore#//UpdateEntry/kind"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference command.ecore#//UpdateEntry/feature"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute command.ecore#//UpdateEntry/index"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute command.ecore#//UpdateEntry/toIndex"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute command.ecore#//UpdateEntry/value"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute command.ecore#//UpdateEntry/oldValue"/>
+    </genClasses>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="command.ecore#//UpdateKind">
+      <genEnumLiterals ecoreEnumLiteral="command.ecore#//UpdateKind/SET"/>
+      <genEnumLiterals ecoreEnumLiteral="command.ecore#//UpdateKind/UNSET"/>
+      <genEnumLiterals ecoreEnumLiteral="command.ecore#//UpdateKind/ADD"/>
+      <genEnumLiterals ecoreEnumLiteral="command.ecore#//UpdateKind/REMOVE"/>
+      <genEnumLiterals ecoreEnumLiteral="command.ecore#//UpdateKind/MOVE"/>
+    </genEnums>
   </genPackages>
 </genmodel:GenModel>

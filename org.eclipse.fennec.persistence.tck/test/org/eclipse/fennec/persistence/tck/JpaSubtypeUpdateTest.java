@@ -35,13 +35,12 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.UpdateCommand;
+import org.eclipse.fennec.model.command.UpdateEntry;
+import org.eclipse.fennec.model.command.UpdateKind;
+import org.eclipse.fennec.model.command.UpdateTemplate;
 import org.eclipse.fennec.model.query.Query;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
-import org.eclipse.fennec.model.stream.ChangeEntry;
-import org.eclipse.fennec.model.stream.ChangeSet;
-import org.eclipse.fennec.model.stream.DeltaKind;
-import org.eclipse.fennec.model.stream.StreamFactory;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
 import org.eclipse.fennec.persistence.query.support.CommandTransaction;
@@ -207,33 +206,29 @@ class JpaSubtypeUpdateTest {
 		CommandResource resource = commands();
 		UpdateCommand update = updateCommand(QueryBuilder.from(assetClass)
 				.where(Expressions.path(assetId).eq(11L)).build(),
-				entry(assetClass, assetName, "renamed"));
+				set(assetName, "renamed"));
 
 		assertThat(resource.execute(update)).isEqualTo(1);
 		assertThat(((Resource) resource).getErrors()).isEmpty();
 		assertThat(pool(11).eGet(assetName)).isEqualTo("renamed");
 	}
 
-	private UpdateCommand updatePool(long id, ChangeEntry entry) {
+	private UpdateCommand updatePool(long id, UpdateEntry entry) {
 		return updateCommand(QueryBuilder.from(poolClass).where(Expressions.path(assetId).eq(id)).build(), entry);
 	}
 
-	private ChangeEntry set(EStructuralFeature feature, String value) {
-		return entry(poolClass, feature, value);
-	}
-
-	private ChangeEntry entry(EClass type, EStructuralFeature feature, String value) {
-		ChangeEntry entry = StreamFactory.eINSTANCE.createChangeEntry();
-		entry.setKind(DeltaKind.SET);
-		entry.setFeatureId(type.getFeatureID(feature));
-		entry.setValueNew(value);
+	private UpdateEntry set(EStructuralFeature feature, String value) {
+		UpdateEntry entry = CommandFactory.eINSTANCE.createUpdateEntry();
+		entry.setKind(UpdateKind.SET);
+		entry.setFeature(feature);
+		entry.setValue(value);
 		return entry;
 	}
 
-	private UpdateCommand updateCommand(Query selector, ChangeEntry entry) {
+	private UpdateCommand updateCommand(Query selector, UpdateEntry entry) {
 		UpdateCommand update = CommandFactory.eINSTANCE.createUpdateCommand();
 		update.setSelector(selector);
-		ChangeSet template = StreamFactory.eINSTANCE.createChangeSet();
+		UpdateTemplate template = CommandFactory.eINSTANCE.createUpdateTemplate();
 		template.getEntries().add(entry);
 		update.setTemplate(template);
 		return update;
