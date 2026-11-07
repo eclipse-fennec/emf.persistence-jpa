@@ -49,8 +49,7 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
 | `org.eclipse.fennec.query.model` | The canonical query envelope (`query.ecore`: `Query`, `Expand`, `GroupByStage`, …), its fluent builders and `FeatureUsageAnalyzer` (which features a query touches, in which role) |
 | `org.eclipse.fennec.expression.model` | The expression IR the query envelope is built from (`expression.ecore`) |
 | `org.eclipse.fennec.expression.ocl` | Bidirectional bridge between the expression model and OCL |
-| `org.eclipse.fennec.command.model` | Write commands — Insert, Delete-by-selector, Update-by-selector with a ChangeSet template |
-| `org.eclipse.fennec.stream.model` | Change-stream metamodel (`ChangeSet`, `ChangeEntry`, `DeltaKind`) |
+| `org.eclipse.fennec.command.model` | Write commands — Insert, Delete-by-selector, Update-by-selector with an `UpdateTemplate` |
 
 ## Key Architectural Patterns
 

@@ -39,7 +39,6 @@ On the relational path it maps ECore metamodels (EClass, EAttribute, EReference)
 | `org.eclipse.fennec.expression.model` | Backend-neutral expression-tree IR for predicates over EMF features |
 | `org.eclipse.fennec.query.model` | Query envelope around the expression model: root type, projection, ordering, paging |
 | `org.eclipse.fennec.command.model` | Write commands (insert/update/delete) for the unified persistence layer |
-| `org.eclipse.fennec.stream.model` | Change-stream metamodel (ChangeSet, ChangeEntry, DeltaKind) |
 | `org.eclipse.fennec.expression.ocl` | Bidirectional bridge between OCL expressions and the expression model |
 | `org.eclipse.fennec.persistence.tck` | Backend-agnostic compatibility test kit, run against both the JPA and the Mongo backend |
 | `org.eclipse.fennec.persistence.test` | OSGi integration tests (JUnit 5, H2 database) |

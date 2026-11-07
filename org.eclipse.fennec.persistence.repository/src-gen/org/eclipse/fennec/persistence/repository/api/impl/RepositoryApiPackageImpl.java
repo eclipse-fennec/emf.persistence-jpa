@@ -27,8 +27,6 @@ import org.eclipse.fennec.model.expression.ExpressionPackage;
 
 import org.eclipse.fennec.model.query.QueryPackage;
 
-import org.eclipse.fennec.model.stream.StreamPackage;
-
 import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
@@ -155,7 +153,6 @@ public class RepositoryApiPackageImpl extends EPackageImpl implements Repository
 		QueryPackage.eINSTANCE.eClass();
 		ExpressionPackage.eINSTANCE.eClass();
 		CommandPackage.eINSTANCE.eClass();
-		StreamPackage.eINSTANCE.eClass();
 
 		// Create package meta-data objects
 		theRepositoryApiPackage.createPackageContents();

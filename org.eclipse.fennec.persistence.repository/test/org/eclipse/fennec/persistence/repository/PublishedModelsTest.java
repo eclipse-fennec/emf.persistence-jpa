@@ -37,7 +37,6 @@ import org.eclipse.emf.ecore.xmi.impl.EcoreResourceFactoryImpl;
 import org.eclipse.fennec.model.command.CommandPackage;
 import org.eclipse.fennec.model.expression.ExpressionPackage;
 import org.eclipse.fennec.model.query.QueryPackage;
-import org.eclipse.fennec.model.stream.StreamPackage;
 import org.eclipse.fennec.persistence.query.api.QueryApiPackage;
 import org.eclipse.fennec.persistence.repository.api.RepositoryApiPackage;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -74,7 +73,7 @@ class PublishedModelsTest {
 		ResourceSet resourceSet = new ResourceSetImpl();
 		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap().put("*", new EcoreResourceFactoryImpl());
 		for (EPackage dependency : List.of(ExpressionPackage.eINSTANCE, QueryPackage.eINSTANCE,
-				CommandPackage.eINSTANCE, StreamPackage.eINSTANCE, QueryApiPackage.eINSTANCE)) {
+				CommandPackage.eINSTANCE, QueryApiPackage.eINSTANCE)) {
 			if (!dependency.getNsURI().equals(nsUri)) {
 				resourceSet.getPackageRegistry().put(dependency.getNsURI(), dependency);
 			}

@@ -23,7 +23,6 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.command.model;version=snapshot,\
-	org.eclipse.fennec.stream.model;version=snapshot,\
 	org.osgi.util.pushstream;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.osgi.util.function;version=latest
@@ -52,7 +51,6 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.command.model;version=snapshot,\
-	org.eclipse.fennec.stream.model;version=snapshot,\
 	org.eclipse.fennec.persistence.orm;version=snapshot,\
 	org.eclipse.fennec.persistence.ecore;version=snapshot,\
 	org.eclipse.fennec.persistence.eclipselink;version=snapshot;packages='*',\

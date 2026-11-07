@@ -4,7 +4,7 @@
     modelDirectory="/org.eclipse.fennec.persistence.repository/src-gen" modelPluginID="org.eclipse.fennec.persistence.repository"
     modelName="RepositoryApi" rootExtendsInterface="" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" copyrightFields="false"
-    usedGenPackages="../../org.eclipse.fennec.persistence.query/model/query-api.genmodel#//api ../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.command.model/model/command.genmodel#//command ../../org.eclipse.fennec.stream.model/model/stream.genmodel#//stream"
+    usedGenPackages="../../org.eclipse.fennec.persistence.query/model/query-api.genmodel#//api ../../org.eclipse.fennec.query.model/model/query.genmodel#//query ../../org.eclipse.fennec.expression.model/model/expression.genmodel#//expression ../../org.eclipse.fennec.command.model/model/command.genmodel#//command"
     operationReflection="true" importOrganizing="true" oSGiCompatible="true">
   <foreignModel>repository-api.ecore</foreignModel>
   <genPackages prefix="RepositoryApi" basePackage="org.eclipse.fennec.persistence.repository"
