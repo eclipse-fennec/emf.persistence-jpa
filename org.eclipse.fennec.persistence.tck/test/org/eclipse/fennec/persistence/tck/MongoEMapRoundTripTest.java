@@ -17,11 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.bson.BsonDocument;
 import org.bson.BsonString;
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.EMap;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -268,6 +270,31 @@ class MongoEMapRoundTripTest {
 
 	private URI uriFor(String typeName) {
 		return URI.createURI("mongodb://" + databaseName + "/" + typeName);
+	}
+
+	/**
+	 * A class with {@code key} and {@code value} features but without {@code Map$Entry} is no map
+	 * entry (issue #401, emf.codec#291): stored as an array that keeps duplicate keys and order.
+	 */
+	@Test
+	void aClassWithKeyAndValueFeaturesIsAPlainList() throws Exception {
+		EObject catalog = model.newCatalog("c9", "Settings");
+		settings(catalog).addAll(List.of(model.newSetting("mode", "fast"), model.newSetting("mode", "safe"),
+				model.newSetting("level", "3")));
+		save(catalog);
+
+		BsonDocument stored = rawDocument("Catalog", "c9");
+		assertThat(stored.get("settings").isArray()).as("stored document was: %s", stored.toJson()).isTrue();
+		assertThat(settings(reload("c9"))).extracting(s -> s.eGet(model.settingClass.getEStructuralFeature("key"))
+				+ "=" + s.eGet(model.settingClass.getEStructuralFeature("value")))
+				.containsExactly("mode=fast", "mode=safe", "level=3");
+	}
+
+	@SuppressWarnings("unchecked")
+	private EList<EObject> settings(EObject catalog) {
+		Object value = catalog.eGet(model.settings);
+		assertThat(value).as("EMF hands out a plain list, no EMap").isNotInstanceOf(EMap.class);
+		return (EList<EObject>) value;
 	}
 
 	private void save(EObject catalog) throws Exception {

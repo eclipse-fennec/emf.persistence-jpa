@@ -107,7 +107,7 @@ class JpaReservedWordsTest {
 		Map<String, TreeSet<String>> schema = schema();
 
 		assertThat(schema).containsEntry("ORDER_",
-				columns("GROUP_", "ID", "INDEX_", "POSITION", "USER_ID", "VALUE_"));
+				columns("GROUP_", "ID", "INDEX_", "KEY_", "POSITION", "USER_ID", "VALUE_"));
 		assertThat(schema).containsEntry("USER_", columns("ID", "KEY_", "NAME"));
 		assertThat(schema).containsEntry("ITEM", columns("ID", "ITEMS_ORDER", "ORDER_", "ORDER_ID", "VALUE_"));
 	}
@@ -132,6 +132,7 @@ class JpaReservedWordsTest {
 		assertThat(reloaded.eGet(feature(orderClass, "index"))).isEqualTo(2);
 		assertThat(reloaded.eGet(feature(orderClass, "position"))).isEqualTo(20);
 		assertThat(reloaded.eGet(feature(orderClass, "group"))).isEqualTo("group-o1");
+		assertThat(reloaded.eGet(feature(orderClass, "key"))).isEqualTo("key-o1");
 		EObject owner = (EObject) reloaded.eGet(orderClass.getEStructuralFeature("owner"));
 		assertThat(owner.eGet(feature(userClass, "name"))).isEqualTo("Alice");
 		assertThat(owner.eGet(feature(userClass, "key"))).isEqualTo("key-u1");
@@ -228,8 +229,7 @@ class JpaReservedWordsTest {
 	 * {@code User} and {@code Order} are reserved table names, {@code value}, {@code key},
 	 * {@code index}, {@code group} and {@code order} reserved column names somewhere;
 	 * {@code position} is reserved only as a MariaDB table name and stays a column as it is.
-	 * {@code key} sits on {@code User}: a class with both {@code key} and {@code value} is a map
-	 * entry by {@code EMaps.isMapEntry} and gets the fixed columns of #185 instead.
+	 * {@code Order} has both {@code key} and {@code value} and is still no map entry (issue #401).
 	 */
 	private void model() {
 		ePackage = EcoreFactory.eINSTANCE.createEPackage();
@@ -250,6 +250,7 @@ class JpaReservedWordsTest {
 		orderClass = eClass("Order");
 		attribute(orderClass, "id", EcorePackage.Literals.ESTRING).setID(true);
 		attribute(orderClass, "value", EcorePackage.Literals.ESTRING);
+		attribute(orderClass, "key", EcorePackage.Literals.ESTRING);
 		attribute(orderClass, "index", EcorePackage.Literals.EINT);
 		attribute(orderClass, "position", EcorePackage.Literals.EINT);
 		attribute(orderClass, "group", EcorePackage.Literals.ESTRING);
@@ -297,6 +298,7 @@ class JpaReservedWordsTest {
 		order.eSet(feature(orderClass, "index"), index);
 		order.eSet(feature(orderClass, "position"), index * 10);
 		order.eSet(feature(orderClass, "group"), "group-" + id);
+		order.eSet(feature(orderClass, "key"), "key-" + id);
 		order.eSet(orderClass.getEStructuralFeature("owner"), owner);
 		((EList<EObject>) order.eGet(orderClass.getEStructuralFeature("items"))).addAll(List.of(items));
 		return order;

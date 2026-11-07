@@ -64,9 +64,12 @@ final class EMapTestModel {
 	final EClass stringEntryClass;
 	final EClass intEntryClass;
 	final EClass partEntryClass;
+	/** An ordinary class with {@code key} and {@code value} features — no map entry (issue #401). */
+	final EClass settingClass;
 	final EReference attributes;
 	final EReference counts;
 	final EReference parts;
+	final EReference settings;
 
 	EMapTestModel() {
 		EcoreFactory ecore = EcoreFactory.eINSTANCE;
@@ -83,6 +86,11 @@ final class EMapTestModel {
 		partEntryClass = mapEntryWithReferenceValue("StringToPartMapEntry",
 				EcorePackage.Literals.ESTRING, partClass);
 
+		settingClass = ecore.createEClass();
+		settingClass.setName("Setting");
+		addString(settingClass, "key");
+		addString(settingClass, "value");
+
 		catalogClass = ecore.createEClass();
 		catalogClass.setName("Catalog");
 		addId(catalogClass, "cid");
@@ -93,6 +101,9 @@ final class EMapTestModel {
 		catalogClass.getEStructuralFeatures().add(counts);
 		parts = mapFeature("parts", partEntryClass);
 		catalogClass.getEStructuralFeatures().add(parts);
+		// containment-many like a map feature, but to a class without Map$Entry: a plain list
+		settings = mapFeature("settings", settingClass);
+		catalogClass.getEStructuralFeatures().add(settings);
 
 		ePackage = ecore.createEPackage();
 		ePackage.setName("emap");
@@ -103,11 +114,12 @@ final class EMapTestModel {
 		ePackage.getEClassifiers().add(stringEntryClass);
 		ePackage.getEClassifiers().add(intEntryClass);
 		ePackage.getEClassifiers().add(partEntryClass);
+		ePackage.getEClassifiers().add(settingClass);
 	}
 
 	/** The classifiers a JPA persistence unit has to be bootstrapped with. */
 	List<EClassifier> classifiers() {
-		return List.of(catalogClass, partClass, stringEntryClass, intEntryClass, partEntryClass);
+		return List.of(catalogClass, partClass, stringEntryClass, intEntryClass, partEntryClass, settingClass);
 	}
 
 	EObject newCatalog(String id, String name) {
@@ -122,6 +134,13 @@ final class EMapTestModel {
 		part.eSet(partClass.getEStructuralFeature("pid"), id);
 		part.eSet(partClass.getEStructuralFeature("label"), label);
 		return part;
+	}
+
+	EObject newSetting(String key, String value) {
+		EObject setting = EcoreUtil.create(settingClass);
+		setting.eSet(settingClass.getEStructuralFeature("key"), key);
+		setting.eSet(settingClass.getEStructuralFeature("value"), value);
+		return setting;
 	}
 
 	private static EClass mapEntry(String name, EDataType keyType, EDataType valueType) {

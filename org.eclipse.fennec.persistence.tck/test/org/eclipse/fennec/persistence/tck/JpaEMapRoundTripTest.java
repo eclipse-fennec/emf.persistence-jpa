@@ -17,9 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.EMap;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -291,6 +293,41 @@ class JpaEMapRoundTripTest {
 	}
 
 	/** Reads through a fresh ResourceSet with the shared cache evicted — no in-memory answers. */
+	/**
+	 * A class with {@code key} and {@code value} features but without {@code Map$Entry} is no map
+	 * entry (issue #401): a plain list that keeps duplicate keys and their order, in columns named
+	 * after its attributes — escaped like any reserved word (#399) — and without the
+	 * {@code (owner, key)} constraint of a map.
+	 */
+	@Test
+	void aClassWithKeyAndValueFeaturesIsAPlainList() throws Exception {
+		ResourceSet writeSet = resourceSet();
+		EObject catalog = model.newCatalog("c9", "Settings");
+		settings(catalog).addAll(List.of(model.newSetting("mode", "fast"), model.newSetting("mode", "safe"),
+				model.newSetting("level", "3")));
+		Resource resource = writeSet.createResource(uriFor("Catalog"));
+		resource.getContents().add(catalog);
+		resource.save(null);
+
+		EList<EObject> reloaded = settings(reload("c9"));
+		assertThat(reloaded).extracting(s -> s.eGet(model.settingClass.getEStructuralFeature("key")) + "="
+				+ s.eGet(model.settingClass.getEStructuralFeature("value")))
+				.containsExactly("mode=fast", "mode=safe", "level=3");
+
+		try (EntityManager em = emf.createEntityManager()) {
+			List<?> rows = em.createNativeQuery("SELECT key_, value_ FROM SETTING WHERE catalog_id = 'c9'")
+					.getResultList();
+			assertThat(rows).as("the columns are named after the attributes, not MAP_KEY/MAP_VALUE").hasSize(3);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private EList<EObject> settings(EObject catalog) {
+		Object value = catalog.eGet(model.settings);
+		assertThat(value).as("EMF hands out a plain list, no EMap").isNotInstanceOf(EMap.class);
+		return (EList<EObject>) value;
+	}
+
 	private EObject reload(String id) throws Exception {
 		emf.getCache().evictAll();
 		Resource resource = resourceSet().createResource(uriFor("Catalog"));

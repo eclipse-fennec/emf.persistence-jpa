@@ -835,6 +835,13 @@ table carries a unique constraint over `(owner_fk, MAP_KEY)`. That also made the
 `Table.uniqueConstraint` reach the descriptor for the first time — it was modelled and read by
 nobody.
 
+**What a map is.** A containment-many reference to a class whose instance class name is
+`java.util.Map$Entry` — nothing else (`EMaps`, #401). Features named `key` and `value` used to be
+enough as well, mirroring the codec; the codec dropped that in emf.codec#291, and so did the
+mapping: an ordinary class may have both, and as a map entry it got `MAP_KEY`/`MAP_VALUE`
+columns and a unique constraint that refused a list with a repeated key. Such a class is a plain
+list, as it is for EMF, which hands out an `EList` rather than an `EMap` without `Map$Entry`.
+
 **The decision: `EMap` is core.** Both backends honour it now, and a construct EMF puts in every
 user's reach cannot be declined because one translator is behind — that is precisely the "translator gap is a defect" test of §9.1, and here
 it comes out the other way, because no store has a reason to refuse a map. What core covers:
