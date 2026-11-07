@@ -5,7 +5,7 @@ G2 = structural in v1, G3 = distance as value expression, G4 = feature ids 76/77
 G5 = relative 1e-3 above 1 m / absolute 1 mm below; the §5 semantic rules are binding
 as proposed. Implementation phases per §7 — G-P1 in progress.
 Companions: `query-ir-redesign.md` (Expression IR, capability discipline),
-`query-processor-spi.md` (per-backend translation), `timeseries-access.md` §6.3
+`query-processor-spi.md` (per-backend translation), emf.streaming `docs/source/timeseries-access.md` §6.3
 (enrichment meta axis — lat/lon tags are a primary data source for these predicates).
 Consumers: the Lucene backend (upcoming `emf.search` repository, spatial module), Mongo
 `2dsphere`, OData geo functions ([OData-URL] `geo.distance`/`geo.intersects`/`geo.length`).
@@ -182,7 +182,7 @@ asks for beyond §3 — path-to-path distance, line length, shape-in-shape — s
 issue #233 was closed with that reasoning. This round is only about the route to what already
 exists.
 
-Side effect worth naming: the ingest ladder of `timeseries-access.md` §6.1 defines its rung
+Side effect worth naming: the ingest ladder of emf.streaming `timeseries-access.md` §6.1 defines its rung
 boundary as "whatever `OclToExpr` refuses is rung 4 by definition". Geo predicates are therefore
 now expressible at rung 2/3. That is intended rather than incidental — an ingest guard over a
 bounding box is a reasonable thing to declare — but it is a widening of that boundary and is

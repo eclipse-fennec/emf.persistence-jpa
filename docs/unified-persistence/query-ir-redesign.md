@@ -55,7 +55,7 @@ OCL badly. The redesign replaces the IR while keeping everything that proved its
 | R5 | **Repo-neutral naming** | BSN `org.eclipse.fennec.expression.model`, package `org.eclipse.fennec.model.expression` — no "persistence" in the name; consumers (OData) depend on a neutral artifact; a later move to common.models breaks nobody |
 | R6 | **Bidirectional OCL bridge, asymmetric** | `Expr → OCL` is **total** (we are a semantic subset) — enables reusing the existing `OclEvaluator` as reference evaluator without porting; `OCL → Expr` is **partial** (subset, refusal with Diagnostics — consistent with the capability philosophy) |
 | R7 | **Bridge lives here** (not m2x) | m2x stays 100% untouched ("damit OCL klappt"); the bridge consumes the OCL model binary (as fennec-odata does today) and sits next to the TCK where the differential tests live |
-| R8 | **CUD = commands, not query vocabulary** | Per `concept.md` §14: Delete = selector; **Update = selector + ChangeSet template** (`UpdateCommand`); Insert = payload command. The query language stays read-only by design |
+| R8 | **CUD = commands, not query vocabulary** | Per `concept.md` §14: Delete = selector; **Update = selector + UpdateTemplate** (`UpdateCommand`); Insert = payload command. The query language stays read-only by design |
 | R9 | **SPI, capabilities, diagnostics, builder concept, TCK stay** | They are IR-agnostic and proven; only the vocabulary and the tree walker change |
 | R10 | **Migration path for OData is theirs, staged** | Phase 1: their parser keeps emitting OCL, the `OCL → Expr` bridge feeds our IR; Phase 2: `ODataToOclBuilder` becomes `ODataToExprBuilder` (their grammar is their own). No big bang; tracked in the fennec-odata repo |
 
@@ -179,16 +179,18 @@ Per `concept.md` §14, own bundle `org.eclipse.fennec.command.model`:
 Command (abstract)
 InsertCommand { objects: EObject[*] (containment) }
 DeleteCommand { selector: Query }
-UpdateCommand { selector: Query, template: ChangeSet }   ← stream model reference
+UpdateCommand { selector: Query, template: UpdateTemplate }
+UpdateTemplate { entries: UpdateEntry[*] }
+UpdateEntry { kind: SET|UNSET|ADD|REMOVE|MOVE, feature: EStructuralFeature,
+              index, toIndex, value, oldValue }
 ```
 
 Execution contract (`CommandResource` analogous to `QueryableResource`): Insert = save
 semantics, Delete = selector-scoped delete (Mongo `deleteMany(filter)`, JPA
-`DELETE FROM … WHERE …`), both v1. **Update is modelled in v1 but executes only once the
-patch-apply engine exists** (concept §18.1 pairs them); until then `translate` refuses it
-with a diagnostic. Prerequisite: `fennec-stream.ecore` (today a draft under
-`docs/unified-persistence/model/`) is promoted to a real model bundle — the command model
-is its first consumer.
+`DELETE FROM … WHERE …`), Update = the patch-apply engine `ChangeTemplates` (concept
+§18.1). The template was first the stream model's `ChangeSet`; issue #397 gave the command
+model a template type of its own, so the write path no longer depends on the stream model,
+which now lives in eclipse-fennec/emf.streaming.
 
 ## 6. The OCL bridge (`org.eclipse.fennec.expression.ocl`)
 
