@@ -36,6 +36,7 @@ import org.eclipse.fennec.persistence.eorm.PersistenceUnitDefaults;
 import org.eclipse.fennec.persistence.eorm.PersistenceUnitMetadata;
 import org.eclipse.fennec.persistence.eorm.TableGenerator;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
+import org.eclipse.fennec.persistence.helper.ReservedWords.Dialect;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.dynamic.DynamicClassLoader;
 import org.eclipse.persistence.sessions.server.Server;
@@ -215,10 +216,12 @@ public class EDynamicTypeGenerator {
 				filter(Objects::nonNull).
 				toList();
 		/*
-		 * Names that are no SQL identifier would break the DDL silently (issue #314)
+		 * Names that are no SQL identifier, or reserved words, would break the DDL silently
+		 * (issues #314, #399)
 		 */
 		if (!context.isUseDelimitedIdentifiers() && !hasDelimitedIdentifiers(mapping)) {
-			types.forEach(type -> IdentifierValidator.validate(type, context));
+			Dialect dialect = IdentifierValidator.dialectOf(context.getSession());
+			types.forEach(type -> IdentifierValidator.validate(type, context, dialect));
 		}
 		return types;
 	}

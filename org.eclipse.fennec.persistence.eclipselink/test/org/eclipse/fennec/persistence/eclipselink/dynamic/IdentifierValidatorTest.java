@@ -30,12 +30,14 @@ import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.util.ExtendedMetaData;
+import org.eclipse.fennec.persistence.eorm.Column;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
 import org.eclipse.fennec.persistence.eorm.EntityMappings;
 import org.eclipse.fennec.persistence.eorm.PersistenceUnitDefaults;
 import org.eclipse.fennec.persistence.eorm.PersistenceUnitMetadata;
 import org.eclipse.fennec.persistence.epersistence.EPersistenceFactory;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
+import org.eclipse.fennec.persistence.helper.ReservedWords.Dialect;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
@@ -53,9 +55,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 
 /**
- * Table and column names that are no SQL identifier are reported as ERROR diagnostics before any
- * DDL runs, naming entity and attribute (issue #314) — instead of a {@code CREATE TABLE} that
- * {@code create-or-extend-tables} swallows, and a missing table at the first query.
+ * Table and column names that are no SQL identifier (issue #314), or a reserved word of the
+ * unit's database (issue #399), are reported as ERROR diagnostics before any DDL runs, naming
+ * entity and attribute — instead of a {@code CREATE TABLE} that {@code create-or-extend-tables}
+ * swallows, and a missing table at the first query.
  */
 class IdentifierValidatorTest {
 
@@ -161,6 +164,106 @@ class IdentifierValidatorTest {
 			EObject found = (EObject) em.find(descriptor.getJavaClass(), 1L);
 			assertThat(found.eGet(cityFeature.getEStructuralFeature("color"))).isEqualTo("#ff0000");
 		}
+	}
+
+	// ── Reserved words (issue #399) ─────────────────────────────────────────
+
+	@Test
+	void theDialectOfTheUnitIsKnownWhenTheTypesAreValidated() {
+		generator();
+
+		assertThat(IdentifierValidator.dialectOf(serverSession)).isEqualTo(Dialect.H2);
+		assertThat(IdentifierValidator.dialectOf(null)).isNull();
+	}
+
+	/** A derived reserved name is escaped by the mapping, so it never reaches the validator. */
+	@Test
+	void derivedReservedNamesProduceNoError() {
+		EAttribute value = EcoreFactory.eINSTANCE.createEAttribute();
+		value.setName("value");
+		value.setEType(EcorePackage.Literals.ESTRING);
+		cityFeature.getEStructuralFeatures().add(value);
+		cityFeature.setName("Order");
+
+		List<Diagnostic> diagnostics = generate(new EntityMapper().createMappings(List.of(cityFeature)));
+
+		assertThat(diagnostics).noneMatch(d -> d.getSeverity() >= Diagnostic.WARNING);
+	}
+
+	@Test
+	void aDeclaredColumnReservedOnTheDatabaseIsAnErrorNamingTheAttribute() {
+		EntityMappings mappings = new EntityMapper().createMappings(List.of(cityFeature));
+		basicColumn(mappings, "color").setName("value");
+
+		List<Diagnostic> diagnostics = generate(mappings);
+
+		assertThat(errors(diagnostics)).singleElement().satisfies(error -> {
+			assertThat(error.getSource()).isEqualTo(EDynamicTypeContext.DIAGNOSTIC_SOURCE);
+			assertThat(error.getMessage()).contains("Column name 'value'", "attribute 'color'",
+					"entity 'CityFeature'", "reserved word on H2");
+			assertThat(error.getData()).first().isEqualTo(cityFeature);
+		});
+	}
+
+	@Test
+	void aDeclaredTableReservedOnTheDatabaseIsAnError() {
+		EntityMappings mappings = new EntityMapper().createMappings(List.of(cityFeature));
+		mappings.getEntity().get(0).getTable().setName("USER");
+
+		List<Diagnostic> diagnostics = generate(mappings);
+
+		assertThat(errors(diagnostics)).extracting(Diagnostic::getMessage)
+				.anySatisfy(m -> assertThat(m).contains("Table name 'USER'", "entity 'CityFeature'", "H2"));
+	}
+
+	/** {@code index} is reserved on MariaDB, not on H2: a unit on H2 accepts it as declared. */
+	@Test
+	void aDeclaredNameReservedOnlyElsewhereIsAccepted() {
+		EntityMappings mappings = new EntityMapper().createMappings(List.of(cityFeature));
+		basicColumn(mappings, "color").setName("index");
+
+		List<Diagnostic> diagnostics = generate(mappings);
+
+		assertThat(diagnostics).noneMatch(d -> d.getSeverity() >= Diagnostic.WARNING);
+	}
+
+	/** On a database whose words are unknown, a name a known one refuses is a warning. */
+	@Test
+	void anUnknownDatabaseWarnsAboutNamesReservedOnAKnownOne() {
+		EntityMappings mappings = new EntityMapper().createMappings(List.of(cityFeature));
+		basicColumn(mappings, "color").setName("index");
+		EDynamicTypeGenerator generator = generator();
+		List<EDynamicType> types = generator.createFromMappings(List.of(mappings));
+		EDynamicTypeContext context = new EDynamicTypeContext();
+
+		types.forEach(type -> IdentifierValidator.validate(type, context, null));
+
+		assertThat(context.getDiagnostics()).singleElement().satisfies(warning -> {
+			assertThat(warning.getSeverity()).isEqualTo(Diagnostic.WARNING);
+			assertThat(warning.getMessage()).contains("Column name 'index'", "attribute 'color'", "MARIADB");
+		});
+	}
+
+	/** Delimited identifiers quote every name, a reserved one included. */
+	@Test
+	void delimitedIdentifiersAcceptAReservedName() {
+		EntityMappings mappings = new EntityMapper().createMappings(List.of(cityFeature));
+		basicColumn(mappings, "color").setName("value");
+		PersistenceUnitMetadata metadata = EORMFactory.eINSTANCE.createPersistenceUnitMetadata();
+		PersistenceUnitDefaults defaults = EORMFactory.eINSTANCE.createPersistenceUnitDefaults();
+		defaults.setDelimitedIdentifiers(EORMFactory.eINSTANCE.createEmptyType());
+		metadata.setPersistenceUnitDefaults(defaults);
+		mappings.setPersistenceUnitMetadata(metadata);
+
+		assertThat(errors(generate(mappings))).isEmpty();
+	}
+
+	private static Column basicColumn(EntityMappings mappings, String attribute) {
+		return mappings.getEntity().get(0).getAttributes().getBasic().stream()
+				.filter(b -> attribute.equals(b.getName()))
+				.findFirst()
+				.orElseThrow()
+				.getColumn();
 	}
 
 	// ── Helpers ─────────────────────────────────────────────────────────────
