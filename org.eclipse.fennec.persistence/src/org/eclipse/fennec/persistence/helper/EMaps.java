@@ -29,8 +29,9 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
  * {@code dataClass == Map.Entry.class}, so without it the very same model is a plain list
  * and {@code eGet} hands out an {@code EList} rather than an {@code EMap}.
  * <p>
- * The fallback on {@code key}/{@code value} features mirrors what the codec does
- * ({@code EMapHelper} in emf.codec), so a model the codec treats as a map is a map here too.
+ * The instance class name is the only criterion, as in EMF and in the codec ({@code EMapHelper}
+ * in emf.codec, #291): features named {@code key} and {@code value} alone do not make a map
+ * entry — an ordinary class may have both (issue #401).
  *
  * @author Mark Hoffmann
  * @since 19.08.2026
@@ -66,18 +67,10 @@ public final class EMaps {
 	 * Whether the given class is a map entry class.
 	 *
 	 * @param eClass the class to test; may be {@code null}
-	 * @return {@code true} for a {@code Map.Entry} typed class, or one carrying both a
-	 *         {@code key} and a {@code value} feature
+	 * @return {@code true} for a class whose instance class name is {@value #MAP_ENTRY_CLASS_NAME}
 	 */
 	public static boolean isMapEntry(EClass eClass) {
-		if (eClass == null) {
-			return false;
-		}
-		if (MAP_ENTRY_CLASS_NAME.equals(eClass.getInstanceClassName())) {
-			return true;
-		}
-		return eClass.getEStructuralFeature(KEY_FEATURE) != null
-				&& eClass.getEStructuralFeature(VALUE_FEATURE) != null;
+		return eClass != null && MAP_ENTRY_CLASS_NAME.equals(eClass.getInstanceClassName());
 	}
 
 	/**
