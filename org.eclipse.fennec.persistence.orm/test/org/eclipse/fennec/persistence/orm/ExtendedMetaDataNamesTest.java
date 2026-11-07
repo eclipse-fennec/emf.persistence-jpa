@@ -95,8 +95,9 @@ class ExtendedMetaDataNamesTest {
 		assertThat(result.getSeverity()).isEqualTo(Diagnostic.INFO);
 	}
 
+	/** The derived column of {@code user} is escaped (issue #399), so the unused escape is no warning. */
 	@Test
-	void unusedNameEscapingAReservedWordIsAWarning() {
+	void unusedNameEscapingAReservedWordIsAnInfo() {
 		EAttribute user = EcoreFactory.eINSTANCE.createEAttribute();
 		user.setName("user");
 		user.setEType(EcorePackage.Literals.ESTRING);
@@ -109,9 +110,10 @@ class ExtendedMetaDataNamesTest {
 				.filteredOn(d -> d.getMessage().contains("ExtendedMetaData names of"))
 				.singleElement()
 				.satisfies(d -> {
-					assertThat(d.getSeverity()).isEqualTo(Diagnostic.WARNING);
+					assertThat(d.getSeverity()).isEqualTo(Diagnostic.INFO);
 					assertThat(d.getMessage()).contains("user=userName");
 				});
+		assertThat(basic(result.mappings().getEntity().get(0), "user").getColumn().getName()).isEqualTo("user_");
 	}
 
 	@Test

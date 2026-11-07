@@ -28,6 +28,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.api.ConverterService;
 import org.eclipse.fennec.persistence.converter.DefaultConverterService;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
@@ -40,6 +41,7 @@ import org.eclipse.fennec.persistence.eorm.PersistenceUnitDefaults;
 import org.eclipse.fennec.persistence.eorm.PersistenceUnitMetadata;
 import org.eclipse.fennec.persistence.epersistence.EPersistenceFactory;
 import org.eclipse.fennec.persistence.epersistence.PersistenceUnit;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.orm.EntityMapper;
 import org.eclipse.persistence.config.PersistenceUnitProperties;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
@@ -88,10 +90,13 @@ class NonOsgiDelimitedIdentifiersTest {
 		bookClass.getEStructuralFeatures().add(idAttr);
 		// "order" is a SQL reserved word — without delimited identifiers,
 		// EclipseLink will emit unquoted ORDER in DDL and SELECT, both of which
-		// H2 rejects.
+		// H2 rejects. A derived name would be escaped to order_ (issue #399), so
+		// the column is declared literally, as for an existing schema.
 		EAttribute orderAttr = EcoreFactory.eINSTANCE.createEAttribute();
 		orderAttr.setName("order");
 		orderAttr.setEType(EcorePackage.Literals.EINT);
+		EcoreUtil.setAnnotation(orderAttr, DatabaseAnnotations.ANNOTATION_SOURCE, DatabaseAnnotations.COLUMN_NAME,
+				"order");
 		bookClass.getEStructuralFeatures().add(orderAttr);
 		pkg.getEClassifiers().add(bookClass);
 	}

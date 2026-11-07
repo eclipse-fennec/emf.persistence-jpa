@@ -281,6 +281,7 @@ as written. Every derived name is emitted unquoted:
 | list order column | `<FEATURE>_ORDER`, upper-cased | `TAGS_ORDER` |
 | synthetic key of a class without id | column `PK_<CLASSNAME>` | `PK_LOGBOOK` |
 | sequence of a generated id | `SEQ_<CLASS>_<ID>_ID` | `SEQ_PERSON_ID_ID` |
+| table or column whose name is a reserved word | the derived name with `_` appended | `ORDER_`, `value_` |
 
 Since nothing is quoted, the database folds the names by its own rule — H2 and Oracle to upper
 case, PostgreSQL to lower case, MariaDB keeps them. `firstName` is therefore the column
@@ -290,6 +291,28 @@ case, PostgreSQL to lower case, MariaDB keeps them. `firstName` is therefore the
 ```sql
 CREATE TABLE person (id VARCHAR(255) PRIMARY KEY, firstname VARCHAR(255), lastname VARCHAR(255));
 ```
+
+**Reserved words.** A derived table or column name that one of the supported databases — H2,
+PostgreSQL, MariaDB — refuses unquoted gets `_` appended: the attribute `value` is stored in the
+column `value_`, the class `Order` in the table `ORDER_` (issue #399). The rule is the same on
+every database, so a model has one schema wherever it runs, and each escaped name is reported as
+an info diagnostic naming the element and the databases that reserve it. The attribute and entity
+names stay as they are; queries address `value` and `Order`.
+
+Tables and columns are told apart: MariaDB reads `position (` as a function call, so a class
+`Position` gets the table `POSITION_`, while an attribute `position` keeps its column. The word
+lists (`org.eclipse.fennec.persistence.helper.ReservedWords`) are measured against the databases,
+not copied from their manuals, and the TCK measures them again on every flavor.
+
+A declared name is never escaped — an eorm `Column.name` or `Table.name`, a
+[database name](#mapping-onto-an-existing-schema), the fixed `MAP_KEY`/`MAP_VALUE` of a map entry.
+When it is reserved on the database the unit runs on, the deployment fails with an error naming
+entity and attribute, before any DDL; on a database whose words are not known (Oracle, MySQL) a
+name reserved on a known one is a warning. A `strict` mapping escapes nothing either.
+
+A store created before the escape holds such a column under its old name — MariaDB accepted
+`value`, H2 never did. `create-or-extend-tables` adds the escaped column next to it, and the old
+values are no longer read; rename the column, or declare its old name as a database name.
 
 A schema whose names do not follow this derivation is mapped either with database names declared
 on the model (see [Mapping onto an existing schema](#mapping-onto-an-existing-schema)) — what the
@@ -332,8 +355,8 @@ the deployment with an error (declare one `id` per key attribute instead); an `i
 or `fennec.jpa.eorm.useNamesFromExtendedMetaData=true` on the mapping configuration). Such a name
 describes an XML/JSON serialization and need not be a SQL identifier — the GeoJSON member
 `marker-color` is not. When a model carries names the mapping leaves unused, they are reported once
-per EClass; as a warning when the annotation reads as an escape from a reserved word (`user` →
-`userName`), since the DDL for the reserved word will likely fail.
+per EClass, as an info. One that reads as an escape from a reserved word (`user` → `userName`)
+is no longer needed for that: the derived name is escaped anyway (`user_`).
 
 The ways to give a column a name of its own:
 
