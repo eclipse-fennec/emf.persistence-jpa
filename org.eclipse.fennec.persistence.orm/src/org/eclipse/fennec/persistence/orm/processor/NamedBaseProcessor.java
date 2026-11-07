@@ -267,7 +267,7 @@ public abstract class NamedBaseProcessor<T extends ENamedBase, F extends EStruct
 			// relationship — is only read through the reference
 			Set<String> attributeColumns = new HashSet<>();
 			reference.getEContainingClass().getEAllAttributes()
-					.forEach(a -> attributeColumns.add(MappingHelper.getBaseColumnName(a, context)));
+					.forEach(a -> attributeColumns.add(MappingHelper.getBaseColumnName(a, context, isStrict())));
 			for (JoinColumn jc : declared) {
 				if (attributeColumns.contains(jc.getName())) {
 					jc.setInsertable(false);

@@ -25,6 +25,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
+import org.eclipse.fennec.persistence.helper.ReservedWords.Kind;
 import org.eclipse.fennec.persistence.helper.EMaps;
 import org.eclipse.fennec.persistence.eorm.AccessType;
 import org.eclipse.fennec.persistence.eorm.Attributes;
@@ -103,7 +104,9 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		target.setAccessibleObject(eco);
 		target.setClass(source);
 		target.setAccess(AccessType.FIELD);
-		String name = MappingHelper.checkReservedName(source.getName(), "Entity", context, source);
+		// the entity name is no SQL name — JPQL resolves even an entity 'Order'; the table it is
+		// stored in is escaped below (issue #399)
+		String name = source.getName();
 		target.setName(name);
 		String documentation = EcoreUtil.getAnnotation(source, "http://www.eclipse.org/emf/2002/GenModel", "documentation");
 		if (nonNull(documentation)) {
@@ -126,7 +129,16 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 		}
 		// a table of an existing schema is named exactly (issue #296)
 		String databaseName = DatabaseAnnotations.tableName(tableOwner);
-		table.setName(nonNull(databaseName) ? databaseName : tableName.toUpperCase());
+		if (nonNull(databaseName)) {
+			table.setName(databaseName);
+		} else {
+			// a derived name a supported database refuses is escaped (issue #399)
+			String derivedName = MappingHelper.deriveTableName(tableName, true);
+			table.setName(MappingHelper.deriveTableName(tableName, isStrict()));
+			if (!derivedName.equals(table.getName()) && tableOwner == source) {
+				MappingHelper.reportEscaped("Table", derivedName, table.getName(), Kind.TABLE, context, source);
+			}
+		}
 		target.setTable(table);
 		reportUnusedExtendedMetaDataNames();
 		Attributes attrs = EORMFactory.eINSTANCE.createAttributes();
@@ -356,45 +368,32 @@ public class EntityProcessor extends ProcessorImpl<MappingContext, Entity, EClas
 	 * EClass (issue #314). They were table and column names until the switch became opt-in — a
 	 * store created before sees new columns under {@code create-or-extend-tables}, and this is
 	 * where that surfaces. An info, since a model made for XML/JSON carries such names
-	 * legitimately — a warning when one of them escapes a reserved word.
+	 * legitimately. One that escapes a reserved word ({@code user} → {@code userName}) needs no
+	 * more than that: the derived name is escaped by the mapping itself (issue #399).
 	 */
 	private void reportUnusedExtendedMetaDataNames() {
 		if (context.isUseNamesFromExtendedMetaData()) {
 			return;
 		}
 		List<String> unused = new ArrayList<>();
-		boolean escapesReservedWord = collectUnused(source.getName(),
-				MappingHelper.getTableName(source, true), unused);
+		collectUnused(source.getName(), MappingHelper.getTableName(source, true), unused);
 		for (EStructuralFeature feature : source.getEStructuralFeatures()) {
-			escapesReservedWord |= collectUnused(feature.getName(),
-					MappingHelper.getColumnName(feature, true), unused);
+			collectUnused(feature.getName(), MappingHelper.getColumnName(feature, true), unused);
 		}
 		if (unused.isEmpty()) {
 			return;
 		}
-		String message = String.format(
+		context.info(MappingContext.DIAGNOSTIC_SOURCE, String.format(
 				"ExtendedMetaData names of '%s' are not used as table/column names: %s. "
 						+ "Enable useNamesFromExtendedMetaData, or declare the names in the eorm mapping.",
-				source.getName(), unused);
-		// a model name that is a reserved word, annotated with one that is not, reads as the
-		// escape the reserved-word warning used to recommend — without the switch the DDL fails
-		if (escapesReservedWord) {
-			context.warning(MappingContext.DIAGNOSTIC_SOURCE, message, source);
-		} else {
-			context.info(MappingContext.DIAGNOSTIC_SOURCE, message, source);
-		}
+				source.getName(), unused), source);
 	}
 
-	/**
-	 * Adds {@code name=annotated} to {@code unused} when the two differ.
-	 * @return {@code true} if the annotated name escapes a reserved word
-	 */
-	private static boolean collectUnused(String name, String annotated, List<String> unused) {
-		if (annotated.equals(name)) {
-			return false;
+	/** Adds {@code name=annotated} to {@code unused} when the two differ. */
+	private static void collectUnused(String name, String annotated, List<String> unused) {
+		if (!annotated.equals(name)) {
+			unused.add(name + "=" + annotated);
 		}
-		unused.add(name + "=" + annotated);
-		return MappingHelper.isReservedName(name) && !MappingHelper.isReservedName(annotated);
 	}
 
 }

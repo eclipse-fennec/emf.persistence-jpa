@@ -24,6 +24,9 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.eorm.Basic;
+import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -58,28 +61,117 @@ class EntityMapperDiagnosticsTest {
 	}
 
 	@Test
-	void reservedSqlNameIsReportedAsWarningWithTheAffectedElement() {
+	void reservedDerivedColumnIsEscapedAndReportedAsInfo() {
 		EPackage ePackage = createEPackage();
 		EClass person = createEClass(ePackage, "Person");
-		EAttribute select = EcoreFactory.eINSTANCE.createEAttribute();
-		select.setName("select");
-		select.setEType(EcorePackage.Literals.ESTRING);
-		person.getEStructuralFeatures().add(select);
+		EAttribute select = createAttribute(person, "select");
 
 		MappingResult result = new EntityMapper().createMappingsFromEPackageWithDiagnostics(ePackage);
 
+		// issue #399: the derived column is escaped instead of breaking the DDL
 		assertThat(result.isSuccess()).isTrue();
-		assertThat(result.getSeverity()).isEqualTo(Diagnostic.WARNING);
-		List<Diagnostic> warnings = result.diagnostics().stream()
-				.filter(diagnostic -> diagnostic.getSeverity() == Diagnostic.WARNING)
-				.toList();
-		assertThat(warnings).isNotEmpty();
-		Diagnostic warning = warnings.get(0);
-		assertThat(warning.getSource()).isEqualTo(MappingContext.DIAGNOSTIC_SOURCE);
-		assertThat(warning.getMessage()).contains("reserved word").contains("select");
-		assertThat(warning.getData()).first().isEqualTo(select);
-		// the mapping itself is still produced - warnings do not abort the run
-		assertThat(result.mappings().getEntity()).hasSize(1);
+		assertThat(basic(result, "select").getColumn().getName()).isEqualTo("select_");
+		assertThat(basic(result, "select").getName()).as("the attribute keeps its name").isEqualTo("select");
+		assertThat(result.diagnostics()).noneMatch(d -> d.getSeverity() >= Diagnostic.WARNING);
+		assertThat(result.diagnostics()).filteredOn(d -> d.getSeverity() == Diagnostic.INFO)
+				.anySatisfy(info -> {
+					assertThat(info.getSource()).isEqualTo(MappingContext.DIAGNOSTIC_SOURCE);
+					assertThat(info.getMessage()).contains("Column name 'select'", "'select_'", "H2", "POSTGRESQL",
+							"MARIADB");
+					assertThat(info.getData()).first().isEqualTo(select);
+				});
+	}
+
+	@Test
+	void reservedDerivedTableIsEscapedAndReportedAsInfo() {
+		EPackage ePackage = createEPackage();
+		EClass order = createEClass(ePackage, "Order");
+
+		MappingResult result = new EntityMapper().createMappingsFromEPackageWithDiagnostics(ePackage);
+
+		assertThat(result.mappings().getEntity()).singleElement().satisfies(entity -> {
+			assertThat(entity.getTable().getName()).isEqualTo("ORDER_");
+			assertThat(entity.getName()).as("the entity keeps its name").isEqualTo("Order");
+		});
+		assertThat(result.diagnostics()).filteredOn(d -> d.getSeverity() == Diagnostic.INFO)
+				.anySatisfy(info -> {
+					assertThat(info.getMessage()).contains("Table name 'ORDER'", "'ORDER_'");
+					assertThat(info.getData()).first().isEqualTo(order);
+				});
+	}
+
+	/** A word only some kind of name has reserved is escaped only there: MariaDB reads {@code position (} as a call. */
+	@Test
+	void aWordReservedOnlyAsTableNameStaysAColumnName() {
+		EPackage ePackage = createEPackage();
+		EClass position = createEClass(ePackage, "Position");
+		createAttribute(position, "position");
+
+		MappingResult result = new EntityMapper().createMappingsFromEPackageWithDiagnostics(ePackage);
+
+		assertThat(result.mappings().getEntity().get(0).getTable().getName()).isEqualTo("POSITION_");
+		assertThat(basic(result, "position").getColumn().getName()).isEqualTo("position");
+	}
+
+	@Test
+	void ordinaryNamesAreNotEscaped() {
+		EPackage ePackage = createEPackage();
+		EClass person = createEClass(ePackage, "Person");
+		createAttribute(person, "timestamp");
+		createAttribute(person, "type");
+
+		MappingResult result = new EntityMapper().createMappingsFromEPackageWithDiagnostics(ePackage);
+
+		assertThat(result.mappings().getEntity().get(0).getTable().getName()).isEqualTo("PERSON");
+		assertThat(basic(result, "timestamp").getColumn().getName()).isEqualTo("timestamp");
+		assertThat(basic(result, "type").getColumn().getName()).isEqualTo("type");
+		assertThat(result.diagnostics()).noneMatch(d -> d.getMessage().contains("reserved"));
+	}
+
+	/** A database name is the name of an existing column, taken literally (issue #296). */
+	@Test
+	void declaredDatabaseNamesAreNotEscaped() {
+		EPackage ePackage = createEPackage();
+		EClass order = createEClass(ePackage, "Order");
+		EcoreUtil.setAnnotation(order, DatabaseAnnotations.ANNOTATION_SOURCE, DatabaseAnnotations.TABLE_NAME, "ORDER");
+		EAttribute value = createAttribute(order, "value");
+		EcoreUtil.setAnnotation(value, DatabaseAnnotations.ANNOTATION_SOURCE, DatabaseAnnotations.COLUMN_NAME, "value");
+
+		MappingResult result = new EntityMapper().createMappingsFromEPackageWithDiagnostics(ePackage);
+
+		assertThat(result.mappings().getEntity().get(0).getTable().getName()).isEqualTo("ORDER");
+		assertThat(basic(result, "value").getColumn().getName()).isEqualTo("value");
+		assertThat(result.diagnostics()).noneMatch(d -> d.getMessage().contains("reserved"));
+	}
+
+	/** A strict mapping guesses nothing, so it takes the derived names as they are. */
+	@Test
+	void aStrictMappingDoesNotEscape() {
+		EPackage ePackage = createEPackage();
+		EClass order = createEClass(ePackage, "Order");
+		createAttribute(order, "value");
+		EntityMapper mapper = new EntityMapper();
+		mapper.setStrict(true);
+
+		MappingResult result = mapper.createMappingsFromEPackageWithDiagnostics(ePackage);
+
+		assertThat(result.mappings().getEntity().get(0).getTable().getName()).isEqualTo("ORDER");
+		assertThat(basic(result, "value").getColumn().getName()).isEqualTo("value");
+	}
+
+	private static EAttribute createAttribute(EClass owner, String name) {
+		EAttribute attribute = EcoreFactory.eINSTANCE.createEAttribute();
+		attribute.setName(name);
+		attribute.setEType(EcorePackage.Literals.ESTRING);
+		owner.getEStructuralFeatures().add(attribute);
+		return attribute;
+	}
+
+	private static Basic basic(MappingResult result, String name) {
+		return result.mappings().getEntity().get(0).getAttributes().getBasic().stream()
+				.filter(b -> name.equals(b.getName()))
+				.findFirst()
+				.orElseThrow();
 	}
 
 	@Test

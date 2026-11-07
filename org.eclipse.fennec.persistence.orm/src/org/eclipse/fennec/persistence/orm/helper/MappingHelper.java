@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,6 +39,8 @@ import org.eclipse.fennec.persistence.eorm.BaseRef;
 import org.eclipse.fennec.persistence.eorm.Column;
 import org.eclipse.fennec.persistence.helper.DatabaseAnnotations;
 import org.eclipse.fennec.persistence.helper.EMaps;
+import org.eclipse.fennec.persistence.helper.ReservedWords;
+import org.eclipse.fennec.persistence.helper.ReservedWords.Kind;
 import org.eclipse.fennec.persistence.eorm.EFeatureObject;
 import org.eclipse.fennec.persistence.eorm.ENamedBase;
 import org.eclipse.fennec.persistence.eorm.EORMFactory;
@@ -66,30 +69,6 @@ public class MappingHelper {
 		MappingType mappingType = null;
 		String mappedByName = null;
 	}
-
-	private static final List<String> RESERVED_WORDS = List.of(
-		// SQL-92/99 reserved keywords that are strictly reserved across
-		// H2, PostgreSQL, MySQL, and Oracle as unquoted identifiers
-		"select", "from", "where", "update", "insert", "delete",
-		"create", "drop", "alter", "grant", "revoke",
-		"table", "column", "index", "key", "value",
-		"order", "group", "having", "distinct",
-		"join", "left", "right", "inner", "outer", "cross", "natural", "on",
-		"and", "or", "not", "in", "is", "between", "like", "exists",
-		"null", "true", "false", "all", "any",
-		"primary", "foreign", "unique", "check", "default", "constraint",
-		"references", "cascade", "restrict",
-		"user",
-		// SQL data type keywords reserved as identifiers
-		"bigint", "integer", "float", "double", "decimal", "numeric",
-		"char", "varchar", "boolean", "interval",
-		// Temporal keywords reserved in SQL
-		"year", "month", "day", "hour", "minute", "second",
-		// Other strictly reserved keywords
-		"end", "limit", "offset", "row", "rows",
-		"trigger", "view", "sequence", "function", "procedure",
-		"cross"
-	);
 
 	/**
 	 * Checks if the given name is a SQL reserved word and logs a warning if so.
@@ -129,7 +108,7 @@ public class MappingHelper {
 		if (isNull(name)) {
 			return null;
 		}
-		if (RESERVED_WORDS.contains(name.toLowerCase())) {
+		if (isReservedName(name)) {
 			String message = String.format("%s name '%s' is a SQL reserved word and may cause issues with some databases. "
 					+ "Consider renaming, declaring an explicit column/table name in the eorm mapping, "
 					+ "or enabling useNamesFromExtendedMetaData with an ExtendedMetaData name.",
@@ -148,15 +127,12 @@ public class MappingHelper {
 	}
 	
 	/**
-	 * Verifies of the given name is a reserved {@link String} in JPA
-	 * @param name the name to verify
-	 * @return the escaped version of this name 
+	 * @param name the name to verify, any case
+	 * @return {@code true} if a supported database refuses the name unquoted as a table or a
+	 *         column name ({@link ReservedWords})
 	 */
 	public static boolean isReservedName(String name) {
-		if (isNull(name)) {
-			return false;
-		}
-		return RESERVED_WORDS.contains(name.toLowerCase());
+		return ReservedWords.isReserved(name, Kind.COLUMN) || ReservedWords.isReserved(name, Kind.TABLE);
 	}
 
 	/**
@@ -171,18 +147,17 @@ public class MappingHelper {
 	}
 
 	/**
-	 * Creates a {@link ENamedBase} out of an {@link EStructuralFeature}, reporting
-	 * reserved-name findings to the given diagnostic channel.
+	 * Creates a {@link ENamedBase} out of an {@link EStructuralFeature}.
 	 * @param <T> the base type
 	 * @param base the base instance
 	 * @param feature the {@link EStructuralFeature}
-	 * @param diagnostics the diagnostic channel; {@code null} falls back to JUL
+	 * @param diagnostics the diagnostic channel; unused, the attribute name is no SQL name
 	 * @return the {@link ENamedBase} instance
 	 */
 	public static <T extends ENamedBase> T createNamedBase(T base, EStructuralFeature feature, ProcessingContext diagnostics) {
-		// the JPA attribute name is the feature name — the runtime resolves features by it
-		String name = checkReservedName(feature.getName(), "Feature", diagnostics, feature);
-		base.setName(name);
+		// the JPA attribute name is the feature name — the runtime resolves features by it. It
+		// never reaches the SQL; the column it is stored in is named by createBase.
+		base.setName(feature.getName());
 		EFeatureObject efa = EORMFactory.eINSTANCE.createEFeatureObject();
 		efa.setFeature(feature);
 		efa.setName(feature.getName());
@@ -208,17 +183,17 @@ public class MappingHelper {
 	 * @param <T> the base type
 	 * @param base the base instance
 	 * @param feature the {@link EStructuralFeature}
-	 * @param strict {@code true} takes names as-is without reserved-word checks
+	 * @param strict {@code true} takes derived names as-is, without escaping reserved words
 	 * @param diagnostics the diagnostic channel; {@code null} falls back to JUL
 	 * @return the {@link Base} instance
 	 */
 	public static <T extends Base> T createBase(T base, EStructuralFeature feature, boolean strict, ProcessingContext diagnostics) {
 		base = createNamedBase(base, feature, diagnostics);
 		Column column = EORMFactory.eINSTANCE.createColumn();
-		String name = getBaseColumnName(feature, diagnostics);
-		if (isNull(mapEntryColumnName(feature)) && isNull(DatabaseAnnotations.columnName(feature)) && !strict) {
-			// a derived name may be a reserved word; a fixed or declared one is taken as it is
-			name = checkReservedName(name, "Column", diagnostics, feature);
+		String name = getBaseColumnName(feature, diagnostics, strict);
+		String derived = getBaseColumnName(feature, diagnostics, true);
+		if (!name.equals(derived)) {
+			reportEscaped("Column", derived, name, Kind.COLUMN, diagnostics, feature);
 		}
 		column.setName(name);
 		column.setNullable(!feature.isRequired());
@@ -230,19 +205,72 @@ public class MappingHelper {
 	}
 	
 	/**
-	 * The column a feature of a {@link Base} mapping is stored in: the fixed name of a map entry's
-	 * {@code key}/{@code value}, the name an existing schema declares for it
-	 * ({@link DatabaseAnnotations#COLUMN_NAME}, issue #296), or the derived one.
+	 * The column a feature of a {@link Base} mapping is stored in, as a non-strict mapping names
+	 * it — see {@link #getBaseColumnName(EStructuralFeature, ProcessingContext, boolean)}.
 	 * @param feature the {@link EStructuralFeature}
 	 * @param context the mapping run, decides about {@code ExtendedMetaData} names; may be {@code null}
 	 * @return the column name, never {@code null}
 	 */
 	public static String getBaseColumnName(EStructuralFeature feature, ProcessingContext context) {
+		return getBaseColumnName(feature, context, false);
+	}
+
+	/**
+	 * The column a feature of a {@link Base} mapping is stored in: the fixed name of a map entry's
+	 * {@code key}/{@code value}, the name an existing schema declares for it
+	 * ({@link DatabaseAnnotations#COLUMN_NAME}, issue #296), or the derived one. A derived name
+	 * that a supported database refuses unquoted is {@link ReservedWords#escape escaped}
+	 * ({@code value} becomes {@code value_}, issue #399) unless the mapping is strict; a fixed or
+	 * declared name is taken as it is.
+	 * @param feature the {@link EStructuralFeature}
+	 * @param context the mapping run, decides about {@code ExtendedMetaData} names; may be {@code null}
+	 * @param strict {@code true} takes a derived name as it is
+	 * @return the column name, never {@code null}
+	 */
+	public static String getBaseColumnName(EStructuralFeature feature, ProcessingContext context, boolean strict) {
 		String name = mapEntryColumnName(feature);
 		if (isNull(name)) {
 			name = DatabaseAnnotations.columnName(feature);
 		}
-		return isNull(name) ? getColumnName(feature, useNamesFromExtendedMetaData(context)) : name;
+		if (nonNull(name)) {
+			return name;
+		}
+		name = getColumnName(feature, useNamesFromExtendedMetaData(context));
+		return strict ? name : ReservedWords.escape(name, Kind.COLUMN);
+	}
+
+	/**
+	 * The table an entity derives: the name upper-cased, {@link ReservedWords#escape escaped}
+	 * unless the mapping is strict (issue #399).
+	 * @param name the derived table name, any case
+	 * @param strict {@code true} takes the name as it is
+	 * @return the table name
+	 */
+	public static String deriveTableName(String name, boolean strict) {
+		String table = name.toUpperCase(Locale.ROOT);
+		return strict ? table : ReservedWords.escape(table, Kind.TABLE);
+	}
+
+	/**
+	 * Reports a derived name the mapping escaped (issue #399) as an info: the schema differs from
+	 * the model there, which matters to whoever creates or reads the tables outside the unit.
+	 * @param what {@code Column} or {@code Table}
+	 * @param derived the name as derived
+	 * @param escaped the name used instead
+	 * @param kind where the name is used
+	 * @param diagnostics the diagnostic channel; {@code null} falls back to JUL
+	 * @param element the affected model element
+	 */
+	public static void reportEscaped(String what, String derived, String escaped, Kind kind,
+			ProcessingContext diagnostics, Object element) {
+		String message = String.format("%s name '%s' is reserved on %s and is named '%s' instead. "
+				+ "Declare a name in the eorm mapping or as database name to choose another.",
+				what, derived, ReservedWords.reservingDialects(derived, kind), escaped);
+		if (nonNull(diagnostics)) {
+			diagnostics.info(MappingContext.DIAGNOSTIC_SOURCE, message, element);
+		} else {
+			LOG.log(Level.INFO, message);
+		}
 	}
 
 	/**

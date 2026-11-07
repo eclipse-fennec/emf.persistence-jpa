@@ -182,12 +182,10 @@ public class MappingHelperTest {
 			"primary", "foreign", "unique", "check", "default", "constraint",
 			// Data types
 			"bigint", "integer", "float", "double", "decimal", "varchar",
-			"boolean",
-			// Temporal
+			// Temporal (H2)
 			"year", "month", "day", "hour", "minute", "second",
 			// Other
-			"end", "limit", "offset",
-			"sequence", "view", "trigger", "function", "procedure"
+			"end", "limit", "offset", "trigger", "procedure"
 		})
 		void testReservedWordIsDetected(String word) {
 			assertTrue(MappingHelper.isReservedName(word), "Should be reserved: " + word);
@@ -203,7 +201,9 @@ public class MappingHelperTest {
 		}
 
 		@ParameterizedTest
-		@ValueSource(strings = {"person", "address", "firstName", "lastName", "email", "myOrder", "customValue"})
+		@ValueSource(strings = {"person", "address", "firstName", "lastName", "email", "myOrder", "customValue",
+				// keywords no supported database refuses as a name (measured, issue #399)
+				"boolean", "sequence", "view", "function", "type", "name", "timestamp", "date", "status"})
 		void testNonReservedWordIsNotDetected(String word) {
 			assertFalse(MappingHelper.isReservedName(word), "Should not be reserved: " + word);
 		}
