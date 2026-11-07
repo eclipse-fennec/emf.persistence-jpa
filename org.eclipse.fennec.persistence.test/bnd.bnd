@@ -19,8 +19,7 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.eclipse.fennec.persistence.query.derived,\
 	org.eclipse.fennec.persistence.repository,\
 	org.eclipse.fennec.persistence.repository.jpa,\
-	org.eclipse.fennec.query.model,\
-	org.eclipse.fennec.stream.model
+	org.eclipse.fennec.query.model
 
 -library: \
 	enableOSGi-Test,\
@@ -57,8 +56,7 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.eclipse.fennec.persistence.repository;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
-	org.eclipse.fennec.command.model;version=snapshot,\
-	org.eclipse.fennec.stream.model;version=snapshot
+	org.eclipse.fennec.command.model;version=snapshot
 
 
 -testpath: \
@@ -73,7 +71,6 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.fennec.expression.model;version=snapshot,\
 	org.eclipse.fennec.command.model;version=snapshot,\
-	org.eclipse.fennec.stream.model;version=snapshot,\
 	org.eclipse.fennec.persistence.orm;version=snapshot,\
 	org.eclipse.fennec.persistence.eclipselink;version=snapshot
 
