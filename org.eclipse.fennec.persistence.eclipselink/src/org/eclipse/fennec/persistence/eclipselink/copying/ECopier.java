@@ -37,6 +37,7 @@ import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicTypeBuilder;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicTypeContext;
+import org.eclipse.fennec.persistence.eclipselink.mappings.ESyntheticKeyAccessor;
 
 /**
  * Enhanced EMF object copier with EclipseLink entity support, scenario-specific optimizations, and high-performance collection copying.
@@ -519,6 +520,19 @@ public class ECopier extends Copier {
 		
 		// Priority 3: Standard EMF copying (general scenarios)
 		return super.createCopy(eObject);
+	}
+
+	/**
+	 * Copies the object and, with it, its synthetic key (issue #403): the key of a class without
+	 * an id attribute rides on an adapter, which the features this copier copies do not include.
+	 * Every copy EclipseLink takes — backup clone, unit of work clone, merge into the original —
+	 * goes through here, and each needs the key the object is stored under.
+	 */
+	@Override
+	public EObject copy(EObject eObject) {
+		EObject copy = super.copy(eObject);
+		ESyntheticKeyAccessor.copyKeys(eObject, copy);
+		return copy;
 	}
 
 	/* 

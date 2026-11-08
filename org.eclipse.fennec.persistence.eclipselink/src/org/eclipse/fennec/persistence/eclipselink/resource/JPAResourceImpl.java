@@ -88,6 +88,7 @@ import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPoli
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicHelper;
 import org.eclipse.fennec.persistence.eclipselink.dynamic.EDynamicType;
 import org.eclipse.fennec.persistence.eclipselink.mappings.EFeatureAccessor;
+import org.eclipse.fennec.persistence.eclipselink.mappings.ESyntheticKeyAccessor;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueries;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaQueryPlan;
 import org.eclipse.fennec.persistence.eclipselink.query.JpaRepresentativePlan;
@@ -1111,7 +1112,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 
 		Map<String, EObject> managedByKey = new LinkedHashMap<>();
 		for (EObject child : targetChildren) {
-			String key = CompositeIds.fragment(child);
+			String key = matchKey(child);
 			if (nonNull(key)) {
 				managedByKey.put(key, child);
 			}
@@ -1119,7 +1120,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		List<EObject> toAdd = new ArrayList<>();
 		List<EObject> desired = new ArrayList<>();
 		for (EObject child : sourceChildren) {
-			String key = CompositeIds.fragment(child);
+			String key = matchKey(child);
 			EObject managed = nonNull(key) ? managedByKey.remove(key) : null;
 			if (nonNull(managed)) {
 				copyStateInto(child, managed, server, em);
@@ -1143,6 +1144,15 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 			}
 		}
+	}
+
+	/**
+	 * What a stored child is matched by: its id, or — for a class without an id attribute — the
+	 * synthetic key it was loaded with (issue #403). A child that has neither is new.
+	 */
+	private static String matchKey(EObject child) {
+		String fragment = CompositeIds.fragment(child);
+		return nonNull(fragment) ? fragment : ESyntheticKeyAccessor.keyOf(child);
 	}
 
 	/**

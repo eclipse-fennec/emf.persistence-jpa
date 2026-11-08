@@ -254,7 +254,11 @@ order:
 - **Composite ids** — multiple id attributes or a reference-based id class are
   detected and mapped as composite keys.
 - **No id at all** — a synthetic `pk_<ClassName>` column with a sequence
-  generator is added.
+  generator is added. The model has no feature for it, so the key rides on an adapter of the
+  loaded object (issue #184). It stays with that object through save and delete: a loaded
+  container can be saved with children edited, added or removed, or deleted with all of them,
+  and a child without an id is recognised by that key (issue #403). An `EcoreUtil.copy` of a
+  loaded object is a new object to the store — the copy does not carry the key.
 
 In `strict` mode no generators are invented — names and ids are taken as-is
 (useful when mapping onto an existing schema). An id attribute that declares how its key is
