@@ -149,6 +149,9 @@ public abstract class AbstractPersistenceTCK {
 	protected EStructuralFeature profileNicknames;
 	protected EStructuralFeature profileMotto;
 	protected EStructuralFeature profileRank;
+	protected EStructuralFeature profileTint;
+	protected EStructuralFeature profileScore;
+	protected EStructuralFeature profileBonus;
 	protected EStructuralFeature companyName;
 	protected EStructuralFeature companyEmployees;
 
@@ -213,6 +216,9 @@ public abstract class AbstractPersistenceTCK {
 		profileNicknames = profileClass.getEStructuralFeature("nicknames");
 		profileMotto = profileClass.getEStructuralFeature("motto");
 		profileRank = profileClass.getEStructuralFeature("rank");
+		profileTint = profileClass.getEStructuralFeature("tint");
+		profileScore = profileClass.getEStructuralFeature("score");
+		profileBonus = profileClass.getEStructuralFeature("bonus");
 		companyName = companyClass.getEStructuralFeature("name");
 		companyEmployees = companyClass.getEStructuralFeature("employees");
 		setUpBackend(tckPackage);
@@ -297,6 +303,31 @@ public abstract class AbstractPersistenceTCK {
 	private Object idValue(EClass eClass, int id) {
 		Class<?> instanceClass = eClass.getEIDAttribute().getEAttributeType().getInstanceClass();
 		return instanceClass == String.class ? String.valueOf(id) : id;
+	}
+
+	/**
+	 * Whether the store itself holds a value for an attribute of a stored object, read past the
+	 * backend (issue #404): a {@code NULL} column or a missing field is no value. {@code null}
+	 * when the binding cannot look — the cases then verify through the backend alone.
+	 *
+	 * @param type the object's type
+	 * @param id the object's id, as {@link #newProfile} sets it
+	 * @param attribute a single-valued attribute of the type
+	 * @return whether a value is stored, or {@code null} if the binding does not say
+	 */
+	protected Boolean storesValue(EClass type, Object id, EStructuralFeature attribute) {
+		return null;
+	}
+
+	/** {@link #storesValue} for every given feature of a stored profile, where the binding can look. */
+	private void assertStored(int id, boolean stored, List<EStructuralFeature> features) {
+		for (EStructuralFeature feature : features) {
+			Boolean answer = storesValue(profileClass, idValue(profileClass, id), feature);
+			if (answer != null) {
+				assertThat(answer).as("the store holds %s for %s", stored ? "a value" : "no value", feature.getName())
+						.isEqualTo(stored);
+			}
+		}
 	}
 
 	/** Saves the given objects as contents of the type's backend resource. */
@@ -542,6 +573,89 @@ public abstract class AbstractPersistenceTCK {
 
 		EObject reloaded = findById(loadAll(createBackendResourceSet(), "Profile"), "3");
 		assertThat(reloaded.eGet(profileMotto)).as("the unset value is gone after reload").isNull();
+		assertThat(reloaded.eIsSet(profileMotto)).as("and the feature is unset, not set to null").isFalse();
+	}
+
+	/** The unsettable features of {@code Profile} (issue #404), one per kind of value. */
+	private List<EStructuralFeature> unsettableFeatures() {
+		return List.of(profileMotto, profileTint, profileScore, profileBonus);
+	}
+
+	/** Sets every unsettable feature of a profile to a value that is not its default. */
+	private void setUnsettables(EObject profile) {
+		EEnum color = (EEnum) profileTint.getEType();
+		profile.eSet(profileMotto, "carpe diem");
+		profile.eSet(profileTint, color.getEEnumLiteral("BLUE").getInstance());
+		profile.eSet(profileScore, 42);
+		profile.eSet(profileBonus, 4711L);
+	}
+
+	/**
+	 * An unsettable feature never set comes back unset (issue #404). {@code eGet} of an unset
+	 * enum answers its first literal and of an unset {@code EInt} answers 0 — values the object
+	 * does not have. A backend that stores what {@code eGet} answers, or sets what it read even
+	 * when that is nothing, hands back a set feature, and "not given" turns into a value.
+	 */
+	@Test
+	public void unsetUnsettableFeaturesReadBackUnset() throws Exception {
+		save(createBackendResourceSet(), "Profile", newProfile(5));
+		assertStored(5, false, unsettableFeatures());
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Profile"), "5");
+		assertThat(unsettableFeatures()).allSatisfy(feature -> assertThat(loaded.eIsSet(feature))
+				.as("%s was never set", feature.getName()).isFalse());
+	}
+
+	/**
+	 * The other half of {@link #unsetUnsettableFeaturesReadBackUnset} (issue #404): an unsettable
+	 * feature set <em>to its default</em> is set, and stays set — RED, 0 and 0L are values the
+	 * object was given. A backend that tells set from unset by comparing with the default loses them.
+	 */
+	@Test
+	public void unsettableFeaturesSetToTheirDefaultReadBackSet() throws Exception {
+		EEnum color = (EEnum) profileTint.getEType();
+		Object red = color.getEEnumLiteral("RED").getInstance();
+		EObject profile = newProfile(6);
+		profile.eSet(profileMotto, "");
+		profile.eSet(profileTint, red);
+		profile.eSet(profileScore, 0);
+		profile.eSet(profileBonus, 0L);
+		save(createBackendResourceSet(), "Profile", profile);
+		assertStored(6, true, unsettableFeatures());
+
+		EObject loaded = findById(loadAll(createBackendResourceSet(), "Profile"), "6");
+		assertThat(unsettableFeatures()).allSatisfy(feature -> assertThat(loaded.eIsSet(feature))
+				.as("%s was set to its default", feature.getName()).isTrue());
+		assertThat(loaded.eGet(profileMotto)).isEqualTo("");
+		assertThat(loaded.eGet(profileTint)).isEqualTo(red);
+		assertThat(loaded.eGet(profileScore)).isEqualTo(0);
+		assertThat(loaded.eGet(profileBonus)).isEqualTo(0L);
+	}
+
+	/**
+	 * Set values of every kind round-trip, and {@code eUnset} of a loaded object reaches the store
+	 * (issue #404): the reload has them unset, not reset to a default.
+	 */
+	@Test
+	public void unsettableFeaturesRoundTripAndUnset() throws Exception {
+		EObject profile = newProfile(7);
+		setUnsettables(profile);
+		save(createBackendResourceSet(), "Profile", profile);
+
+		EObject stored = findById(loadAll(createBackendResourceSet(), "Profile"), "7");
+		EEnum color = (EEnum) profileTint.getEType();
+		assertThat(stored.eGet(profileMotto)).isEqualTo("carpe diem");
+		assertThat(stored.eGet(profileTint)).isEqualTo(color.getEEnumLiteral("BLUE").getInstance());
+		assertThat(stored.eGet(profileScore)).isEqualTo(42);
+		assertThat(stored.eGet(profileBonus)).isEqualTo(4711L);
+		assertStored(7, true, unsettableFeatures());
+		unsettableFeatures().forEach(stored::eUnset);
+		stored.eResource().save(null);
+		assertStored(7, false, unsettableFeatures());
+
+		EObject reloaded = findById(loadAll(createBackendResourceSet(), "Profile"), "7");
+		assertThat(unsettableFeatures()).allSatisfy(feature -> assertThat(reloaded.eIsSet(feature))
+				.as("%s was unset before the save", feature.getName()).isFalse());
 	}
 
 	/**

@@ -71,6 +71,40 @@ class PersistedFormConfigTest {
 		assertThat(attributes.get("data")).isNull();
 	}
 
+	/**
+	 * An unsettable feature writes a value equal to its default (issue #404): written means set,
+	 * missing means unset — the codec skips an unset one before it compares with the default.
+	 */
+	@Test
+	void anUnsettableFeatureKeepsItsDefault() {
+		EAttribute tint = attribute(false, false, false, true);
+		tint.setUnsettable(true);
+
+		assertThat(attributes.get(tint)).containsExactly(Map.entry(ConfigProperty.SERIALIZE_DEFAULT.getKey(), Boolean.TRUE));
+	}
+
+	@Test
+	void anUnsettableVolatileFeatureIsForcedAndKeepsItsDefault() {
+		EAttribute data = attribute(false, true, true, true);
+		data.setUnsettable(true);
+
+		assertThat(attributes.get(data)).containsEntry(ConfigProperty.FORCE_WRITE.getKey(), Boolean.TRUE)
+				.containsEntry(ConfigProperty.FORCE_READ.getKey(), Boolean.TRUE)
+				.containsEntry(ConfigProperty.SERIALIZE_DEFAULT.getKey(), Boolean.TRUE);
+	}
+
+	@Test
+	void aManyValuedOrTransientUnsettableFeatureNeedsNothing() {
+		EAttribute many = attribute(false, false, false, true);
+		many.setUnsettable(true);
+		many.setUpperBound(-1);
+		EAttribute computed = attribute(true, false, false, true);
+		computed.setUnsettable(true);
+
+		assertThat(attributes.get(many)).as("many-valued: an empty list is the codec's serializeEmpty").isNull();
+		assertThat(attributes.get(computed)).as("transient").isNull();
+	}
+
 	private static EAttribute attribute(boolean isTransient, boolean derived, boolean isVolatile, boolean changeable) {
 		EClass owner = EcoreFactory.eINSTANCE.createEClass();
 		owner.setName("Owner");
