@@ -205,6 +205,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * from it, must find that instance rather than convert the object again. Lives for one save.
 	 */
 	private final Map<EObject, EObject> aheadOfTurn = new IdentityHashMap<>();
+	/**
+	 * The converted targets of single-valued references that wait for their registration (issue
+	 * #406). Registered at once, a target in a cycle would be persisted while an object it reaches
+	 * is still being sanitized, and the cascade would meet the plain object; registered once the
+	 * root is through, everything it reaches is an entity.
+	 */
+	private final List<EObject> pendingPersist = new ArrayList<>();
 
 	/**
 	 * Creates a resource backed by a {@link JPAUnit} — the narrow capability that hands out
@@ -685,6 +692,20 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private EObject upsert(EntityManager em, EObject source, EObject original, Server server,
 			Map<String, EObject> existingRows) {
+		pendingPersist.clear();
+		EObject existing = upsertRow(em, source, original, server, existingRows);
+		for (EObject pending : pendingPersist) {
+			// a many-to-one has no cascade: what only it reaches is registered explicitly
+			if (!em.contains(pending)) {
+				em.persist(pending);
+			}
+		}
+		pendingPersist.clear();
+		return existing;
+	}
+
+	private EObject upsertRow(EntityManager em, EObject source, EObject original, Server server,
+			Map<String, EObject> existingRows) {
 		ClassDescriptor descriptor = nonNull(server)
 				? server.getDescriptorForAlias(source.eClass().getName())
 				: null;
@@ -713,7 +734,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return null;
 		}
 		if (existing instanceof EObject existingEO) {
-			copyStateInto(source, existingEO, server, em);
+			copyStateInto(source, original, existingEO, server, em);
 			return existingEO;
 		}
 		// a new root: a list target reached from it that refers back finds this instance (#381)
@@ -857,6 +878,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				}
 				if (value instanceof EObject eo) {
 					EObject managed = managedHandle(eo, refDescriptor, server, em);
+					if (isNull(managed)) {
+						// a plain target without a row, saved in the same call (issue #406): handed
+						// to the cascade as it is, EclipseLink refuses it as no known entity, and a
+						// many-to-one has no cascade at all — so it is converted here and registered
+						// once the object is sanitized (see upsert), and its own save then finds
+						// the row, as for a list target (#381)
+						managed = entityAheadOfTurn(eo, server, em);
+						if (nonNull(managed)) {
+							pendingPersist.add(managed);
+						}
+					}
 					if (nonNull(managed) && (recovered || managed != eo)) {
 						source.eSet(ref, managed);
 					}
@@ -893,7 +925,7 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * EObject or a detached instance of the entity class — with a persisted id, or {@code null}
 	 * when the value is already managed, carries no usable id or has no row yet.
 	 */
-	private static EObject managedHandle(EObject value, ClassDescriptor refDescriptor, Server server,
+	private EObject managedHandle(EObject value, ClassDescriptor refDescriptor, Server server,
 			EntityManager em) {
 		if (isNull(value) || value.eIsProxy()) {
 			return null;
@@ -921,6 +953,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		// that position is written as its id and inserted by its own save; an entity instance
 		// EclipseLink discovers at commit and refuses as unregistered, so it is registered here,
 		// and its own save then finds the row (issue #311)
+		if (aheadOfTurn.containsKey(value)) {
+			// on its way already — a cycle back to an object registered further up
+			return value;
+		}
+		aheadOfTurn.put(value, value);
+		// its own references first: what it reaches is not seen by sanitizing otherwise, and a
+		// new object behind a many-to-one, which has no cascade, stays unregistered (issue #406)
+		sanitizeNonContainmentReferences(value, value, server, em);
 		em.persist(value);
 		return value;
 	}
@@ -1033,6 +1073,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * managed state is left alone, avoiding spurious dirty-tracking.
 	 */
 	private void copyStateInto(EObject source, EObject target, Server server, EntityManager em) {
+		copyStateInto(source, null, target, server, em);
+	}
+
+	/**
+	 * As {@link #copyStateInto(EObject, EObject, Server, EntityManager)}, with the caller's
+	 * object the source was copied from: a single-valued bidirectional reference the copier
+	 * dropped is taken from there, so the update does not clear a foreign key the save of
+	 * another type has written ahead of this one in the same saveAll (issue #406).
+	 */
+	private void copyStateInto(EObject source, EObject original, EObject target, Server server,
+			EntityManager em) {
 		for (EAttribute attr : source.eClass().getEAllAttributes()) {
 			// the persisted form (issue #363): a derived or volatile attribute that is not transient is
 			// mapped, so an update must carry it as well
@@ -1089,6 +1140,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					target.eSet(ref, srcValue instanceof EObject newChild ? prepareChild(newChild, server, em) : srcValue);
 				}
 				continue;
+			}
+			if (isNull(srcValue)) {
+				srcValue = droppedOpposite(source, original, ref, server, em);
 			}
 			// Non-containment singular ref: use em.getReference to avoid handing a
 			// detached/proxy EObject to EclipseLink's cascade-register-new.
@@ -1276,6 +1330,26 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return parts.length >= 3 ? parts[2] : null;
 		}
 		return fragment;
+	}
+
+	/**
+	 * The value of a single-valued bidirectional reference the EMF copier dropped because its
+	 * target lies outside the copied tree, as the managed instance of its row — or {@code null}
+	 * when there is no such value or the target has no row yet. Only an existing row is taken:
+	 * a target saved later finds and links this object from its own side.
+	 */
+	private static EObject droppedOpposite(EObject source, EObject original, EReference ref, Server server,
+			EntityManager em) {
+		if (isNull(original) || original == source || original.eClass() != source.eClass()
+				|| isNull(ref.getEOpposite()) || isNull(server)) {
+			return null;
+		}
+		Object value = ((InternalEObject) original).eGet(ref, false);
+		ClassDescriptor refDescriptor = server.getDescriptorForAlias(ref.getEReferenceType().getName());
+		if (!(value instanceof EObject target) || isNull(refDescriptor)) {
+			return null;
+		}
+		return referenceHandle(target, refDescriptor, em);
 	}
 
 	private static void copyNonContainmentRef(EObject target, EReference ref, Object srcValue,

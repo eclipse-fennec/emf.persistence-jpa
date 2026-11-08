@@ -155,6 +155,11 @@ below):
   value) and checks every reference: one to an object outside the call that has no resource
   or no id refuses the call, and nothing is written. The resources themselves are strict —
   there, every object takes care of its own resource and id, as with XMI.
+  On JPA the call is still one transaction per type, so a new object of a later type is
+  inserted ahead of its turn when an earlier one reaches it — through a list, a one-sided
+  reference, or a many-to-one further down the graph — and its own save then updates that
+  row (#406). The many-to-one is the side EclipseLink gives no cascade, and the object at the
+  end of such a chain used to stay unregistered.
 - **`delete(object)` deletes exactly the given object** — never the rest of the loaded
   resource.
 
