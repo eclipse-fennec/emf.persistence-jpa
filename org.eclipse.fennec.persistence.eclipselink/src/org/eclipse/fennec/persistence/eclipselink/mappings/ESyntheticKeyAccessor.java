@@ -84,14 +84,67 @@ public class ESyntheticKeyAccessor extends ValuesAccessor {
 		}
 	}
 
-	private SyntheticKey holderOf(EObject object, boolean create) {
+	/**
+	 * Carries the synthetic keys of {@code source} over to {@code target} (issue #403). A synthetic
+	 * key lives on an adapter, and a copy — {@code EcoreUtil.Copier} and every copier built on it —
+	 * copies features, never adapters. The copies EclipseLink takes of an object (the backup clone
+	 * a commit compares against, the unit of work clone of a cached original, the merge back into
+	 * that original) went without the key: the commit then saw a primary key change from
+	 * {@code null} and refused it ({@code EclipseLink-7251}), or met a clone without any key
+	 * ({@code EclipseLink-7197}). A key the source does not have leaves the target's alone.
+	 *
+	 * @param source the object copied from
+	 * @param target the copy
+	 */
+	public static void copyKeys(EObject source, EObject target) {
+		if (source == target || source == null || target == null) {
+			return;
+		}
+		for (Adapter adapter : source.eAdapters()) {
+			if (adapter instanceof SyntheticKey key && key.value != null) {
+				SyntheticKey copy = find(target, key.keyName);
+				if (copy == null) {
+					copy = new SyntheticKey(key.keyName);
+					target.eAdapters().add(copy);
+				}
+				copy.value = key.value;
+			}
+		}
+	}
+
+	/**
+	 * The synthetic key of an object as one string, or {@code null} if it has none — the
+	 * identity a child without an id attribute is matched by when a save brings the stored
+	 * children in line with the saved ones (issue #403). Without it every such child was
+	 * unmatched: dropped as an orphan and inserted again under the key it already had.
+	 *
+	 * @param object the object
+	 * @return the key, or {@code null}
+	 */
+	public static String keyOf(EObject object) {
+		StringBuilder key = null;
+		for (Adapter adapter : object.eAdapters()) {
+			if (adapter instanceof SyntheticKey synthetic && synthetic.value != null) {
+				key = key == null ? new StringBuilder() : key.append('|');
+				key.append(synthetic.keyName).append('=').append(synthetic.value);
+			}
+		}
+		return key == null ? null : key.toString();
+	}
+
+	private static SyntheticKey find(EObject object, String keyName) {
 		for (Adapter adapter : object.eAdapters()) {
 			if (adapter instanceof SyntheticKey key && key.keyName.equals(keyName)) {
 				return key;
 			}
 		}
-		if (!create) {
-			return null;
+		return null;
+	}
+
+	private SyntheticKey holderOf(EObject object, boolean create) {
+		SyntheticKey existing = find(object, keyName);
+		if (existing != null || !create) {
+			return existing;
 		}
 		SyntheticKey key = new SyntheticKey(keyName);
 		object.eAdapters().add(key);

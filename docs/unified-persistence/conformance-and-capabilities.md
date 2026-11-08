@@ -824,6 +824,12 @@ worth knowing because none was about maps as such.
    the synthetic `pk_<name>` now has a writable mapping whose value rides on an adapter
    (`ESyntheticKeyAccessor`), and it generates a UUID rather than drawing from a sequence table
    that no flavor creates. Reproduced without any map by `JpaSyntheticIdRoundTripTest`.
+   The adapter had a gap of its own (#403): a copy copies features, not adapters, and EclipseLink
+   copies a managed object for its backup clone, its unit of work clone and the merge back. Every
+   write of a loaded container with children without an id failed — a primary key "changed"
+   from `null` (`EclipseLink-7251`), or a clone had none (`EclipseLink-7197`) — and a save matched
+   such children by id only, so it dropped and re-inserted them under the key they had.
+   `ECopier` now carries the key, and the save matches by it; `JpaSyntheticKeyLifecycleTest`.
 4. **The column names.** `key` and `value` are SQL reserved words, and the usual answer —
    `checkReservedName` warns, the model author renames — cannot apply when EMF fixes the names.
    The mapping names them `MAP_KEY`/`MAP_VALUE` once, for every dialect. Worth noting how this
