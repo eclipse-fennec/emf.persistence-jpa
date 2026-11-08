@@ -12,13 +12,23 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.tck;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -27,6 +37,9 @@ import org.eclipse.fennec.persistence.capabilities.PersistenceCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavor;
 import org.eclipse.fennec.persistence.eclipselink.JpaFlavorCapabilities;
 import org.eclipse.fennec.persistence.eclipselink.spi.JPAResourceFactory;
+import org.eclipse.persistence.config.PersistenceUnitProperties;
+import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.jpa.JpaHelper;
 
 import jakarta.persistence.EntityManagerFactory;
 
@@ -117,6 +130,30 @@ class JpaPersistenceTckTest extends AbstractPersistenceTCK {
 		// the interval fixture (issue #215): two nullable bounds that form one interval
 		eClasses.add(tckPackage.getEClassifier("Booking"));
 		emf = JpaTckSupport.bootstrap(PU_NAME, eClasses);
+	}
+
+	/** Plain JDBC on the attribute's column (issue #404); the descriptor only names table and columns. */
+	@Override
+	protected Boolean storesValue(EClass type, Object id, EStructuralFeature attribute) {
+		ClassDescriptor descriptor = JpaHelper.getServerSession(emf).getDescriptorForAlias(type.getName());
+		String column = descriptor.getMappingForAttributeName(attribute.getName()).getField().getName();
+		String sql = "SELECT " + column + " FROM " + descriptor.getTables().get(0).getQualifiedName() + " WHERE "
+				+ descriptor.getPrimaryKeyFields().get(0).getName() + " = ?";
+		// the unit's own connection settings: jdbcProperties() names a fresh database per call
+		Map<String, Object> jdbc = emf.getProperties();
+		try (Connection connection = DriverManager.getConnection(
+				(String) jdbc.get(PersistenceUnitProperties.JDBC_URL),
+				(String) jdbc.get(PersistenceUnitProperties.JDBC_USER),
+				(String) jdbc.get(PersistenceUnitProperties.JDBC_PASSWORD));
+				PreparedStatement statement = connection.prepareStatement(sql)) {
+			statement.setObject(1, id);
+			try (ResultSet rs = statement.executeQuery()) {
+				assertThat(rs.next()).as("a row for %s %s", type.getName(), id).isTrue();
+				return rs.getObject(1) != null;
+			}
+		} catch (SQLException e) {
+			throw new IllegalStateException("Store probe failed: " + sql, e);
+		}
 	}
 
 	@Override

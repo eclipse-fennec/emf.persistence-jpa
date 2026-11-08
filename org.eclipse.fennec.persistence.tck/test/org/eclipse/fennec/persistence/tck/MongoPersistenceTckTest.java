@@ -13,15 +13,19 @@
 package org.eclipse.fennec.persistence.tck;
 
 import static java.util.Objects.nonNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.util.UUID;
 
+import org.bson.Document;
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -37,6 +41,7 @@ import org.junit.jupiter.api.Test;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
 
 /**
  * TCK binding for the MongoDB backend. Requires a reachable MongoDB — either via
@@ -152,6 +157,14 @@ class MongoPersistenceTckTest extends AbstractPersistenceTCK {
 			// conforming: the diagnostics stay on the resource either way
 		}
 		return resource;
+	}
+
+	/** The raw document through the driver (issue #404): a missing or null field is no value. */
+	@Override
+	protected Boolean storesValue(EClass type, Object id, EStructuralFeature attribute) {
+		Document document = database.getCollection(type.getName()).find(Filters.eq("_id", id)).first();
+		assertThat(document).as("a document for %s %s", type.getName(), id).isNotNull();
+		return document.get(attribute.getName()) != null;
 	}
 
 	protected URI uriFor(String typeName) {

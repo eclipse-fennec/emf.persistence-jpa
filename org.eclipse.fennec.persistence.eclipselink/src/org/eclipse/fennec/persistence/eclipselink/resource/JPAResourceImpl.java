@@ -1039,9 +1039,17 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			if (!attr.isChangeable() || !EMFHelper.isPersisted(attr)) {
 				continue;
 			}
+			if (attr.isUnsettable() && !source.eIsSet(attr)) {
+				// unset is a state of its own (issue #404), not the default eGet answers for it
+				if (target.eIsSet(attr)) {
+					target.eUnset(attr);
+				}
+				continue;
+			}
 			Object srcValue = source.eGet(attr);
 			Object tgtValue = target.eGet(attr);
-			if (!Objects.equals(srcValue, tgtValue)) {
+			// a set default over an unset target is a change, though eGet answers the same for both
+			if (!Objects.equals(srcValue, tgtValue) || (attr.isUnsettable() && !target.eIsSet(attr))) {
 				target.eSet(attr, srcValue);
 			}
 		}

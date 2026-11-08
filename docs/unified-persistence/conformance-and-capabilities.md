@@ -683,7 +683,11 @@ So the part that is about to become mandatory is the thinnest part. Gaps, each v
   query type predicates, which are capability-gated — never as a plain write/read of a
   subtype through a supertype resource.
 - **`eUnset` / unsettable features** only via `commandUpdateUnsetClearsTheValue`, i.e. the
-  command path, not the EMF write path.
+  command path, not the EMF write path. *Closed with #404:* the write-path round trip of an
+  enum, an `EInt`, an `ELongObject` and an `EString` unsettable — never set, set to the default,
+  set and then unset — is core, checked in the store itself as well; it had failed on both
+  backends, the opposite way on each (JPA stored what `eGet` answers for unset, Mongo dropped a
+  set default).
 - **Untested entirely:** containment order preservation, object identity across
   repeated loads, default values, `resolveProxies=false` (which must *forbid* cross-resource
   containment), abstract/interface types, `EcoreUtil.delete` inverse cleanup.

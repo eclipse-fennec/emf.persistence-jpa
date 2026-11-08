@@ -155,6 +155,24 @@ class AttributeConfiguratorTest {
 					.isEqualTo(int.class);
 		}
 
+		/**
+		 * An unsettable primitive maps to its wrapper (issue #404): NULL is its unset state, and
+		 * EclipseLink converts a NULL read into a primitive to 0, which comes back as set.
+		 */
+		@Test
+		void anUnsettablePrimitiveMapsToItsWrapper() {
+			EAttribute score = attribute("score", EcorePackage.Literals.EINT);
+			score.setUnsettable(true);
+			EAttribute flag = attribute("flag", EcorePackage.Literals.EBOOLEAN);
+			flag.setUnsettable(true);
+			EAttribute name = attribute("name", EcorePackage.Literals.ESTRING);
+			name.setUnsettable(true);
+
+			assertThat(configurator.columnType(score)).isEqualTo(Integer.class);
+			assertThat(configurator.columnType(flag)).isEqualTo(Boolean.class);
+			assertThat(configurator.columnType(name)).as("not a primitive").isEqualTo(String.class);
+		}
+
 		@Test
 		void enumsBecomeStrings() {
 			org.eclipse.emf.ecore.EEnum color = EcoreFactory.eINSTANCE.createEEnum();

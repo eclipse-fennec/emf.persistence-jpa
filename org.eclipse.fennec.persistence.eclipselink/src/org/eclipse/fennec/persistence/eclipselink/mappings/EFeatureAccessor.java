@@ -12,6 +12,7 @@
  ********************************************************************/
 package org.eclipse.fennec.persistence.eclipselink.mappings;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.util.Collection;
@@ -121,6 +122,11 @@ public class EFeatureAccessor extends ValuesAccessor {
 	@Override
 	public Object getAttributeValueFromObject(Object object) throws DescriptorException {
 		if (object instanceof EObject eo && nonNull(feature)) {
+			if (isUnsettableValue() && !eo.eIsSet(feature)) {
+				// an unset unsettable feature is no value (issue #404): eGet answers the first
+				// literal of an enum, 0 of an int — stored, they read back as set
+				return null;
+			}
 			Object value = eo.eGet(feature);
 			if (isEEnumFeature() && value instanceof Enumerator enumerator) {
 				// the literal is the stored form of an enum; the converter still sees it
@@ -144,6 +150,18 @@ public class EFeatureAccessor extends ValuesAccessor {
 	 */
 	@Override
 	public void setAttributeValueInObject(Object object, Object value) throws DescriptorException {
+		if (object instanceof EObject eo && nonNull(feature) && isUnsettableValue()) {
+			// the column tells set from unset (issue #404): NULL is unset, anything else is set —
+			// also a value equal to the default, which the object was given
+			if (isNull(value)) {
+				if (eo.eIsSet(feature)) {
+					eo.eUnset(feature);
+				}
+				return;
+			}
+			eo.eSet(feature, dataTypeConvert(value, ((EAttribute) feature).getEAttributeType()));
+			return;
+		}
 		if (object instanceof EObject eo &&
 				!isDefaultValue(value) &&
 				nonNull(feature)) {
@@ -207,6 +225,15 @@ public class EFeatureAccessor extends ValuesAccessor {
 	 * @param value the value to verify
 	 * @return <code>true</code>, if the given value is equals to the default literal of the feature
 	 */
+	/**
+	 * Whether the feature is a single-valued unsettable attribute — one whose set state the
+	 * column carries: {@code NULL} for unset (issue #404). A set {@code null} cannot be told
+	 * from unset in one column and reads back unset.
+	 */
+	private boolean isUnsettableValue() {
+		return feature instanceof EAttribute attribute && attribute.isUnsettable() && !attribute.isMany();
+	}
+
 	private boolean isDefaultValue(Object value) {
 		return nonNull(feature.getDefaultValueLiteral()) && feature.getDefaultValueLiteral().equals(value);
 	}

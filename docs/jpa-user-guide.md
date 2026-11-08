@@ -242,6 +242,14 @@ The idiom for a purely computed feature — `derived volatile transient`, as the
 [query-backed derived references](unified-persistence/query-derived-references.md) are — is
 not mapped. The MongoDB backend applies the same rule.
 
+An **unsettable** single-valued attribute keeps its set state (issue #404): an unset one is
+stored as `NULL` and read back unset, a set one is stored with its value — also when that value
+is the default, such as the first literal of an enum or `0` of an `EInt`, which `eGet` answers
+for an unset feature as well. A primitive unsettable attribute gets a column of its wrapper type
+for this, since EclipseLink reads a `NULL` into a primitive as `0`. The one state a single column
+cannot carry is an unsettable attribute explicitly set to `null`: it reads back unset. On MongoDB
+an unset feature is a missing field, and a set default is written.
+
 ### Id handling
 
 Every persistent EClass needs a primary key. The generator resolves it in this

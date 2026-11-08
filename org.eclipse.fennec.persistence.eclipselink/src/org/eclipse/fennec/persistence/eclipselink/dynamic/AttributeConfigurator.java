@@ -15,6 +15,7 @@ package org.eclipse.fennec.persistence.eclipselink.dynamic;
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
+import java.lang.invoke.MethodType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Blob;
@@ -331,6 +332,11 @@ class AttributeConfigurator {
 			// a custom data type without an instance class — a string is the only safe carrier
 			typeClass = String.class;
 			LOG.log(Level.FINER, "[columnType] {0} has null typeClass, setting to String.class", ea.getName());
+		}
+		if (ea.isUnsettable() && typeClass.isPrimitive()) {
+			// NULL is the unset state of an unsettable attribute (issue #404), and EclipseLink
+			// reads a NULL into a primitive as 0 — the wrapper keeps it NULL; the column is the same
+			typeClass = MethodType.methodType(typeClass).wrap().returnType();
 		}
 		LOG.log(Level.FINER, "[columnType] Final typeClass for {0}: {1}",
 				new Object[] { ea.getName(), typeClass });

@@ -40,6 +40,12 @@ import org.eclipse.fennec.persistence.helper.EMFHelper;
  * computes the configuration and remembers it, and {@link #entrySet()} shows what has been
  * answered so far. The resolver copies its property maps shallowly, so the instance it holds is
  * this one.
+ * <p>
+ * It also keeps an unsettable feature's set state (issue #404). The codec writes a value equal to
+ * the feature's default only when told so, which drops RED of an enum and 0 of an {@code EInt}
+ * although the object was given them; the reader then left the feature unset. An unset unsettable
+ * feature is skipped by the codec before that gate, so with {@code serializeDefault} on, written
+ * means set and missing means unset — for any value.
  *
  * @param <K> the feature type, {@code EAttribute} or {@code EReference}
  * @author Juergen Albert
@@ -50,6 +56,14 @@ final class PersistedFormConfig<K extends EStructuralFeature> extends AbstractMa
 	private static final Map<String, Object> FORCED = Map.of(
 			ConfigProperty.FORCE_WRITE.getKey(), Boolean.TRUE,
 			ConfigProperty.FORCE_READ.getKey(), Boolean.TRUE);
+
+	private static final Map<String, Object> KEEPS_DEFAULT = Map.of(
+			ConfigProperty.SERIALIZE_DEFAULT.getKey(), Boolean.TRUE);
+
+	private static final Map<String, Object> FORCED_KEEPS_DEFAULT = Map.of(
+			ConfigProperty.FORCE_WRITE.getKey(), Boolean.TRUE,
+			ConfigProperty.FORCE_READ.getKey(), Boolean.TRUE,
+			ConfigProperty.SERIALIZE_DEFAULT.getKey(), Boolean.TRUE);
 
 	private final Class<K> featureType;
 	private final Map<K, Map<String, Object>> answered = new ConcurrentHashMap<>();
@@ -72,13 +86,31 @@ final class PersistedFormConfig<K extends EStructuralFeature> extends AbstractMa
 		return (feature.isDerived() || feature.isVolatile()) && EMFHelper.isPersisted(feature);
 	}
 
+	/**
+	 * Whether the codec must be told to write a value equal to the feature's default: the feature
+	 * is unsettable, so a written default is a set value and a missing one an unset feature
+	 * (issue #404).
+	 *
+	 * @param feature the feature
+	 * @return {@code true} if a default value has to be written
+	 */
+	static boolean keepsDefault(EStructuralFeature feature) {
+		return feature.isUnsettable() && !feature.isMany() && EMFHelper.isPersisted(feature);
+	}
+
 	@Override
 	public Map<String, Object> get(Object key) {
 		if (!featureType.isInstance(key)) {
 			return null;
 		}
 		K feature = featureType.cast(key);
-		return isForced(feature) ? answered.computeIfAbsent(feature, f -> FORCED) : null;
+		boolean forced = isForced(feature);
+		boolean keepsDefault = keepsDefault(feature);
+		if (!forced && !keepsDefault) {
+			return null;
+		}
+		Map<String, Object> config = forced ? (keepsDefault ? FORCED_KEEPS_DEFAULT : FORCED) : KEEPS_DEFAULT;
+		return answered.computeIfAbsent(feature, f -> config);
 	}
 
 	@Override
