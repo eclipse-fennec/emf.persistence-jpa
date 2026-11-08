@@ -83,7 +83,7 @@ public abstract class AbstractWritePathTCK {
 	protected EClass owner, profile, item, tag, badge, customer, order, student, course, node, asset, lawn, pool;
 	protected EReference ownerProfile, ownerItems, ownerFavorite, ownerTags;
 	protected EReference customerOrders, orderCustomer, studentCourses, courseStudents;
-	protected EReference nodeParent, nodeChildren, assetKeeper, badgeTag, customerLawn, customerPools;
+	protected EReference nodeParent, nodeChildren, assetKeeper, badgeTag, badgeOrder, customerLawn, customerPools;
 
 	private StoreProbe probe;
 
@@ -136,6 +136,7 @@ public abstract class AbstractWritePathTCK {
 		ownerFavorite = ref(owner, "favorite");
 		ownerTags = ref(owner, "tags");
 		badgeTag = ref(badge, "tag");
+		badgeOrder = ref(badge, "order");
 		customerOrders = ref(customer, "orders");
 		orderCustomer = ref(order, "customer");
 		studentCourses = ref(student, "courses");
@@ -1066,6 +1067,85 @@ public abstract class AbstractWritePathTCK {
 		assertIds(order, orderId);
 		assertRef(order, orderId, orderCustomer, customerId);
 		assertRefs(customer, customerId, customerOrders, orderId);
+	}
+
+	/**
+	 * Issue #406: a one-sided single-valued reference to a new object saved in the same call. The
+	 * cascade met the target as it was — a plain object no entity type knows — before its own
+	 * save, and failed; a list target was converted already (#381), a single one was not.
+	 */
+	@Test
+	public void repositorySavesTheNewTargetOfAOneSidedReferenceInEitherOrder() throws Exception {
+		EObject b1 = obj(badge, "b1");
+		EObject t1 = obj(tag, "t1");
+		b1.eSet(badgeTag, t1);
+		EObject b2 = obj(badge, "b2");
+		EObject t2 = obj(tag, "t2");
+		b2.eSet(badgeTag, t2);
+
+		repository().saveAll(List.of(b1, t1));
+		repository().saveAll(List.of(t2, b2));
+
+		assertIds(badge, "b1", "b2");
+		assertIds(tag, "t1", "t2");
+		assertRef(badge, "b1", badgeTag, "t1");
+		assertRef(badge, "b2", badgeTag, "t2");
+	}
+
+	/**
+	 * Issue #406, the shape of the STA projection: the new object behind a one-sided reference
+	 * has a many-to-one of its own to another new object. A many-to-one has no cascade, so the
+	 * object at the end of the chain stayed unregistered — unless what the save registers ahead
+	 * of its turn has its own references taken care of too.
+	 */
+	@Test
+	public void repositorySavesANewChainBehindAManyToOneStartingAnywhere() throws Exception {
+		List<List<String>> orders = List.of(List.of("badge", "order", "customer"),
+				List.of("customer", "order", "badge"), List.of("order", "badge", "customer"));
+		int n = 0;
+		for (List<String> order : orders) {
+			n++;
+			EObject b = obj(badge, "b" + n);
+			EObject o = obj(this.order, "o" + n);
+			EObject c = obj(customer, "c" + n);
+			b.eSet(badgeTag, obj(tag, "t" + n));
+			b.eSet(badgeOrder, o);
+			o.eSet(orderCustomer, c);
+			Map<String, EObject> byName = Map.of("badge", b, "order", o, "customer", c);
+			List<EObject> saved = new ArrayList<>(order.stream().map(byName::get).toList());
+			saved.add((EObject) b.eGet(badgeTag));
+
+			repository().saveAll(saved);
+
+			assertRef(badge, "b" + n, badgeOrder, "o" + n);
+			assertRef(this.order, "o" + n, orderCustomer, "c" + n);
+			assertRefs(customer, "c" + n, customerOrders, "o" + n);
+		}
+		assertIds(badge, "b1", "b2", "b3");
+		assertIds(this.order, "o1", "o2", "o3");
+		assertIds(customer, "c1", "c2", "c3");
+	}
+
+	/** Issue #406 across an inheritance: a one-sided reference to and from a subtype of an abstract type. */
+	@Test
+	public void repositorySavesNewSubtypesBehindOneSidedReferences() throws Exception {
+		EObject c = obj(customer, "c1");
+		EObject l = obj(lawn, "l1");
+		EObject p = obj(pool, "p1");
+		c.eSet(customerLawn, l);
+		list(c, customerPools).add(p);
+		l.eSet(assetKeeper, c);
+		p.eSet(assetKeeper, c);
+
+		repository().saveAll(List.of(p, l, c));
+
+		assertIds(customer, "c1");
+		assertIds(lawn, "l1");
+		assertIds(pool, "p1");
+		assertRef(customer, "c1", customerLawn, "l1");
+		assertRefs(customer, "c1", customerPools, "p1");
+		assertRef(lawn, "l1", assetKeeper, "c1");
+		assertRef(pool, "p1", assetKeeper, "c1");
 	}
 
 	@Test
