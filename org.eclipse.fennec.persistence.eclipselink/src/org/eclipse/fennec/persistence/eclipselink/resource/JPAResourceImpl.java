@@ -47,6 +47,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.eclipse.emf.common.util.BasicEList;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.common.util.WrappedException;
@@ -1847,6 +1848,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		}
 	}
 
+	/**
+	 * The contents EMF notifies as unloaded, taken from the raw list (issue #407): the default
+	 * goes through {@link #getContents()}, which populates a not yet populated resource first —
+	 * a full load on the way out, and a failure once the unit has closed its entity manager.
+	 */
+	@Override
+	protected List<EObject> getUnloadingContents() {
+		return new BasicEList.FastCompare<>(super.getContents());
+	}
+
 	@Override
 	protected void doUnload() {
 		isLoaded = false;
@@ -1855,7 +1866,13 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		resolvedByFragment = false;
 		loadOptions = null;
 		// Raw list access — a resource being unloaded must not first re-populate.
-		super.getContents().clear();
+		EList<EObject> raw = super.getContents();
+		if (!raw.isEmpty()) {
+			// clearing an empty contents list counts as loading it in EMF and flips isLoaded back
+			// on — the case of a resource unloaded before it populated (issue #407)
+			raw.clear();
+		}
+		isLoaded = false;
 	}
 
 	/**

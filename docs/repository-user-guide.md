@@ -112,6 +112,11 @@ Repository mine = so.getService();   // fresh instance, own ResourceSet
 so.ungetService(mine);               // disposes it
 ```
 
+Disposing unloads the instance's resources without loading them first (#407): a collection
+resource that was asked to load but never read is dropped as it is, so releasing an instance
+after its unit is gone — a configuration deleted before the consumer deactivates — does not
+touch the closed backend.
+
 ## Reading and writing
 
 The repository derives every URI itself — you work with `EClass` + id:
