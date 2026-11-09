@@ -164,7 +164,10 @@ below):
   inserted ahead of its turn when an earlier one reaches it — through a list, a one-sided
   reference, or a many-to-one further down the graph — and its own save then updates that
   row (#406). The many-to-one is the side EclipseLink gives no cascade, and the object at the
-  end of such a chain used to stay unregistered.
+  end of such a chain used to stay unregistered. Everything reached that way is registered
+  only once the object that reached it is fully sanitized, so a graph whose types reach each
+  other through their inverse many sides — the OGC SensorThings model, for one — saves in one
+  call as well (#409).
 - **`delete(object)` deletes exactly the given object** — never the rest of the loaded
   resource.
 
