@@ -41,7 +41,9 @@ import jakarta.persistence.EntityManager;
 
 /**
  * The in-place resolution of {@link JpaExpansions} on a path that comes back over a
- * bidirectional reference (issue #413): {@code Datastream.sensor} / {@code Sensor.datastreams}.
+ * bidirectional reference: {@code Datastream.sensor} / {@code Sensor.datastreams}, to-one (issue
+ * #413), and {@code HistoricalLocation.locations} / {@code Location.historicalLocations},
+ * many-to-many (issue #415).
  */
 class JpaExpansionsTest {
 
@@ -173,5 +175,62 @@ class JpaExpansionsTest {
 		List<EObject> entries = expand(root);
 
 		assertThat(entries).containsExactly(stored, root);
+	}
+
+	@Test
+	void aManyToManyPathBackHoldsTheRootOnce() {
+		// issue #415: HistoricalLocation(H) -> locations -> historicalLocations
+		EcoreFactory factory = EcoreFactory.eINSTANCE;
+		EPackage pkg = factory.createEPackage();
+		pkg.setName("sta415");
+		pkg.setNsURI("urn:test:sta415");
+		pkg.setNsPrefix("sta415");
+		EClass locationClass = factory.createEClass();
+		locationClass.setName("Location");
+		EClass historicalClass = factory.createEClass();
+		historicalClass.setName("HistoricalLocation");
+		EAttribute locationId = idAttribute(locationClass);
+		EAttribute historicalId = idAttribute(historicalClass);
+		EReference historicalLocations = factory.createEReference();
+		historicalLocations.setName("historicalLocations");
+		historicalLocations.setEType(historicalClass);
+		historicalLocations.setUpperBound(-1);
+		EReference locations = factory.createEReference();
+		locations.setName("locations");
+		locations.setEType(locationClass);
+		locations.setUpperBound(-1);
+		historicalLocations.setEOpposite(locations);
+		locations.setEOpposite(historicalLocations);
+		locationClass.getEStructuralFeatures().add(historicalLocations);
+		historicalClass.getEStructuralFeatures().add(locations);
+		pkg.getEClassifiers().addAll(List.of(locationClass, historicalClass));
+
+		Resource historical = new ResourceImpl(URI.createURI("jpa://sta/HistoricalLocation"));
+		resourceSet.getResources().add(historical);
+		EObject root = EcoreUtil.create(historicalClass);
+		root.eSet(historicalId, "H");
+		EObject other = EcoreUtil.create(historicalClass);
+		other.eSet(historicalId, "I");
+		historical.getContents().addAll(List.of(root, other));
+		EObject location = EcoreUtil.create(locationClass);
+		location.eSet(locationId, "L");
+		@SuppressWarnings("unchecked")
+		List<EObject> built = (List<EObject>) location.eGet(historicalLocations);
+		for (EObject stored : List.of(root, other)) {
+			EObject proxy = EcoreUtil.create(historicalClass);
+			((InternalEObject) proxy).eSetProxyURI(EcoreUtil.getURI(stored));
+			built.add(proxy);
+		}
+		// resolving the level before: the opposite adds the root next to its proxy
+		@SuppressWarnings("unchecked")
+		List<EObject> rootLocations = (List<EObject>) root.eGet(locations);
+		rootLocations.add(location);
+
+		JpaExpandPlan plan = new JpaExpandPlan(List.of(locations, historicalLocations), null, Map.of());
+		JpaExpansions.resolve(List.of(root), List.of(plan), mock(EntityManager.class), resourceSet);
+
+		@SuppressWarnings("unchecked")
+		List<EObject> entries = ((InternalEList<EObject>) location.eGet(historicalLocations)).basicList();
+		assertThat(entries).containsExactly(other, root);
 	}
 }

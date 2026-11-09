@@ -16,7 +16,9 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -170,6 +172,7 @@ final class JpaExpansions {
 		}
 		List<EObject> values = (List<EObject>) list;
 		Map<Object, EObject> anchors = anchorsOf(owner, reference, values);
+		Set<EObject> held = heldInstances(values);
 		for (int index = 0; index < values.size(); index++) {
 			// basicGet does NOT resolve, which is what lets the filter decide per element
 			EObject value = values instanceof InternalEList<?> internal
@@ -188,7 +191,7 @@ final class JpaExpansions {
 			EObject target = value.eIsProxy() ? EcoreUtil.resolve(value, resourceSet) : value;
 			if (!target.eIsProxy()) {
 				EObject anchor = anchors.get(identityOf(target));
-				if (nonNull(anchor) && anchor != value) {
+				if ((nonNull(anchor) && anchor != value) || (target != value && held.contains(target))) {
 					// a path back over a bidirectional reference (issue #413): resolving the
 					// level before set the opposite, which put the object into this list next
 					// to the entry the list was built with. Both stand for the same object, so
@@ -203,6 +206,7 @@ final class JpaExpansions {
 					// read the target and thrown it away, and D1b ("what is delivered is exactly
 					// the selected set", discriminated by eIsProxy) would be unobservable.
 					values.set(index, target);
+					held.add(target);
 				}
 				resolved.add(target);
 			}
@@ -215,14 +219,14 @@ final class JpaExpansions {
 	 * the one the list was built with (issue #413); the tied one is the instance the caller
 	 * already holds, so it stays and the other goes.
 	 * <p>
-	 * Empty without a single-valued opposite. Without an opposite nothing can have been added
-	 * behind the list's back; a many-valued one is not asked, because reading it per entry could
-	 * load a lazy list per entry.
+	 * Empty without an opposite: then nothing can have been added behind the list's back. A
+	 * many-valued opposite counts as well (issue #415, many-to-many); it is read without
+	 * triggering or resolving anything, see {@link #pointsBack}.
 	 */
 	private static Map<Object, EObject> anchorsOf(EObject owner, EReference reference,
 			List<EObject> values) {
 		EReference opposite = reference.getEOpposite();
-		if (isNull(opposite) || opposite.isMany()) {
+		if (isNull(opposite)) {
 			return Map.of();
 		}
 		Map<Object, EObject> anchors = new HashMap<>();
@@ -235,6 +239,24 @@ final class JpaExpansions {
 			}
 		}
 		return anchors;
+	}
+
+	/**
+	 * The materialised instances the list holds, by identity. Whatever else the anchors miss, a
+	 * resolution that yields one of them must not be written into a second slot: the unique list
+	 * would throw.
+	 */
+	private static Set<EObject> heldInstances(List<EObject> values) {
+		Set<EObject> held = Collections.newSetFromMap(new IdentityHashMap<>());
+		for (int index = 0; index < values.size(); index++) {
+			EObject entry = values instanceof InternalEList<?> internal
+					? (EObject) internal.basicGet(index)
+					: values.get(index);
+			if (!entry.eIsProxy()) {
+				held.add(entry);
+			}
+		}
+		return held;
 	}
 
 	/** What makes two materialised objects the same one: type and id, or the instance itself. */
@@ -252,12 +274,22 @@ final class JpaExpansions {
 		return nonNull(id) && anchors.containsKey(List.of(proxy.eClass(), id));
 	}
 
-	/** Whether {@code value} holds {@code owner} through the opposite of the list's reference. */
+	/**
+	 * Whether {@code value} holds {@code owner} through the opposite of the list's reference.
+	 * <p>
+	 * Reads without resolving: a non-resolving {@code eGet} does not trigger a lazy list of the
+	 * JPA indirection policy, and {@code basicContains} compares the entries as they are, where
+	 * {@code contains} would resolve every proxy it passes.
+	 */
 	private static boolean pointsBack(EObject value, EReference opposite, EObject owner) {
 		if (value.eIsProxy() || !value.eClass().getEAllReferences().contains(opposite)) {
 			return false;
 		}
-		return ((InternalEObject) value).eGet(opposite, false, true) == owner;
+		Object back = ((InternalEObject) value).eGet(opposite, false, true);
+		if (!opposite.isMany()) {
+			return back == owner;
+		}
+		return back instanceof InternalEList<?> list && list.basicContains(owner);
 	}
 
 	/** The id values of the chunk's roots, for the keyed query. */

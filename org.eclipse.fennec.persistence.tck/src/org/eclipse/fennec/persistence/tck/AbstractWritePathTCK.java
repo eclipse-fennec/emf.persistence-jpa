@@ -44,6 +44,8 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.model.command.CommandFactory;
 import org.eclipse.fennec.model.command.DeleteCommand;
+import org.eclipse.fennec.model.query.Query;
+import org.eclipse.fennec.model.query.builder.Expands;
 import org.eclipse.fennec.model.query.builder.Expressions;
 import org.eclipse.fennec.model.query.builder.QueryBuilder;
 import org.eclipse.fennec.persistence.Options;
@@ -53,6 +55,8 @@ import org.eclipse.fennec.persistence.capabilities.QueryFeature;
 import org.eclipse.fennec.persistence.capabilities.StoreFeature;
 import org.eclipse.fennec.persistence.diagnostic.PersistenceDiagnostic;
 import org.eclipse.fennec.persistence.query.api.CommandResource;
+import org.eclipse.fennec.persistence.query.api.QueryResult;
+import org.eclipse.fennec.persistence.query.api.QueryableResource;
 import org.eclipse.fennec.persistence.repository.spi.AbstractRepository;
 import org.eclipse.fennec.persistence.resource.PersistenceResource;
 import org.junit.jupiter.api.AfterEach;
@@ -2127,6 +2131,63 @@ public abstract class AbstractWritePathTCK {
 			orders.add(o);
 		}
 		saveAll(resourceSet, "WpCustomer", List.of(c), "WpOrder", orders);
+	}
+
+	/**
+	 * Issue #415: a path back over a many-to-many opposite. Resolving s1's courses puts s1 into
+	 * each course's students through the opposite, next to the entry the store built for it. Each
+	 * course must then hold each student once, and s1 as the root itself.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.WHERE_EQ })
+	public void queryExpandBackOverAManyToManyOppositeHoldsEachTargetOnce() throws Exception {
+		saveStudentsAndCourses();
+		evictBackendCaches();
+
+		Query query = QueryBuilder.from(student)
+				.where(Expressions.path(attr(student, "id")).eq("s1"))
+				.expand(studentCourses, courseStudents)
+				.build();
+		assertBackOverManyToMany(query);
+	}
+
+	/** Issue #415, filtered on the last segment: s2 only is selected, s1 still appears once. */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.EXPAND_FILTER, QueryFeature.WHERE_EQ })
+	public void queryFilteredExpandBackOverAManyToManyOppositeHoldsEachTargetOnce() throws Exception {
+		saveStudentsAndCourses();
+		evictBackendCaches();
+
+		Query query = QueryBuilder.from(student)
+				.where(Expressions.path(attr(student, "id")).eq("s1"))
+				.expand(Expands.of(studentCourses, courseStudents)
+						.filter(Expressions.path(attr(student, "id")).eq("s2"))
+						.build())
+				.build();
+		assertBackOverManyToMany(query);
+	}
+
+	private void assertBackOverManyToMany(Query query) throws Exception {
+		ResourceSet readSet = createBackendResourceSet();
+		QueryableResource queryable = (QueryableResource) readSet.createResource(uriFor("WpStudent"));
+		try (QueryResult result = queryable.query(query)) {
+			List<EObject> students = result.objects().toList();
+			assertThat(students).hasSize(1);
+			EObject s1 = students.get(0);
+			List<EObject> courses = list(s1, studentCourses);
+			assertThat(courses).hasSize(2);
+			for (EObject k : courses) {
+				assertThat(k.eIsProxy()).isFalse();
+				List<EObject> enrolled = list(k, courseStudents);
+				String courseId = String.valueOf(k.eGet(attr(course, "id")));
+				assertThat(enrolled)
+						.as("the students of %s: each once, s1 as the root itself", courseId)
+						.hasSize("k1".equals(courseId) ? 2 : 1)
+						.containsOnlyOnce(s1);
+				assertThat(enrolled.stream().map(e -> e.eIsProxy() ? "proxy" : e.eGet(attr(student, "id"))))
+						.containsExactlyInAnyOrderElementsOf("k1".equals(courseId) ? List.of("s1", "s2") : List.of("s1"));
+			}
+		}
 	}
 
 	private void saveStudentsAndCourses() throws IOException {
