@@ -1190,6 +1190,60 @@ public abstract class AbstractWritePathTCK {
 		assertIds(student, "s1", "s2", "s3");
 	}
 
+	/**
+	 * Issue #411: a new object reached ahead of its turn references a stored object the caller
+	 * loaded. Sanitizing it in place swapped the caller's reference for a JPA handle in no
+	 * resource — and the object's own save, later in the same call, refused that handle.
+	 */
+	@Test
+	public void repositorySaveAllKeepsTheCallersReferencesToStoredObjects() throws Exception {
+		AbstractRepository repository = repository();
+		repository.saveAll(List.of(obj(customer, "c1")));
+		evictBackendCaches();
+		EObject c1 = repository.getEObject(customer, "c1");
+		assertThat(c1).isNotNull();
+		assertThat(c1.eResource()).isNotNull();
+		EObject s = obj(student, "s1");
+		EObject o = obj(order, "o1");
+		o.eSet(orderCustomer, c1);
+		o.eSet(orderStudent, s);
+
+		// the student first: its orders reach the order ahead of the order's own save
+		repository.saveAll(List.of(s, o));
+
+		assertThat(o.eGet(orderCustomer)).as("the caller's reference").isSameAs(c1);
+		assertThat(o.eGet(orderStudent)).isSameAs(s);
+		assertThat(c1.eResource()).isNotNull();
+		assertRef(order, "o1", orderCustomer, "c1");
+		assertRef(order, "o1", orderStudent, "s1");
+		assertRefs(student, "s1", studentOrders, "o1");
+		// no store check of c1.orders: the customer is not saved here, and a document store keeps
+		// that side in the customer's own document
+	}
+
+	/** Issue #411 for the saved object itself: its references to stored objects stay the caller's, single and listed. */
+	@Test
+	public void repositorySaveKeepsTheCallersReferencesOfTheSavedObject() throws Exception {
+		AbstractRepository repository = repository();
+		repository.saveAll(List.of(obj(customer, "c1"), obj(customer, "c2")));
+		evictBackendCaches();
+		EObject c1 = repository.getEObject(customer, "c1");
+		EObject c2 = repository.getEObject(customer, "c2");
+		EObject o = obj(order, "o1");
+		o.eSet(orderCustomer, c1);
+		EObject k = obj(course, "k1");
+		list(k, courseCustomers).addAll(List.of(c1, c2));
+
+		repository.saveAll(List.of(o, k));
+
+		assertThat(o.eGet(orderCustomer)).isSameAs(c1);
+		assertThat(list(k, courseCustomers)).containsExactly(c1, c2);
+		assertThat(c1.eResource()).isNotNull();
+		assertThat(c2.eResource()).isNotNull();
+		assertRef(order, "o1", orderCustomer, "c1");
+		assertRefs(course, "k1", courseCustomers, "c1", "c2");
+	}
+
 	@Test
 	public void repositorySavesANewManyToManyGraph() throws Exception {
 		EObject k1 = EcoreUtil.create(course);
