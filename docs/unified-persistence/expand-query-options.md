@@ -116,6 +116,15 @@ batch-fetch hints of #95 is not enough, because those read the rows but leave th
 pointing at a proxy. A plain expansion therefore runs through the same resolution, selecting
 nothing.
 
+Replacing the entry has one exception: a path that comes back over a bidirectional reference
+(issue #413), such as `Datastream → sensor → datastreams`. Resolving `sensor` sets the opposite, so
+the sensor's list already holds the root datastream, next to the entry the store built for it.
+That entry goes: it is not replaced. Replacing it would hold the datastream twice. When the
+resolution yields the very instance, `set` on the unique list throws instead. The entry the
+opposite added stays, because it is the instance the caller holds. This holds for proxies the
+filter did not select as well. The check reads single-valued opposites only, since reading a
+many-valued one per entry could load a lazy list per entry.
+
 ## 4. Shape
 
 `Expand` becomes a class; `count` from the issue's sketch drops out under D2.
