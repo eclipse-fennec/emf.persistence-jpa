@@ -2167,6 +2167,91 @@ public abstract class AbstractPersistenceTCK {
 	}
 
 	/**
+	 * Issue #413: a path that comes back over a bidirectional reference ends at the root again.
+	 * Resolving Bob's employer puts Bob into the company's employees through the opposite, next
+	 * to the proxy of Bob the list was built with. Resolving that proxy must not insert Bob a
+	 * second time: the unique list then holds each employee once, resolved.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.WHERE_EQ })
+	public void queryExpandBackOverABidirectionalReferenceHoldsEachTargetOnce() throws Exception {
+		EObject company = newCompany(21, "Data In Motion");
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource companyResource = writeSet.createResource(uriFor("Company"));
+		companyResource.getContents().add(company);
+		Resource personResource = writeSet.createResource(uriFor("Person"));
+		personResource.getContents().addAll(List.of(alice, bob));
+		alice.eSet(personEmployer, company);
+		bob.eSet(personEmployer, company);
+		companyResource.save(null);
+		personResource.save(null);
+
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("Bob"))
+				.expand(personEmployer, companyEmployees)
+				.build();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet).query(query)) {
+			List<EObject> persons = result.objects().toList();
+			assertThat(persons).hasSize(1);
+			EObject loadedBob = persons.get(0);
+			EObject employer = (EObject) loadedBob.eGet(personEmployer);
+			assertThat(employer.eIsProxy()).isFalse();
+			List<EObject> employees = listOf(employer, companyEmployees);
+			assertThat(employees)
+					.as("each employee once, and the root itself is the one the path came back to")
+					.hasSize(2)
+					.containsOnlyOnce(loadedBob)
+					.allMatch(employee -> !employee.eIsProxy());
+			assertThat(employees.stream().map(employee -> employee.eGet(personName)))
+					.containsExactlyInAnyOrder("Alice", "Bob");
+		}
+	}
+
+	/**
+	 * Issue #413, filtered: the same path with a filter on its last segment that selects Alice
+	 * only. The root is still among the employees, once and as itself: the opposite put it there,
+	 * so it must not stay beside the proxy the list was built with, selected or not.
+	 */
+	@Test
+	@RequiresCapabilities(query = { QueryFeature.EXPAND, QueryFeature.EXPAND_FILTER,
+			QueryFeature.WHERE_EQ })
+	public void queryFilteredExpandBackOverABidirectionalReferenceHoldsEachTargetOnce() throws Exception {
+		EObject company = newCompany(21, "Data In Motion");
+		EObject alice = newPerson(1, "Alice", 30);
+		EObject bob = newPerson(2, "Bob", 40);
+		ResourceSet writeSet = createBackendResourceSet();
+		Resource companyResource = writeSet.createResource(uriFor("Company"));
+		companyResource.getContents().add(company);
+		Resource personResource = writeSet.createResource(uriFor("Person"));
+		personResource.getContents().addAll(List.of(alice, bob));
+		alice.eSet(personEmployer, company);
+		bob.eSet(personEmployer, company);
+		companyResource.save(null);
+		personResource.save(null);
+
+		Query query = QueryBuilder.from(personClass)
+				.where(Expressions.path(personName).eq("Bob"))
+				.expand(Expands.of(personEmployer, companyEmployees)
+						.filter(Expressions.path(personName).eq("Alice"))
+						.build())
+				.build();
+		ResourceSet readSet = createBackendResourceSet();
+		try (QueryResult result = queryable(readSet).query(query)) {
+			List<EObject> persons = result.objects().toList();
+			assertThat(persons).hasSize(1);
+			EObject loadedBob = persons.get(0);
+			List<EObject> employees = listOf((EObject) loadedBob.eGet(personEmployer), companyEmployees);
+			assertThat(employees).hasSize(2).containsOnlyOnce(loadedBob)
+					.allMatch(employee -> !employee.eIsProxy());
+			assertThat(employees.stream().map(employee -> employee.eGet(personName)))
+					.containsExactlyInAnyOrder("Alice", "Bob");
+		}
+	}
+
+	/**
 	 * A plain expansion leaves the reference holding resolved objects, not proxies — decision
 	 * D1b, with {@code eIsProxy()} as the discriminator a consumer reads it by.
 	 * <p>

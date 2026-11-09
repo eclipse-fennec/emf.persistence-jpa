@@ -17,6 +17,7 @@ import static java.util.Objects.nonNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -169,12 +171,23 @@ final class MongoExpansions {
 			return;
 		}
 		List<EObject> values = (List<EObject>) raw;
+		Map<Object, EObject> anchors = anchorsOf(owner, reference, values);
 		for (int index = 0; index < values.size(); index++) {
 			EObject value = values instanceof InternalEList<?> internal
 					? (EObject) internal.basicGet(index)
 					: values.get(index);
 			EObject target = value.eIsProxy() ? EcoreUtil.resolve(value, resourceSet) : value;
 			if (!target.eIsProxy()) {
+				EObject anchor = anchors.get(identityOf(target));
+				if (nonNull(anchor) && anchor != value) {
+					// a path back over a bidirectional reference (issue #413): resolving the
+					// level before set the opposite, which put the object into this list next
+					// to the entry the list was built with. Both stand for the same object, so
+					// this one goes; replacing it would hold the object twice, or throw on the
+					// unique list when the resolution yields the very same instance
+					values.remove(index--);
+					continue;
+				}
 				if (target != value) {
 					values.set(index, target);
 				}
@@ -196,6 +209,58 @@ final class MongoExpansions {
 		if (resource instanceof MongoResourceImpl mongo) {
 			mongo.preloadByFragments(fragments);
 		}
+	}
+
+	/**
+	 * The entries of the owner's list that the opposite has tied to {@code owner}, by
+	 * {@link #identityOf}. A path back over a bidirectional reference puts such an entry next to
+	 * the one the list was built with (issue #413); the tied one is the instance the caller
+	 * already holds, so it stays and the other goes.
+	 * <p>
+	 * Empty without a single-valued opposite. Without an opposite nothing can have been added
+	 * behind the list's back; a many-valued one is not asked, because reading it per entry could
+	 * load a lazy list per entry.
+	 */
+	private static Map<Object, EObject> anchorsOf(EObject owner, EReference reference,
+			List<EObject> values) {
+		EReference opposite = reference.getEOpposite();
+		if (isNull(opposite) || opposite.isMany()) {
+			return Map.of();
+		}
+		Map<Object, EObject> anchors = new HashMap<>();
+		for (int index = 0; index < values.size(); index++) {
+			EObject entry = values instanceof InternalEList<?> internal
+					? (EObject) internal.basicGet(index)
+					: values.get(index);
+			if (pointsBack(entry, opposite, owner)) {
+				anchors.putIfAbsent(identityOf(entry), entry);
+			}
+		}
+		return anchors;
+	}
+
+	/** What makes two materialised objects the same one: type and id, or the instance itself. */
+	private static Object identityOf(EObject object) {
+		String id = idValueOf(object);
+		return isNull(id) ? object : List.of(object.eClass(), id);
+	}
+
+	/** Whether {@code value} holds {@code owner} through the opposite of the list's reference. */
+	private static boolean pointsBack(EObject value, EReference opposite, EObject owner) {
+		if (value.eIsProxy() || !value.eClass().getEAllReferences().contains(opposite)) {
+			return false;
+		}
+		return ((InternalEObject) value).eGet(opposite, false, true) == owner;
+	}
+
+	/** The EMF id of a materialised object, as text. */
+	private static String idValueOf(EObject object) {
+		EAttribute id = object.eClass().getEIDAttribute();
+		if (isNull(id)) {
+			return null;
+		}
+		Object value = object.eGet(id);
+		return isNull(value) ? null : String.valueOf(value);
 	}
 
 	/** The reference's values as EObjects, single- or multi-valued, without resolving anything. */
