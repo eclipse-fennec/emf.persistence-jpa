@@ -122,6 +122,10 @@ jobs:
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: "temurin"
+          # the wrapper distribution and the dependencies come from the cache, as in the verify
+          # jobs of the reusable workflows — downloaded fresh by every matrix job, the Gradle
+          # distribution failed again and again on timeouts and on a 504 from GitHub
+          cache: "gradle"
           java-version: 21
 
       - name: Select the server image
