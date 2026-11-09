@@ -83,6 +83,7 @@ public abstract class AbstractWritePathTCK {
 	protected EClass owner, profile, item, tag, badge, customer, order, student, course, node, asset, lawn, pool;
 	protected EReference ownerProfile, ownerItems, ownerFavorite, ownerTags;
 	protected EReference customerOrders, orderCustomer, studentCourses, courseStudents;
+	protected EReference customerCourses, courseCustomers, orderStudent, studentOrders;
 	protected EReference nodeParent, nodeChildren, assetKeeper, badgeTag, badgeOrder, customerLawn, customerPools;
 
 	private StoreProbe probe;
@@ -139,6 +140,10 @@ public abstract class AbstractWritePathTCK {
 		badgeOrder = ref(badge, "order");
 		customerOrders = ref(customer, "orders");
 		orderCustomer = ref(order, "customer");
+		customerCourses = ref(customer, "courses");
+		courseCustomers = ref(course, "customers");
+		orderStudent = ref(order, "student");
+		studentOrders = ref(student, "orders");
 		studentCourses = ref(student, "courses");
 		courseStudents = ref(course, "students");
 		nodeParent = ref(node, "parent");
@@ -1146,6 +1151,43 @@ public abstract class AbstractWritePathTCK {
 		assertRefs(customer, "c1", customerPools, "p1");
 		assertRef(lawn, "l1", assetKeeper, "c1");
 		assertRef(pool, "p1", assetKeeper, "c1");
+	}
+
+	/**
+	 * Issue #409, the STA graph of emf.streaming: everything new, every reference bidirectional,
+	 * and the types reaching each other through their inverse many sides. Registering an object
+	 * the moment it was reached let its cascade run back into the root — course to customer, as
+	 * a Location to its Thing — and on through the root's list into an order that was not
+	 * sanitized yet, whose student behind the many-to-one then stayed unregistered.
+	 */
+	@Test
+	public void repositorySavesANewGraphLinkedThroughInverseManySidesStartingAnywhere() throws Exception {
+		List<List<String>> orders = List.of(List.of("customer", "course", "order", "student"),
+				List.of("student", "order", "course", "customer"), List.of("course", "student", "customer", "order"));
+		int n = 0;
+		for (List<String> saveOrder : orders) {
+			n++;
+			EObject c = obj(customer, "c" + n);
+			EObject k = obj(course, "k" + n);
+			EObject o = obj(order, "o" + n);
+			EObject s = obj(student, "s" + n);
+			list(c, customerCourses).add(k);
+			o.eSet(orderCustomer, c);
+			o.eSet(orderStudent, s);
+			Map<String, EObject> byName = Map.of("customer", c, "course", k, "order", o, "student", s);
+
+			repository().saveAll(saveOrder.stream().map(byName::get).toList());
+
+			assertRefs(customer, "c" + n, customerCourses, "k" + n);
+			assertRefs(course, "k" + n, courseCustomers, "c" + n);
+			assertRef(order, "o" + n, orderCustomer, "c" + n);
+			assertRef(order, "o" + n, orderStudent, "s" + n);
+			assertRefs(student, "s" + n, studentOrders, "o" + n);
+		}
+		assertIds(customer, "c1", "c2", "c3");
+		assertIds(course, "k1", "k2", "k3");
+		assertIds(order, "o1", "o2", "o3");
+		assertIds(student, "s1", "s2", "s3");
 	}
 
 	@Test

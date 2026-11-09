@@ -207,8 +207,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 */
 	private final Map<EObject, EObject> aheadOfTurn = new IdentityHashMap<>();
 	/**
-	 * The converted targets of single-valued references that wait for their registration (issue
-	 * #406). Registered at once, a target in a cycle would be persisted while an object it reaches
+	 * The objects created or reached ahead of their turn that wait for their registration (issues
+	 * #406, #409). Registered at once, a target in a cycle would be persisted while an object it reaches
 	 * is still being sanitized, and the cascade would meet the plain object; registered once the
 	 * root is through, everything it reaches is an entity.
 	 */
@@ -852,6 +852,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					// case below (#335: the links of a new object's n:m were never written)
 					for (EObject element : (List<EObject>) original.eGet(ref)) {
 						EObject handle = managedHandle(element, refDescriptor, server, em);
+						if (isNull(handle) && !isEntityInstance(server, element)) {
+							// a plain target without a row, saved later in the same saveAll: dropped
+							// here, the link was lost for good (issue #409)
+							handle = entityAheadOfTurn(element, server, em);
+						}
 						if (nonNull(handle)) {
 							values.add(handle);
 						} else if (isEntityInstance(server, element)) {
@@ -962,7 +967,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 		// its own references first: what it reaches is not seen by sanitizing otherwise, and a
 		// new object behind a many-to-one, which has no cascade, stays unregistered (issue #406)
 		sanitizeNonContainmentReferences(value, value, server, em);
-		em.persist(value);
+		// registered once the root is through, not here (issue #409): persisted now, its cascade
+		// reaches back into objects still being sanitized — a Location's Things to the Thing, its
+		// Datastreams to a Datastream — registers them as they are, and what hangs behind their
+		// many-to-ones stays unregistered, while the registered object is never sanitized again
+		pendingPersist.add(value);
 		return value;
 	}
 
@@ -1124,7 +1133,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				if (ref.isContainment()) {
 					syncContainmentList(source, target, ref, server, em);
 				} else {
-					syncReferenceList(source, target, ref, server, em);
+					syncReferenceList(droppedOppositeList(source, original, ref) ? original : source, target,
+							ref, server, em);
 				}
 				continue;
 			}
@@ -1331,6 +1341,19 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			return parts.length >= 3 ? parts[2] : null;
 		}
 		return fragment;
+	}
+
+	/**
+	 * Whether the EMF copier dropped the elements of a many-valued bidirectional reference: empty
+	 * on the copy, filled on the caller's object. The update then syncs from the caller's object,
+	 * or a link written ahead of its turn earlier in the same saveAll is removed (issue #409). A
+	 * list the caller really emptied is empty on both.
+	 */
+	@SuppressWarnings("unchecked")
+	private static boolean droppedOppositeList(EObject source, EObject original, EReference ref) {
+		return nonNull(original) && original != source && original.eClass() == source.eClass()
+				&& nonNull(ref.getEOpposite()) && ((List<EObject>) source.eGet(ref)).isEmpty()
+				&& !((List<EObject>) original.eGet(ref)).isEmpty();
 	}
 
 	/**
