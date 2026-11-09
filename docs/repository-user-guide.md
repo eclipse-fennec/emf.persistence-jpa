@@ -167,7 +167,9 @@ below):
   end of such a chain used to stay unregistered. Everything reached that way is registered
   only once the object that reached it is fully sanitized, so a graph whose types reach each
   other through their inverse many sides — the OGC SensorThings model, for one — saves in one
-  call as well (#409).
+  call as well (#409). The save leaves your references alone: an object of a generated model is
+  persisted as it is, and what the transaction needs in place of your references to stored
+  objects is swapped back once it is over (#411).
 - **`delete(object)` deletes exactly the given object** — never the rest of the loaded
   resource.
 

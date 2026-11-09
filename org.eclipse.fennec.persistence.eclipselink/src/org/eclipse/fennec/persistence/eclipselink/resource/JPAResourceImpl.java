@@ -213,6 +213,14 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 	 * root is through, everything it reaches is an entity.
 	 */
 	private final List<EObject> pendingPersist = new ArrayList<>();
+	/**
+	 * The references the save swapped on the caller's own objects, to be put back once the
+	 * transaction is over (issue #411). An instance of its entity class — a generated object — is
+	 * persisted as it is, so sanitizing it replaces the caller's reference to a stored object with
+	 * a handle of the save's entity manager: in no resource, refused by the object's own save later
+	 * in the same saveAll, and a change of the caller's graph behind its back. Restored in reverse.
+	 */
+	private final List<Runnable> callerReferences = new ArrayList<>();
 
 	/**
 	 * Creates a resource backed by a {@link JPAUnit} — the narrow capability that hands out
@@ -605,7 +613,16 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 			}
 		} finally {
 			aheadOfTurn.clear();
+			restoreCallerReferences();
 		}
+	}
+
+	/** Puts back what the save swapped on the caller's objects (issue #411), last swap first. */
+	private void restoreCallerReferences() {
+		for (int i = callerReferences.size() - 1; i >= 0; i--) {
+			callerReferences.get(i).run();
+		}
+		callerReferences.clear();
 	}
 
 	/**
@@ -870,7 +887,11 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 						managed = entityAheadOfTurn(values.get(i), server, em);
 					}
 					if (nonNull(managed) && managed != values.get(i)) {
-						values.set(i, managed);
+						EObject previous = values.set(i, managed);
+						if (source == original) {
+							int index = i;
+							callerReferences.add(() -> values.set(index, previous));
+						}
 					}
 				}
 			} else {
@@ -897,6 +918,9 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 					}
 					if (nonNull(managed) && (recovered || managed != eo)) {
 						source.eSet(ref, managed);
+						if (source == original) {
+							callerReferences.add(() -> source.eSet(ref, eo));
+						}
 					}
 				}
 			}
@@ -2262,6 +2286,8 @@ public class JPAResourceImpl extends ResourceImpl implements PersistenceResource
 				throw new IOException("Insert rejected: " + e.getMessage(), e);
 			} finally {
 				aheadOfTurn.clear();
+				// copies of the payload, not the caller's objects — and the bracket commits later
+				callerReferences.clear();
 			}
 		}
 		try (Lease lease = leaseChecked(); EntityManager em = lease.createEntityManager()) {
