@@ -17,7 +17,9 @@ import static java.util.Objects.nonNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -172,6 +174,7 @@ final class MongoExpansions {
 		}
 		List<EObject> values = (List<EObject>) raw;
 		Map<Object, EObject> anchors = anchorsOf(owner, reference, values);
+		Set<EObject> held = heldInstances(values);
 		for (int index = 0; index < values.size(); index++) {
 			EObject value = values instanceof InternalEList<?> internal
 					? (EObject) internal.basicGet(index)
@@ -179,7 +182,7 @@ final class MongoExpansions {
 			EObject target = value.eIsProxy() ? EcoreUtil.resolve(value, resourceSet) : value;
 			if (!target.eIsProxy()) {
 				EObject anchor = anchors.get(identityOf(target));
-				if (nonNull(anchor) && anchor != value) {
+				if ((nonNull(anchor) && anchor != value) || (target != value && held.contains(target))) {
 					// a path back over a bidirectional reference (issue #413): resolving the
 					// level before set the opposite, which put the object into this list next
 					// to the entry the list was built with. Both stand for the same object, so
@@ -190,6 +193,7 @@ final class MongoExpansions {
 				}
 				if (target != value) {
 					values.set(index, target);
+					held.add(target);
 				}
 				resolved.add(target);
 			}
@@ -217,14 +221,14 @@ final class MongoExpansions {
 	 * the one the list was built with (issue #413); the tied one is the instance the caller
 	 * already holds, so it stays and the other goes.
 	 * <p>
-	 * Empty without a single-valued opposite. Without an opposite nothing can have been added
-	 * behind the list's back; a many-valued one is not asked, because reading it per entry could
-	 * load a lazy list per entry.
+	 * Empty without an opposite: then nothing can have been added behind the list's back. A
+	 * many-valued opposite counts as well (issue #415, many-to-many); it is read without
+	 * triggering or resolving anything, see {@link #pointsBack}.
 	 */
 	private static Map<Object, EObject> anchorsOf(EObject owner, EReference reference,
 			List<EObject> values) {
 		EReference opposite = reference.getEOpposite();
-		if (isNull(opposite) || opposite.isMany()) {
+		if (isNull(opposite)) {
 			return Map.of();
 		}
 		Map<Object, EObject> anchors = new HashMap<>();
@@ -239,18 +243,46 @@ final class MongoExpansions {
 		return anchors;
 	}
 
+	/**
+	 * The materialised instances the list holds, by identity. Whatever else the anchors miss, a
+	 * resolution that yields one of them must not be written into a second slot: the unique list
+	 * would throw.
+	 */
+	private static Set<EObject> heldInstances(List<EObject> values) {
+		Set<EObject> held = Collections.newSetFromMap(new IdentityHashMap<>());
+		for (int index = 0; index < values.size(); index++) {
+			EObject entry = values instanceof InternalEList<?> internal
+					? (EObject) internal.basicGet(index)
+					: values.get(index);
+			if (!entry.eIsProxy()) {
+				held.add(entry);
+			}
+		}
+		return held;
+	}
+
 	/** What makes two materialised objects the same one: type and id, or the instance itself. */
 	private static Object identityOf(EObject object) {
 		String id = idValueOf(object);
 		return isNull(id) ? object : List.of(object.eClass(), id);
 	}
 
-	/** Whether {@code value} holds {@code owner} through the opposite of the list's reference. */
+	/**
+	 * Whether {@code value} holds {@code owner} through the opposite of the list's reference.
+	 * <p>
+	 * Reads without resolving: a non-resolving {@code eGet} does not trigger a lazy list of the
+	 * JPA indirection policy, and {@code basicContains} compares the entries as they are, where
+	 * {@code contains} would resolve every proxy it passes.
+	 */
 	private static boolean pointsBack(EObject value, EReference opposite, EObject owner) {
 		if (value.eIsProxy() || !value.eClass().getEAllReferences().contains(opposite)) {
 			return false;
 		}
-		return ((InternalEObject) value).eGet(opposite, false, true) == owner;
+		Object back = ((InternalEObject) value).eGet(opposite, false, true);
+		if (!opposite.isMany()) {
+			return back == owner;
+		}
+		return back instanceof InternalEList<?> list && list.basicContains(owner);
 	}
 
 	/** The EMF id of a materialised object, as text. */

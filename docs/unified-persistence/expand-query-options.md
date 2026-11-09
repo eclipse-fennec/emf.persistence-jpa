@@ -122,8 +122,13 @@ the sensor's list already holds the root datastream, next to the entry the store
 That entry goes: it is not replaced. Replacing it would hold the datastream twice. When the
 resolution yields the very instance, `set` on the unique list throws instead. The entry the
 opposite added stays, because it is the instance the caller holds. This holds for proxies the
-filter did not select as well. The check reads single-valued opposites only, since reading a
-many-valued one per entry could load a lazy list per entry.
+filter did not select as well.
+
+The multiplicity of the opposite does not matter (issue #415): a many-to-many path such as
+`HistoricalLocation → locations → historicalLocations` behaves the same. A many-valued opposite
+is read without loading or resolving anything: a non-resolving `eGet` leaves a lazy JPA list
+untriggered, and `basicContains` does not resolve the proxies it passes. In addition, a
+resolution that yields an instance the list already holds never goes into a second slot.
 
 ## 4. Shape
 
