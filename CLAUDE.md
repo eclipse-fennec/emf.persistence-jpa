@@ -24,7 +24,14 @@ query using an unserved feature is refused with a `Diagnostic`, never silently p
 ./gradlew perfTest                 # Run performance tests only (@Tag("perf"), ignoreFailures=true)
 ./gradlew :MODULE_NAME:test        # Run tests for a single module
 ./gradlew codeCoverageReport       # Generate JaCoCo coverage (XML + HTML)
+./gradlew sbom                     # CycloneDX SBOM of required.bndrun → <project>/generated/sbom/
+./gradlew bndUpdates               # Report: updates in the .mvn indexes (micro policy), shadowed entries
 ```
+
+`sbom.yml` scans the SBOM with Trivy and fails on fixable HIGH/CRITICAL findings; `bnd-update.yml`
+runs `bnd update` weekly, report only. After an index change, run in-place resolves with `--rerun`
+(e.g. `resolve.required --rerun`): they stay UP-TO-DATE when only the indexes changed, and testOSGi
+then fails on a stale `generated/test.bndrun`.
 
 OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (`test.bndrun`) and produce JaCoCo exec files at `generated/tmp/testOSGi/generated/jacoco.exec`.
 
@@ -63,7 +70,11 @@ OSGi integration tests in `org.eclipse.fennec.persistence.test` run via bndrun (
   fennecJacoco, fennecEMF, fennecEMFCommonModels, fennecCodec), the `-plugin.*` repositories,
   `-groupid`, `base-version` and `javac.source/target`. There is **no `cnf/ext/`**; the libraries
   themselves are expanded into `cnf/cache/<bnd-version>/` from `org.eclipse.fennec.bnd.library`.
-- `cnf/central.mvn`: Maven Central dependency index (versions of EclipseLink, the Mongo driver, …)
+- `cnf/central.mvn`: Maven Central dependency index (versions of EclipseLink, the Mongo driver, …).
+  Only what a bnd file of the workspace or a `-library` refers to; EMF, Jackson, bson and scr come
+  from the library indexes — an entry here at a lower version is shadowed and unused.
+- `cnf/sbom/plugin.bnd`: the SBOM exporter plugin, included by `required.bndrun` once
+  `./gradlew sbom` has fetched it into `cnf/cache/sbom-exporter/`
 - `cnf/local/index.xml`, `cnf/release/index.xml`: the local and release repository indexes
 
 ## Testing
