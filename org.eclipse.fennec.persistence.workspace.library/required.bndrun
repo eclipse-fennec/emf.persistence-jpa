@@ -37,7 +37,6 @@
 -runbundles: \
 	com.h2database;version='[2.5.252,2.5.253)',\
 	jakarta.persistence-api;version='[3.2.0,3.2.1)',\
-	org.apache.felix.configadmin;version='[1.9.26,1.9.27)',\
 	org.apache.felix.configurator;version='[1.0.18,1.0.19)',\
 	org.eclipse.daanse.jdbc.datasource.common;version='[0.0.1,0.0.2)',\
 	org.eclipse.daanse.jdbc.datasource.postgresql;version='[0.0.1,0.0.2)',\
@@ -97,4 +96,5 @@
 	org.objectweb.asm.util;version='[9.11.1,9.11.2)',\
 	org.postgresql.jdbc;version='[42.7.14,42.7.15)',\
 	slf4j.api;version='[2.0.20,2.0.21)',\
-	slf4j.simple;version='[2.0.20,2.0.21)'
+	slf4j.simple;version='[2.0.20,2.0.21)',\
+	org.apache.felix.configadmin;version='[1.10.0,1.10.1)'
