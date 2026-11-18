@@ -6,7 +6,8 @@
 	bnd.identity;id='org.eclipse.fennec.persistence.test',\
 	bnd.identity;id='org.eclipse.fennec.persistence.eclipselink',\
 	bnd.identity;id='org.eclipse.fennec.persistence.ecore',\
-	bnd.identity;id='org.eclipse.persistence.asm',\
+	bnd.identity;id='org.objectweb.asm',\
+	bnd.identity;id='org.objectweb.asm.commons',\
 	bnd.identity;id='org.eclipse.persistence.jpa.jpql',\
 	bnd.identity;id='org.eclipse.fennec.persistence.mongo',\
 	bnd.identity;id='org.eclipse.fennec.persistence.query.derived',\
@@ -83,10 +84,9 @@
 	org.eclipse.fennec.persistence.test;version=snapshot,\
 	org.eclipse.fennec.query.model;version=snapshot,\
 	org.eclipse.parsson.jakarta.json;version='[1.1.9,1.1.10)',\
-	org.eclipse.persistence.asm;version='[9.11.0,9.11.1)',\
-	org.eclipse.persistence.core;version='[4.0.10,4.0.11)',\
-	org.eclipse.persistence.jpa;version='[4.0.10,4.0.11)',\
-	org.eclipse.persistence.jpa.jpql;version='[4.0.10,4.0.11)',\
+	org.eclipse.persistence.core;version='[5.0.2,5.0.3)',\
+	org.eclipse.persistence.jpa;version='[5.0.2,5.0.3)',\
+	org.eclipse.persistence.jpa.jpql;version='[5.0.2,5.0.3)',\
 	org.mockito.junit-jupiter;version='[5.21.0,5.21.1)',\
 	org.mockito.mockito-core;version='[5.21.0,5.21.1)',\
 	org.mongodb.bson;version='[5.6.5,5.6.6)',\

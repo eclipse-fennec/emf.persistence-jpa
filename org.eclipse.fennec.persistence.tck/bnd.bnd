@@ -35,7 +35,8 @@ Bundle-Description: Compatibility test suite for EMF persistence backends — th
 	org.postgresql.jdbc;version=latest,\
 	mariadb-java-client;version=latest,\
 	jakarta.persistence-api;version=latest,\
-	org.eclipse.persistence.asm;version=latest,\
+	org.objectweb.asm;version=latest,\
+	org.objectweb.asm.commons;version=latest,\
 	org.eclipse.persistence.jpa;version=latest,\
 	org.eclipse.persistence.jpa.jpql;version=latest,\
 	org.eclipse.persistence.core;version=latest,\
