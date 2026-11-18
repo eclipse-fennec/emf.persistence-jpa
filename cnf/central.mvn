@@ -70,11 +70,10 @@ org.eclipse.daanse:org.eclipse.daanse.jdbc.datasource.h2:0.0.1-SNAPSHOT
 org.eclipse.daanse:org.eclipse.daanse.jdbc.datasource.postgresql:0.0.1-SNAPSHOT
 
 # JPA - EclipseLink
-org.eclipse.persistence:org.eclipse.persistence.asm:9.11.0
-org.eclipse.persistence:org.eclipse.persistence.core:4.0.10
-org.eclipse.persistence:org.eclipse.persistence.jpa:4.0.10
-org.eclipse.persistence:org.eclipse.persistence.jpa.jpql:4.0.10
-org.eclipse.persistence:org.eclipse.persistence.moxy:4.0.10
+org.eclipse.persistence:org.eclipse.persistence.core:5.0.2
+org.eclipse.persistence:org.eclipse.persistence.jpa:5.0.2
+org.eclipse.persistence:org.eclipse.persistence.jpa.jpql:5.0.2
+org.eclipse.persistence:org.eclipse.persistence.moxy:5.0.2
 org.ow2.asm:asm:9.11.1
 org.ow2.asm:asm-analysis:9.11.1
 org.ow2.asm:asm-commons:9.11.1

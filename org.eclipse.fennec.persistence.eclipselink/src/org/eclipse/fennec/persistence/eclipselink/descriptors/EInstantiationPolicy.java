@@ -25,7 +25,7 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.exceptions.DescriptorException;
-import org.eclipse.persistence.exceptions.DiscoveryException;
+import org.eclipse.persistence.sessions.coordination.DiscoveryException;
 import org.eclipse.persistence.internal.descriptors.InstantiationPolicy;
 
 /**

@@ -35,7 +35,6 @@ import org.eclipse.fennec.persistence.eorm.JoinTable;
 import org.eclipse.fennec.persistence.orm.MappingContext;
 import org.eclipse.fennec.persistence.orm.helper.MappingHelper;
 import org.eclipse.fennec.persistence.processor.ProcessorImpl;
-import org.eclipse.persistence.internal.cache.Processor;
 
 /**
  * An basic implementation for the mapping processor

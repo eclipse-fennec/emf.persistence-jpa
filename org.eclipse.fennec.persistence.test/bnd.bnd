@@ -62,7 +62,8 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 -testpath: \
 	assertj-core,\
 	com.h2database,\
-	org.eclipse.persistence.asm;version=latest,\
+	org.objectweb.asm;version=latest,\
+	org.objectweb.asm.commons;version=latest,\
 	org.eclipse.persistence.jpa;version=latest,\
 	org.eclipse.persistence.jpa.jpql;version=latest,\
 	org.eclipse.persistence.core;version=latest,\
