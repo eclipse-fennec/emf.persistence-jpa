@@ -22,10 +22,10 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.DynamicEObjectImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.persistence.eclipselink.exception.EDescriptorException;
 import org.eclipse.fennec.persistence.orm.helper.EORMHelper;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.exceptions.DescriptorException;
-import org.eclipse.persistence.sessions.coordination.DiscoveryException;
 import org.eclipse.persistence.internal.descriptors.InstantiationPolicy;
 
 /**
@@ -84,7 +84,7 @@ public class EInstantiationPolicy extends InstantiationPolicy {
     @Override
     public Object buildNewInstance() throws DescriptorException {
     	if (isNull(eClass)) {
-    		throw new DiscoveryException(String.format("No EClass was provided to this instanciation policy for descriptor '%s'", getDescriptor().getJavaClassName()));
+    		throw EDescriptorException.noEClassForInstantiation(getDescriptor());
     	}
     	Class<?> javaClass = getDescriptor().getJavaClass();
         if (DynamicEObjectImpl.class.isAssignableFrom(javaClass)) {
@@ -93,7 +93,7 @@ public class EInstantiationPolicy extends InstantiationPolicy {
         		wrapper.eSetClass(eClass);
         		return wrapper;
         	} catch (Exception e) {
-        		throw new DiscoveryException(e.getMessage());
+        		throw EDescriptorException.eObjectInstantiationFailed(javaClass, eClass, getDescriptor(), e);
         	}
         } else if (EObject.class.isAssignableFrom(javaClass)) {
         	// a generated implementation (issue #311): a concrete class through its factory, which
@@ -114,8 +114,7 @@ public class EInstantiationPolicy extends InstantiationPolicy {
         		}
         		return created;
         	} catch (ReflectiveOperationException | RuntimeException e) {
-        		throw new DiscoveryException("Cannot instantiate " + javaClass.getName() + " for " + eClass.getName()
-        				+ ": " + e.getMessage());
+        		throw EDescriptorException.eObjectInstantiationFailed(javaClass, eClass, getDescriptor(), e);
         	}
         }
         return super.buildNewInstance();
