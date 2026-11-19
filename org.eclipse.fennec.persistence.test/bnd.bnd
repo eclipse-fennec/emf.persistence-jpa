@@ -77,3 +77,5 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 
 # Sometimes without DynamicImport Mockito will not find certain classes
 #DynamicImport-Package: *
+# Test-only bundle: released into the local Maven repository, never uploaded to Maven Central
+-maven-release: local
