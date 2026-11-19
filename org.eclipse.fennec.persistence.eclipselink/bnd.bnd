@@ -28,5 +28,5 @@ Bundle-Description: EMF Persistence with Eclipselink JPA
 -testpath: \
 	assertj-core,\
 	com.h2database,\
-	org.objectweb.asm;version=latest,
+	org.objectweb.asm;version=latest,\
 	org.objectweb.asm.commons;version=latest
