@@ -17,3 +17,6 @@ src=${^src},src-gen
 		output=src-gen
 
 -includeresource.model: model=model
+
+# Test-only bundle: released into the local Maven repository, never uploaded to Maven Central
+-maven-release: local
