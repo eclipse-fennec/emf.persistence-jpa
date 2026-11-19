@@ -13,9 +13,10 @@
 package org.eclipse.fennec.persistence.eclipselink.exception;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.fennec.persistence.eclipselink.descriptors.EInstantiationPolicy;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
 import org.eclipse.persistence.exceptions.DescriptorException;
-import org.eclipse.persistence.exceptions.i18n.ExceptionMessageGenerator;
 
 /**
  * EPersistence Descriptor Exception
@@ -51,21 +52,37 @@ public class EDescriptorException extends DescriptorException {
 		super(theMessage, descriptor, cause);
 	}
 	
+	/**
+	 * A value that should be cloned or copied as an {@link EObject} is none.
+	 * @param object the value
+	 * @param descriptor the descriptor
+	 * @return the exception
+	 */
 	public static DescriptorException valueIsNoEObject(Object object, ClassDescriptor descriptor) {
-		Object[] args = { object };
-		
-		DescriptorException exception = new EDescriptorException(ExceptionMessageGenerator.buildMessage(DescriptorException.class,VALUE_IS_NO_EOBJECT, args), descriptor);
+		DescriptorException exception = new EDescriptorException(String.format(
+				"The value '%s' (%s) of descriptor '%s' is no EObject",
+				object, typeName(object), javaClassName(descriptor)), descriptor);
 		exception.setErrorCode(VALUE_IS_NO_EOBJECT);
 		return exception;
 	}
-	
-    public static DescriptorException noEInstantiationPolicySet(Object object, ClassDescriptor descriptor) {
-        Object[] args = { object };
 
-        DescriptorException exception = new EDescriptorException(ExceptionMessageGenerator.buildMessage(DescriptorException.class, NO_EINSTANTIATION_POLICY, args), descriptor);
-        exception.setErrorCode(NO_EINSTANTIATION_POLICY);
-        return exception;
-    }
+	/**
+	 * The descriptor creates its instances with another instantiation policy than {@link EInstantiationPolicy}.
+	 * @param object the object that was to be created or cloned, may be {@code null}
+	 * @param descriptor the descriptor
+	 * @return the exception
+	 */
+	public static DescriptorException noEInstantiationPolicySet(Object object, ClassDescriptor descriptor) {
+		Object policy = descriptor == null ? null : descriptor.getInstantiationPolicy();
+		String message = String.format("Descriptor '%s' has no EInstantiationPolicy but %s",
+				javaClassName(descriptor), typeName(policy));
+		if (object != null) {
+			message += String.format(", cannot handle '%s' (%s)", object, typeName(object));
+		}
+		DescriptorException exception = new EDescriptorException(message, descriptor);
+		exception.setErrorCode(NO_EINSTANTIATION_POLICY);
+		return exception;
+	}
 
 	/**
 	 * The instantiation policy of a descriptor has no {@link EClass} to create instances of.
@@ -75,7 +92,7 @@ public class EDescriptorException extends DescriptorException {
 	public static DescriptorException noEClassForInstantiation(ClassDescriptor descriptor) {
 		DescriptorException exception = new EDescriptorException(String.format(
 				"No EClass was provided to the instantiation policy of descriptor '%s'",
-				descriptor == null ? null : descriptor.getJavaClassName()), descriptor);
+				javaClassName(descriptor)), descriptor);
 		exception.setErrorCode(NO_ECLASS_FOR_INSTANTIATION);
 		return exception;
 	}
@@ -93,6 +110,14 @@ public class EDescriptorException extends DescriptorException {
 				javaClass.getName(), eClass.getName(), cause.getMessage()), descriptor, cause);
 		exception.setErrorCode(EOBJECT_INSTANTIATION_FAILED);
 		return exception;
+	}
+
+	private static String javaClassName(ClassDescriptor descriptor) {
+		return descriptor == null ? null : descriptor.getJavaClassName();
+	}
+
+	private static String typeName(Object object) {
+		return object == null ? "null" : object.getClass().getName();
 	}
 
 }
