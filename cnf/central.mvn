@@ -80,6 +80,7 @@ org.ow2.asm:asm-commons:9.11.1
 org.ow2.asm:asm-tree:9.11.1
 org.ow2.asm:asm-util:9.11.1
 
-# MongoDB backend (bson comes from fennecCodec)
-org.mongodb:mongodb-driver-core:5.6.5
-org.mongodb:mongodb-driver-sync:5.6.5
+# MongoDB backend; bson moves with the driver and overrides the 5.6.5 of fennecCodec (#423)
+org.mongodb:bson:5.14.0
+org.mongodb:mongodb-driver-core:5.14.0
+org.mongodb:mongodb-driver-sync:5.14.0
