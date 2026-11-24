@@ -28,7 +28,7 @@ import java.util.Map;
  *
  * <pre>
  * SELECT t.age, t FROM Person t, (
- *     SELECT e.pid AS pid,
+ *     SELECT e.pid,
  *            SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ? ASC)', e.age, e.name) AS rn
  *     FROM Person e)
  *   sub
