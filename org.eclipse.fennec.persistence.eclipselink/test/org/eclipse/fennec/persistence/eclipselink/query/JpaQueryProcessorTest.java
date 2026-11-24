@@ -181,7 +181,7 @@ class JpaQueryProcessorTest {
 				.groupByAs("colour", Expressions.mapValue(attributes, "color").toExpression())
 				.countOf("total")
 				.build());
-		assertThat(plan.jpql()).isEqualTo("SELECT mj0.value AS colour, COUNT(e) AS total"
+		assertThat(plan.jpql()).isEqualTo("SELECT mj0.value AS c0, COUNT(e) AS c1"
 				+ " FROM Person e LEFT JOIN e.attributes mj0 ON mj0.key = :p0"
 				+ " GROUP BY mj0.value");
 		assertThat(plan.parameters()).containsEntry("p0", "color");
@@ -200,8 +200,8 @@ class JpaQueryProcessorTest {
 				.build());
 		assertThat(plan.jpql()).contains("LEFT JOIN e.attributes mj0 ON mj0.key = :p0")
 				.contains("LEFT JOIN e.attributes mj1 ON mj1.key = :p1")
-				.contains("COUNT(DISTINCT (mj0.value)) AS colours")
-				.contains("MAX((mj1.value)) AS largest");
+				.contains("COUNT(DISTINCT (mj0.value)) AS c1")
+				.contains("MAX((mj1.value)) AS c2");
 		assertThat(plan.parameters()).containsEntry("p0", "color").containsEntry("p1", "size");
 	}
 
@@ -375,7 +375,7 @@ class JpaQueryProcessorTest {
 		JpaQueryPlan plan = translate(query);
 		assertThat(plan.shape()).isEqualTo(QueryShape.PROJECTION);
 		assertThat(plan.jpql()).isEqualTo(
-				"SELECT e.name AS n, e.addresses.street AS addresses_street FROM Person e WHERE e.age >= :p0");
+				"SELECT e.name AS c0, e.addresses.street AS c1 FROM Person e WHERE e.age >= :p0");
 		assertThat(plan.rowKeys()).containsExactly("n", "addresses_street");
 		assertThat(plan.rowAliases()).containsExactly("n", null);
 	}
@@ -393,7 +393,7 @@ class JpaQueryProcessorTest {
 		JpaQueryPlan plan = translate(query);
 		assertThat(plan.shape()).isEqualTo(QueryShape.PROJECTION);
 		assertThat(plan.jpql()).isEqualTo(
-				"SELECT e.name AS n, (e.age + :p0) AS nextAge FROM Person e");
+				"SELECT e.name AS c0, (e.age + :p0) AS c1 FROM Person e");
 		assertThat(plan.rowKeys()).containsExactly("n", "nextAge");
 		assertThat(plan.rowAliases()).containsExactly("n", "nextAge");
 	}
@@ -409,7 +409,7 @@ class JpaQueryProcessorTest {
 				.build();
 		JpaQueryPlan plan = translate(query);
 		assertThat(plan.jpql()).isEqualTo("SELECT (SELECT me0.value FROM e.attributes me0"
-				+ " WHERE me0.key = :p0) AS colour FROM Person e");
+				+ " WHERE me0.key = :p0) AS c0 FROM Person e");
 		assertThat(plan.rowKeys()).containsExactly("colour");
 	}
 
@@ -509,9 +509,9 @@ class JpaQueryProcessorTest {
 
 		JpaQueryPlan plan = translate(query);
 		assertThat(plan.shape()).isEqualTo(QueryShape.AGGREGATION);
-		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS name, AVG(e.age) AS avgAge, COUNT(e) AS cnt,"
-				+ " COUNT(DISTINCT e.addresses.street) AS streets"
-				+ " FROM Person e GROUP BY e.name ORDER BY avgAge DESC");
+		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS c0, AVG(e.age) AS c1, COUNT(e) AS c2,"
+				+ " COUNT(DISTINCT e.addresses.street) AS c3"
+				+ " FROM Person e GROUP BY e.name ORDER BY c1 DESC");
 	}
 
 	@Test
@@ -523,8 +523,8 @@ class JpaQueryProcessorTest {
 				.orderByDesc(aliasRef("total").toExpression())
 				.build();
 		JpaQueryPlan plan = translate(query);
-		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS name, SUM(e.age) AS total"
-				+ " FROM Person e GROUP BY e.name ORDER BY total DESC");
+		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS c0, SUM(e.age) AS c1"
+				+ " FROM Person e GROUP BY e.name ORDER BY c1 DESC");
 
 		Query unknown = QueryBuilder.from(person)
 				.groupBy(name)
@@ -538,7 +538,7 @@ class JpaQueryProcessorTest {
 	@Test
 	void wholeSetAggregation() throws QueryException {
 		JpaQueryPlan plan = translate(QueryBuilder.from(person).max("maxAge", age).build());
-		assertThat(plan.jpql()).isEqualTo("SELECT MAX(e.age) AS maxAge FROM Person e");
+		assertThat(plan.jpql()).isEqualTo("SELECT MAX(e.age) AS c0 FROM Person e");
 	}
 
 	@Test
@@ -638,6 +638,109 @@ class JpaQueryProcessorTest {
 				.containsEntry("expandUpper", 3);
 	}
 
+	// ------------------------------------------- reserved-word aliases (issue #429)
+
+	/**
+	 * Issue #429: {@code id} and {@code version} are reserved words of the EclipseLink 5 grammar
+	 * (JPA 3.2 {@code ID(...)}/{@code VERSION(...)}), so the derived table of per-parent paging
+	 * must not alias its columns after the attributes. They stay unaliased — an unaliased column
+	 * is named after its attribute and resolves as {@code sub.<attr>} — and only {@code rn}
+	 * keeps an alias.
+	 */
+	@Test
+	void perParentPagingLeavesTheIdColumnsUnaliased() throws QueryException {
+		Query paged = QueryBuilder.from(person)
+				.expand(Expands.of(addresses).orderByAsc(street).top(2).skip(1).build())
+				.build();
+
+		String jpql = translate(paged).expandPlans().get(0).jpql();
+
+		assertThat(jpql)
+				.contains("(SELECT p.id, e.aid, SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ? ASC)',"
+						+ " p.id, e.street) AS rn FROM Person p JOIN p.addresses e WHERE ")
+				.contains("WHERE anchor.id = sub.id AND t.aid = sub.aid")
+				.doesNotContain(" AS id")
+				.doesNotContain(" AS aid");
+	}
+
+	/** Issue #429: the representative window's derived table, the same way. */
+	@Test
+	void representativesLeaveTheIdColumnUnaliased() throws QueryException {
+		Query query = QueryBuilder.from(person).groupBy(name).countOf("cnt")
+				.representatives("members", 2)
+				.build();
+
+		JpaQueryPlan plan = translate(query);
+
+		assertThat(plan.representatives()).isNotNull();
+		assertThat(plan.representatives().jpql())
+				.contains("(SELECT e.id, SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ? ASC)', e.name, e.id)"
+						+ " AS rn FROM Person e)")
+				.contains("WHERE t.id = sub.id")
+				.doesNotContain(" AS id");
+	}
+
+	/**
+	 * Issue #429: result variables are neutral ({@code c0}, {@code c1}, …) — never the output key,
+	 * which would be the reserved {@code id} here. The keys callers see are unchanged.
+	 */
+	@Test
+	void projectingTheIdUsesANeutralResultVariable() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person).select(personId).select(name)
+				.orderByDesc(personId).build());
+
+		assertThat(plan.jpql()).isEqualTo("SELECT e.id AS c0, e.name AS c1 FROM Person e ORDER BY c0 DESC");
+		assertThat(plan.rowKeys()).containsExactly("id", "name");
+	}
+
+	/** Issue #429: a group key named {@code id}, sorted by its output key. */
+	@Test
+	void groupingByTheIdUsesANeutralResultVariable() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person).groupBy(personId).countOf("cnt")
+				.orderByAsc(personId).build());
+
+		assertThat(plan.jpql())
+				.isEqualTo("SELECT e.id AS c0, COUNT(e) AS c1 FROM Person e GROUP BY e.id ORDER BY c0 ASC");
+		assertThat(plan.rowKeys()).containsExactly("id", "cnt");
+		assertThat(plan.rowAliases()).containsExactly("id", "cnt");
+	}
+
+	/**
+	 * Issue #429: the terminal compute selects every single-valued attribute — {@code id} among
+	 * them — under a neutral result variable, and the output keys stay the attribute names.
+	 */
+	@Test
+	void terminalComputeUsesNeutralResultVariables() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.computeAs("nextAge", path(age).plus(1).toExpression())
+				.orderByDesc(aliasRef("nextAge").toExpression())
+				.build());
+
+		assertThat(plan.jpql()).isEqualTo("SELECT e.id AS c0, e.name AS c1, e.age AS c2,"
+				+ " (e.age + :p0) AS c3 FROM Person e ORDER BY c3 DESC");
+		assertThat(plan.rowAliases()).containsExactly("id", "name", "age", "nextAge");
+	}
+
+	/** Issue #429: a user alias that is a reserved word reaches the caller, never the JPQL. */
+	@Test
+	void reservedUserAliasesStayOutOfTheJpql() throws QueryException {
+		JpaQueryPlan plan = translate(QueryBuilder.from(person)
+				.selectAs("id", name)
+				.selectAs("version", path(age).plus(1).toExpression())
+				.orderByAsc(aliasRef("version").toExpression())
+				.build());
+
+		assertThat(plan.jpql()).isEqualTo("SELECT e.name AS c0, (e.age + :p0) AS c1 FROM Person e ORDER BY c1 ASC");
+		assertThat(plan.rowAliases()).containsExactly("id", "version");
+
+		JpaQueryPlan grouped = translate(QueryBuilder.from(person)
+				.groupByAs("id", path(age).plus(0).toExpression())
+				.max("version", age)
+				.build());
+		assertThat(grouped.jpql()).doesNotContain(" AS id").doesNotContain(" AS version");
+		assertThat(grouped.rowAliases()).containsExactly("id", "version");
+	}
+
 	// ------------------------------------------------- null placement (issue #365)
 
 	private String orderOf(JpaFlavor flavor, SortDirection direction, NullPrecedence nulls)
@@ -726,18 +829,18 @@ class JpaQueryProcessorTest {
 				.orderBy(SortDirection.DESC, NullPrecedence.LAST, age).build();
 		String jpql = ((JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.POSTGRES)
 				.translate(query, QueryContexts.of(person, null))).jpql();
-		assertThat(jpql).endsWith(" ORDER BY age DESC NULLS LAST");
+		assertThat(jpql).endsWith(" ORDER BY c1 DESC NULLS LAST");
 
 		// JPQL admits a result variable only bare: the CASE key tests the column behind it
 		String portable = ((JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.UNKNOWN)
 				.translate(query, QueryContexts.of(person, null))).jpql();
-		assertThat(portable).endsWith(" ORDER BY CASE WHEN e.age IS NULL THEN 1 ELSE 0 END ASC, age DESC");
+		assertThat(portable).endsWith(" ORDER BY CASE WHEN e.age IS NULL THEN 1 ELSE 0 END ASC, c1 DESC");
 
 		Query grouped = QueryBuilder.from(person).groupBy(name).max("oldest", age)
 				.orderBy(SortDirection.DESC, NullPrecedence.LAST, aliasRef("oldest").toExpression()).build();
 		String aggregated = ((JpaQueryPlan) new JpaQueryProcessor(JpaFlavor.UNKNOWN)
 				.translate(grouped, QueryContexts.of(person, null))).jpql();
-		assertThat(aggregated).endsWith(" ORDER BY CASE WHEN MAX(e.age) IS NULL THEN 1 ELSE 0 END ASC, oldest DESC");
+		assertThat(aggregated).endsWith(" ORDER BY CASE WHEN MAX(e.age) IS NULL THEN 1 ELSE 0 END ASC, c1 DESC");
 	}
 
 	/**

@@ -428,7 +428,10 @@ public class JpaQueryProcessor implements QueryProcessor {
 				+ String.join(", ", windowArguments) + ") AS rn";
 
 		String where = query.getPredicate() == null ? "" : translation.render(query.getPredicate());
-		String derived = "SELECT " + ALIAS + "." + rootId.getName() + " AS " + rootId.getName()
+		// the id column stays unaliased: it is addressed as `sub.<id>` from outside, which EclipseLink
+		// resolves as an attribute path, and an alias named after the attribute is a reserved word
+		// where the attribute is `id` or `version` (issue #429) — see windowedPlan
+		String derived = "SELECT " + ALIAS + "." + rootId.getName()
 				+ ", " + window + " FROM " + rootEClass.getName() + " " + ALIAS
 				+ (where.isEmpty() ? "" : " WHERE " + where);
 
@@ -495,16 +498,16 @@ public class JpaQueryProcessor implements QueryProcessor {
 	 * from the outside.
 	 *
 	 * <pre>
-	 * SELECT t FROM Person anchor JOIN anchor.friends t, (
-	 *     SELECT p.pid AS xpOwner, e.pid AS xpTarget,
-	 *            SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ?)', p.pid, e.name) AS rn
-	 *     FROM Person p JOIN p.friends e WHERE p.pid IN :expandKeys)
+	 * SELECT t FROM Person anchor JOIN anchor.addresses t, (
+	 *     SELECT p.id, e.aid,
+	 *            SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY ?)', p.id, e.street) AS rn
+	 *     FROM Person p JOIN p.addresses e WHERE p.id IN :expandKeys)
 	 *   sub
-	 *  WHERE anchor.pid = sub.xpOwner AND t.pid = sub.xpTarget
+	 *  WHERE anchor.id = sub.id AND t.aid = sub.aid
 	 *    AND sub.rn &gt; :expandSkip AND sub.rn &lt;= :expandUpper
 	 * </pre>
 	 *
-	 * Three things about the shape, each measured in {@code JpaWindowFunctionSpikeTest} rather
+	 * Four things about the shape, each measured in {@code JpaWindowFunctionSpikeTest} rather
 	 * than assumed:
 	 * <ul>
 	 * <li>{@code SQL(...)} splices the window into the generated statement, with each {@code ?}
@@ -518,6 +521,13 @@ public class JpaQueryProcessor implements QueryProcessor {
 	 *     which is what lets the query return <em>entities</em>. A derived table yields columns,
 	 *     and columns would leave the targets unread — the point of returning managed objects is
 	 *     that the persistence context is warm and the proxy resolution afterwards is free.</li>
+	 * <li>The id columns of the derived table carry <strong>no alias</strong>; only {@code rn}
+	 *     does. EclipseLink resolves {@code sub.id} as an attribute path, so the column has to
+	 *     bear the attribute's name: a neutral alias fails with EclipseLink-6076, and an alias
+	 *     repeating the attribute name is a reserved word where the attribute is {@code id} or
+	 *     {@code version} (EclipseLink 5, issue #429). An unaliased column is named after its
+	 *     attribute. Root and target sharing an id attribute name therefore cannot be told
+	 *     apart and are refused.</li>
 	 * </ul>
 	 * The ordering is the selector of D3, never a delivered order: it decides <em>which</em>
 	 * children the window picks. With none given the target id orders, so the window is
@@ -532,10 +542,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 					+ targetEClass.getName() + "' to address its rows by");
 		}
 		if (rootId.getName().equals(targetId.getName())) {
-			// The derived table has to name its columns after the attributes they come from:
+			// The derived table's columns carry the names of the attributes they come from:
 			// EclipseLink resolves `sub.x` as an attribute path, not as a select alias, and a
 			// name that is no attribute makes it treat `sub` as an object ("Object comparisons
-			// can only be used with OneToOneMappings"). Two columns cannot both be called `pid`,
+			// can only be used with OneToOneMappings"). The columns are left unaliased rather
+			// than aliased after the attribute — `id` and `version` are reserved words in the
+			// EclipseLink 5 grammar (issue #429). Two columns cannot both be called `pid`,
 			// so a paged expansion whose root and target share an id attribute name — every
 			// self-reference among them — has no shape here. Declared rather than approximated.
 			throw new QueryException("Per-parent paging of expand '" + path.get(path.size() - 1).getName()
@@ -563,8 +575,9 @@ public class JpaQueryProcessor implements QueryProcessor {
 		String window = "SQL('ROW_NUMBER() OVER (PARTITION BY ? ORDER BY " + order + ")', p."
 				+ rootId.getName() + ", " + String.join(", ", orderArguments) + ") AS rn";
 
-		String derived = "SELECT p." + rootId.getName() + " AS " + rootId.getName() + ", "
-				+ ALIAS + "." + targetId.getName() + " AS " + targetId.getName() + ", " + window
+		// unaliased on purpose (issue #429): see the comment above and the method javadoc
+		String derived = "SELECT p." + rootId.getName() + ", "
+				+ ALIAS + "." + targetId.getName() + ", " + window
 				+ " FROM " + query.getFrom().getName() + " p" + joins + " WHERE " + keyed;
 
 		StringBuilder jpql = new StringBuilder("SELECT t FROM ")
@@ -615,7 +628,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 			String rendered = computed
 					? translation.operand(selection.getKey(), null)
 					: rootPath(selection.getPath());
-			columns.append(rendered).append(" AS ").append(key);
+			columns.append(rendered).append(" AS ").append(resultVariable(key, rowKeys));
 			translation.projectionExpressions.put(key, rendered);
 		}
 		return columns.toString();
@@ -706,8 +719,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 							+ "' does not address an output key of the projection/aggregation (keys: "
 							+ rowKeys + ") — alias the column accordingly");
 				}
-				jpql.append(orderItem(aliasRef.getAlias(), columnBehind(aliasRef.getAlias(), translation),
-						orderBy));
+				jpql.append(orderItem(resultVariable(aliasRef.getAlias(), rowKeys),
+						columnBehind(aliasRef.getAlias(), rowKeys, translation), orderBy));
 			} else if (orderBy.getKey() != null) {
 				// arbitrary sort expressions render inline (issue #84); AliasRef
 				// inside a computed key re-renders the pipeline column
@@ -718,7 +731,8 @@ public class JpaQueryProcessor implements QueryProcessor {
 				jpql.append(orderItem(rendered, rendered, orderBy));
 			} else {
 				String key = rowKey(orderBy.getPath(), rowKeys);
-				jpql.append(orderItem(key, columnBehind(key, translation), orderBy));
+				jpql.append(orderItem(resultVariable(key, rowKeys), columnBehind(key, rowKeys, translation),
+						orderBy));
 			}
 		}
 	}
@@ -727,12 +741,12 @@ public class JpaQueryProcessor implements QueryProcessor {
 	 * The expression an output column was rendered from — what a null test has to name, since
 	 * JPQL admits a result variable in ORDER BY only as a bare item (issue #365).
 	 */
-	private static String columnBehind(String key, Translation translation) {
+	private static String columnBehind(String key, List<String> rowKeys, Translation translation) {
 		String column = translation.columnExpressions.get(key);
 		if (column == null) {
 			column = translation.projectionExpressions.get(key);
 		}
-		return column == null ? key : column;
+		return column == null ? resultVariable(key, rowKeys) : column;
 	}
 
 	/** How a database is told where null goes in one ordering entry (issue #365). */
@@ -808,6 +822,23 @@ public class JpaQueryProcessor implements QueryProcessor {
 		throw new QueryException("Sort path '" + flattened
 				+ "' does not address an output key of the projection/aggregation (keys: " + rowKeys
 				+ ") — alias the column accordingly");
+	}
+
+	/**
+	 * The JPQL result variable an output column is selected under: {@code c0}, {@code c1}, … by
+	 * position (issue #429). Never the output key itself — keys are attribute names and user
+	 * aliases, and {@code id}, {@code version}, {@code type}, {@code count}, {@code key}, … are
+	 * reserved words of the EclipseLink grammar ({@code id} and {@code version} only since
+	 * EclipseLink 5 / JPA 3.2). The rows are read by position and labelled with the output
+	 * keys ({@link #registerKey}), so the result variable never reaches a caller.
+	 */
+	private static String resultVariable(String key, List<String> rowKeys) {
+		int index = rowKeys.indexOf(key);
+		if (index < 0) {
+			throw new IllegalStateException("Output key '" + key + "' is not registered (keys: "
+					+ rowKeys + ")");
+		}
+		return "c" + index;
 	}
 
 	private static void registerKey(String key, String alias, List<String> rowKeys, List<String> rowAliases)
@@ -990,7 +1021,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					registerKey(key, key, rowKeys, rowAliases);
 					String rendered = rootPath(path);
 					columnExpressions.put(key, rendered);
-					appendColumn(columns, rendered + " AS " + key);
+					appendColumn(columns, rendered + " AS " + resultVariable(key, rowKeys));
 					groupByItems.add(rendered);
 				}
 				for (GroupKey key : group.getKeys()) {
@@ -1000,7 +1031,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					String rendered = groupKeyExpression(key.getExpression());
 					registerKey(alias, alias, rowKeys, rowAliases);
 					columnExpressions.put(alias, rendered);
-					appendColumn(columns, rendered + " AS " + alias);
+					appendColumn(columns, rendered + " AS " + resultVariable(alias, rowKeys));
 					groupByItems.add(rendered);
 				}
 				for (Aggregate aggregate : group.getAggregates()) {
@@ -1008,7 +1039,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					registerKey(key, key, rowKeys, rowAliases);
 					String rendered = aggregateFunction(aggregate, aggregateArgument(aggregate));
 					columnExpressions.put(key, rendered);
-					appendColumn(columns, rendered + " AS " + key);
+					appendColumn(columns, rendered + " AS " + resultVariable(key, rowKeys));
 				}
 				if (!groupByItems.isEmpty()) {
 					result.groupBy = " GROUP BY " + String.join(", ", groupByItems);
@@ -1026,7 +1057,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 					registerKey(key, key, rowKeys, rowAliases);
 					String rendered = ALIAS + "." + key;
 					columnExpressions.put(key, rendered);
-					appendColumn(columns, rendered + " AS " + key);
+					appendColumn(columns, rendered + " AS " + resultVariable(key, rowKeys));
 				}
 			}
 			for (Computation computation : computations) {
@@ -1034,7 +1065,7 @@ public class JpaQueryProcessor implements QueryProcessor {
 				String rendered = operand(computation.getExpression(), null);
 				registerKey(key, key, rowKeys, rowAliases);
 				columnExpressions.put(key, rendered);
-				appendColumn(columns, rendered + " AS " + key);
+				appendColumn(columns, rendered + " AS " + resultVariable(key, rowKeys));
 			}
 			result.columns = columns.toString();
 			if (!havingPredicates.isEmpty()) {
